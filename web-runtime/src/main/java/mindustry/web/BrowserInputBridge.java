@@ -112,7 +112,7 @@ public final class BrowserInputBridge{
         }, {passive: false});
 
         window.addEventListener('blur', () => {
-            for (const code of downCodes) keyUp(code);
+            downCodes.forEach(function(code){ keyUp(code); });
             downCodes.clear();
         });
 
