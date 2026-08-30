@@ -13,6 +13,7 @@ public final class Bootstrap{
     private static final String settingsKey = "mindustry.web.settings.v1";
     private static final String smokeBundle = "bundles/bundle.properties";
     private static final String serpuloData = "planets/serpulo.json";
+    private static final String smokePng = "sprites/error.png";
 
     private Bootstrap(){}
 
@@ -72,7 +73,7 @@ public final class Bootstrap{
                     throw new IllegalStateException("Mindustry browser content.init campaign/tech-tree state failed runtime initialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init, campaign metadata, tech trees and specialized block factories ready; assets@Core.files; settings@localStorage; waiting for animation frames...");
+                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init, campaign metadata, tech trees and specialized block factories ready; binary-png@Core.files; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -83,7 +84,7 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; assets@Core.files; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; binary-png@Core.files; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
@@ -93,17 +94,36 @@ public final class Bootstrap{
         BrowserFiles files = new BrowserFiles("assets");
         files.preloadText(smokeBundle);
         files.preloadText(serpuloData);
+        files.preloadBinary(smokePng);
         Core.files = files;
 
         String bundle = Core.files.internal(smokeBundle).readString();
         String planet = Core.files.internal(serpuloData).readString();
+        byte[] png = Core.files.internal(smokePng).readBytes();
         if(bundle.length() < 1000
         || !bundle.contains("credits = Credits")
         || !bundle.contains("gameover = Game Over")
         || Core.files.internal(smokeBundle).length() < 1000
         || !planet.contains("attackSectors")
-        || !planet.contains("groundZero")){
-            throw new IllegalStateException("Mindustry packaged text asset failed Core.files/Fi round-trip");
+        || !planet.contains("groundZero")
+        || png.length < 8
+        || (png[0] & 0xff) != 0x89
+        || (png[1] & 0xff) != 0x50
+        || (png[2] & 0xff) != 0x4e
+        || (png[3] & 0xff) != 0x47
+        || Core.files.internal(smokePng).length() != png.length){
+            throw new IllegalStateException("Mindustry packaged text/binary asset failed Core.files/Fi round-trip");
+        }
+
+        // Prove the complete binary path in TeaVM/Chrome: XHR ArrayBuffer -> byte[] ->
+        // BrowserFi -> Arc's pure-Java PNG reader -> direct-buffer Pixmap.
+        Pixmap pixmap = new Pixmap(Core.files.internal(smokePng));
+        try{
+            if(pixmap.width <= 0 || pixmap.height <= 0 || pixmap.getPixels().capacity() != pixmap.width * pixmap.height * 4){
+                throw new IllegalStateException("Mindustry packaged PNG failed Arc Pixmap decode");
+            }
+        }finally{
+            pixmap.dispose();
         }
     }
 

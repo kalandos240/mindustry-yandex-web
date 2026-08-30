@@ -101,9 +101,11 @@ jobs:
         run: |
           test -s web-runtime/build/web/index.html
           test -s web-runtime/build/web/mindustry.js
+          test -s web-runtime/build/web/assets/sprites/error.png
           grep -q 'mindustry-canvas' web-runtime/build/web/index.html
           grep -q 'mindustry-web-status' web-runtime/build/web/index.html
           echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
+          echo "PNG smoke bytes: $(wc -c < web-runtime/build/web/assets/sprites/error.png)"
 
       - name: Execute Mindustry core, Arc GL20, input and settings in headless Chrome
         run: |
@@ -132,6 +134,7 @@ jobs:
           grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-dom.html
           grep -q 'Mindustry core' /tmp/mindustry-web-dom.html
           grep -q 'Arc GL20 ready' /tmp/mindustry-web-dom.html
+          grep -q 'binary-png@Core.files' /tmp/mindustry-web-dom.html
           grep -q 'settings@localStorage' /tmp/mindustry-web-dom.html
 
       - name: Upload browser smoke package

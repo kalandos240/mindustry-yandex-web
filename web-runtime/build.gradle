@@ -50,11 +50,12 @@ tasks.register("stageWeb", Copy) {
     dependsOn "generateJavaScript"
     from "src/web"
     from "$buildDir/generated/teavm/js"
-    // First real Mindustry packaged assets. BrowserFiles preloads these into the
+    // Real Mindustry packaged assets. BrowserFiles preloads these into the
     // synchronous Fi cache before the application lifecycle starts.
     from("../work/Mindustry/core/assets") {
         include "bundles/bundle.properties"
         include "planets/serpulo.json"
+        include "sprites/error.png"
         into "assets"
     }
     into "$buildDir/web"

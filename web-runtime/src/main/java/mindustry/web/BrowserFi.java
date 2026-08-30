@@ -5,7 +5,6 @@ import arc.files.Fi;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 /** Fi backed by BrowserFiles' in-memory preload cache; no java.io.File is constructed. */
 public final class BrowserFi extends Fi{
@@ -76,7 +75,7 @@ public final class BrowserFi extends Fi{
 
     @Override
     public byte[] readBytes(){
-        return files.text(browserPath).getBytes(StandardCharsets.UTF_8);
+        return files.bytes(browserPath);
     }
 
     @Override
@@ -91,7 +90,7 @@ public final class BrowserFi extends Fi{
 
     @Override
     public long length(){
-        return files.contains(browserPath) ? readBytes().length : 0L;
+        return files.length(browserPath);
     }
 
     @Override
