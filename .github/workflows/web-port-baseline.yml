@@ -59,7 +59,7 @@ jobs:
 
   web-runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout port repository
@@ -72,7 +72,7 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Bootstrap pinned Arc sources
+      - name: Bootstrap pinned upstream sources
         run: bash scripts/bootstrap.sh
 
       - name: Apply current Arc Web backend overlay
@@ -84,7 +84,14 @@ jobs:
           chmod +x gradlew
           ./gradlew :arc-core:compileJava :backends:backend-web:compileJava --no-daemon --stacktrace
 
-      - name: Compile current Arc Web bytecode with TeaVM
+      - name: Compile Mindustry core bytecode for TeaVM reachability
+        working-directory: work/Mindustry
+        run: |
+          chmod +x gradlew
+          ./gradlew core:compileJava --no-daemon --stacktrace
+          test -s core/build/classes/java/main/mindustry/core/Version.class
+
+      - name: Compile current Mindustry and Arc bytecode with TeaVM
         run: work/Arc/gradlew -p web-runtime generateJavaScript stageWeb --no-daemon --stacktrace
 
       - name: Validate staged browser smoke package
@@ -95,7 +102,7 @@ jobs:
           grep -q 'mindustry-web-status' web-runtime/build/web/index.html
           echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
 
-      - name: Execute Arc lifecycle and WebGL in headless Chrome
+      - name: Execute Mindustry core, Arc GL20 and input in headless Chrome
         run: |
           command -v google-chrome
           cd web-runtime/build/web
@@ -120,6 +127,8 @@ jobs:
           grep -q 'data-mindustry-web="ready"' /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-gl="webgl(1|2)"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-dom.html
+          grep -q 'Mindustry core' /tmp/mindustry-web-dom.html
+          grep -q 'Arc GL20 ready' /tmp/mindustry-web-dom.html
 
       - name: Upload browser smoke package
         if: success()
