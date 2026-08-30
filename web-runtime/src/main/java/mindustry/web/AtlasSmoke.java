@@ -3,7 +3,6 @@ package mindustry.web;
 import arc.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
-import mindustry.*;
 
 /** Browser smoke for Mindustry's generated vanilla texture atlas. */
 final class AtlasSmoke{
@@ -46,6 +45,6 @@ final class AtlasSmoke{
             throw new IllegalStateException("Mindustry vanilla atlas WebGL upload failed with GL error 0x" + Integer.toHexString(error));
         }
 
-        Vars.atlas = loaded;
+        Core.atlas = loaded;
     }
 }
