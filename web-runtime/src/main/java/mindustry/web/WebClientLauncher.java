@@ -53,6 +53,7 @@ public final class WebClientLauncher extends ClientLauncher{
         Liquids.load();
         Bullets.load();
         UnitTypes.load();
+        Blocks.load();
     }
 
     @Override

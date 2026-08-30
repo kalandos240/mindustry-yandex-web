@@ -34,11 +34,14 @@ public final class Bootstrap{
                 || Vars.content.item("copper") == null
                 || Vars.content.liquid("water") == null
                 || Vars.content.statusEffect("burning") == null
-                || Vars.content.unit("dagger") == null){
+                || Vars.content.unit("dagger") == null
+                || Vars.content.block("copper-wall") == null
+                || Vars.content.block("core-shard") == null
+                || Vars.content.block("duo") == null){
                     throw new IllegalStateException("Mindustry browser gameplay registries failed runtime initialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; copper/water/burning/dagger registries ready; assets@Core.files; settings@localStorage; waiting for animation frames...");
+                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; item/liquid/status/unit/block registries ready; assets@Core.files; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -49,7 +52,7 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + clientSetup + Arc GL20 ready; content=copper,water,burning,dagger; assets@Core.files; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + clientSetup + Arc GL20 ready; content=copper,water,burning,dagger,copper-wall,core-shard,duo; assets@Core.files; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
