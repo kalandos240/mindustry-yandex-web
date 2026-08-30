@@ -4,10 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK_DIR="${WORK_DIR:-$ROOT_DIR/work}"
 ARC_DIR="$WORK_DIR/Arc"
+MINDUSTRY_DIR="$WORK_DIR/Mindustry"
 SOURCE_DIR="$ROOT_DIR/port/arc-web"
 TARGET_DIR="$ARC_DIR/backends/backend-web"
 
-if [[ ! -d "$ARC_DIR/.git" ]]; then
+if [[ ! -d "$ARC_DIR/.git" || ! -d "$MINDUSTRY_DIR/.git" ]]; then
   echo "Run scripts/bootstrap.sh first." >&2
   exit 1
 fi
@@ -54,6 +55,28 @@ if old not in text:
 path.write_text(text.replace(old, new))
 PY
 
+# ClientLauncher contains a few desktop/JVM-only startup probes. Patch only the
+# temporary Web checkout: launch-marker/file logging will be reintroduced through
+# the browser persistence layer, and Runtime.maxMemory has no JavaScript equivalent.
+python3 - "$MINDUSTRY_DIR/core/src/mindustry/ClientLauncher.java" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+replacements = {
+    '        checkLaunch();': '        // Web: launch marker is deferred until writable browser Fi persistence is installed.',
+    '        loadFileLogger();': '        // Web: keep console logging; browser file logging is not available.',
+    '        long ram = Runtime.getRuntime().maxMemory();': '        long ram = 0L; // Web: JVM heap size has no browser equivalent.',
+}
+for old, new in replacements.items():
+    if old not in text:
+        raise SystemExit(f'Mindustry ClientLauncher Web patch no longer matches pinned upstream: {old!r}')
+    text = text.replace(old, new, 1)
+path.write_text(text)
+PY
+
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc Core.executor compatibility patch"
 echo "Applied Web-only Arc Settings.executor compatibility patch"
+echo "Applied Web-only Mindustry ClientLauncher startup compatibility patch"

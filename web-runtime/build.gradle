@@ -19,9 +19,17 @@ dependencies {
     // Produced by the pinned upstream checkouts in CI/local bootstrap. Using
     // class directories keeps TeaVM tied to the exact source revisions in
     // upstream.lock instead of relying on separately published artifacts.
+    // Mindustry's client startup graph reaches several Arc extension modules;
+    // core:compileJava has already compiled these exact pinned sources.
     implementation files(
         "../work/Arc/arc-core/build/classes/java/main",
         "../work/Arc/backends/backend-web/build/classes/java/main",
+        "../work/Arc/extensions/fx/build/classes/java/main",
+        "../work/Arc/extensions/g3d/build/classes/java/main",
+        "../work/Arc/extensions/flabel/build/classes/java/main",
+        "../work/Arc/extensions/freetype/build/classes/java/main",
+        "../work/Arc/extensions/arcnet/build/classes/java/main",
+        "../work/Arc/extensions/packer/build/classes/java/main",
         "../work/Mindustry/core/build/classes/java/main"
     )
 }
