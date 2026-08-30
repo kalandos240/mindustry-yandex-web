@@ -3,6 +3,7 @@ package mindustry.web;
 import arc.*;
 import arc.backend.web.*;
 import arc.graphics.*;
+import mindustry.*;
 import mindustry.core.*;
 
 /** First executable bridge between current Mindustry/Arc bytecode and a browser frame loop. */
@@ -15,16 +16,28 @@ public final class Bootstrap{
     public static void main(String[] args){
         installAndVerifyFiles();
         installAndVerifySettings();
-        ClientReachabilityProbe.link();
 
         WebConfig config = new WebConfig();
 
         new BrowserApplication(new ApplicationListener(){
+            private final WebClientLauncher launcher = new WebClientLauncher();
             private int frames;
 
             @Override
             public void init(){
-                BrowserCanvas.setStatus("initialized", "Mindustry core + Arc Web initialized; assets@Core.files; settings@localStorage; waiting for animation frames...");
+                // BrowserApplication installs Core.app/graphics/gl/input before listener init,
+                // so this is the first test that executes the real browser-specific Mindustry
+                // startup rather than merely making it reachable to TeaVM.
+                launcher.setup();
+
+                if(Vars.content == null
+                || Vars.content.item("copper") == null
+                || Vars.content.liquid("water") == null
+                || Vars.content.statusEffect("burning") == null){
+                    throw new IllegalStateException("Mindustry browser gameplay registries failed runtime initialization");
+                }
+
+                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; copper/water/burning registries ready; assets@Core.files; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -35,7 +48,7 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + Arc GL20 ready; assets@Core.files; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + clientSetup + Arc GL20 ready; content=copper,water,burning; assets@Core.files; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
