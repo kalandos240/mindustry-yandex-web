@@ -52,6 +52,16 @@ public final class Bootstrap{
                     throw error;
                 }
 
+                // Load the exact generated vanilla atlas through Arc AssetManager and
+                // TextureAtlasLoader. This exercises binary AATLS parsing, dependency
+                // resolution, every atlas PNG page and the WebGL texture upload path.
+                try{
+                    AtlasSmoke.loadAndVerify();
+                }catch(Throwable error){
+                    BrowserCanvas.setStatus("error", "Mindustry Web vanilla atlas failed: " + describe(error));
+                    throw error;
+                }
+
                 if(Vars.content == null
                 || Vars.content.item("copper") == null
                 || Vars.content.liquid("water") == null
@@ -86,7 +96,7 @@ public final class Bootstrap{
                     throw new IllegalStateException("Mindustry browser content.init campaign/tech-tree state failed runtime initialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init, campaign metadata, tech trees and specialized block factories ready; binary-png@Core.files; texture-upload@WebGL; settings@localStorage; waiting for animation frames...");
+                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init, campaign metadata, tech trees and specialized block factories ready; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -97,7 +107,7 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; binary-png@Core.files; texture-upload@WebGL; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
