@@ -40,6 +40,15 @@ jobs:
           chmod +x gradlew
           ./gradlew core:compileJava --no-daemon --stacktrace
 
+      - name: Apply current Arc Web backend overlay
+        run: bash scripts/apply-port.sh
+
+      - name: Compile Arc Web backend skeleton
+        working-directory: work/Arc
+        run: |
+          chmod +x gradlew
+          ./gradlew :backends:backend-web:compileJava --no-daemon --stacktrace
+
       - name: Generate Web compatibility inventory
         if: always()
         run: bash scripts/audit-web-compat.sh
