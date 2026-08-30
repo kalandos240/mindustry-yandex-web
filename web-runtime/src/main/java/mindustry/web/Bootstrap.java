@@ -29,7 +29,13 @@ public final class Bootstrap{
             public void init(){
                 // BrowserApplication installs Core.app/graphics/gl/input before listener init,
                 // so this executes the real browser-specific Mindustry startup.
-                launcher.setup();
+                try{
+                    launcher.setup();
+                }catch(Throwable error){
+                    String message = error.getClass().getName() + ": " + String.valueOf(error.getMessage());
+                    BrowserCanvas.setStatus("error", "Mindustry Web startup failed: " + message);
+                    throw error;
+                }
 
                 if(Vars.content == null
                 || Vars.content.item("copper") == null
