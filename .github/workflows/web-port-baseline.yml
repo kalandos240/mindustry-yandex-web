@@ -79,7 +79,7 @@ jobs:
         working-directory: work/Mindustry
         run: |
           chmod +x gradlew
-          ./gradlew tools:pack -Pargs=web --no-daemon --stacktrace
+          ./gradlew tools:pack '-Pargs=[]' --no-daemon --stacktrace
           test -s core/assets/sprites/sprites.aatls
           test -s core/assets/sprites/sprites.png
           pages="$(find core/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)"
