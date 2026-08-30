@@ -41,10 +41,12 @@ public final class WebClientLauncher extends ClientLauncher{
         tree = new FileTree();
 
         // Use the exact upstream vanilla registration sequence now that TeaVM keeps
-        // the narrow block reflection metadata required by Block.initBuilding().
-        // This includes loadouts, weather, planets, sector presets and both tech trees.
+        // the narrow reflection metadata required by Block.initBuilding() and campaign
+        // metadata JSON. Content.init() is deliberately executed before texture loading:
+        // upstream defines it as the logical init/postInit phase for registered content.
         content = new ContentLoader();
         content.createBaseContent();
+        content.init();
     }
 
     @Override

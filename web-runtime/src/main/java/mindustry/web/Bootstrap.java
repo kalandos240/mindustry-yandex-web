@@ -4,6 +4,7 @@ import arc.*;
 import arc.backend.web.*;
 import arc.graphics.*;
 import mindustry.*;
+import mindustry.content.*;
 import mindustry.core.*;
 import mindustry.world.blocks.storage.*;
 
@@ -56,7 +57,22 @@ public final class Bootstrap{
                     throw new IllegalStateException("Mindustry browser block factory lost CoreBlock.CoreBuild specialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla base content and specialized block factories ready; assets@Core.files; settings@localStorage; waiting for animation frames...");
+                // ContentLoader.init() must complete the logical campaign/content phase,
+                // including packaged Serpulo metadata, sector remapping and tech-tree binding.
+                if(Planets.serpulo == null
+                || Planets.erekir == null
+                || Planets.serpulo.data == null
+                || Planets.serpulo.data.attackSectors.length == 0
+                || SectorPresets.groundZero == null
+                || SectorPresets.groundZero.sector == null
+                || SectorPresets.groundZero.sector.planet != Planets.serpulo
+                || Planets.serpulo.techTree == null
+                || Planets.erekir.techTree == null
+                || TechTree.roots.size < 2){
+                    throw new IllegalStateException("Mindustry browser content.init campaign/tech-tree state failed runtime initialization");
+                }
+
+                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init, campaign metadata, tech trees and specialized block factories ready; assets@Core.files; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -67,7 +83,7 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + full vanilla base content + Arc GL20 ready; content/base-block-factory runtime verified; assets@Core.files; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; assets@Core.files; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
