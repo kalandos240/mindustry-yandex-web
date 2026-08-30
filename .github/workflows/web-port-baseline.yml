@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: web-port-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   baseline:
     runs-on: ubuntu-latest
@@ -47,7 +51,17 @@ jobs:
         working-directory: work/Arc
         run: |
           chmod +x gradlew
-          ./gradlew :backends:backend-web:compileJava --no-daemon --stacktrace
+          ./gradlew :arc-core:compileJava :backends:backend-web:compileJava --no-daemon --stacktrace
+
+      - name: Compile current Arc Web bytecode with TeaVM
+        run: work/Arc/gradlew -p web-runtime generateJavaScript stageWeb --no-daemon --stacktrace
+
+      - name: Validate staged browser smoke package
+        run: |
+          test -s web-runtime/build/web/index.html
+          test -s web-runtime/build/web/mindustry.js
+          grep -q 'mindustry-canvas' web-runtime/build/web/index.html
+          echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
 
       - name: Generate Web compatibility inventory
         if: always()
@@ -59,4 +73,12 @@ jobs:
         with:
           name: web-compat-report
           path: work/web-compat-report.txt
+          if-no-files-found: error
+
+      - name: Upload browser smoke package
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-web-smoke
+          path: web-runtime/build/web
           if-no-files-found: error

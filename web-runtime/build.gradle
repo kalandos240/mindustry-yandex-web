@@ -1,0 +1,48 @@
+plugins {
+    id "java"
+    id "org.teavm" version "0.15.0"
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+dependencies {
+    implementation teavm.libs.jsoApis
+
+    // Produced by the pinned Arc checkout in CI/local bootstrap. Using class
+    // directories here avoids depending on Arc artifact names/versioning.
+    implementation files(
+        "../work/Arc/arc-core/build/classes/java/main",
+        "../work/Arc/backends/backend-web/build/classes/java/main"
+    )
+}
+
+teavm {
+    all {
+        mainClass = "mindustry.web.Bootstrap"
+    }
+    js {
+        targetFileName = "mindustry.js"
+        obfuscated = false
+        sourceMap = true
+        strict = true
+    }
+}
+
+tasks.register("stageWeb", Copy) {
+    dependsOn "generateJavaScript"
+    from "src/web"
+    from "$buildDir/generated/teavm/js"
+    into "$buildDir/web"
+}
+
+tasks.named("assemble") {
+    dependsOn "stageWeb"
+}
