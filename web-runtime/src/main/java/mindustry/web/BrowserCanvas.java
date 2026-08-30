@@ -1,6 +1,7 @@
 package mindustry.web;
 
 import org.teavm.jso.*;
+import org.teavm.jso.webgl.*;
 
 /** Minimal DOM/WebGL bridge used while Arc's GL20 adapter is being migrated. */
 public final class BrowserCanvas{
@@ -27,6 +28,9 @@ public final class BrowserCanvas{
         """)
     public static native boolean initialize(String canvasId, boolean alpha, boolean stencil, boolean antialias,
                                              boolean premultipliedAlpha, boolean preserveDrawingBuffer);
+
+    @JSBody(params = {"canvasId"}, script = "return document.getElementById(canvasId).__mindustryGL;")
+    public static native WebGLRenderingContext getContext(String canvasId);
 
     @JSBody(params = {"canvasId"}, script = """
         const canvas = document.getElementById(canvasId);
