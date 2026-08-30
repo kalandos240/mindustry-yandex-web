@@ -13,7 +13,46 @@
 <body>
     <canvas id="mindustry-canvas" width="1280" height="720"></canvas>
     <div id="mindustry-web-status">Booting Mindustry Web runtime...</div>
+    <script src="assets-manifest.js"></script>
     <script src="mindustry.js"></script>
-    <script>main();</script>
+    <script>
+        (async () => {
+            const status = document.getElementById('mindustry-web-status');
+            const manifest = globalThis.__mindustryAssetManifest || [];
+            const cache = Object.create(null);
+            globalThis.__mindustryAssetCache = cache;
+
+            let next = 0;
+            let loaded = 0;
+            const workers = Math.max(1, Math.min(8, manifest.length));
+
+            async function preloadWorker(){
+                while(true){
+                    const index = next++;
+                    if(index >= manifest.length) return;
+                    const path = manifest[index];
+                    const url = 'assets/' + path;
+                    const response = await fetch(url);
+                    if(!response.ok){
+                        throw new Error('Asset preload failed (' + response.status + '): ' + url);
+                    }
+                    cache[url] = new Int8Array(await response.arrayBuffer());
+                    loaded++;
+                    status.textContent = 'Preloading Mindustry assets ' + loaded + '/' + manifest.length + '...';
+                }
+            }
+
+            const tasks = [];
+            for(let i = 0; i < workers; i++) tasks.push(preloadWorker());
+            await Promise.all(tasks);
+
+            status.textContent = 'Starting Mindustry Web runtime...';
+            main();
+        })().catch(error => {
+            document.documentElement.setAttribute('data-mindustry-web', 'error');
+            document.getElementById('mindustry-web-status').textContent = 'Mindustry Web asset bootstrap failed: ' + error;
+            console.error(error);
+        });
+    </script>
 </body>
 </html>

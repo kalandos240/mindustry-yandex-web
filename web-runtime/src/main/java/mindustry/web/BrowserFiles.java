@@ -9,8 +9,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Browser asset filesystem. Internal/classpath assets are fetched during the preload
- * phase and are then exposed synchronously to Arc through normal Fi handles.
+ * Browser asset filesystem. The HTML bootstrap asynchronously fetches every staged
+ * asset before TeaVM main() starts. BrowserFiles then exposes that in-memory cache
+ * synchronously through Arc's normal Fi API, with no runtime network dependency.
  */
 public final class BrowserFiles implements Files{
     private final String assetRoot;
@@ -21,24 +22,22 @@ public final class BrowserFiles implements Files{
         this.assetRoot = trimSlashes(assetRoot == null ? "" : assetRoot);
     }
 
-    /** Load one packaged UTF-8 text asset before the application lifecycle starts. */
+    /** Materialize one already-preloaded UTF-8 text asset into the Java-side cache. */
     public void preloadText(String path){
         String normalized = normalize(path);
-        String url = assetUrl(normalized);
-        String text = requestText(url);
-        if(text == null){
-            throw new IllegalStateException("Failed to preload browser text asset: " + url);
+        byte[] bytes = requestPreloadedBytes(assetUrl(normalized));
+        if(bytes == null){
+            throw new IllegalStateException("Browser text asset was not preloaded by HTML bootstrap: " + normalized);
         }
-        textAssets.put(normalized, text);
+        textAssets.put(normalized, new String(bytes, StandardCharsets.UTF_8));
     }
 
-    /** Load one packaged binary asset without any text transcoding. */
+    /** Materialize one already-preloaded binary asset without text transcoding. */
     public void preloadBinary(String path){
         String normalized = normalize(path);
-        String url = assetUrl(normalized);
-        byte[] bytes = requestBytes(url);
+        byte[] bytes = requestPreloadedBytes(assetUrl(normalized));
         if(bytes == null){
-            throw new IllegalStateException("Failed to preload browser binary asset: " + url);
+            throw new IllegalStateException("Browser binary asset was not preloaded by HTML bootstrap: " + normalized);
         }
         binaryAssets.put(normalized, bytes);
     }
@@ -72,47 +71,66 @@ public final class BrowserFiles implements Files{
     }
 
     String text(String path){
-        String value = textAssets.get(normalize(path));
-        if(value == null){
-            throw new IllegalStateException("Browser text asset was not preloaded: " + path);
+        String normalized = normalize(path);
+        String value = textAssets.get(normalized);
+        if(value != null) return value;
+
+        byte[] bytes = requestPreloadedBytes(assetUrl(normalized));
+        if(bytes == null){
+            throw new IllegalStateException("Browser text asset is not packaged/preloaded: " + path);
         }
+        value = new String(bytes, StandardCharsets.UTF_8);
+        textAssets.put(normalized, value);
         return value;
     }
 
     byte[] bytes(String path){
         String normalized = normalize(path);
         byte[] binary = binaryAssets.get(normalized);
-        if(binary != null){
-            byte[] copy = new byte[binary.length];
-            System.arraycopy(binary, 0, copy, 0, binary.length);
-            return copy;
+        if(binary == null){
+            String text = textAssets.get(normalized);
+            if(text != null) return text.getBytes(StandardCharsets.UTF_8);
+
+            binary = requestPreloadedBytes(assetUrl(normalized));
+            if(binary == null){
+                throw new IllegalStateException("Browser asset is not packaged/preloaded: " + path);
+            }
+            binaryAssets.put(normalized, binary);
         }
 
-        String text = textAssets.get(normalized);
-        if(text != null){
-            return text.getBytes(StandardCharsets.UTF_8);
-        }
-
-        throw new IllegalStateException("Browser asset was not preloaded: " + path);
+        byte[] copy = new byte[binary.length];
+        System.arraycopy(binary, 0, copy, 0, binary.length);
+        return copy;
     }
 
     boolean contains(String path){
         String normalized = normalize(path);
-        return textAssets.containsKey(normalized) || binaryAssets.containsKey(normalized);
+        return textAssets.containsKey(normalized)
+            || binaryAssets.containsKey(normalized)
+            || hasPackagedAsset(normalized);
     }
 
     boolean hasChildren(String directory){
         String normalized = normalize(directory);
         String prefix = normalized.isEmpty() ? "" : normalized + "/";
-        return hasChild(textAssets, prefix) || hasChild(binaryAssets, prefix);
+        for(String key : packagedPaths()){
+            if(key.startsWith(prefix) && key.length() > prefix.length()) return true;
+        }
+        return false;
     }
 
     Fi[] children(String directory, FileType type){
         String normalized = normalize(directory);
         String prefix = normalized.isEmpty() ? "" : normalized + "/";
         Map<String, Fi> children = new LinkedHashMap<>();
-        collectChildren(textAssets, prefix, type, children);
-        collectChildren(binaryAssets, prefix, type, children);
+        for(String key : packagedPaths()){
+            if(!key.startsWith(prefix) || key.length() <= prefix.length()) continue;
+            String remainder = key.substring(prefix.length());
+            int slash = remainder.indexOf('/');
+            String childName = slash < 0 ? remainder : remainder.substring(0, slash);
+            String childPath = prefix + childName;
+            children.put(childName, new BrowserFi(this, childPath, type));
+        }
         return children.values().toArray(new Fi[0]);
     }
 
@@ -121,29 +139,12 @@ public final class BrowserFiles implements Files{
         byte[] binary = binaryAssets.get(normalized);
         if(binary != null) return binary.length;
         String text = textAssets.get(normalized);
-        return text == null ? 0L : text.getBytes(StandardCharsets.UTF_8).length;
+        if(text != null) return text.getBytes(StandardCharsets.UTF_8).length;
+        return preloadedLength(assetUrl(normalized));
     }
 
     private String assetUrl(String normalized){
         return assetRoot.isEmpty() ? normalized : assetRoot + "/" + normalized;
-    }
-
-    private static boolean hasChild(Map<String, ?> assets, String prefix){
-        for(String key : assets.keySet()){
-            if(key.startsWith(prefix) && key.length() > prefix.length()) return true;
-        }
-        return false;
-    }
-
-    private void collectChildren(Map<String, ?> assets, String prefix, FileType type, Map<String, Fi> children){
-        for(String key : assets.keySet()){
-            if(!key.startsWith(prefix) || key.length() <= prefix.length()) continue;
-            String remainder = key.substring(prefix.length());
-            int slash = remainder.indexOf('/');
-            String childName = slash < 0 ? remainder : remainder.substring(0, slash);
-            String childPath = prefix + childName;
-            children.put(childName, new BrowserFi(this, childPath, type));
-        }
     }
 
     static String normalize(String path){
@@ -166,31 +167,23 @@ public final class BrowserFiles implements Files{
     }
 
     @JSBody(params = {"url"}, script = """
-        try {
-            const xhr = new XMLHttpRequest();
-            xhr.open('GET', url, false);
-            xhr.send(null);
-            if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0) return xhr.responseText;
-            return null;
-        } catch (e) {
-            return null;
-        }
+        const cache = globalThis.__mindustryAssetCache;
+        return cache && cache[url] ? cache[url] : null;
         """)
-    private static native String requestText(String url);
+    private static native byte[] requestPreloadedBytes(String url);
+
+    @JSBody(params = {"path"}, script = """
+        const manifest = globalThis.__mindustryAssetManifest || [];
+        return manifest.indexOf(path) !== -1;
+        """)
+    private static native boolean hasPackagedAsset(String path);
+
+    @JSBody(script = "return globalThis.__mindustryAssetManifest || [];")
+    private static native String[] packagedPaths();
 
     @JSBody(params = {"url"}, script = """
-        try {
-            const xhr = new XMLHttpRequest();
-            xhr.open('GET', url, false);
-            xhr.responseType = 'arraybuffer';
-            xhr.send(null);
-            if (((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0) && xhr.response != null) {
-                return new Int8Array(xhr.response);
-            }
-            return null;
-        } catch (e) {
-            return null;
-        }
+        const cache = globalThis.__mindustryAssetCache;
+        return cache && cache[url] ? cache[url].byteLength : 0;
         """)
-    private static native byte[] requestBytes(String url);
+    private static native int preloadedLength(String url);
 }

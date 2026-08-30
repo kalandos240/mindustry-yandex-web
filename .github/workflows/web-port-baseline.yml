@@ -101,9 +101,12 @@ jobs:
         run: |
           test -s web-runtime/build/web/index.html
           test -s web-runtime/build/web/mindustry.js
+          test -s web-runtime/build/web/assets-manifest.js
           test -s web-runtime/build/web/assets/sprites/error.png
           grep -q 'mindustry-canvas' web-runtime/build/web/index.html
           grep -q 'mindustry-web-status' web-runtime/build/web/index.html
+          grep -q 'assets-manifest.js' web-runtime/build/web/index.html
+          grep -q 'sprites/error.png' web-runtime/build/web/assets-manifest.js
           echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
           echo "PNG smoke bytes: $(wc -c < web-runtime/build/web/assets/sprites/error.png)"
 
