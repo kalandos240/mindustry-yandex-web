@@ -3,8 +3,9 @@ package mindustry.web;
 import arc.*;
 import arc.backend.web.*;
 import arc.graphics.*;
+import mindustry.core.*;
 
-/** First executable bridge between the current Arc lifecycle and a real browser frame loop. */
+/** First executable bridge between current Mindustry/Arc bytecode and a browser frame loop. */
 public final class Bootstrap{
     private Bootstrap(){}
 
@@ -16,7 +17,7 @@ public final class Bootstrap{
 
             @Override
             public void init(){
-                BrowserCanvas.setStatus("initialized", "Arc Web initialized; waiting for animation frames...");
+                BrowserCanvas.setStatus("initialized", "Mindustry core + Arc Web initialized; waiting for animation frames...");
             }
 
             @Override
@@ -26,8 +27,8 @@ public final class Bootstrap{
                 Core.graphics.clear(pulse, pulse, pulse + 0.02f, 1f);
 
                 if(++frames == 3){
-                    String version = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Arc GL20 + requestAnimationFrame ready: " + version);
+                    String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + Arc GL20 ready: " + glVersion);
                 }
             }
         }, config);
