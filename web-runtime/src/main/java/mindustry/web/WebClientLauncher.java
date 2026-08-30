@@ -41,11 +41,12 @@ public final class WebClientLauncher extends ClientLauncher{
         Core.assets = new AssetManager();
         tree = new FileTree();
 
-        // First real Mindustry gameplay registry slice. Keep this deliberately
-        // smaller than createBaseContent() so Web-incompatible dependencies are
-        // introduced and validated one content family at a time.
+        // Build the gameplay registry incrementally so every new content family
+        // crosses TeaVM and browser CI independently before the full base set is linked.
         content = new ContentLoader();
         Items.load();
+        StatusEffects.load();
+        Liquids.load();
     }
 
     @Override
