@@ -90,8 +90,8 @@ old_ctor = '''        if(multithreaded){\n            try{\n                comm
 old_sort = '''    protected void sortRequests(){\n        if(multithreaded){\n            sortRequestsThreaded();\n        }else{\n            sortRequestsStandard();\n        }\n    }\n'''
 new_sort = '''    protected void sortRequests(){\n        int count = numRequests;\n        if(copy.length < count) copy = new DrawRequest[count + (count >> 3) + 1];\n        long[] keys = new long[count];\n        for(int i = 0; i < count; i++){\n            // High 32 bits preserve signed z ordering; low 32 bits preserve insertion order.\n            keys[i] = ((long)requestZ[i] << 32) | (i & 0xffffffffL);\n        }\n        Arrays.sort(keys);\n        for(int i = 0; i < count; i++){\n            copy[i] = requests[(int)keys[i]];\n        }\n    }\n'''
 for old, new, name in [
-    (old_fields, '', 'fields'),
-    (old_ctor, '        // Web: serial request sorting; no ForkJoinPool.\n', 'constructor'),
+    (old_fields, '    static ForkJoinHolder commonPool;\n', 'fields'),
+    (old_ctor, '        // Web: serial request sorting; no ForkJoinPool is initialized.\n', 'constructor'),
     (old_sort, new_sort, 'sortRequests'),
 ]:
     if old not in text:
