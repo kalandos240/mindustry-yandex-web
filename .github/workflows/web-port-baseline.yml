@@ -75,8 +75,10 @@ jobs:
       - name: Bootstrap pinned upstream sources
         run: bash scripts/bootstrap.sh
 
-      - name: Apply current Arc Web backend overlay
-        run: bash scripts/apply-port.sh
+      - name: Apply current Web compatibility overlays
+        run: |
+          bash scripts/apply-port.sh
+          python3 scripts/patch-mindustry-block-reflection.py work/Mindustry/core/src/mindustry/world/Block.java
 
       - name: Compile Arc Web backend
         working-directory: work/Arc
