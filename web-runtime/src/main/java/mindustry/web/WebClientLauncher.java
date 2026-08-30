@@ -7,8 +7,6 @@ import arc.graphics.g2d.*;
 import arc.math.*;
 import arc.util.*;
 import mindustry.*;
-import mindustry.ai.*;
-import mindustry.content.*;
 import mindustry.core.*;
 import mindustry.net.Net.*;
 
@@ -42,18 +40,11 @@ public final class WebClientLauncher extends ClientLauncher{
         Core.assets = new AssetManager();
         tree = new FileTree();
 
-        // Follow upstream base-content ordering while validating each family in
-        // isolation. Commands/stances intentionally come before combat content.
+        // Use the exact upstream vanilla registration sequence now that TeaVM keeps
+        // the narrow block reflection metadata required by Block.initBuilding().
+        // This includes loadouts, weather, planets, sector presets and both tech trees.
         content = new ContentLoader();
-        UnitCommand.loadAll();
-        TeamEntries.load();
-        Items.load();
-        UnitStance.loadAll();
-        StatusEffects.load();
-        Liquids.load();
-        Bullets.load();
-        UnitTypes.load();
-        Blocks.load();
+        content.createBaseContent();
     }
 
     @Override
