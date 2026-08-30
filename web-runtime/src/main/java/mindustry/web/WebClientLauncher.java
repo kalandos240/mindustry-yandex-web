@@ -52,6 +52,7 @@ public final class WebClientLauncher extends ClientLauncher{
         StatusEffects.load();
         Liquids.load();
         Bullets.load();
+        UnitTypes.load();
     }
 
     @Override
