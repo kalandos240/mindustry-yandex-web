@@ -1,6 +1,5 @@
 package mindustry.web;
 
-import mindustry.ClientLauncher;
 import org.teavm.jso.JSBody;
 
 /**
@@ -11,7 +10,7 @@ public final class ClientReachabilityProbe{
     private ClientReachabilityProbe(){}
 
     public static void link(){
-        ClientLauncher launcher = new ClientLauncher(){};
+        WebClientLauncher launcher = new WebClientLauncher();
         if(fullClientProbeEnabled()){
             launcher.setup();
         }
