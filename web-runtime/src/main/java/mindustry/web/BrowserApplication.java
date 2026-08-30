@@ -13,6 +13,7 @@ public final class BrowserApplication extends WebApplicationBase{
 
     private final FrameCallback frameCallback = this::onAnimationFrame;
     private final WebGraphics graphics;
+    private final WebInput input;
     private String clipboard = "";
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
@@ -28,6 +29,10 @@ public final class BrowserApplication extends WebApplicationBase{
         updateGraphicsMetrics();
         Core.graphics = graphics;
 
+        input = new WebInput();
+        Core.input = input;
+        BrowserInputBridge.install(config.canvasId, input);
+
         initialize();
         requestAnimationFrame(frameCallback);
     }
@@ -38,7 +43,9 @@ public final class BrowserApplication extends WebApplicationBase{
         BrowserCanvas.resizeToDisplay(config.canvasId);
         updateGraphicsMetrics();
         graphics.updateFrame(timestamp);
+        input.update();
         frame();
+        input.postUpdate();
         requestAnimationFrame(frameCallback);
     }
 
