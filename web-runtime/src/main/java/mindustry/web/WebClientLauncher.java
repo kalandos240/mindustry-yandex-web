@@ -51,6 +51,7 @@ public final class WebClientLauncher extends ClientLauncher{
         UnitStance.loadAll();
         StatusEffects.load();
         Liquids.load();
+        Bullets.load();
     }
 
     @Override
