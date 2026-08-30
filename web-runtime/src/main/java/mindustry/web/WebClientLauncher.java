@@ -7,6 +7,7 @@ import arc.graphics.g2d.*;
 import arc.math.*;
 import arc.util.*;
 import mindustry.*;
+import mindustry.content.*;
 import mindustry.core.*;
 import mindustry.net.Net.*;
 
@@ -34,12 +35,17 @@ public final class WebClientLauncher extends ClientLauncher{
                 : Mathf.clamp(result, 0.0001f, maxDeltaClient);
         });
 
-        // First browser client slice: real Arc rendering and asset machinery,
-        // without desktop-only platform services. Content/UI are enabled in
-        // subsequent slices once their Web dependencies are available.
+        // Browser client foundation: real Arc rendering and asset machinery,
+        // without desktop-only platform services.
         Core.batch = new SpriteBatch();
         Core.assets = new AssetManager();
         tree = new FileTree();
+
+        // First real Mindustry gameplay registry slice. Keep this deliberately
+        // smaller than createBaseContent() so Web-incompatible dependencies are
+        // introduced and validated one content family at a time.
+        content = new ContentLoader();
+        Items.load();
     }
 
     @Override
