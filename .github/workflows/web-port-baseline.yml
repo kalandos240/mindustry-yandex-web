@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  baseline:
+  upstream-baseline:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -27,6 +27,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Bootstrap pinned upstream sources
         run: bash scripts/bootstrap.sh
@@ -44,10 +45,40 @@ jobs:
           chmod +x gradlew
           ./gradlew core:compileJava --no-daemon --stacktrace
 
+      - name: Generate Web compatibility inventory
+        if: always()
+        run: bash scripts/audit-web-compat.sh
+
+      - name: Upload compatibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-compat-report
+          path: work/web-compat-report.txt
+          if-no-files-found: error
+
+  web-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout port repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Bootstrap pinned Arc sources
+        run: bash scripts/bootstrap.sh
+
       - name: Apply current Arc Web backend overlay
         run: bash scripts/apply-port.sh
 
-      - name: Compile Arc Web backend skeleton
+      - name: Compile Arc Web backend
         working-directory: work/Arc
         run: |
           chmod +x gradlew
@@ -88,18 +119,7 @@ jobs:
           cat /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-web="ready"' /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-gl="webgl(1|2)"' /tmp/mindustry-web-dom.html
-
-      - name: Generate Web compatibility inventory
-        if: always()
-        run: bash scripts/audit-web-compat.sh
-
-      - name: Upload compatibility report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-compat-report
-          path: work/web-compat-report.txt
-          if-no-files-found: error
+          grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-dom.html
 
       - name: Upload browser smoke package
         if: success()
