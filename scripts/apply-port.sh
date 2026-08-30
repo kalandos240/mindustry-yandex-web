@@ -52,6 +52,29 @@ if old not in text:
 path.write_text(text.replace(old, new))
 PY
 
+# Arc's desktop unsafe buffers allocate/free native memory through JNI. TeaVM owns
+# JavaScript memory itself, so direct buffers can use the class-library allocator
+# and explicit native free becomes a no-op. Keep the rest of Buffers untouched
+# until TeaVM proves another native helper reachable.
+python3 - "$ARC_DIR/arc-core/src/arc/util/Buffers.java" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+replacements = {
+    '    private static native void freeMemory(ByteBuffer buffer); /*':
+        '    private static void freeMemory(ByteBuffer buffer){} /*',
+    '    private static native ByteBuffer newDisposableByteBuffer(int numBytes); /*':
+        '    private static ByteBuffer newDisposableByteBuffer(int numBytes){ return ByteBuffer.allocateDirect(numBytes); } /*',
+}
+for old, new in replacements.items():
+    if old not in text:
+        raise SystemExit(f'Arc Buffers Web patch no longer matches pinned upstream: {old!r}')
+    text = text.replace(old, new, 1)
+path.write_text(text)
+PY
+
 # Asset loading stays fully functional but runs on the browser event loop instead
 # of ExecutorService/Future. Replace the task implementation and remove the desktop
 # executor plumbing from AssetManager.
@@ -164,6 +187,6 @@ mkdir -p "$MINDUSTRY_DIR/core/src/mindustry/net"
 cp "$MINDUSTRY_CORE_WEB_SOURCE_DIR/mindustry/net/Streamable.java" "$MINDUSTRY_DIR/core/src/mindustry/net/Streamable.java"
 
 echo "Applied Arc Web overlay to $TARGET_DIR"
-echo "Applied Web-only Arc settings/core compatibility patches"
+echo "Applied Web-only Arc settings/core/buffer compatibility patches"
 echo "Applied Web single-thread asset and SpriteBatch patches"
 echo "Applied Web-only Mindustry startup/network/stream patches"
