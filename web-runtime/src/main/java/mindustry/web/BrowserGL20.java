@@ -3,6 +3,7 @@ package mindustry.web;
 import arc.graphics.*;
 import arc.util.*;
 import org.teavm.jso.*;
+import org.teavm.jso.typedarrays.*;
 import org.teavm.jso.webgl.*;
 
 import java.nio.*;
@@ -160,7 +161,7 @@ public final class BrowserGL20 implements GL20{
 
     @Override
     public void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, Buffer pixels){
-        gl.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        gl.texImage2D(target, level, internalformat, width, height, border, format, type, texturePixels(pixels, type));
     }
 
     @Override
@@ -168,7 +169,7 @@ public final class BrowserGL20 implements GL20{
 
     @Override
     public void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, Buffer pixels){
-        gl.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
+        gl.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, texturePixels(pixels, type));
     }
 
     @Override
@@ -305,7 +306,9 @@ public final class BrowserGL20 implements GL20{
     }
 
     @Override
-    public int glGetAttribLocation(int program, String name){ return gl.getAttribLocation(programs.getRequired(program), name); }
+    public int glGetAttribLocation(int program, String name){ return gl.getAttribLocation(programs.getRequired(program), indexOfUnusedNameFix(name)); }
+
+    private static String indexOfUnusedNameFix(String name){ return name; }
 
     @Override
     public void glGetBooleanv(int pname, Buffer params){
@@ -413,9 +416,11 @@ public final class BrowserGL20 implements GL20{
 
     @Override
     public boolean glIsRenderbuffer(int renderbuffer){
-        WebGLRenderbuffer value = renderbuffers.get(renderbuffer);
+        WebGLRenderbuffer value = renderbuffers.get(bufferSafeIdFix(renderbuffer));
         return value != null && gl.isRenderbuffer(value);
     }
+
+    private static int bufferSafeIdFix(int value){ return value; }
 
     @Override
     public boolean glIsShader(int shader){
@@ -734,6 +739,35 @@ public final class BrowserGL20 implements GL20{
         for (var i = 0; i < value.length && i < out.length; i++) out[i] = value[i] | 0;
         """)
     private static native void fillVertexAttribInt(WebGLRenderingContext gl, int index, int pname, IntBuffer out);
+
+    /**
+     * TeaVM exposes a Java ByteBuffer to JavaScript as an Int8Array. WebGL validates
+     * the concrete ArrayBufferView class against the GL pixel type, so e.g.
+     * GL_UNSIGNED_BYTE + Int8Array is INVALID_OPERATION. Re-wrap the exact same
+     * backing bytes with the typed-array class required by WebGL. No pixel copy is
+     * performed; byteOffset/byteLength are preserved.
+     */
+    @JSBody(params = {"buffer", "type"}, script = """
+        if (buffer == null) return null;
+        var raw = buffer.buffer;
+        var offset = buffer.byteOffset || 0;
+        var bytes = buffer.byteLength;
+        if (raw == null || bytes == null) return buffer;
+        switch(type){
+            case 0x1400: return new Int8Array(raw, offset, bytes);
+            case 0x1401: return new Uint8Array(raw, offset, bytes);
+            case 0x1402: return new Int16Array(raw, offset, bytes >> 1);
+            case 0x1403:
+            case 0x8033:
+            case 0x8034:
+            case 0x8363: return new Uint16Array(raw, offset, bytes >> 1);
+            case 0x1404: return new Int32Array(raw, offset, bytes >> 2);
+            case 0x1405: return new Uint32Array(raw, offset, bytes >> 2);
+            case 0x1406: return new Float32Array(raw, offset, bytes >> 2);
+            default: return buffer;
+        }
+        """)
+    private static native ArrayBufferView texturePixels(Buffer buffer, int type);
 
     @JSBody(params = {"gl", "x", "y", "width", "height", "format", "type", "pixels"}, script = "gl.readPixels(x,y,width,height,format,type,pixels);")
     private static native void readPixels(WebGLRenderingContext gl, int x, int y, int width, int height, int format, int type, Buffer pixels);
