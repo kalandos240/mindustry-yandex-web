@@ -34,8 +34,17 @@ public final class Bootstrap{
 
             @Override
             public void init(){
-                // BrowserApplication installs Core.app/graphics/gl/input before listener init,
-                // so this executes the real browser-specific Mindustry startup.
+                // BrowserApplication installs Core.app/graphics/gl/input before listener init.
+                // Prove the packaged binary asset can travel all the way through Arc's Texture
+                // path and the Web GL20 adapter before the wider Mindustry client setup starts.
+                try{
+                    verifyTextureUpload();
+                }catch(Throwable error){
+                    BrowserCanvas.setStatus("error", "Mindustry Web texture upload failed: " + describe(error));
+                    throw error;
+                }
+
+                // Execute the real browser-specific Mindustry startup.
                 try{
                     launcher.setup();
                 }catch(Throwable error){
@@ -77,7 +86,7 @@ public final class Bootstrap{
                     throw new IllegalStateException("Mindustry browser content.init campaign/tech-tree state failed runtime initialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init, campaign metadata, tech trees and specialized block factories ready; binary-png@Core.files; settings@localStorage; waiting for animation frames...");
+                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init, campaign metadata, tech trees and specialized block factories ready; binary-png@Core.files; texture-upload@WebGL; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -88,7 +97,7 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; binary-png@Core.files; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; binary-png@Core.files; texture-upload@WebGL; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
@@ -119,8 +128,8 @@ public final class Bootstrap{
             throw new IllegalStateException("Mindustry packaged text/binary asset failed Core.files/Fi round-trip");
         }
 
-        // Prove the complete binary path in TeaVM/Chrome: XHR ArrayBuffer -> byte[] ->
-        // BrowserFi -> Arc's pure-Java PNG reader -> direct-buffer Pixmap.
+        // Prove the complete binary path in TeaVM/Chrome: async browser preload ->
+        // byte[] -> BrowserFi -> Arc's pure-Java PNG reader -> direct-buffer Pixmap.
         Pixmap pixmap = new Pixmap(Core.files.internal(smokePng));
         try{
             if(pixmap.width <= 0 || pixmap.height <= 0 || pixmap.getPixels().capacity() != pixmap.width * pixmap.height * 4){
@@ -128,6 +137,28 @@ public final class Bootstrap{
             }
         }finally{
             pixmap.dispose();
+        }
+    }
+
+    private static void verifyTextureUpload(){
+        // Discard any context-creation noise so the error checked below belongs to
+        // this upload path rather than browser/driver initialization.
+        for(int i = 0; i < 8 && Core.gl20.glGetError() != GL20.GL_NO_ERROR; i++){
+            // drain
+        }
+
+        Texture texture = new Texture(Core.files.internal(smokePng));
+        try{
+            if(texture.width <= 0 || texture.height <= 0 || texture.getTextureObjectHandle() == 0){
+                throw new IllegalStateException("Arc Texture did not create a valid WebGL texture object");
+            }
+
+            int error = Core.gl20.glGetError();
+            if(error != GL20.GL_NO_ERROR){
+                throw new IllegalStateException("WebGL texture upload failed with GL error 0x" + Integer.toHexString(error));
+            }
+        }finally{
+            texture.dispose();
         }
     }
 
