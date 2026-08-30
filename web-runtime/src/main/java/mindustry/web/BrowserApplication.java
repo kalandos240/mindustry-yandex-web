@@ -14,6 +14,7 @@ public final class BrowserApplication extends WebApplicationBase{
     private final FrameCallback frameCallback = this::onAnimationFrame;
     private final WebGraphics graphics;
     private final WebInput input;
+    private final BrowserGL20 gl20;
     private String clipboard = "";
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
@@ -26,6 +27,8 @@ public final class BrowserApplication extends WebApplicationBase{
 
         graphics = new WebGraphics(config);
         graphics.setWebGLVersion(BrowserCanvas.getWebGLMajor(config.canvasId));
+        gl20 = new BrowserGL20(BrowserCanvas.getContext(config.canvasId));
+        graphics.setGL20(gl20);
         updateGraphicsMetrics();
         Core.graphics = graphics;
 
