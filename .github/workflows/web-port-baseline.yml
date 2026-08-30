@@ -138,6 +138,7 @@ jobs:
           grep -q 'Mindustry core' /tmp/mindustry-web-dom.html
           grep -q 'Arc GL20 ready' /tmp/mindustry-web-dom.html
           grep -q 'binary-png@Core.files' /tmp/mindustry-web-dom.html
+          grep -q 'texture-upload@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'settings@localStorage' /tmp/mindustry-web-dom.html
 
       - name: Upload browser smoke package
