@@ -2,7 +2,7 @@ package mindustry.web;
 
 import org.teavm.jso.*;
 
-/** Minimal DOM/WebGL bridge used to prove the Arc browser lifecycle before GL20 is wired. */
+/** Minimal DOM/WebGL bridge used while Arc's GL20 adapter is being migrated. */
 public final class BrowserCanvas{
     private BrowserCanvas(){}
 
@@ -21,7 +21,8 @@ public final class BrowserCanvas{
         const gl = canvas.getContext('webgl2', options) || canvas.getContext('webgl', options);
         if (!gl) return false;
         canvas.__mindustryGL = gl;
-        document.documentElement.dataset.mindustryGl = (typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) ? 'webgl2' : 'webgl1';
+        canvas.__mindustryGLMajor = (typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) ? 2 : 1;
+        document.documentElement.dataset.mindustryGl = canvas.__mindustryGLMajor === 2 ? 'webgl2' : 'webgl1';
         return true;
         """)
     public static native boolean initialize(String canvasId, boolean alpha, boolean stencil, boolean antialias,
@@ -39,6 +40,24 @@ public final class BrowserCanvas{
         """)
     public static native void resizeToDisplay(String canvasId);
 
+    @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).clientWidth | 0);")
+    public static native int getClientWidth(String canvasId);
+
+    @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).clientHeight | 0);")
+    public static native int getClientHeight(String canvasId);
+
+    @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).width | 0);")
+    public static native int getBackBufferWidth(String canvasId);
+
+    @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).height | 0);")
+    public static native int getBackBufferHeight(String canvasId);
+
+    @JSBody(script = "return Math.max(1, window.devicePixelRatio || 1);")
+    public static native float getDensity();
+
+    @JSBody(params = {"canvasId"}, script = "return document.getElementById(canvasId).__mindustryGLMajor || 1;")
+    public static native int getWebGLMajor(String canvasId);
+
     @JSBody(params = {"canvasId", "timeSeconds"}, script = """
         const canvas = document.getElementById(canvasId);
         const gl = canvas.__mindustryGL;
@@ -51,7 +70,7 @@ public final class BrowserCanvas{
 
     @JSBody(params = {"state", "text"}, script = """
         document.documentElement.dataset.mindustryWeb = state;
-        let status = document.getElementById('mindustry-web-status');
+        const status = document.getElementById('mindustry-web-status');
         if (status) status.textContent = text;
         """)
     public static native void setStatus(String state, String text);
