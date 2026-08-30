@@ -1,0 +1,53 @@
+name: Web port baseline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout port repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Bootstrap pinned upstream sources
+        run: bash scripts/bootstrap.sh
+
+      - name: Verify legacy browser backend snapshot
+        run: |
+          test -d work/legacy-arc-web/backends/backend-gwt/src
+          count="$(find work/legacy-arc-web/backends/backend-gwt/src -type f -name '*.java' | wc -l)"
+          echo "Recovered legacy GWT Java files: $count"
+          test "$count" -gt 20
+
+      - name: Compile unmodified Mindustry core baseline
+        working-directory: work/Mindustry
+        run: |
+          chmod +x gradlew
+          ./gradlew core:compileJava --no-daemon --stacktrace
+
+      - name: Generate Web compatibility inventory
+        if: always()
+        run: bash scripts/audit-web-compat.sh
+
+      - name: Upload compatibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-compat-report
+          path: work/web-compat-report.txt
+          if-no-files-found: error
