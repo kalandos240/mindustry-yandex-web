@@ -15,6 +15,7 @@ public final class Bootstrap{
     public static void main(String[] args){
         installAndVerifyFiles();
         installAndVerifySettings();
+        ClientReachabilityProbe.link();
 
         WebConfig config = new WebConfig();
 
