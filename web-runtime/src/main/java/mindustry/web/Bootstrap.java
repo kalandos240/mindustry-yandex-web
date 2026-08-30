@@ -18,8 +18,13 @@ public final class Bootstrap{
     private Bootstrap(){}
 
     public static void main(String[] args){
-        installAndVerifyFiles();
-        installAndVerifySettings();
+        try{
+            installAndVerifyFiles();
+            installAndVerifySettings();
+        }catch(Throwable error){
+            BrowserCanvas.setStatus("error", "Mindustry Web bootstrap failed: " + describe(error));
+            throw error;
+        }
 
         WebConfig config = new WebConfig();
 
@@ -34,8 +39,7 @@ public final class Bootstrap{
                 try{
                     launcher.setup();
                 }catch(Throwable error){
-                    String message = error.getClass().getName() + ": " + String.valueOf(error.getMessage());
-                    BrowserCanvas.setStatus("error", "Mindustry Web startup failed: " + message);
+                    BrowserCanvas.setStatus("error", "Mindustry Web startup failed: " + describe(error));
                     throw error;
                 }
 
@@ -150,6 +154,18 @@ public final class Bootstrap{
         }
 
         Core.settings = settings;
+    }
+
+    private static String describe(Throwable error){
+        StringBuilder out = new StringBuilder();
+        Throwable current = error;
+        int depth = 0;
+        while(current != null && depth++ < 6){
+            if(out.length() > 0) out.append(" <- ");
+            out.append(current.getClass().getName()).append(": ").append(String.valueOf(current.getMessage()));
+            current = current.getCause();
+        }
+        return out.toString();
     }
 
     private static boolean binaryMatches(byte[] value){
