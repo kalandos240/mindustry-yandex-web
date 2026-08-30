@@ -61,7 +61,33 @@ jobs:
           test -s web-runtime/build/web/index.html
           test -s web-runtime/build/web/mindustry.js
           grep -q 'mindustry-canvas' web-runtime/build/web/index.html
+          grep -q 'mindustry-web-status' web-runtime/build/web/index.html
           echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
+
+      - name: Execute Arc lifecycle and WebGL in headless Chrome
+        run: |
+          command -v google-chrome
+          cd web-runtime/build/web
+          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/mindustry-web-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8080/index.html >/dev/null; then break; fi
+            sleep 0.25
+          done
+          google-chrome \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --use-gl=angle \
+            --use-angle=swiftshader \
+            --enable-unsafe-swiftshader \
+            --virtual-time-budget=3000 \
+            --dump-dom \
+            http://127.0.0.1:8080/index.html > /tmp/mindustry-web-dom.html
+          cat /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-web="ready"' /tmp/mindustry-web-dom.html
+          grep -Eq 'data-mindustry-gl="webgl(1|2)"' /tmp/mindustry-web-dom.html
 
       - name: Generate Web compatibility inventory
         if: always()
