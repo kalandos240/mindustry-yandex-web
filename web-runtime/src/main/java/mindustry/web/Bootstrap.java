@@ -8,10 +8,12 @@ import mindustry.core.*;
 /** First executable bridge between current Mindustry/Arc bytecode and a browser frame loop. */
 public final class Bootstrap{
     private static final String settingsKey = "mindustry.web.settings.v1";
+    private static final String smokeBundle = "bundles/bundle.properties";
 
     private Bootstrap(){}
 
     public static void main(String[] args){
+        installAndVerifyFiles();
         installAndVerifySettings();
 
         WebConfig config = new WebConfig();
@@ -21,7 +23,7 @@ public final class Bootstrap{
 
             @Override
             public void init(){
-                BrowserCanvas.setStatus("initialized", "Mindustry core + Arc Web initialized; settings@localStorage; waiting for animation frames...");
+                BrowserCanvas.setStatus("initialized", "Mindustry core + Arc Web initialized; assets@Core.files; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -32,10 +34,24 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + Arc GL20 ready; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + Arc GL20 ready; assets@Core.files; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
+    }
+
+    private static void installAndVerifyFiles(){
+        BrowserFiles files = new BrowserFiles("assets");
+        files.preloadText(smokeBundle);
+        Core.files = files;
+
+        String bundle = Core.files.internal(smokeBundle).readString();
+        if(bundle.length() < 1000
+        || !bundle.contains("credits = Credits")
+        || !bundle.contains("gameover = Game Over")
+        || Core.files.internal(smokeBundle).length() < 1000){
+            throw new IllegalStateException("Mindustry packaged asset failed Core.files/Fi round-trip");
+        }
     }
 
     private static void installAndVerifySettings(){

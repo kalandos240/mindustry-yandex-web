@@ -42,6 +42,12 @@ tasks.register("stageWeb", Copy) {
     dependsOn "generateJavaScript"
     from "src/web"
     from "$buildDir/generated/teavm/js"
+    // First real Mindustry packaged asset. BrowserFiles preloads this into the
+    // synchronous Fi cache before the application lifecycle starts.
+    from("../work/Mindustry/core/assets") {
+        include "bundles/bundle.properties"
+        into "assets"
+    }
     into "$buildDir/web"
 }
 
