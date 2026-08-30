@@ -1,0 +1,2 @@
+// The parent Arc backends project applies java-library and adds arc-core as a compileOnly dependency.
+// Browser-specific compiler/runtime dependencies are added here as each subsystem is migrated.
