@@ -7,9 +7,13 @@ import mindustry.core.*;
 
 /** First executable bridge between current Mindustry/Arc bytecode and a browser frame loop. */
 public final class Bootstrap{
+    private static final String settingsKey = "mindustry.web.settings.v1";
+
     private Bootstrap(){}
 
     public static void main(String[] args){
+        installAndVerifySettings();
+
         WebConfig config = new WebConfig();
 
         new BrowserApplication(new ApplicationListener(){
@@ -17,7 +21,7 @@ public final class Bootstrap{
 
             @Override
             public void init(){
-                BrowserCanvas.setStatus("initialized", "Mindustry core + Arc Web initialized; waiting for animation frames...");
+                BrowserCanvas.setStatus("initialized", "Mindustry core + Arc Web initialized; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -28,9 +32,43 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + Arc GL20 ready: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + Arc GL20 ready; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
+    }
+
+    private static void installAndVerifySettings(){
+        BrowserSettings settings = new BrowserSettings(settingsKey);
+        settings.load();
+        settings.put("web.smoke.bool", true);
+        settings.put("web.smoke.int", 42);
+        settings.put("web.smoke.long", 9007199254740993L);
+        settings.put("web.smoke.float", 1.25f);
+        settings.put("web.smoke.string", "Mindustry:Web|settings");
+        settings.put("web.smoke.binary", new byte[]{0, 1, 15, 16, 127, -1});
+        settings.forceSave();
+
+        BrowserSettings verify = new BrowserSettings(settingsKey);
+        verify.load();
+        if(!verify.getBool("web.smoke.bool", false)
+        || verify.getInt("web.smoke.int", 0) != 42
+        || verify.getLong("web.smoke.long", 0L) != 9007199254740993L
+        || verify.getFloat("web.smoke.float", 0f) != 1.25f
+        || !"Mindustry:Web|settings".equals(verify.getString("web.smoke.string", ""))
+        || !binaryMatches(verify.getBytes("web.smoke.binary", new byte[0]))){
+            throw new IllegalStateException("Browser settings localStorage round-trip failed");
+        }
+
+        Core.settings = settings;
+    }
+
+    private static boolean binaryMatches(byte[] value){
+        byte[] expected = {0, 1, 15, 16, 127, -1};
+        if(value.length != expected.length) return false;
+        for(int i = 0; i < expected.length; i++){
+            if(value[i] != expected[i]) return false;
+        }
+        return true;
     }
 }
