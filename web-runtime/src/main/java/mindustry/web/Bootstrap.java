@@ -1,19 +1,30 @@
 package mindustry.web;
 
+import arc.*;
 import arc.backend.web.*;
-import org.teavm.jso.dom.html.*;
 
-/** First executable bridge between current Arc code and the browser toolchain. */
+/** First executable bridge between the current Arc lifecycle and a real browser frame loop. */
 public final class Bootstrap{
     private Bootstrap(){}
 
     public static void main(String[] args){
         WebConfig config = new WebConfig();
-        HTMLDocument document = HTMLDocument.current();
-        var status = document.createElement("div");
-        status.appendChild(document.createTextNode(
-            "Mindustry Web runtime ready: " + config.width + "x" + config.height
-        ));
-        document.getBody().appendChild(status);
+
+        new BrowserApplication(new ApplicationListener(){
+            private int frames;
+
+            @Override
+            public void init(){
+                BrowserCanvas.setStatus("initialized", "Arc Web initialized; waiting for animation frames...");
+            }
+
+            @Override
+            public void update(){
+                BrowserCanvas.clearSmokeFrame(config.canvasId, System.currentTimeMillis() / 1000.0);
+                if(++frames == 3){
+                    BrowserCanvas.setStatus("ready", "Arc requestAnimationFrame + WebGL runtime ready");
+                }
+            }
+        }, config);
     }
 }
