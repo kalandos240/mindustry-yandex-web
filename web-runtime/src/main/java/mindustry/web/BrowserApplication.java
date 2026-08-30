@@ -12,6 +12,7 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     private final FrameCallback frameCallback = this::onAnimationFrame;
+    private final WebGraphics graphics;
     private String clipboard = "";
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
@@ -22,6 +23,11 @@ public final class BrowserApplication extends WebApplicationBase{
             throw new IllegalStateException("WebGL is not available in this browser.");
         }
 
+        graphics = new WebGraphics(config);
+        graphics.setWebGLVersion(BrowserCanvas.getWebGLMajor(config.canvasId));
+        updateGraphicsMetrics();
+        Core.graphics = graphics;
+
         initialize();
         requestAnimationFrame(frameCallback);
     }
@@ -30,8 +36,20 @@ public final class BrowserApplication extends WebApplicationBase{
         if(!isRunning()) return;
 
         BrowserCanvas.resizeToDisplay(config.canvasId);
+        updateGraphicsMetrics();
+        graphics.updateFrame(timestamp);
         frame();
         requestAnimationFrame(frameCallback);
+    }
+
+    private void updateGraphicsMetrics(){
+        graphics.updateSize(
+            BrowserCanvas.getClientWidth(config.canvasId),
+            BrowserCanvas.getClientHeight(config.canvasId),
+            BrowserCanvas.getBackBufferWidth(config.canvasId),
+            BrowserCanvas.getBackBufferHeight(config.canvasId),
+            BrowserCanvas.getDensity()
+        );
     }
 
     @Override
