@@ -11,6 +11,7 @@ import mindustry.world.blocks.storage.*;
 public final class Bootstrap{
     private static final String settingsKey = "mindustry.web.settings.v1";
     private static final String smokeBundle = "bundles/bundle.properties";
+    private static final String serpuloData = "planets/serpulo.json";
 
     private Bootstrap(){}
 
@@ -49,7 +50,7 @@ public final class Bootstrap{
                     throw new IllegalStateException("Mindustry browser block factory lost CoreBlock.CoreBuild specialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; item/liquid/status/unit/block registries and specialized block factories ready; assets@Core.files; settings@localStorage; waiting for animation frames...");
+                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla base content and specialized block factories ready; assets@Core.files; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -60,7 +61,7 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + clientSetup + Arc GL20 ready; content/base-block-factory runtime verified; assets@Core.files; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + full vanilla base content + Arc GL20 ready; content/base-block-factory runtime verified; assets@Core.files; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
@@ -69,14 +70,18 @@ public final class Bootstrap{
     private static void installAndVerifyFiles(){
         BrowserFiles files = new BrowserFiles("assets");
         files.preloadText(smokeBundle);
+        files.preloadText(serpuloData);
         Core.files = files;
 
         String bundle = Core.files.internal(smokeBundle).readString();
+        String planet = Core.files.internal(serpuloData).readString();
         if(bundle.length() < 1000
         || !bundle.contains("credits = Credits")
         || !bundle.contains("gameover = Game Over")
-        || Core.files.internal(smokeBundle).length() < 1000){
-            throw new IllegalStateException("Mindustry packaged asset failed Core.files/Fi round-trip");
+        || Core.files.internal(smokeBundle).length() < 1000
+        || !planet.contains("attackSectors")
+        || !planet.contains("groundZero")){
+            throw new IllegalStateException("Mindustry packaged text asset failed Core.files/Fi round-trip");
         }
     }
 

@@ -78,6 +78,7 @@ jobs:
       - name: Apply current Web compatibility overlays
         run: |
           bash scripts/apply-port.sh
+          python3 scripts/patch-arc-fi-web.py work/Arc/arc-core/src/arc/files/Fi.java
           python3 scripts/patch-mindustry-block-reflection.py work/Mindustry/core/src/mindustry/world/Block.java
 
       - name: Compile Arc Web backend
