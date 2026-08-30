@@ -5,6 +5,7 @@ import arc.backend.web.*;
 import arc.graphics.*;
 import mindustry.*;
 import mindustry.core.*;
+import mindustry.world.blocks.storage.*;
 
 /** First executable bridge between current Mindustry/Arc bytecode and a browser frame loop. */
 public final class Bootstrap{
@@ -26,8 +27,7 @@ public final class Bootstrap{
             @Override
             public void init(){
                 // BrowserApplication installs Core.app/graphics/gl/input before listener init,
-                // so this is the first test that executes the real browser-specific Mindustry
-                // startup rather than merely making it reachable to TeaVM.
+                // so this executes the real browser-specific Mindustry startup.
                 launcher.setup();
 
                 if(Vars.content == null
@@ -41,7 +41,15 @@ public final class Bootstrap{
                     throw new IllegalStateException("Mindustry browser gameplay registries failed runtime initialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; item/liquid/status/unit/block registries ready; assets@Core.files; settings@localStorage; waiting for animation frames...");
+                // Registration alone is insufficient: Block.initBuilding must preserve
+                // specialized Building factories on Web rather than silently falling back
+                // to Building::create when reflection metadata is missing.
+                Object coreBuild = Vars.content.block("core-shard").buildType.get();
+                if(!(coreBuild instanceof CoreBlock.CoreBuild)){
+                    throw new IllegalStateException("Mindustry browser block factory lost CoreBlock.CoreBuild specialization");
+                }
+
+                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; item/liquid/status/unit/block registries and specialized block factories ready; assets@Core.files; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -52,7 +60,7 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + clientSetup + Arc GL20 ready; content=copper,water,burning,dagger,copper-wall,core-shard,duo; assets@Core.files; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + clientSetup + Arc GL20 ready; content/base-block-factory runtime verified; assets@Core.files; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
