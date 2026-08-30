@@ -2,10 +2,12 @@ package mindustry.web;
 
 import arc.*;
 import arc.assets.*;
+import arc.graphics.*;
 import arc.graphics.g2d.*;
 import arc.math.*;
 import arc.util.*;
 import mindustry.*;
+import mindustry.core.*;
 import mindustry.net.Net.*;
 
 import static mindustry.Vars.*;
@@ -35,8 +37,8 @@ public final class WebClientLauncher extends ClientLauncher{
         // First browser client slice: real Arc rendering and asset machinery,
         // without desktop-only platform services. Content/UI are enabled in
         // subsequent slices once their Web dependencies are available.
-        batch = new SpriteBatch();
-        assets = new AssetManager();
+        Core.batch = new SpriteBatch();
+        Core.assets = new AssetManager();
         tree = new FileTree();
     }
 
