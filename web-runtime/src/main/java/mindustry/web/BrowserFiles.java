@@ -38,6 +38,26 @@ public final class BrowserFiles implements Files{
         return new BrowserFi(this, normalize(path), type);
     }
 
+    @Override
+    public String getExternalStoragePath(){
+        return "";
+    }
+
+    @Override
+    public boolean isExternalStorageAvailable(){
+        return false;
+    }
+
+    @Override
+    public String getLocalStoragePath(){
+        return "";
+    }
+
+    @Override
+    public boolean isLocalStorageAvailable(){
+        return false;
+    }
+
     String text(String path){
         String value = textAssets.get(normalize(path));
         if(value == null){
