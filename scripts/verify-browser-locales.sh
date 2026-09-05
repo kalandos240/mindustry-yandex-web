@@ -50,6 +50,9 @@ run_locale(){
   local dom="/tmp/mindustry-web-$expected.html"
   rm -rf "$profile"
 
+  # IndexedDB completion depends on real browser I/O tasks. Do not use Chromium
+  # virtual time here: it can fast-forward timers and dump the DOM while IDB is
+  # still opening/hydrating. A real timeout tests the storage path users run.
   google-chrome \
     --headless=new \
     --no-sandbox \
@@ -57,7 +60,7 @@ run_locale(){
     --use-gl=angle \
     --use-angle=swiftshader \
     --enable-unsafe-swiftshader \
-    --virtual-time-budget=20000 \
+    --timeout=20000 \
     --user-data-dir="$profile" \
     --dump-dom \
     "http://127.0.0.1:8081/index.html?lang=$expected" > "$dom"
@@ -67,8 +70,9 @@ run_locale(){
   grep -q 'data-mindustry-links="none"' "$dom"
   grep -q "data-mindustry-locale=\"$expected\"" "$dom"
   grep -q 'data-mindustry-network="local-only"' "$dom"
+  grep -q 'data-mindustry-storage="ready"' "$dom"
   grep -q 'data-mindustry-navigation="blocked"' "$dom"
-  echo "Browser locale $expected: ready, no-links, local-only"
+  echo "Browser locale $expected: ready, storage-ready, no-links, local-only"
 }
 
 run_locale en
