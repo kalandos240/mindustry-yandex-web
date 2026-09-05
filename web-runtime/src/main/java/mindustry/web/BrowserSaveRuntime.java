@@ -7,6 +7,7 @@ import arc.graphics.*;
 import arc.struct.*;
 import arc.util.io.*;
 import mindustry.*;
+import mindustry.content.*;
 import mindustry.core.*;
 import mindustry.game.*;
 import mindustry.gen.*;
@@ -56,6 +57,7 @@ public final class BrowserSaveRuntime{
         verifyMoveCopyDelete();
         verifyRealSaveMetaFormat();
         verifyFullSaveWrite();
+        verifyFullSaveRoundTrip();
 
         BrowserSaves browserSaves = new BrowserSaves();
         Core.assets.setLoader(Texture.class, ".spreview", new BrowserSavePreviewLoader());
@@ -264,6 +266,100 @@ public final class BrowserSaveRuntime{
         }
     }
 
+    /** Prove the same stock v13 file restores through production SaveIO.load(). */
+    private static void verifyFullSaveRoundTrip(){
+        Fi file = Vars.saveDirectory.child("ci-roundtrip.msav");
+        Fi backup = SaveIO.backupFileFor(file);
+        file.delete();
+        backup.delete();
+
+        GameState previousState = Vars.state;
+        World previousWorld = Vars.world;
+        Waves previousWaves = Vars.waves;
+
+        try{
+            if(Groups.all == null){
+                Groups.init();
+            }
+
+            Vars.state = new GameState();
+            Vars.world = new World();
+            Vars.world.resize(4, 4).fill();
+            Vars.world.tile(1, 1).setFloor(Blocks.sand);
+            Vars.world.tile(2, 2).setBlock(Blocks.stoneWall);
+
+            Vars.state.map = new Map(StringMap.of(
+                "name", "Web SaveIO Round Trip",
+                "author", "Mindustry Web",
+                "description", "Browser stock save/load validation"
+            ));
+            Vars.state.rules = new Rules();
+            Rules.TeamRule teamRule = Vars.state.rules.teams.get(Team.sharded);
+            teamRule.cheat = true;
+            teamRule.buildSpeedMultiplier = 1.75f;
+            Vars.state.wave = 31;
+            Vars.state.tick = 654.25;
+            Vars.state.wavetime = 17.5f;
+            SaveVersion.setWebPlaytime(totalPlaytimeForSave());
+
+            SaveIO.save(file);
+            if(!SaveIO.isSaveValid(file)){
+                throw new IllegalStateException("Round-trip source MSAV is invalid before load");
+            }
+
+            // Destroy the in-memory values so successful validation can only come
+            // from the file reader, not from state accidentally retained in memory.
+            Vars.world.resize(1, 1).fill();
+            Vars.state.map = new Map(StringMap.of("name", "corrupted-before-load"));
+            Vars.state.rules = new Rules();
+            Vars.state.wave = 999;
+            Vars.state.tick = 999.0;
+            Vars.state.wavetime = 999f;
+
+            SaveIO.load(file);
+
+            Rules.TeamRule loadedTeamRule = Vars.state.rules.teams.get(Team.sharded);
+            Tile floorTile = Vars.world.tile(1, 1);
+            Tile wallTile = Vars.world.tile(2, 2);
+            if(Vars.world.width() != 4
+            || Vars.world.height() != 4
+            || Vars.state.wave != 31
+            || Math.abs(Vars.state.tick - 654.25) > 0.0001
+            || Math.abs(Vars.state.wavetime - 17.5f) > 0.0001f
+            || Vars.state.map == null
+            || !"Web SaveIO Round Trip".equals(Vars.state.map.name())
+            || loadedTeamRule == null
+            || !loadedTeamRule.cheat
+            || Math.abs(loadedTeamRule.buildSpeedMultiplier - 1.75f) > 0.0001f
+            || floorTile == null
+            || floorTile.floor() != Blocks.sand
+            || wallTile == null
+            || wallTile.block() != Blocks.stoneWall){
+                throw new IllegalStateException(
+                    "Stock SaveIO.load browser round-trip failed: size=" + Vars.world.width() + "x" + Vars.world.height()
+                    + ", wave=" + Vars.state.wave
+                    + ", tick=" + Vars.state.tick
+                    + ", wavetime=" + Vars.state.wavetime
+                    + ", map=" + (Vars.state.map == null ? "null" : Vars.state.map.name())
+                    + ", teamCheat=" + (loadedTeamRule != null && loadedTeamRule.cheat)
+                    + ", teamBuildSpeed=" + (loadedTeamRule == null ? -1f : loadedTeamRule.buildSpeedMultiplier)
+                    + ", floor=" + (floorTile == null ? "null" : floorTile.floor().name)
+                    + ", wall=" + (wallTile == null ? "null" : wallTile.block().name)
+                );
+            }
+
+            markLoadReady();
+        }catch(SaveException error){
+            throw new IllegalStateException("Stock SaveIO.load browser round-trip threw", error);
+        }finally{
+            file.delete();
+            backup.delete();
+            Vars.state = previousState;
+            Vars.world = previousWorld;
+            Vars.waves = previousWaves;
+        }
+    }
+
     private static String describe(Throwable error){
         StringBuilder out = new StringBuilder();
         Throwable current = error;
@@ -286,6 +382,9 @@ public final class BrowserSaveRuntime{
         for(int i = 0; i < expected.length; i++) if(actual[i] != expected[i]) return false;
         return true;
     }
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-saveio-load','ready');")
+    private static native void markLoadReady();
 
     @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-save-runtime','ready'); document.documentElement.setAttribute('data-mindustry-save-slots', String(count)); document.documentElement.setAttribute('data-mindustry-saveio-meta','ready'); document.documentElement.setAttribute('data-mindustry-saveio-full','ready');")
     private static native void markReady(int count);
