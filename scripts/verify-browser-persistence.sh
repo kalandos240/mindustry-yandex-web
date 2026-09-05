@@ -48,16 +48,22 @@ for i in {1..30}; do
   sleep 0.25
 done
 
+# Real wall-clock waiting is intentional: IndexedDB work is serviced by browser I/O
+# tasks that Chromium virtual time does not reliably wait for before --dump-dom exits.
 google-chrome \
   --headless=new \
   --no-sandbox \
   --disable-dev-shm-usage \
-  --virtual-time-budget=3000 \
+  --timeout=5000 \
   --user-data-dir="$PROFILE" \
   --dump-dom \
   "http://127.0.0.1:$PORT/persistence-seed.html" > "$SEED_DOM"
 
-grep -q 'data-persistence-seed="ready"' "$SEED_DOM"
+if ! grep -q 'data-persistence-seed="ready"' "$SEED_DOM"; then
+  echo 'IndexedDB seed write did not complete.' >&2
+  grep -o '<html[^>]*>' "$SEED_DOM" >&2 || true
+  exit 1
+fi
 
 # New browser process, same profile + origin: IndexedDB must hydrate before TeaVM
 # main(), then BrowserFi reads the binary probe into Java and marks recovery.
@@ -68,7 +74,7 @@ google-chrome \
   --use-gl=angle \
   --use-angle=swiftshader \
   --enable-unsafe-swiftshader \
-  --virtual-time-budget=20000 \
+  --timeout=20000 \
   --user-data-dir="$PROFILE" \
   --dump-dom \
   "http://127.0.0.1:$PORT/index.html?lang=en" > "$GAME_DOM"
