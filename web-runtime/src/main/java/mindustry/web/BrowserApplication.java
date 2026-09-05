@@ -41,7 +41,7 @@ public final class BrowserApplication extends WebApplicationBase{
         graphics.setWebGLVersion(BrowserCanvas.getWebGLMajor(config.canvasId));
         gl20 = new BrowserGL20(BrowserCanvas.getContext(config.canvasId));
         graphics.setGL20(gl20);
-        BrowserCanvas.resizeToDisplay(config.canvasId);
+        BrowserCanvas.resizeToDisplay(config.canvasId, config.maxPixelRatio);
         updateGraphicsMetrics();
         Core.graphics = graphics;
 
@@ -77,7 +77,7 @@ public final class BrowserApplication extends WebApplicationBase{
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "resize";
-            if(BrowserCanvas.resizeToDisplay(config.canvasId)){
+            if(BrowserCanvas.resizeToDisplay(config.canvasId, config.maxPixelRatio)){
                 updateGraphicsMetrics();
             }
             graphics.updateFrame(timestamp);
@@ -138,7 +138,7 @@ public final class BrowserApplication extends WebApplicationBase{
             BrowserCanvas.getClientHeight(config.canvasId),
             BrowserCanvas.getBackBufferWidth(config.canvasId),
             BrowserCanvas.getBackBufferHeight(config.canvasId),
-            BrowserCanvas.getDensity()
+            BrowserCanvas.getDensity(config.canvasId, config.maxPixelRatio)
         );
     }
 
