@@ -18,6 +18,16 @@ fail(){
 [ -s "$WEB_DIR/mindustry.js" ] || fail "mindustry.js is missing"
 [ -s "$WEB_DIR/assets-manifest.js" ] || fail "assets-manifest.js is missing"
 
+# Stock Renderer must remain completely local. These are representative hard
+# dependencies used by Shaders.init()/SurfaceShader; the manifest is generated from
+# the same staged asset directory and the bootstrap preloads it before TeaVM starts.
+[ -s "$WEB_DIR/assets/shaders/default.vert" ] || fail "renderer shader default.vert missing"
+[ -s "$WEB_DIR/assets/shaders/screenspace.vert" ] || fail "renderer shader screenspace.vert missing"
+[ -s "$WEB_DIR/assets/shaders/blockbuild.frag" ] || fail "renderer shader blockbuild.frag missing"
+[ -s "$WEB_DIR/assets/sprites/noise.png" ] || fail "renderer noise texture missing"
+[ -s "$WEB_DIR/assets/sprites/caustics.png" ] || fail "renderer caustics texture missing"
+[ -s "$WEB_DIR/assets/sprites/space.png" ] || fail "renderer space texture missing"
+
 bytes="$(du -sb "$WEB_DIR" | awk '{print $1}')"
 [ "$bytes" -le "$MAX_BYTES" ] || fail "unpacked package is $bytes bytes; limit is $MAX_BYTES"
 echo "Yandex unpacked bytes: $bytes / $MAX_BYTES"
