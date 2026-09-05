@@ -23,6 +23,14 @@
         return value;
     }
 
+    function copyBytes(raw){
+        if(raw == null) return new Int8Array(0);
+        if(raw instanceof Int8Array) return raw.slice();
+        if(ArrayBuffer.isView(raw)) return new Int8Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
+        if(raw instanceof ArrayBuffer) return new Int8Array(raw.slice(0));
+        return new Int8Array(raw);
+    }
+
     function openDatabase(){
         return new Promise((resolve, reject) => {
             markStage('opening');
@@ -55,8 +63,7 @@
                 request.onsuccess = () => {
                     for(const record of request.result || []){
                         const path = normalize(record.path);
-                        const raw = record.data;
-                        memory[path] = raw instanceof Uint8Array ? raw.slice() : new Uint8Array(raw || 0);
+                        memory[path] = copyBytes(record.data);
                     }
                     resolve();
                 };
@@ -80,7 +87,7 @@
 
     function put(path, bytes){
         const key = normalize(path);
-        const value = bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes || 0);
+        const value = copyBytes(bytes);
         memory[key] = value;
         const request = transaction('readwrite').put({path: key, data: value});
         request.onerror = () => console.error('Mindustry IndexedDB write failed:', request.error);
@@ -129,10 +136,11 @@
 
     function flush(){
         if(!db) return Promise.resolve();
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE, 'readonly');
             tx.oncomplete = () => resolve();
-            tx.onerror = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('IndexedDB flush failed'));
+            tx.onabort = () => reject(tx.error || new Error('IndexedDB flush aborted'));
             tx.objectStore(STORE).count();
         });
     }
