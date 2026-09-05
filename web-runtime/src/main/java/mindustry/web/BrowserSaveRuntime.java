@@ -291,24 +291,40 @@ public final class BrowserSaveRuntime{
         String phase = "setup";
 
         try{
-            markPhase("roundtrip-setup");
+            phase = "setup-groups";
+            markPhase("roundtrip-setup-groups");
             if(Groups.all == null){
                 Groups.init();
             }
 
-            Vars.state = new GameState();
+            // Reuse the already initialized browser GameState, exactly like the
+            // proven full-writer probe. SaveIO.load() itself will replace it with
+            // a fresh GameState, so the read-side round-trip remains independent.
+            phase = "setup-world";
+            markPhase("roundtrip-setup-world");
             Vars.world = new World();
             Vars.world.resize(4, 4).fill();
+
+            phase = "setup-tiles";
+            markPhase("roundtrip-setup-tiles");
             Vars.world.tile(1, 1).setFloor(Blocks.sand.asFloor());
             Vars.world.tile(2, 2).setBlock(Blocks.stoneWall);
 
+            phase = "setup-map";
+            markPhase("roundtrip-setup-map");
             Vars.state.map = new Map(StringMap.of(
                 "name", "Web SaveIO Round Trip",
                 "author", "Mindustry Web",
                 "description", "Browser stock save/load validation"
             ));
+
+            phase = "setup-rules";
+            markPhase("roundtrip-setup-rules");
             Vars.state.rules = new Rules();
             Rules.TeamRule teamRule = Vars.state.rules.teams.get(Team.sharded);
+            if(teamRule == null){
+                throw new IllegalStateException("Team.sharded rules were not initialized");
+            }
             teamRule.cheat = true;
             teamRule.buildSpeedMultiplier = 1.75f;
             Vars.state.wave = 31;
