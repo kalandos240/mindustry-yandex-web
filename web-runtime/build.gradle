@@ -41,6 +41,8 @@ teavm {
     js {
         targetFileName = "mindustry.js"
         obfuscated = false
+        // Keep maps available in the generated build tree while porting/debugging,
+        // but stageWeb deliberately excludes them from the Yandex release directory.
         sourceMap = true
         strict = true
     }
@@ -49,7 +51,10 @@ teavm {
 tasks.register("stageWeb", Copy) {
     dependsOn "generateJavaScript"
     from "src/web"
-    from "$buildDir/generated/teavm/js"
+    from("$buildDir/generated/teavm/js") {
+        include "mindustry.js"
+        exclude "*.map"
+    }
     // Real Mindustry packaged assets. The generated manifest is fetched
     // asynchronously by index.html before TeaVM main() is entered.
     from("../work/Mindustry/core/assets") {
