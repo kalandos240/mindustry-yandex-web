@@ -189,7 +189,14 @@ PY
 mkdir -p "$MINDUSTRY_DIR/core/src/mindustry/net"
 cp "$MINDUSTRY_CORE_WEB_SOURCE_DIR/mindustry/net/Streamable.java" "$MINDUSTRY_DIR/core/src/mindustry/net/Streamable.java"
 
+# Stock mobile input is now part of the Web reachability graph one milestone before
+# the full Renderer module. Keep its lock/zoom transition safe while preserving the
+# original MobileInput implementation for all normal gameplay behavior.
+python3 "$ROOT_DIR/scripts/patch-mindustry-input-web.py" \
+  "$MINDUSTRY_DIR/core/src/mindustry/input/InputHandler.java" \
+  "$MINDUSTRY_DIR/core/src/mindustry/input/MobileInput.java"
+
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/buffer compatibility patches"
 echo "Applied Web single-thread asset and SpriteBatch VBO patches"
-echo "Applied Web-only Mindustry startup/network/stream patches"
+echo "Applied Web-only Mindustry startup/network/stream/input patches"
