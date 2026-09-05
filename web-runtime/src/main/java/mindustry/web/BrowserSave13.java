@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.struct.*;
 import arc.util.*;
+import arc.util.serialization.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.content.TechTree.*;
@@ -17,8 +18,7 @@ import static mindustry.Vars.*;
  * Current Mindustry v13 save writer with browser-safe client metadata handling.
  *
  * The binary format is unchanged. Yandex/Web intentionally has no Mods subsystem
- * and does not require desktop Control/input to persist a valid save, so those
- * metadata fields are encoded with their normal empty/null representations.
+ * and does not require desktop Control/input to persist a valid non-campaign save.
  */
 public final class BrowserSave13 extends Save13{
     private static boolean installed;
@@ -37,9 +37,12 @@ public final class BrowserSave13 extends Save13{
 
     @Override
     public void writeMeta(DataOutput stream, StringMap tags) throws IOException{
+        // Stock campaign preparation reaches Planet.reloadMeshAsync(), which requires
+        // ExecutorService and is not a browser API. Do not silently write incomplete
+        // campaign data; campaign persistence gets its own Web-safe port after the
+        // normal-world MSAV writer/reader is proven end-to-end.
         if(state.isCampaign()){
-            state.rules.sector.info.prepare(state.rules.sector);
-            state.rules.sector.saveInfo();
+            throw new IOException("Campaign save metadata preparation is not yet available on Mindustry Web");
         }
 
         for(TechNode node : TechTree.all){
@@ -59,7 +62,7 @@ public final class BrowserSave13 extends Save13{
             "wavetime", state.wavetime,
             "stats", JsonIO.write(state.stats),
             "rules", JsonIO.write(state.rules),
-            "sectorPreset", state.rules.sector != null && state.rules.sector.preset != null ? state.rules.sector.preset.name : "",
+            "sectorPreset", "",
             "locales", JsonIO.write(state.mapLocales),
             "mods", "[]",
             "controlGroups", "null",
@@ -71,5 +74,23 @@ public final class BrowserSave13 extends Save13{
             "playerteam", player == null ? state.rules.defaultTeam.id : player.team().id,
             "hasExternalAssets", state.data.getAllExternalAssets().size > 0
         )));
+    }
+
+    /**
+     * MapMarkers normally delegates to reflection-heavy Arc Json, which TeaVM 0.15
+     * cannot compile because Class.isAnonymousClass is unavailable. An empty IntMap
+     * is encoded by the stock serializer as an empty UBJSON object, so emit that exact
+     * representation directly. Non-empty marker persistence is rejected explicitly
+     * until its typed browser codec is implemented; markers are never silently lost.
+     */
+    @Override
+    public void writeMarkers(DataOutput stream) throws IOException{
+        if(state.markers.size() != 0){
+            throw new IOException("Non-empty map marker persistence is not yet available on Mindustry Web");
+        }
+
+        UBJsonWriter writer = new UBJsonWriter((DataOutputStream)stream);
+        writer.object();
+        writer.pop();
     }
 }
