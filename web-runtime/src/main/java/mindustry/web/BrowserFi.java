@@ -51,6 +51,7 @@ public final class BrowserFi extends Fi{
     @Override public boolean exists(){ return files.contains(browserPath, type) || files.hasChildren(browserPath, type); }
     @Override public boolean isDirectory(){ return files.isDirectory(browserPath, type); }
     @Override public long length(){ return files.length(browserPath, type); }
+    @Override public long lastModified(){ return 0L; }
     @Override public boolean mkdirs(){ requireLocalWrite(); return files.mkdirLocal(browserPath); }
     @Override public boolean delete(){ requireLocalWrite(); return files.removeLocal(browserPath); }
     @Override public boolean deleteDirectory(){ requireLocalWrite(); return files.removeLocalTree(browserPath); }
@@ -59,8 +60,12 @@ public final class BrowserFi extends Fi{
     public void emptyDirectory(boolean preserveTree){
         requireLocalWrite();
         for(Fi child : list()){
-            if(child.isDirectory()) child.deleteDirectory();
-            else child.delete();
+            if(child.isDirectory()){
+                if(preserveTree) child.emptyDirectory(true);
+                else child.deleteDirectory();
+            }else{
+                child.delete();
+            }
         }
     }
 
@@ -85,7 +90,13 @@ public final class BrowserFi extends Fi{
         return result;
     }
 
+    @Override public int compareTo(Fi other){ return path().compareTo(other.path()); }
     @Override public String toString(){ return browserPath; }
+
+    @Override
+    public java.io.File file(){
+        throw new UnsupportedOperationException("BrowserFi has no java.io.File backing: " + browserPath);
+    }
 
     private void requireLocalWrite(){
         if(type != FileType.local){
