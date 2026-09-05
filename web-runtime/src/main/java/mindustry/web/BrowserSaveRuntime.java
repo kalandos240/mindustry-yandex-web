@@ -285,7 +285,7 @@ public final class BrowserSaveRuntime{
             Vars.state = new GameState();
             Vars.world = new World();
             Vars.world.resize(4, 4).fill();
-            Vars.world.tile(1, 1).setFloor(Blocks.sand);
+            Vars.world.tile(1, 1).setFloor(Blocks.sand.asFloor());
             Vars.world.tile(2, 2).setBlock(Blocks.stoneWall);
 
             Vars.state.map = new Map(StringMap.of(
@@ -332,7 +332,7 @@ public final class BrowserSaveRuntime{
             || !loadedTeamRule.cheat
             || Math.abs(loadedTeamRule.buildSpeedMultiplier - 1.75f) > 0.0001f
             || floorTile == null
-            || floorTile.floor() != Blocks.sand
+            || floorTile.floor() != Blocks.sand.asFloor()
             || wallTile == null
             || wallTile.block() != Blocks.stoneWall){
                 throw new IllegalStateException(
@@ -349,7 +349,7 @@ public final class BrowserSaveRuntime{
             }
 
             markLoadReady();
-        }catch(SaveException error){
+        }catch(SaveIO.SaveException error){
             throw new IllegalStateException("Stock SaveIO.load browser round-trip threw", error);
         }finally{
             file.delete();
