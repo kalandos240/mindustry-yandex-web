@@ -49,8 +49,14 @@
             status.textContent = 'Starting Mindustry Web runtime...';
             main();
         })().catch(error => {
-            document.documentElement.setAttribute('data-mindustry-web', 'error');
-            document.getElementById('mindustry-web-status').textContent = 'Mindustry Web asset bootstrap failed: ' + error;
+            // Java startup stages report a much more precise failure through
+            // BrowserCanvas.setStatus(). Do not overwrite that diagnostic with
+            // TeaVM's occasionally opaque JS wrapper value (for example Error: null).
+            const root = document.documentElement;
+            if(root.getAttribute('data-mindustry-web') !== 'error'){
+                root.setAttribute('data-mindustry-web', 'error');
+                document.getElementById('mindustry-web-status').textContent = 'Mindustry Web asset bootstrap failed: ' + error;
+            }
             console.error(error);
         });
     </script>
