@@ -9,9 +9,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Browser asset filesystem. The HTML bootstrap asynchronously fetches every staged
- * asset before TeaVM main() starts. BrowserFiles then exposes that in-memory cache
- * synchronously through Arc's normal Fi API, with no runtime network dependency.
+ * Browser filesystem with two deliberately separate stores:
+ * - internal/classpath: immutable assets preloaded from the Yandex archive;
+ * - local: mutable user files synchronously mirrored in memory and persisted by
+ *   browser-storage.js to IndexedDB.
  */
 public final class BrowserFiles implements Files{
     private final String assetRoot;
@@ -44,8 +45,8 @@ public final class BrowserFiles implements Files{
 
     @Override
     public Fi get(String path, FileType type){
-        if(type != FileType.internal && type != FileType.classpath){
-            throw new UnsupportedOperationException("Browser Files currently supports packaged internal/classpath assets only: " + type);
+        if(type != FileType.internal && type != FileType.classpath && type != FileType.local){
+            throw new UnsupportedOperationException("Browser Files supports packaged internal/classpath assets and persistent local files only: " + type);
         }
         return new BrowserFi(this, normalize(path), type);
     }
@@ -62,30 +63,27 @@ public final class BrowserFiles implements Files{
 
     @Override
     public String getLocalStoragePath(){
-        return "";
+        return "mindustry/";
     }
 
     @Override
     public boolean isLocalStorageAvailable(){
-        return false;
+        return persistentStorageReady();
     }
 
-    String text(String path){
-        String normalized = normalize(path);
-        String value = textAssets.get(normalized);
-        if(value != null) return value;
+    String text(String path, FileType type){
+        byte[] bytes = bytes(path, type);
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
 
-        byte[] bytes = requestPreloadedBytes(assetUrl(normalized));
-        if(bytes == null){
-            throw new IllegalStateException("Browser text asset is not packaged/preloaded: " + path);
+    byte[] bytes(String path, FileType type){
+        String normalized = normalize(path);
+        if(type == FileType.local){
+            byte[] value = requestLocalBytes(normalized);
+            if(value == null) throw new IllegalStateException("Browser local file does not exist: " + path);
+            return copy(value);
         }
-        value = new String(bytes, StandardCharsets.UTF_8);
-        textAssets.put(normalized, value);
-        return value;
-    }
 
-    byte[] bytes(String path){
-        String normalized = normalize(path);
         byte[] binary = binaryAssets.get(normalized);
         if(binary == null){
             String text = textAssets.get(normalized);
@@ -97,23 +95,36 @@ public final class BrowserFiles implements Files{
             }
             binaryAssets.put(normalized, binary);
         }
-
-        byte[] copy = new byte[binary.length];
-        System.arraycopy(binary, 0, copy, 0, binary.length);
-        return copy;
+        return copy(binary);
     }
 
-    boolean contains(String path){
+    void putLocal(String path, byte[] bytes){
         String normalized = normalize(path);
+        if(normalized.isEmpty()) throw new IllegalArgumentException("Cannot write the browser local root");
+        if(!persistentStorageReady()) throw new IllegalStateException("Browser persistent storage is not initialized");
+        storeLocalBytes(normalized, bytes);
+    }
+
+    boolean removeLocal(String path){
+        return removeLocalFile(normalize(path));
+    }
+
+    boolean removeLocalTree(String path){
+        return removeLocalDirectory(normalize(path));
+    }
+
+    boolean contains(String path, FileType type){
+        String normalized = normalize(path);
+        if(type == FileType.local) return hasLocalFile(normalized);
         return textAssets.containsKey(normalized)
             || binaryAssets.containsKey(normalized)
             || hasPackagedAsset(normalized);
     }
 
-    boolean hasChildren(String directory){
+    boolean hasChildren(String directory, FileType type){
         String normalized = normalize(directory);
         String prefix = normalized.isEmpty() ? "" : normalized + "/";
-        for(String key : packagedPaths()){
+        for(String key : paths(type)){
             if(key.startsWith(prefix) && key.length() > prefix.length()) return true;
         }
         return false;
@@ -123,7 +134,7 @@ public final class BrowserFiles implements Files{
         String normalized = normalize(directory);
         String prefix = normalized.isEmpty() ? "" : normalized + "/";
         Map<String, Fi> children = new LinkedHashMap<>();
-        for(String key : packagedPaths()){
+        for(String key : paths(type)){
             if(!key.startsWith(prefix) || key.length() <= prefix.length()) continue;
             String remainder = key.substring(prefix.length());
             int slash = remainder.indexOf('/');
@@ -134,13 +145,19 @@ public final class BrowserFiles implements Files{
         return children.values().toArray(new Fi[0]);
     }
 
-    long length(String path){
+    long length(String path, FileType type){
         String normalized = normalize(path);
+        if(type == FileType.local) return localLength(normalized);
+
         byte[] binary = binaryAssets.get(normalized);
         if(binary != null) return binary.length;
         String text = textAssets.get(normalized);
         if(text != null) return text.getBytes(StandardCharsets.UTF_8).length;
         return preloadedLength(assetUrl(normalized));
+    }
+
+    private String[] paths(FileType type){
+        return type == FileType.local ? localPaths() : packagedPaths();
     }
 
     private String assetUrl(String normalized){
@@ -152,11 +169,17 @@ public final class BrowserFiles implements Files{
         while(value.startsWith("/")) value = value.substring(1);
         while(value.contains("//")) value = value.replace("//", "/");
         if(value.equals("..") || value.startsWith("../") || value.contains("/../")){
-            throw new IllegalArgumentException("Parent traversal is not allowed in browser assets: " + path);
+            throw new IllegalArgumentException("Parent traversal is not allowed in browser files: " + path);
         }
         if(value.equals(".")) return "";
         if(value.startsWith("./")) value = value.substring(2);
         return value;
+    }
+
+    private static byte[] copy(byte[] value){
+        byte[] result = new byte[value.length];
+        System.arraycopy(value, 0, result, 0, value.length);
+        return result;
     }
 
     private static String trimSlashes(String value){
@@ -186,4 +209,28 @@ public final class BrowserFiles implements Files{
         return cache && cache[url] ? cache[url].byteLength : 0;
         """)
     private static native int preloadedLength(String url);
+
+    @JSBody(script = "return !!(globalThis.__mindustryStorage && document.documentElement.getAttribute('data-mindustry-storage') === 'ready');")
+    private static native boolean persistentStorageReady();
+
+    @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage.get(path);")
+    private static native byte[] requestLocalBytes(String path);
+
+    @JSBody(params = {"path", "bytes"}, script = "globalThis.__mindustryStorage.put(path, bytes);")
+    private static native void storeLocalBytes(String path, byte[] bytes);
+
+    @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage.remove(path);")
+    private static native boolean removeLocalFile(String path);
+
+    @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage.removeTree(path);")
+    private static native boolean removeLocalDirectory(String path);
+
+    @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage.exists(path);")
+    private static native boolean hasLocalFile(String path);
+
+    @JSBody(script = "return globalThis.__mindustryStorage.paths();")
+    private static native String[] localPaths();
+
+    @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage.byteLength(path);")
+    private static native int localLength(String path);
 }
