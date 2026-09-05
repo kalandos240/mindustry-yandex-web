@@ -33,20 +33,23 @@ public final class BrowserCanvas{
     public static native WebGLRenderingContext getContext(String canvasId);
 
     /** @return true only when the backing buffer actually changed size. */
-    @JSBody(params = {"canvasId"}, script = """
+    @JSBody(params = {"canvasId", "maxPixelRatio"}, script = """
         const canvas = document.getElementById(canvasId);
-        const ratio = Math.max(1, window.devicePixelRatio || 1);
+        const deviceRatio = Math.max(1, window.devicePixelRatio || 1);
+        const cap = Math.max(1, Number(maxPixelRatio) || 1);
+        const ratio = Math.min(deviceRatio, cap);
         const width = Math.max(1, Math.floor(canvas.clientWidth * ratio));
         const height = Math.max(1, Math.floor(canvas.clientHeight * ratio));
-        const changed = canvas.width !== width || canvas.height !== height;
+        const changed = canvas.width !== width || canvas.height !== height || canvas.__mindustryPixelRatio !== ratio;
         if (!changed) return false;
+        canvas.__mindustryPixelRatio = ratio;
         canvas.width = width;
         canvas.height = height;
         const gl = canvas.__mindustryGL;
         if (gl) gl.viewport(0, 0, width, height);
         return true;
         """)
-    public static native boolean resizeToDisplay(String canvasId);
+    public static native boolean resizeToDisplay(String canvasId, float maxPixelRatio);
 
     @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).clientWidth | 0);")
     public static native int getClientWidth(String canvasId);
@@ -60,8 +63,12 @@ public final class BrowserCanvas{
     @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).height | 0);")
     public static native int getBackBufferHeight(String canvasId);
 
-    @JSBody(script = "return Math.max(1, window.devicePixelRatio || 1);")
-    public static native float getDensity();
+    @JSBody(params = {"canvasId", "maxPixelRatio"}, script = """
+        const canvas = document.getElementById(canvasId);
+        if (canvas && canvas.__mindustryPixelRatio) return canvas.__mindustryPixelRatio;
+        return Math.min(Math.max(1, window.devicePixelRatio || 1), Math.max(1, Number(maxPixelRatio) || 1));
+        """)
+    public static native float getDensity(String canvasId, float maxPixelRatio);
 
     @JSBody(params = {"canvasId"}, script = "return document.getElementById(canvasId).__mindustryGLMajor || 1;")
     public static native int getWebGLMajor(String canvasId);
