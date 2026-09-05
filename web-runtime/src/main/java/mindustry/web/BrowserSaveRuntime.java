@@ -307,8 +307,16 @@ public final class BrowserSaveRuntime{
 
             phase = "setup-tiles";
             markPhase("roundtrip-setup-tiles");
-            Vars.world.tile(1, 1).setFloor(Blocks.sand.asFloor());
-            Vars.world.tile(2, 2).setBlock(Blocks.stoneWall);
+            // Tile mutation normally recaches Renderer/pathfinder state. This probe
+            // is building a generated map before Renderer exists, so use Mindustry's
+            // normal generation mode to suppress those live-world side effects.
+            Vars.world.setGenerating(true);
+            try{
+                Vars.world.tile(1, 1).setFloor(Blocks.sand.asFloor());
+                Vars.world.tile(2, 2).setBlock(Blocks.stoneWall);
+            }finally{
+                Vars.world.setGenerating(false);
+            }
 
             phase = "setup-map";
             markPhase("roundtrip-setup-map");
