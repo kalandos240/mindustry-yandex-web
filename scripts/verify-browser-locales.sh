@@ -63,13 +63,14 @@ run_locale(){
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-ui-shell="ready"' \
     --require 'data-mindustry-ui-sync="ready"' \
+    --require 'data-mindustry-saveio-load="ready"' \
     --require 'data-mindustry-links="none"' \
     --require "data-mindustry-locale=\"$expected\"" \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-storage="ready"' \
     --require 'data-mindustry-navigation="blocked"' > "$dom"
 
-  echo "Browser locale $expected: storage + UI sync ready, no-links, local-only"
+  echo "Browser locale $expected: storage + SaveIO load round-trip + UI sync ready, no-links, local-only"
 }
 
 run_locale en
