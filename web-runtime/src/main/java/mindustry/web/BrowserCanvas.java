@@ -32,17 +32,21 @@ public final class BrowserCanvas{
     @JSBody(params = {"canvasId"}, script = "return document.getElementById(canvasId).__mindustryGL;")
     public static native WebGLRenderingContext getContext(String canvasId);
 
+    /** @return true only when the backing buffer actually changed size. */
     @JSBody(params = {"canvasId"}, script = """
         const canvas = document.getElementById(canvasId);
         const ratio = Math.max(1, window.devicePixelRatio || 1);
         const width = Math.max(1, Math.floor(canvas.clientWidth * ratio));
         const height = Math.max(1, Math.floor(canvas.clientHeight * ratio));
-        if (canvas.width !== width) canvas.width = width;
-        if (canvas.height !== height) canvas.height = height;
+        const changed = canvas.width !== width || canvas.height !== height;
+        if (!changed) return false;
+        canvas.width = width;
+        canvas.height = height;
         const gl = canvas.__mindustryGL;
         if (gl) gl.viewport(0, 0, width, height);
+        return true;
         """)
-    public static native void resizeToDisplay(String canvasId);
+    public static native boolean resizeToDisplay(String canvasId);
 
     @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).clientWidth | 0);")
     public static native int getClientWidth(String canvasId);
