@@ -52,6 +52,11 @@ if old not in text:
 path.write_text(text.replace(old, new))
 PY
 
+# Desktop Arc Sound lazy-loads with ExecutorService and calls JNI SoLoud. Keep all
+# sound call sites safe/no-op until the dedicated browser audio backend is wired;
+# this prevents unit/entity loading from pulling desktop threading/JNI into TeaVM.
+python3 "$ROOT_DIR/scripts/patch-arc-audio-web.py"
+
 # Arc's desktop unsafe buffers allocate/free native memory through JNI. TeaVM owns
 # JavaScript memory itself, so direct buffers can use the class-library allocator
 # and explicit native free becomes a no-op. Keep the rest of Buffers untouched
@@ -195,6 +200,6 @@ cp "$MINDUSTRY_CORE_WEB_SOURCE_DIR/mindustry/net/Streamable.java" "$MINDUSTRY_DI
 python3 "$ROOT_DIR/scripts/patch-mindustry-save-load-web.py"
 
 echo "Applied Arc Web overlay to $TARGET_DIR"
-echo "Applied Web-only Arc settings/core/buffer compatibility patches"
+echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
 echo "Applied Web single-thread asset and SpriteBatch VBO patches"
 echo "Applied Web-only Mindustry startup/network/stream patches"
