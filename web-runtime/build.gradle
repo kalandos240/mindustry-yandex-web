@@ -59,6 +59,12 @@ tasks.register("stageWeb", Copy) {
         include "sprites/error.png"
         include "sprites/block_colors.png"
 
+        // UI.loadSync() registers content icons from this local index. Cursor images
+        // are decoded by Arc's stock Graphics.newCursor(String) path; the Web backend
+        // intentionally returns a null/no-op cursor so no desktop cursor is displayed.
+        include "icons/icons.properties"
+        include "cursors/*.png"
+
         // Every runtime font is pre-baked by tools:webFontBake. Do not ship the
         // original WOFF/TTF sources: the browser never executes FreeType/JNI and
         // the Yandex archive stays smaller and fully self-contained.
