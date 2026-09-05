@@ -51,6 +51,7 @@ public final class WebClientLauncher extends ClientLauncher{
         if(Core.app.openURI("https://example.invalid/mindustry-web-external-link-probe")){
             throw new IllegalStateException("Browser platform unexpectedly allowed external URI navigation");
         }
+        markNoLinksReady();
 
         BrowserFonts.loadAndVerifyRendering();
 
@@ -86,6 +87,9 @@ public final class WebClientLauncher extends ClientLauncher{
     public NetProvider getNet(){
         return netProvider;
     }
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-links', 'none');")
+    private static native void markNoLinksReady();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-shell', 'ready');")
     private static native void markUiShellReady();
