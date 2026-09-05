@@ -140,6 +140,6 @@ require_marker 'data-mindustry-platform-pause-observed="yes"' 'Java bridge obser
 require_marker 'data-mindustry-platform-resume-observed="yes"' 'Java bridge observing platform resume'
 require_marker 'data-mindustry-platform-pause="running"' 'Java platform state returning to running'
 require_marker 'data-mindustry-web="ready"' 'Mindustry ready state'
-require_marker 'data-mindustry-network="local-only"' 'local-only game network guard'
+require_marker 'data-mindustry-network="yandex-sdk-only"' 'official Yandex SDK transport boundary'
 
-echo 'Yandex SDK browser smoke: init + SDK locale + Game Ready + pause/resume PASS'
+echo 'Yandex SDK browser smoke: init + SDK locale + Game Ready + pause/resume + SDK transport PASS'
