@@ -11,6 +11,7 @@ PORT=8082
 command -v google-chrome >/dev/null
 [ -s "$WEB_DIR/index.html" ]
 [ -s "$WEB_DIR/yandex-platform.js" ]
+[ -s "$WEB_DIR/browser-storage.js" ]
 [ ! -e "$SDK_STUB" ]
 
 cleanup(){
@@ -36,11 +37,11 @@ cat > "$SDK_STUB" <<'JS'
         setTimeout(() => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
             listeners.game_api_pause();
-        }, 1000);
+        }, 500);
         setTimeout(() => {
             root.setAttribute('data-yandex-test-resume-sent', 'yes');
             listeners.game_api_resume();
-        }, 2500);
+        }, 1200);
     }
 
     globalThis.YaGames = {
@@ -48,12 +49,8 @@ cat > "$SDK_STUB" <<'JS'
             root.setAttribute('data-yandex-test-init', 'yes');
             return {
                 environment: {i18n: {lang: 'ru'}},
-                on(name, callback){
-                    listeners[name] = callback;
-                },
-                off(name){
-                    delete listeners[name];
-                },
+                on(name, callback){ listeners[name] = callback; },
+                off(name){ delete listeners[name]; },
                 features: {
                     LoadingAPI: {
                         ready(){
@@ -98,32 +95,28 @@ for i in {1..30}; do
   sleep 0.25
 done
 
-google-chrome \
-  --headless=new \
-  --no-sandbox \
-  --disable-dev-shm-usage \
-  --use-gl=angle \
-  --use-angle=swiftshader \
-  --enable-unsafe-swiftshader \
-  --virtual-time-budget=20000 \
-  --user-data-dir="$PROFILE" \
-  --dump-dom \
-  "http://127.0.0.1:$PORT/index.html" > "$DOM"
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html" \
+  --profile "$PROFILE" \
+  --port 9226 \
+  --timeout 35 \
+  --require 'data-yandex-test-init="yes"' \
+  --require 'data-yandex-sdk="ready"' \
+  --require 'data-yandex-locale="ru"' \
+  --require 'data-mindustry-locale="ru"' \
+  --require 'data-yandex-test-loading-ready-count="1"' \
+  --require 'data-yandex-test-pause-sent="yes"' \
+  --require 'data-yandex-test-resume-sent="yes"' \
+  --require 'data-mindustry-platform-pause-observed="yes"' \
+  --require 'data-mindustry-platform-resume-observed="yes"' \
+  --require 'data-mindustry-platform-pause="running"' \
+  --require 'data-mindustry-storage="ready"' \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-network="local-only"' > "$DOM"
 
-grep -q 'data-yandex-test-init="yes"' "$DOM"
-grep -q 'data-yandex-sdk="ready"' "$DOM"
-grep -q 'data-yandex-locale="ru"' "$DOM"
-grep -q 'data-mindustry-locale="ru"' "$DOM"
-grep -q 'data-yandex-test-loading-ready-count="1"' "$DOM"
 if grep -q 'data-yandex-test-ready-too-early="yes"' "$DOM"; then
   echo 'LoadingAPI.ready was emitted before the game reached ready state.' >&2
   exit 1
 fi
-grep -q 'data-yandex-test-pause-sent="yes"' "$DOM"
-grep -q 'data-yandex-test-resume-sent="yes"' "$DOM"
-grep -q 'data-mindustry-platform-pause-observed="yes"' "$DOM"
-grep -q 'data-mindustry-platform-pause="running"' "$DOM"
-grep -q 'data-mindustry-web="ready"' "$DOM"
-grep -q 'data-mindustry-network="local-only"' "$DOM"
 
-echo 'Yandex SDK browser smoke: init + SDK locale + Game Ready + pause/resume PASS'
+echo 'Yandex SDK browser smoke: storage + init + SDK locale + Game Ready + pause/resume PASS'
