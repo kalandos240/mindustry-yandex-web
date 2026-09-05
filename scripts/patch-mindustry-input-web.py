@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
 import sys
 
 if len(sys.argv) != 3:
@@ -28,3 +29,15 @@ if old_zoom not in mobile_text:
     raise SystemExit("MobileInput zoom Web patch no longer matches pinned upstream")
 mobile_text = mobile_text.replace(old_zoom, new_zoom, 1)
 mobile_path.write_text(mobile_text, encoding="utf-8")
+
+# Stock InputHandler makes more gameplay code reachable than the earlier shell. Apply
+# the browser-only executor/reflection fixes discovered by TeaVM from that graph too.
+mindustry_root = input_path.parent.parent
+unit_group = mindustry_root / "ai" / "UnitGroup.java"
+building_comp = mindustry_root / "entities" / "comp" / "BuildingComp.java"
+subprocess.run([
+    sys.executable,
+    str(Path(__file__).with_name("patch-mindustry-gameplay-web.py")),
+    str(unit_group),
+    str(building_comp),
+], check=True)
