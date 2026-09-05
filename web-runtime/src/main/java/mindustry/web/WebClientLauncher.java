@@ -50,9 +50,21 @@ public final class WebClientLauncher extends ClientLauncher{
         tree = new FileTree();
         verifyBrowserFontAssets();
 
+        // Yandex build invariant: upstream UI must not be able to leave the game for
+        // GitHub/Discord/websites/stores. BrowserApplication blocks this at the Arc
+        // platform boundary rather than trying to remove links screen by screen.
+        if(Core.app.openURI("https://example.invalid/mindustry-web-external-link-probe")){
+            throw new IllegalStateException("Browser platform unexpectedly allowed external URI navigation");
+        }
+
+        // Load the build-time baked BMFont/PNG and prove Arc Font submits real glyph
+        // vertices through the browser VBO SpriteBatch. No FreeType/JNI runs here.
+        BrowserFonts.loadAndVerifyRendering();
+
         // Preserve the upstream networking boundary without pulling ArcNet/NIO into
         // TeaVM. Net's packet registry and common state are real Mindustry code;
-        // WebNetProvider owns the browser transport edge and will later gain WebSocket.
+        // WebNetProvider owns the browser transport edge and will later gain only a
+        // platform-approved transport if multiplayer is enabled.
         Vars.net = new Net(platform.getNet());
         if(Vars.net == null || platform.getNet() != netProvider){
             throw new IllegalStateException("Mindustry browser NetProvider boundary failed initialization");
