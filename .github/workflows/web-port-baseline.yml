@@ -75,6 +75,11 @@ jobs:
       - name: Bootstrap pinned upstream sources
         run: bash scripts/bootstrap.sh
 
+      - name: Audit complete English and Russian localization
+        run: |
+          python3 scripts/audit-i18n.py
+          cat work/web-i18n-report.txt
+
       - name: Generate pinned vanilla sprite atlas
         working-directory: work/Mindustry
         run: |
@@ -107,6 +112,7 @@ jobs:
           python3 scripts/patch-arc-fi-web.py work/Arc/arc-core/src/arc/files/Fi.java
           python3 scripts/patch-mindustry-block-reflection.py work/Mindustry/core/src/mindustry/world/Block.java
           python3 scripts/patch-mindustry-fonts-web.py work/Mindustry/core/src/mindustry/ui/Fonts.java
+          python3 scripts/patch-mindustry-no-links-web.py
 
       - name: Compile Arc Web backend
         working-directory: work/Arc
@@ -133,7 +139,12 @@ jobs:
           test -s web-runtime/build/web/assets/sprites/block_colors.png
           test -s web-runtime/build/web/assets/sprites/sprites.aatls
           test -s web-runtime/build/web/assets/sprites/sprites.png
+          test -s web-runtime/build/web/assets/bundles/bundle.properties
           test -s web-runtime/build/web/assets/bundles/bundle_ru.properties
+          test -s web-runtime/build/web/assets/locales
+          grep -qx 'en' web-runtime/build/web/assets/locales
+          grep -qx 'ru' web-runtime/build/web/assets/locales
+          test "$(wc -l < web-runtime/build/web/assets/locales)" -eq 2
           for name in default outline monospace icon iconLarge tech logic; do
             test -s "web-runtime/build/web/assets/webfonts/$name.fnt"
             test -s "web-runtime/build/web/assets/webfonts/$name-0.png"
@@ -153,19 +164,22 @@ jobs:
           grep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.aatls' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'bundles/bundle.properties' web-runtime/build/web/assets-manifest.js
           grep -q 'bundles/bundle_ru.properties' web-runtime/build/web/assets-manifest.js
+          grep -q 'locales' web-runtime/build/web/assets-manifest.js
           echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
           echo "Staged AATLS bytes: $(wc -c < web-runtime/build/web/assets/sprites/sprites.aatls)"
           echo "Staged atlas pages: $(find web-runtime/build/web/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)"
           echo "Total baked font PNGs: $(find web-runtime/build/web/assets/webfonts -maxdepth 1 -type f -name '*.png' | wc -l)"
 
-      - name: Enforce self-contained Yandex package
+      - name: Enforce self-contained no-links Yandex package
         run: |
-          # Deployment entrypoints/metadata must never contain an absolute external host.
-          # Generated TeaVM bytecode may retain inert upstream URL strings, so behavior is
-          # enforced separately at the Arc platform boundary and by the runtime network guard.
           if grep -REn --include='*.html' --include='*.css' --include='*.fnt' --include='assets-manifest.js' 'https?://|wss?://' web-runtime/build/web; then
             echo 'External URL found in deployable entrypoint/metadata.' >&2
+            exit 1
+          fi
+          if grep -RFn 'Core.app.openURI(' work/Mindustry/core/src/mindustry/ui work/Mindustry/core/src/mindustry/editor; then
+            echo 'Direct external navigation call remained in patched UI/editor source.' >&2
             exit 1
           fi
           grep -q "requireLocal(input, 'fetch')" web-runtime/build/web/index.html
@@ -200,6 +214,7 @@ jobs:
           grep -q 'data-mindustry-navigation="blocked"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-font="ready"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-ui-shell="ready"' /tmp/mindustry-web-dom.html
+          grep -Eq 'data-mindustry-locale="(en|ru)"' /tmp/mindustry-web-dom.html
           grep -q 'Mindustry core' /tmp/mindustry-web-dom.html
           grep -q 'Arc GL20 ready' /tmp/mindustry-web-dom.html
           grep -q 'binary-png@Core.files' /tmp/mindustry-web-dom.html
@@ -209,6 +224,17 @@ jobs:
           grep -q 'sprite-frame@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'framebuffer-readback@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'settings@localStorage' /tmp/mindustry-web-dom.html
+
+      - name: Verify English and Russian browser localization
+        run: bash scripts/verify-browser-locales.sh
+
+      - name: Upload localization report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-i18n-report
+          path: work/web-i18n-report.txt
+          if-no-files-found: warn
 
       - name: Upload browser smoke package
         if: success()
