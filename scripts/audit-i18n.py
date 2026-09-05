@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,7 +16,6 @@ def logical_lines(path: Path):
     buf = ""
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.rstrip("\r\n")
-        # Java properties continuation: an odd number of trailing backslashes.
         slashes = len(line) - len(line.rstrip("\\"))
         if buf:
             line = buf + line.lstrip()
@@ -51,8 +51,7 @@ def split_property(line: str):
     if sep is None:
         return s, ""
     key = s[:sep].rstrip()
-    rest = s[sep:]
-    rest = rest.lstrip()
+    rest = s[sep:].lstrip()
     if rest.startswith(("=", ":")):
         rest = rest[1:].lstrip()
     return key, rest
@@ -74,8 +73,6 @@ def load(path: Path):
 
 def suspicious_identical(en, ru):
     result = []
-    # Informational only: identical values can legitimately be proper nouns,
-    # acronyms, key names, commands or technical terms.
     word = re.compile(r"[A-Za-z]{4,}")
     for key in sorted(en.keys() & ru.keys()):
         ev = en[key].strip()
@@ -85,7 +82,17 @@ def suspicious_identical(en, ru):
     return result
 
 
+def external_references(values):
+    # Yandex release must not expose URLs, www hosts or email contacts in localised text.
+    ref = re.compile(r"(?:https?://|www\.|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})", re.I)
+    return sorted(k for k, v in values.items() if ref.search(v))
+
+
 def main():
+    # Apply local Yandex corrections before completeness/quality checks and before
+    # font baking/staging. This mutates only the pinned CI checkout under work/.
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "apply-yandex-i18n.py")], check=True)
+
     if not EN.is_file() or not RU.is_file():
         raise SystemExit("Pinned EN/RU Mindustry bundles are missing")
 
@@ -96,6 +103,8 @@ def main():
     blank_en = sorted(k for k, v in en.items() if not v.strip())
     blank_ru = sorted(k for k, v in ru.items() if k in en and not v.strip())
     identical = suspicious_identical(en, ru)
+    external_en = external_references(en)
+    external_ru = external_references(ru)
 
     lines = [
         f"English keys: {len(en)}",
@@ -104,6 +113,8 @@ def main():
         f"Extra Russian keys: {len(extra_ru)}",
         f"Blank English values: {len(blank_en)}",
         f"Blank Russian values: {len(blank_ru)}",
+        f"External refs in English: {len(external_en)}",
+        f"External refs in Russian: {len(external_ru)}",
         f"Identical EN/RU values for manual review: {len(identical)}",
         "",
         "[missing-ru]",
@@ -111,6 +122,12 @@ def main():
         "",
         "[blank-ru]",
         *blank_ru,
+        "",
+        "[external-en]",
+        *external_en,
+        "",
+        "[external-ru]",
+        *external_ru,
         "",
         "[extra-ru]",
         *extra_ru,
@@ -126,12 +143,10 @@ def main():
     ]
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print("\n".join(lines[:7]))
+    print("\n".join(lines[:9]))
 
-    # Release invariant: every English UI key must exist and be non-empty in Russian.
-    # Extra RU keys are permitted because upstream can retain compatibility strings.
-    if missing_ru or blank_ru or blank_en:
-        print(f"Localization completeness failed. See {REPORT}", file=sys.stderr)
+    if missing_ru or blank_ru or blank_en or external_en or external_ru:
+        print(f"Localization release audit failed. See {REPORT}", file=sys.stderr)
         return 1
     return 0
 
