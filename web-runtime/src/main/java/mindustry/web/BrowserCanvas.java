@@ -23,6 +23,15 @@ public final class BrowserCanvas{
         if (!gl) return false;
         canvas.__mindustryGL = gl;
         canvas.__mindustryGLMajor = (typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) ? 2 : 1;
+        canvas.__mindustryResizeDirty = true;
+        canvas.__mindustryLastDpr = 0;
+        const markResizeDirty = () => { canvas.__mindustryResizeDirty = true; };
+        if (typeof ResizeObserver !== 'undefined') {
+            canvas.__mindustryResizeObserver = new ResizeObserver(markResizeDirty);
+            canvas.__mindustryResizeObserver.observe(canvas);
+        }
+        window.addEventListener('resize', markResizeDirty, {passive: true});
+        window.addEventListener('orientationchange', markResizeDirty, {passive: true});
         document.documentElement.dataset.mindustryGl = canvas.__mindustryGLMajor === 2 ? 'webgl2' : 'webgl1';
         return true;
         """)
@@ -32,28 +41,53 @@ public final class BrowserCanvas{
     @JSBody(params = {"canvasId"}, script = "return document.getElementById(canvasId).__mindustryGL;")
     public static native WebGLRenderingContext getContext(String canvasId);
 
+    /**
+     * Synchronizes the drawing buffer with CSS size only when ResizeObserver/window
+     * resize or devicePixelRatio says metrics changed. This avoids layout reads and
+     * redundant gl.viewport calls on every requestAnimationFrame.
+     */
     @JSBody(params = {"canvasId"}, script = """
         const canvas = document.getElementById(canvasId);
         const ratio = Math.max(1, window.devicePixelRatio || 1);
-        const width = Math.max(1, Math.floor(canvas.clientWidth * ratio));
-        const height = Math.max(1, Math.floor(canvas.clientHeight * ratio));
+        if (!canvas.__mindustryResizeDirty && canvas.__mindustryLastDpr === ratio) return false;
+
+        const clientWidth = Math.max(1, canvas.clientWidth | 0);
+        const clientHeight = Math.max(1, canvas.clientHeight | 0);
+        const width = Math.max(1, Math.floor(clientWidth * ratio));
+        const height = Math.max(1, Math.floor(clientHeight * ratio));
+        const bufferChanged = canvas.width !== width || canvas.height !== height;
+        const metricsChanged = bufferChanged
+            || canvas.__mindustryClientWidth !== clientWidth
+            || canvas.__mindustryClientHeight !== clientHeight
+            || canvas.__mindustryLastDpr !== ratio;
+
         if (canvas.width !== width) canvas.width = width;
         if (canvas.height !== height) canvas.height = height;
-        const gl = canvas.__mindustryGL;
-        if (gl) gl.viewport(0, 0, width, height);
-        """)
-    public static native void resizeToDisplay(String canvasId);
+        if (bufferChanged) {
+            const gl = canvas.__mindustryGL;
+            if (gl) gl.viewport(0, 0, width, height);
+        }
 
-    @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).clientWidth | 0);")
+        canvas.__mindustryClientWidth = clientWidth;
+        canvas.__mindustryClientHeight = clientHeight;
+        canvas.__mindustryBackBufferWidth = width;
+        canvas.__mindustryBackBufferHeight = height;
+        canvas.__mindustryLastDpr = ratio;
+        canvas.__mindustryResizeDirty = false;
+        return metricsChanged;
+        """)
+    public static native boolean resizeToDisplay(String canvasId);
+
+    @JSBody(params = {"canvasId"}, script = "const c=document.getElementById(canvasId); return Math.max(1, (c.__mindustryClientWidth || c.clientWidth) | 0);")
     public static native int getClientWidth(String canvasId);
 
-    @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).clientHeight | 0);")
+    @JSBody(params = {"canvasId"}, script = "const c=document.getElementById(canvasId); return Math.max(1, (c.__mindustryClientHeight || c.clientHeight) | 0);")
     public static native int getClientHeight(String canvasId);
 
-    @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).width | 0);")
+    @JSBody(params = {"canvasId"}, script = "const c=document.getElementById(canvasId); return Math.max(1, (c.__mindustryBackBufferWidth || c.width) | 0);")
     public static native int getBackBufferWidth(String canvasId);
 
-    @JSBody(params = {"canvasId"}, script = "return Math.max(1, document.getElementById(canvasId).height | 0);")
+    @JSBody(params = {"canvasId"}, script = "const c=document.getElementById(canvasId); return Math.max(1, (c.__mindustryBackBufferHeight || c.height) | 0);")
     public static native int getBackBufferHeight(String canvasId);
 
     @JSBody(script = "return Math.max(1, window.devicePixelRatio || 1);")
