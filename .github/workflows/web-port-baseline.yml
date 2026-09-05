@@ -201,44 +201,38 @@ jobs:
       - name: Execute Mindustry core, content, UI shell, fonts, local-only network, input and settings in headless Chrome
         run: |
           command -v google-chrome
-          cd web-runtime/build/web
-          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/mindustry-web-http.log 2>&1 &
+          rm -rf /tmp/mindustry-web-main-profile
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory web-runtime/build/web >/tmp/mindustry-web-http.log 2>&1 &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true' EXIT
           for i in {1..20}; do
             if curl -fsS http://127.0.0.1:8080/index.html >/dev/null; then break; fi
             sleep 0.25
           done
-          google-chrome \
-            --headless=new \
-            --no-sandbox \
-            --disable-dev-shm-usage \
-            --use-gl=angle \
-            --use-angle=swiftshader \
-            --enable-unsafe-swiftshader \
-            --timeout=20000 \
-            --dump-dom \
-            http://127.0.0.1:8080/index.html > /tmp/mindustry-web-dom.html
-          cat /tmp/mindustry-web-dom.html
-          grep -q 'data-mindustry-web="ready"' /tmp/mindustry-web-dom.html
+          python3 scripts/chrome-wait-dom.py \
+            --url http://127.0.0.1:8080/index.html \
+            --profile /tmp/mindustry-web-main-profile \
+            --port 9223 \
+            --timeout 35 \
+            --require 'data-mindustry-web="ready"' \
+            --require 'data-mindustry-input="ready"' \
+            --require 'data-mindustry-network="local-only"' \
+            --require 'data-mindustry-storage="ready"' \
+            --require 'data-mindustry-navigation="blocked"' \
+            --require 'data-mindustry-links="none"' \
+            --require 'data-mindustry-font="ready"' \
+            --require 'data-mindustry-ui-shell="ready"' \
+            --require 'Mindustry core' \
+            --require 'Arc GL20 ready' \
+            --require 'binary-png@Core.files' \
+            --require 'texture-upload@WebGL' \
+            --require 'vanilla-atlas@WebGL' \
+            --require 'content-regions@atlas' \
+            --require 'sprite-frame@WebGL' \
+            --require 'framebuffer-readback@WebGL' \
+            --require 'settings@localStorage' > /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-gl="webgl(1|2)"' /tmp/mindustry-web-dom.html
-          grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-dom.html
-          grep -q 'data-mindustry-network="local-only"' /tmp/mindustry-web-dom.html
-          grep -q 'data-mindustry-storage="ready"' /tmp/mindustry-web-dom.html
-          grep -q 'data-mindustry-navigation="blocked"' /tmp/mindustry-web-dom.html
-          grep -q 'data-mindustry-links="none"' /tmp/mindustry-web-dom.html
-          grep -q 'data-mindustry-font="ready"' /tmp/mindustry-web-dom.html
-          grep -q 'data-mindustry-ui-shell="ready"' /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-locale="(en|ru)"' /tmp/mindustry-web-dom.html
-          grep -q 'Mindustry core' /tmp/mindustry-web-dom.html
-          grep -q 'Arc GL20 ready' /tmp/mindustry-web-dom.html
-          grep -q 'binary-png@Core.files' /tmp/mindustry-web-dom.html
-          grep -q 'texture-upload@WebGL' /tmp/mindustry-web-dom.html
-          grep -q 'vanilla-atlas@WebGL' /tmp/mindustry-web-dom.html
-          grep -q 'content-regions@atlas' /tmp/mindustry-web-dom.html
-          grep -q 'sprite-frame@WebGL' /tmp/mindustry-web-dom.html
-          grep -q 'framebuffer-readback@WebGL' /tmp/mindustry-web-dom.html
-          grep -q 'settings@localStorage' /tmp/mindustry-web-dom.html
 
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
