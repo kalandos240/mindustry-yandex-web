@@ -32,9 +32,20 @@ def replace_method(path_rel, start_marker, end_marker, replacement, label):
     path.write_text(text[:start] + replacement + "\n\n" + text[end:], encoding="utf-8")
 
 
+# EntityGroup.clear() invokes Entityc.remove() on every old entity. That is useful for
+# a live desktop teardown, but a save load immediately discards every group/world and
+# causes TeaVM to pull unit-destroy/audio/content-parser callbacks into reachability.
+# Add a dedicated raw reset used only by the Web save-load boundary.
+patch("entities/EntityGroup.java", [
+    ('''    public void clear(){\n        clearing = true;\n\n        array.each(Entityc::remove);\n        array.clear();\n        if(map != null) map.clear();\n        Pools.freeAll(timeRuns, true);\n        timeRuns.clear();\n\n        clearing = false;\n    }''',
+     '''    public void clearRaw(){\n        clearing = true;\n        array.clear();\n        if(map != null) map.clear();\n        Pools.freeAll(timeRuns, true);\n        timeRuns.clear();\n        clearing = false;\n    }\n\n    public void clear(){\n        clearing = true;\n\n        array.each(Entityc::remove);\n        array.clear();\n        if(map != null) map.clear();\n        Pools.freeAll(timeRuns, true);\n        timeRuns.clear();\n\n        clearing = false;\n    }''',
+     'EntityGroup.clearRaw'),
+])
+
 # Stock SaveIO.load() calls Logic.reset(). Constructing Logic just to execute that
 # small reset routine makes its full AI/server/update-loop graph reachable in TeaVM.
-# Keep the pinned reset semantics directly at the Web SaveIO boundary.
+# Keep the pinned reset semantics directly at the Web SaveIO boundary, while clearing
+# old entity groups without lifecycle callbacks because the old world is discarded.
 patch("io/SaveIO.java", [
     ('import mindustry.game.EventType.*;\nimport mindustry.io.versions.*;',
      'import mindustry.game.EventType.*;\nimport mindustry.core.*;\nimport mindustry.gen.*;\nimport mindustry.io.versions.*;',
@@ -43,7 +54,7 @@ patch("io/SaveIO.java", [
      '            webReset();',
      'SaveIO logic.reset'),
     ('    /** Loads from a deflated (!) input stream. */\n    public static void load(InputStream is, WorldContext context) throws SaveException{',
-     '''    /** Web equivalent of the pinned Logic.reset() save-load preamble. */\n    private static void webReset(){\n        Groups.clear();\n        Time.clear();\n        Events.fire(new ResetEvent());\n        world.tiles = new Tiles(0, 0);\n\n        state.data.unload();\n        var previous = state.getState();\n        state = new GameState();\n        Events.fire(new StateChangeEvent(previous, GameState.State.menu));\n\n        Core.settings.manualSave();\n    }\n\n    /** Loads from a deflated (!) input stream. */\n    public static void load(InputStream is, WorldContext context) throws SaveException{''',
+     '''    /** Web equivalent of the pinned Logic.reset() save-load preamble. */\n    private static void webReset(){\n        if(Groups.all != null) Groups.all.clearRaw();\n        if(Groups.player != null) Groups.player.clearRaw();\n        if(Groups.bullet != null) Groups.bullet.clearRaw();\n        if(Groups.unit != null) Groups.unit.clearRaw();\n        if(Groups.build != null) Groups.build.clearRaw();\n        if(Groups.sync != null) Groups.sync.clearRaw();\n        if(Groups.draw != null) Groups.draw.clearRaw();\n        if(Groups.fire != null) Groups.fire.clearRaw();\n        if(Groups.puddle != null) Groups.puddle.clearRaw();\n        if(Groups.weather != null) Groups.weather.clearRaw();\n        if(Groups.label != null) Groups.label.clearRaw();\n        if(Groups.powerGraph != null) Groups.powerGraph.clearRaw();\n        Time.clear();\n        Events.fire(new ResetEvent());\n        world.tiles = new Tiles(0, 0);\n\n        state.data.unload();\n        var previous = state.getState();\n        state = new GameState();\n        Events.fire(new StateChangeEvent(previous, GameState.State.menu));\n\n        Core.settings.manualSave();\n    }\n\n    /** Loads from a deflated (!) input stream. */\n    public static void load(InputStream is, WorldContext context) throws SaveException{''',
      'SaveIO webReset helper'),
 ])
 
@@ -60,7 +71,7 @@ replace_method(
     'SaveVersion browser readMeta'
 )
 
-read_rules = '''    public void readRules(SaveReadState saveState){\n        if(saveState.ruleString == null) return; //in NetworkIO, rules are null, not read here\n        state.rules = JsonIO.read(Rules.class, saveState.ruleString);\n\n        if(state.rules.spawns.isEmpty()){\n            if(waves == null) waves = new Waves();\n            state.rules.spawns = waves.get();\n        }\n\n        if(saveState.context.getSector() != null){\n            state.rules.sector = saveState.context.getSector();\n            if(state.rules.sector != null){\n                state.rules.sector.planet.applyRules(state.rules);\n            }\n        }\n\n        //replace the default serpulo env with erekir\n        if(state.rules.planet == Planets.serpulo && state.rules.hasEnv(Env.scorching)){\n            state.rules.planet = Planets.erekir;\n        }\n    }'''
+read_rules = '''    public void readRules(SaveReadState saveState){\n        if(saveState.ruleString == null) return; //in NetworkIO, rules are null, not read here\n        state.rules = JsonIO.read(Rules.class, saveState.ruleString);\n\n        if(state.rules.spawns.isEmpty()){\n            if(waves == null) waves = new Waves();\n            state.rules.spawns = waves.get();\n        }\n\n        if(saveState.context.getSector() != null){\n            state.rules.sector = saveState.context.getSector();\n            if(state.rules.sector != null){\n                state.rules.sector.planet.applyRules(state.rules);\n            }\n        }\n\n        if(state.rules.planet == Planets.serpulo && state.rules.hasEnv(Env.scorching)){\n            state.rules.planet = Planets.erekir;\n        }\n    }'''
 
 replace_method(
     "io/SaveVersion.java",
@@ -68,6 +79,19 @@ replace_method(
     '    public void writeMap(DataOutput stream) throws IOException{',
     read_rules,
     'SaveVersion browser readRules'
+)
+
+# Yandex ships no mods, external asset cache or data patches. Keep the exact current
+# v13 patches region header, but fail closed if a save contains assets instead of
+# making the browser pull desktop DataImagePacker/DataPatcher infrastructure.
+read_patches = '''    public void readDataPatches(DataInput stream, SaveReadState saveState) throws IOException{\n        stream.readInt(); //patch format version; current Web package has no patch assets\n        int total = stream.readInt();\n        if(total != 0){\n            throw new IOException("Mindustry Web cannot load saves containing mod/data patch assets: " + total);\n        }\n\n        readRules(saveState);\n    }'''
+
+replace_method(
+    "io/SaveVersion.java",
+    '    public void readDataPatches(DataInput stream, SaveReadState saveState) throws IOException{',
+    '    public void writeDataPatches(DataOutput stream, boolean forceEmbed) throws IOException{',
+    read_patches,
+    'SaveVersion browser readDataPatches'
 )
 
 print("Applied browser-safe stock SaveIO.load/reset/read overlays")
