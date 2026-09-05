@@ -15,9 +15,9 @@ import static mindustry.Vars.*;
 /**
  * Current Mindustry v13 save writer with browser-safe client metadata handling.
  *
- * The binary format is unchanged. Only desktop singleton assumptions in writeMeta
- * are relaxed: Web intentionally has no Mods subsystem yet and can persist saves
- * before the full Control/input graph is installed.
+ * The binary format is unchanged. Yandex/Web intentionally has no Mods subsystem
+ * and does not require desktop Control/input to persist a valid save, so those
+ * metadata fields are encoded with their normal empty/null representations.
  */
 public final class BrowserSave13 extends Save13{
     private static boolean installed;
@@ -50,7 +50,7 @@ public final class BrowserSave13 extends Save13{
 
         writeStringMap(stream, result.merge(StringMap.of(
             "saved", Time.millis(),
-            "playtime", headless || control == null ? 0 : control.saves.getTotalPlaytime(),
+            "playtime", BrowserSaveRuntime.totalPlaytimeForSave(),
             "build", Version.build,
             "mapname", state.map.name(),
             "wave", state.wave,
@@ -60,12 +60,12 @@ public final class BrowserSave13 extends Save13{
             "rules", JsonIO.write(state.rules),
             "sectorPreset", state.rules.sector != null && state.rules.sector.preset != null ? state.rules.sector.preset.name : "",
             "locales", JsonIO.write(state.mapLocales),
-            "mods", mods == null ? "[]" : JsonIO.write(mods.getModStrings().toArray(String.class)),
-            "controlGroups", headless || control == null || control.input == null ? "null" : JsonIO.write(control.input.controlGroups),
+            "mods", "[]",
+            "controlGroups", "null",
             "width", world.width(),
             "height", world.height(),
             "viewpos", Tmp.v1.set(player == null ? arc.math.geom.Vec2.ZERO : player).toString(),
-            "controlledType", headless || control == null || control.input == null || control.input.controlledType == null ? "null" : control.input.controlledType.name,
+            "controlledType", "null",
             "nocores", state.rules.defaultTeam.cores().isEmpty(),
             "playerteam", player == null ? state.rules.defaultTeam.id : player.team().id,
             "hasExternalAssets", state.data.getAllExternalAssets().size > 0
