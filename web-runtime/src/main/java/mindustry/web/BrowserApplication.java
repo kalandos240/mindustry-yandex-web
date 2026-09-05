@@ -41,6 +41,7 @@ public final class BrowserApplication extends WebApplicationBase{
         graphics.setWebGLVersion(BrowserCanvas.getWebGLMajor(config.canvasId));
         gl20 = new BrowserGL20(BrowserCanvas.getContext(config.canvasId));
         graphics.setGL20(gl20);
+        BrowserCanvas.resizeToDisplay(config.canvasId, config.maxPixelRatio);
         updateGraphicsMetrics();
         Core.graphics = graphics;
 
@@ -66,21 +67,27 @@ public final class BrowserApplication extends WebApplicationBase{
         if(!isRunning()) return;
 
         int callbackIndex = ++browserFrameCallbacks;
+        // Frame-stage DOM attributes were added as startup diagnostics. Updating two
+        // attributes six times at 60 FPS caused hundreds of DOM mutations per second.
+        // Keep the same diagnostics for the first three startup frames only; errors are
+        // still reported through BrowserCanvas.setStatus below.
+        boolean traceStartup = callbackIndex <= 3;
         String phase = "entry";
         try{
-            markFrameStage(phase, callbackIndex);
+            if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "resize";
-            BrowserCanvas.resizeToDisplay(config.canvasId);
-            updateGraphicsMetrics();
+            if(BrowserCanvas.resizeToDisplay(config.canvasId, config.maxPixelRatio)){
+                updateGraphicsMetrics();
+            }
             graphics.updateFrame(timestamp);
             input.update();
-            markFrameStage(phase, callbackIndex);
+            if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "pause-sample";
             boolean sampledPause = BrowserYandex.paused();
             if(sampledPause != platformPaused) setPlatformPaused(sampledPause);
-            markFrameStage(phase, callbackIndex);
+            if(traceStartup) markFrameStage(phase, callbackIndex);
 
             // game_api_pause is sent for ads, tab/background changes and other portal
             // interruptions. Keep the scheduler alive, but do not advance Mindustry
@@ -90,15 +97,15 @@ public final class BrowserApplication extends WebApplicationBase{
                 frame();
                 syncGameplayMarker();
             }
-            markFrameStage(phase, callbackIndex);
+            if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "input-post-update";
             input.postUpdate();
-            markFrameStage(phase, callbackIndex);
+            if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "reschedule";
             requestAnimationFrame(frameCallback);
-            markFrameStage("scheduled", callbackIndex);
+            if(traceStartup) markFrameStage("scheduled", callbackIndex);
         }catch(Throwable error){
             BrowserCanvas.setStatus("error", "Mindustry Web frame loop failed at " + phase + " #" + callbackIndex + ": "
                 + error.getClass().getName() + ": " + String.valueOf(error.getMessage()));
@@ -131,7 +138,7 @@ public final class BrowserApplication extends WebApplicationBase{
             BrowserCanvas.getClientHeight(config.canvasId),
             BrowserCanvas.getBackBufferWidth(config.canvasId),
             BrowserCanvas.getBackBufferHeight(config.canvasId),
-            BrowserCanvas.getDensity()
+            BrowserCanvas.getDensity(config.canvasId, config.maxPixelRatio)
         );
     }
 

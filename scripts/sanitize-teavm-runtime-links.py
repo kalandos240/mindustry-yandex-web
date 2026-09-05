@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import re
+import runpy
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,3 +30,7 @@ if remaining:
     raise SystemExit(1)
 
 print("Removed TeaVM documentation URL; compiled mindustry.js now contains 0 http(s)/ws(s) URL literals")
+
+# Staging is complete at this point. Enforce deterministic code/package budgets
+# here so every existing CI path that sanitizes TeaVM output also guards size.
+runpy.run_path(str(ROOT / "scripts" / "audit-web-performance.py"), run_name="__main__")
