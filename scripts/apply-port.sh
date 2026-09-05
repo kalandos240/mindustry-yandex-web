@@ -100,8 +100,9 @@ for old, new in replacements.items():
 path.write_text(text)
 PY
 
-# The desktop SpriteBatch uses ForkJoinPool for sorting. Web uses a stable serial
-# packed-key sort so the rendered order stays deterministic without JVM concurrency.
+# The desktop SpriteBatch uses ForkJoinPool for sorting and requests a client-side
+# VertexArray. WebGL has no client-side vertex arrays, so the Web target must use
+# Arc's VBO path. Sorting also stays serial on the browser event loop.
 python3 - "$ARC_DIR/arc-core/src/arc/graphics/g2d/SpriteBatch.java" <<'PY'
 from pathlib import Path
 import sys
@@ -110,11 +111,13 @@ path = Path(sys.argv[1])
 text = path.read_text()
 old_fields = '''    static ForkJoinHolder commonPool;\n    boolean multithreaded = !OS.isIos && !OS.isAndroid;\n'''
 old_ctor = '''        if(multithreaded){\n            try{\n                commonPool = new ForkJoinHolder();\n            }catch(Throwable t){\n                multithreaded = false;\n            }\n        }\n'''
+old_mesh = '            mesh = new Mesh(true, false, size * 4, size * 6,'
 old_sort = '''    protected void sortRequests(){\n        if(multithreaded){\n            sortRequestsThreaded();\n        }else{\n            sortRequestsStandard();\n        }\n    }\n'''
 new_sort = '''    protected void sortRequests(){\n        int count = numRequests;\n        if(copy.length < count) copy = new DrawRequest[count + (count >> 3) + 1];\n        long[] keys = new long[count];\n        for(int i = 0; i < count; i++){\n            // High 32 bits preserve signed z ordering; low 32 bits preserve insertion order.\n            keys[i] = ((long)requestZ[i] << 32) | (i & 0xffffffffL);\n        }\n        Arrays.sort(keys);\n        for(int i = 0; i < count; i++){\n            copy[i] = requests[(int)keys[i]];\n        }\n    }\n'''
 for old, new, name in [
     (old_fields, '    static ForkJoinHolder commonPool;\n', 'fields'),
     (old_ctor, '        // Web: serial request sorting; no ForkJoinPool is initialized.\n', 'constructor'),
+    (old_mesh, '            mesh = new Mesh(false, false, size * 4, size * 6,', 'VBO mesh storage'),
     (old_sort, new_sort, 'sortRequests'),
 ]:
     if old not in text:
@@ -188,5 +191,5 @@ cp "$MINDUSTRY_CORE_WEB_SOURCE_DIR/mindustry/net/Streamable.java" "$MINDUSTRY_DI
 
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/buffer compatibility patches"
-echo "Applied Web single-thread asset and SpriteBatch patches"
+echo "Applied Web single-thread asset and SpriteBatch VBO patches"
 echo "Applied Web-only Mindustry startup/network/stream patches"
