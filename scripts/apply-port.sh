@@ -189,6 +189,11 @@ PY
 mkdir -p "$MINDUSTRY_DIR/core/src/mindustry/net"
 cp "$MINDUSTRY_CORE_WEB_SOURCE_DIR/mindustry/net/Streamable.java" "$MINDUSTRY_DIR/core/src/mindustry/net/Streamable.java"
 
+# The next save milestone reads stock v13 saves back through SaveIO.load(). Keep
+# browser-specific load compatibility isolated from the writer overlay so each PR
+# remains independently reviewable.
+python3 "$ROOT_DIR/scripts/patch-mindustry-save-load-web.py"
+
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/buffer compatibility patches"
 echo "Applied Web single-thread asset and SpriteBatch VBO patches"
