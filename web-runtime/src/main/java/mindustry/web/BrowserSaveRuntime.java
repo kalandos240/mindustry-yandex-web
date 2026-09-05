@@ -53,7 +53,6 @@ public final class BrowserSaveRuntime{
         Vars.tmpDirectory.mkdirs();
         Vars.schematicDirectory.mkdirs();
 
-        BrowserSave13.install();
         verifyMoveCopyDelete();
         verifyRealSaveMetaFormat();
         verifyFullSaveWrite();
@@ -62,6 +61,7 @@ public final class BrowserSaveRuntime{
         Core.assets.setLoader(Texture.class, ".spreview", new BrowserSavePreviewLoader());
         browserSaves.load();
         saves = browserSaves;
+        SaveVersion.setWebPlaytime(browserSaves.getTotalPlaytime());
 
         initialized = true;
         markReady(saves.getSaveSlots().size);
@@ -72,7 +72,6 @@ public final class BrowserSaveRuntime{
         return saves;
     }
 
-    /** BrowserSave13 uses this instead of reaching desktop Control.saves. */
     static long totalPlaytimeForSave(){
         return saves == null ? 0L : saves.getTotalPlaytime();
     }
@@ -189,6 +188,7 @@ public final class BrowserSaveRuntime{
             Vars.state.wave = 23;
             Vars.state.tick = 321.5;
             Vars.state.wavetime = 42f;
+            SaveVersion.setWebPlaytime(totalPlaytimeForSave());
 
             SaveIO.save(file);
 
