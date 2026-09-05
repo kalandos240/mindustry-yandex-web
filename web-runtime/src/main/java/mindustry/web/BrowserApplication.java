@@ -12,11 +12,19 @@ public final class BrowserApplication extends WebApplicationBase{
         void run(double timestamp);
     }
 
+    @JSFunctor
+    private interface LifecycleCallback extends JSObject{
+        void run();
+    }
+
     private final FrameCallback frameCallback = this::onAnimationFrame;
+    private final LifecycleCallback platformPauseCallback = () -> setPlatformPaused(true);
+    private final LifecycleCallback platformResumeCallback = () -> setPlatformPaused(false);
     private final WebGraphics graphics;
     private final WebInput input;
     private final BrowserGL20 gl20;
     private String clipboard = "";
+    private boolean platformPaused;
     private boolean lastPlatformPaused;
     private boolean lastGameplayActive;
 
@@ -39,6 +47,16 @@ public final class BrowserApplication extends WebApplicationBase{
         Core.input = input;
         BrowserInputBridge.install(config.canvasId, input);
 
+        // Portal pause/resume events are external to requestAnimationFrame. Observe them
+        // directly so a resume can be accepted even while a browser throttles animation
+        // frames for an ad, background tab or other platform interruption. A sampled
+        // fallback remains in onAnimationFrame in case an event was emitted before this
+        // application object was installed.
+        platformPaused = BrowserYandex.paused();
+        lastPlatformPaused = platformPaused;
+        if(platformPaused) BrowserYandex.markPauseState("paused");
+        installPlatformLifecycle(platformPauseCallback, platformResumeCallback);
+
         initialize();
         requestAnimationFrame(frameCallback);
     }
@@ -51,15 +69,12 @@ public final class BrowserApplication extends WebApplicationBase{
         graphics.updateFrame(timestamp);
         input.update();
 
-        boolean platformPaused = BrowserYandex.paused();
-        if(platformPaused != lastPlatformPaused){
-            lastPlatformPaused = platformPaused;
-            BrowserYandex.markPauseState(platformPaused ? "paused" : "running");
-        }
+        boolean sampledPause = BrowserYandex.paused();
+        if(sampledPause != platformPaused) setPlatformPaused(sampledPause);
 
         // game_api_pause is sent for ads, tab/background changes and other portal
-        // interruptions. Keep requestAnimationFrame alive so resume is observed, but do
-        // not advance Mindustry simulation/render callbacks while the platform is paused.
+        // interruptions. Keep the scheduler alive, but do not advance Mindustry
+        // simulation/render callbacks while the platform is paused.
         if(!platformPaused){
             frame();
             syncGameplayMarker();
@@ -67,6 +82,13 @@ public final class BrowserApplication extends WebApplicationBase{
 
         input.postUpdate();
         requestAnimationFrame(frameCallback);
+    }
+
+    private void setPlatformPaused(boolean paused){
+        platformPaused = paused;
+        if(paused == lastPlatformPaused) return;
+        lastPlatformPaused = paused;
+        BrowserYandex.markPauseState(paused ? "paused" : "running");
     }
 
     private void syncGameplayMarker(){
@@ -120,6 +142,12 @@ public final class BrowserApplication extends WebApplicationBase{
 
     @JSBody(params = {"callback"}, script = "window.requestAnimationFrame(callback);")
     private static native void requestAnimationFrame(FrameCallback callback);
+
+    @JSBody(params = {"pauseCallback", "resumeCallback"}, script = """
+        window.addEventListener('mindustry:yandex-pause', pauseCallback);
+        window.addEventListener('mindustry:yandex-resume', resumeCallback);
+        """)
+    private static native void installPlatformLifecycle(LifecycleCallback pauseCallback, LifecycleCallback resumeCallback);
 
     @JSBody(params = {"text"}, script = """
         if (navigator.clipboard && navigator.clipboard.writeText) {
