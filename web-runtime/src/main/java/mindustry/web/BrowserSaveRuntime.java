@@ -185,6 +185,9 @@ public final class BrowserSaveRuntime{
                 "description", "Browser full save writer validation"
             ));
             Vars.state.rules = new Rules();
+            Rules.TeamRule webTeamRule = Vars.state.rules.teams.get(Team.sharded);
+            webTeamRule.cheat = true;
+            webTeamRule.buildSpeedMultiplier = 1.75f;
             Vars.state.wave = 23;
             Vars.state.tick = 321.5;
             Vars.state.wavetime = 42f;
@@ -227,13 +230,17 @@ public final class BrowserSaveRuntime{
             }
 
             SaveMeta meta = directMeta;
+            Rules.TeamRule savedTeamRule = meta.rules == null ? null : meta.rules.teams.get(Team.sharded);
             if(meta.version != 13
             || meta.wave != 23
             || !"Web Full SaveIO Probe".equals(meta.tags.get("mapname"))
             || meta.tags.getInt("width") != 4
             || meta.tags.getInt("height") != 4
             || meta.mods == null
-            || meta.mods.length != 0){
+            || meta.mods.length != 0
+            || savedTeamRule == null
+            || !savedTeamRule.cheat
+            || Math.abs(savedTeamRule.buildSpeedMultiplier - 1.75f) > 0.0001f){
                 throw new IllegalStateException(
                     "Full browser SaveIO metadata validation failed: version=" + meta.version
                     + ", wave=" + meta.wave
@@ -241,6 +248,8 @@ public final class BrowserSaveRuntime{
                     + ", width=" + meta.tags.getInt("width")
                     + ", height=" + meta.tags.getInt("height")
                     + ", mods=" + (meta.mods == null ? -1 : meta.mods.length)
+                    + ", teamCheat=" + (savedTeamRule != null && savedTeamRule.cheat)
+                    + ", teamBuildSpeed=" + (savedTeamRule == null ? -1f : savedTeamRule.buildSpeedMultiplier)
                 );
             }
         }finally{
@@ -274,7 +283,7 @@ public final class BrowserSaveRuntime{
 
     private static boolean matches(byte[] actual, byte[] expected){
         if(actual.length != expected.length) return false;
-        for(int i = 0; i < actual.length; i++) if(actual[i] != expected[i]) return false;
+        for(int i = 0; i < expected.length; i++) if(actual[i] != expected[i]) return false;
         return true;
     }
 
