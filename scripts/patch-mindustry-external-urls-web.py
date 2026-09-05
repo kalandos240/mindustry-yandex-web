@@ -89,6 +89,18 @@ patch_arc("util/serialization/Json.java", [
      'Json.writeValue anonymous class'),
 ])
 
+# JsonIO has one additional direct anonymous-class check in the MapObjectives
+# serializer. Rules are stored in save metadata, so keep that serializer functional
+# with the same Web-safe binary-name test rather than deleting objective data.
+patch("io/JsonIO.java", [
+    ('public class JsonIO{\n    public static final Json json = new Json(){',
+     '''public class JsonIO{\n    private static boolean webIsAnonymousClass(Class type){\n        String name = type.getName();\n        int dollar = name.lastIndexOf('$');\n        if(dollar < 0 || dollar == name.length() - 1) return false;\n        for(int i = dollar + 1; i < name.length(); i++){\n            char c = name.charAt(i);\n            if(c < '0' || c > '9') return false;\n        }\n        return true;\n    }\n\n    public static final Json json = new Json(){''',
+     'JsonIO.webIsAnonymousClass helper'),
+    ('json.writeObjectStart(obj.getClass().isAnonymousClass() ? obj.getClass().getSuperclass() : obj.getClass(), null);',
+     'json.writeObjectStart(webIsAnonymousClass(obj.getClass()) ? obj.getClass().getSuperclass() : obj.getClass(), null);',
+     'JsonIO MapObjectives anonymous class'),
+])
+
 # The stock Serpulo pre-save hook updates only the visual planet mesh. Its async
 # ExecutorService path is a desktop rendering side effect and is not part of save
 # data. Keep SectorInfo.prepare()/saveInfo() fully intact and remove only this hook.
