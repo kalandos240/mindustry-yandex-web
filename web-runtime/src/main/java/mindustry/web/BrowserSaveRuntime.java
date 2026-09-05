@@ -72,6 +72,11 @@ public final class BrowserSaveRuntime{
         return saves;
     }
 
+    /** BrowserSave13 uses this instead of reaching desktop Control.saves. */
+    static long totalPlaytimeForSave(){
+        return saves == null ? 0L : saves.getTotalPlaytime();
+    }
+
     private static void verifyMoveCopyDelete(){
         byte[] expected = {77, 83, 65, 86, 0, 127, -1};
         Fi source = Vars.saveDirectory.child("ci-fi-source.bin");
