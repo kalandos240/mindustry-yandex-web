@@ -68,19 +68,17 @@ public final class BrowserApplication extends WebApplicationBase{
         int callbackIndex = ++browserFrameCallbacks;
         String phase = "entry";
         try{
-            markFrameStage(phase, callbackIndex);
-
             phase = "resize";
-            BrowserCanvas.resizeToDisplay(config.canvasId);
-            updateGraphicsMetrics();
+            if(BrowserCanvas.resizeToDisplay(config.canvasId)){
+                updateGraphicsMetrics();
+                resize(graphics.getWidth(), graphics.getHeight());
+            }
             graphics.updateFrame(timestamp);
             input.update();
-            markFrameStage(phase, callbackIndex);
 
             phase = "pause-sample";
             boolean sampledPause = BrowserYandex.paused();
             if(sampledPause != platformPaused) setPlatformPaused(sampledPause);
-            markFrameStage(phase, callbackIndex);
 
             // game_api_pause is sent for ads, tab/background changes and other portal
             // interruptions. Keep the scheduler alive, but do not advance Mindustry
@@ -90,15 +88,17 @@ public final class BrowserApplication extends WebApplicationBase{
                 frame();
                 syncGameplayMarker();
             }
-            markFrameStage(phase, callbackIndex);
 
             phase = "input-post-update";
             input.postUpdate();
-            markFrameStage(phase, callbackIndex);
 
             phase = "reschedule";
             requestAnimationFrame(frameCallback);
-            markFrameStage("scheduled", callbackIndex);
+
+            // Startup diagnostics are useful for CI, but mutating document attributes at
+            // every phase of every 60 FPS frame creates avoidable DOM work. Publish only
+            // the first few completed callbacks; runtime failures already include phase.
+            if(callbackIndex <= 12) markStartupFrame(callbackIndex);
         }catch(Throwable error){
             BrowserCanvas.setStatus("error", "Mindustry Web frame loop failed at " + phase + " #" + callbackIndex + ": "
                 + error.getClass().getName() + ": " + String.valueOf(error.getMessage()));
@@ -165,8 +165,8 @@ public final class BrowserApplication extends WebApplicationBase{
     @JSBody(params = {"callback"}, script = "window.requestAnimationFrame(callback);")
     private static native void requestAnimationFrame(FrameCallback callback);
 
-    @JSBody(params = {"phase", "index"}, script = "document.documentElement.setAttribute('data-mindustry-frame-stage', phase); document.documentElement.setAttribute('data-mindustry-frame-callbacks', String(index));")
-    private static native void markFrameStage(String phase, int index);
+    @JSBody(params = {"index"}, script = "document.documentElement.setAttribute('data-mindustry-frame-stage', 'scheduled'); document.documentElement.setAttribute('data-mindustry-frame-callbacks', String(index));")
+    private static native void markStartupFrame(int index);
 
     @JSBody(params = {"pauseCallback", "resumeCallback"}, script = """
         window.addEventListener('mindustry:yandex-pause', pauseCallback);
