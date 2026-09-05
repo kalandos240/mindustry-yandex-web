@@ -39,6 +39,16 @@ public final class WebClientLauncher extends ClientLauncher{
         android = Core.app.isAndroid();
         markMindustryDeviceMode(mobile ? "mobile" : "desktop");
 
+        // Renderer owns the production camera, but stock MobileInput already relies on
+        // Core.camera for coordinate transforms and pinch fallback. Install a valid camera
+        // now; the real Renderer will replace it at the renderer milestone.
+        if(Core.camera == null){
+            Core.camera = new Camera();
+            Core.camera.width = Math.max(1f, Core.graphics.getWidth() / 4f);
+            Core.camera.height = Math.max(1f, Core.graphics.getHeight() / 4f);
+            Core.camera.update();
+        }
+
         Time.setDeltaProvider(() -> {
             float result = Core.graphics.getDeltaTime() * 60f;
             return (Float.isNaN(result) || Float.isInfinite(result))
