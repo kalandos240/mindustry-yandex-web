@@ -3,14 +3,19 @@ package mindustry.web;
 import arc.*;
 import arc.Files.FileType;
 import arc.files.*;
+import arc.util.io.*;
 import mindustry.*;
 import mindustry.game.*;
+import mindustry.io.*;
 import org.teavm.jso.JSBody;
+
+import java.io.*;
 
 /**
  * Minimal browser save substrate that deliberately stops short of constructing
  * desktop Control/Renderer/Mods/NetServer modules. It establishes Mindustry's
- * persistent local directory layout and proves the Fi operations SaveIO relies on.
+ * persistent local directory layout and proves the Fi/SaveIO primitives required
+ * before a full world save can be enabled.
  */
 public final class BrowserSaveRuntime{
     private static Saves saves;
@@ -43,6 +48,7 @@ public final class BrowserSaveRuntime{
         Vars.schematicDirectory.mkdirs();
 
         verifyMoveCopyDelete();
+        verifyRealSaveMetaFormat();
 
         // Saves.load() on a fresh browser profile exercises the real recursive save
         // directory scanner without constructing the much broader desktop Control graph.
@@ -86,12 +92,77 @@ public final class BrowserSaveRuntime{
         }
     }
 
+    /**
+     * Build a genuine deflated Mindustry v13 save prefix with a real meta region,
+     * persist it through BrowserFi, then parse it with the stock SaveIO.getMeta().
+     * This deliberately tests the production MSAV header/version/string-map parser
+     * and Java zlib path without requiring World/Logic/Renderer to exist yet.
+     */
+    private static void verifyRealSaveMetaFormat(){
+        Fi file = Vars.saveDirectory.child("ci-meta.msav");
+        Fi backup = SaveIO.backupFileFor(file);
+        file.delete();
+        backup.delete();
+
+        final long saved = 1_725_000_000_123L;
+        final long playtime = 987_654L;
+        final int build = 159;
+        final int wave = 17;
+        final String mapName = "Web SaveIO Probe";
+
+        try{
+            ByteArrayOutputStream metaBytes = new ByteArrayOutputStream();
+            try(DataOutputStream meta = new DataOutputStream(metaBytes)){
+                meta.writeShort(8);
+                writePair(meta, "version", "13");
+                writePair(meta, "saved", Long.toString(saved));
+                writePair(meta, "playtime", Long.toString(playtime));
+                writePair(meta, "build", Integer.toString(build));
+                writePair(meta, "mapname", mapName);
+                writePair(meta, "wave", Integer.toString(wave));
+                writePair(meta, "rules", "{}");
+                writePair(meta, "mods", "[]");
+            }
+
+            try(DataOutputStream out = new DataOutputStream(new FastDeflaterOutputStream(file.write(false, 8192)))){
+                out.write(SaveIO.header);
+                out.writeInt(13);
+                byte[] region = metaBytes.toByteArray();
+                out.writeInt(region.length);
+                out.write(region);
+            }
+
+            SaveMeta meta = SaveIO.getMeta(file);
+            if(meta == null
+            || meta.version != 13
+            || meta.timestamp != saved
+            || meta.timePlayed != playtime
+            || meta.build != build
+            || meta.wave != wave
+            || !mapName.equals(meta.tags.get("mapname"))
+            || meta.mods == null
+            || meta.mods.length != 0){
+                throw new IllegalStateException("Stock SaveIO.getMeta failed browser MSAV v13 round-trip");
+            }
+        }catch(IOException error){
+            throw new IllegalStateException("Browser real MSAV metadata probe failed", error);
+        }finally{
+            file.delete();
+            backup.delete();
+        }
+    }
+
+    private static void writePair(DataOutputStream out, String key, String value) throws IOException{
+        out.writeUTF(key);
+        out.writeUTF(value);
+    }
+
     private static boolean matches(byte[] actual, byte[] expected){
         if(actual.length != expected.length) return false;
         for(int i = 0; i < actual.length; i++) if(actual[i] != expected[i]) return false;
         return true;
     }
 
-    @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-save-runtime','ready'); document.documentElement.setAttribute('data-mindustry-save-slots', String(count));")
+    @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-save-runtime','ready'); document.documentElement.setAttribute('data-mindustry-save-slots', String(count)); document.documentElement.setAttribute('data-mindustry-saveio-meta','ready');")
     private static native void markReady(int count);
 }
