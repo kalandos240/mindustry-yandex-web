@@ -131,7 +131,7 @@ jobs:
           echo "Staged AATLS bytes: $(wc -c < web-runtime/build/web/assets/sprites/sprites.aatls)"
           echo "Staged atlas pages: $(find web-runtime/build/web/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)"
 
-      - name: Execute Mindustry core, Arc GL20, atlas, content regions, input and settings in headless Chrome
+      - name: Execute Mindustry core, content, SpriteBatch frame, input and settings in headless Chrome
         run: |
           command -v google-chrome
           cd web-runtime/build/web
@@ -162,6 +162,8 @@ jobs:
           grep -q 'texture-upload@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'vanilla-atlas@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'content-regions@atlas' /tmp/mindustry-web-dom.html
+          grep -q 'sprite-frame@WebGL' /tmp/mindustry-web-dom.html
+          grep -q 'framebuffer-readback@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'settings@localStorage' /tmp/mindustry-web-dom.html
 
       - name: Upload browser smoke package

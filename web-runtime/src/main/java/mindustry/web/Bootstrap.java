@@ -9,6 +9,7 @@ import mindustry.content.*;
 import mindustry.core.*;
 import mindustry.ctype.*;
 import mindustry.world.blocks.storage.*;
+import org.teavm.jso.JSBody;
 
 /** First executable bridge between current Mindustry/Arc bytecode and a browser frame loop. */
 public final class Bootstrap{
@@ -33,6 +34,7 @@ public final class Bootstrap{
         new BrowserApplication(new ApplicationListener(){
             private final WebClientLauncher launcher = new WebClientLauncher();
             private int frames;
+            private boolean frameVerified;
 
             @Override
             public void init(){
@@ -111,21 +113,56 @@ public final class Bootstrap{
                     throw new IllegalStateException("Mindustry browser content.init campaign/tech-tree state failed runtime initialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init/load, campaign metadata, tech trees, specialized block factories and real content regions ready; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; content-regions@atlas; settings@localStorage; waiting for animation frames...");
+                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init/load, campaign metadata, tech trees, specialized block factories and real content regions ready; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; content-regions@atlas; settings@localStorage; waiting for first rendered sprite frame...");
             }
 
             @Override
             public void update(){
-                double seconds = System.currentTimeMillis() / 1000.0;
-                float pulse = 0.08f + 0.03f * (float)(Math.sin(seconds) * 0.5 + 0.5);
-                Core.graphics.clear(pulse, pulse, pulse + 0.02f, 1f);
+                try{
+                    renderVanillaSpriteFrame();
+
+                    if(!frameVerified){
+                        int nonBlackPixels = countCenterNonBlackPixels(config.canvasId);
+                        if(nonBlackPixels < 16){
+                            throw new IllegalStateException("WebGL framebuffer did not contain the rendered vanilla sprite; sampled non-black pixels=" + nonBlackPixels);
+                        }
+                        frameVerified = true;
+                    }
+                }catch(Throwable error){
+                    BrowserCanvas.setStatus("error", "Mindustry Web sprite frame failed: " + describe(error));
+                    throw error;
+                }
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init/load + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; content-regions@atlas; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init/load + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; content-regions@atlas; sprite-frame@WebGL; framebuffer-readback@WebGL; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
+    }
+
+    private static void renderVanillaSpriteFrame(){
+        int width = Core.graphics.getWidth();
+        int height = Core.graphics.getHeight();
+        if(width <= 0 || height <= 0){
+            throw new IllegalStateException("Invalid browser framebuffer size: " + width + "x" + height);
+        }
+
+        Core.graphics.clear(0f, 0f, 0f, 1f);
+        Draw.proj(0f, 0f, width, height);
+        Draw.color();
+
+        long before = SpriteBatch.totalDrawCalls;
+        Draw.rect(Vars.content.item("copper").uiIcon, width / 2f, height / 2f, 128f, 128f);
+        Draw.flush();
+        if(SpriteBatch.totalDrawCalls <= before){
+            throw new IllegalStateException("Arc SpriteBatch did not submit the vanilla copper icon draw call");
+        }
+
+        int error = Core.gl20.glGetError();
+        if(error != GL20.GL_NO_ERROR){
+            throw new IllegalStateException("Vanilla SpriteBatch frame failed with GL error 0x" + Integer.toHexString(error));
+        }
     }
 
     private static void loadContentWithDiagnostics(){
@@ -280,4 +317,31 @@ public final class Bootstrap{
         }
         return true;
     }
+
+    /**
+     * Read back a centered 96x96 block directly from the live WebGL drawing buffer.
+     * This deliberately uses Uint8Array in JavaScript: it validates actual framebuffer
+     * output without depending on BrowserGL20's Java Buffer bridge, which is tested
+     * separately from the SpriteBatch rendering milestone.
+     */
+    @JSBody(params = {"canvasId"}, script = """
+        var canvas = document.getElementById(canvasId);
+        if (!canvas) return -1;
+        var gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (!gl) return -2;
+        var w = Math.min(96, canvas.width);
+        var h = Math.min(96, canvas.height);
+        if (w <= 0 || h <= 0) return -3;
+        var x = Math.max(0, ((canvas.width - w) / 2) | 0);
+        var y = Math.max(0, ((canvas.height - h) / 2) | 0);
+        var pixels = new Uint8Array(w * h * 4);
+        gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        if (gl.getError() !== gl.NO_ERROR) return -4;
+        var lit = 0;
+        for (var i = 0; i < pixels.length; i += 4) {
+            if (pixels[i + 3] !== 0 && (pixels[i] !== 0 || pixels[i + 1] !== 0 || pixels[i + 2] !== 0)) lit++;
+        }
+        return lit;
+        """)
+    private static native int countCenterNonBlackPixels(String canvasId);
 }
