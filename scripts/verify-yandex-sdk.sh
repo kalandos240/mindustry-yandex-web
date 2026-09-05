@@ -38,8 +38,6 @@ cat > "$SDK_STUB" <<'JS'
     function schedulePauseCycle(){
         if(pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
-        // Start only after Game Ready. Frame-based scheduling avoids wall-clock/virtual-
-        // time races and proves BrowserApplication keeps observing rAF while paused.
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
             listeners.game_api_pause();
@@ -138,6 +136,6 @@ require_marker 'data-yandex-test-resume-sent="yes"' 'game_api_resume delivery'
 require_marker 'data-mindustry-platform-pause-observed="yes"' 'Java frame loop observing platform pause'
 require_marker 'data-mindustry-platform-pause="running"' 'Java frame loop returning to running state'
 require_marker 'data-mindustry-web="ready"' 'Mindustry ready state'
-require_marker 'data-mindustry-network="local-only"' 'local-only game network guard'
+require_marker 'data-mindustry-network="yandex-sdk-only"' 'Yandex SDK network exemption without game-owned URLs'
 
-echo 'Yandex SDK browser smoke: init + SDK locale + Game Ready + pause/resume PASS'
+echo 'Yandex SDK browser smoke: init + SDK locale + Game Ready + pause/resume + SDK transport PASS'
