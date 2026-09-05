@@ -54,19 +54,31 @@ public final class BrowserSaveRuntime{
         Vars.tmpDirectory.mkdirs();
         Vars.schematicDirectory.mkdirs();
 
-        verifyMoveCopyDelete();
-        verifyRealSaveMetaFormat();
-        verifyFullSaveWrite();
-        verifyFullSaveRoundTrip();
+        runPhase("fi", BrowserSaveRuntime::verifyMoveCopyDelete);
+        runPhase("meta", BrowserSaveRuntime::verifyRealSaveMetaFormat);
+        runPhase("full-write", BrowserSaveRuntime::verifyFullSaveWrite);
+        runPhase("roundtrip", BrowserSaveRuntime::verifyFullSaveRoundTrip);
 
-        BrowserSaves browserSaves = new BrowserSaves();
-        Core.assets.setLoader(Texture.class, ".spreview", new BrowserSavePreviewLoader());
-        browserSaves.load();
-        saves = browserSaves;
-        SaveVersion.setWebPlaytime(browserSaves.getTotalPlaytime());
+        runPhase("saves-index", () -> {
+            BrowserSaves browserSaves = new BrowserSaves();
+            Core.assets.setLoader(Texture.class, ".spreview", new BrowserSavePreviewLoader());
+            browserSaves.load();
+            saves = browserSaves;
+            SaveVersion.setWebPlaytime(browserSaves.getTotalPlaytime());
+        });
 
         initialized = true;
+        markPhase("ready");
         markReady(saves.getSaveSlots().size);
+    }
+
+    private static void runPhase(String phase, Runnable action){
+        markPhase(phase);
+        try{
+            action.run();
+        }catch(Throwable error){
+            throw new IllegalStateException("Browser save phase " + phase + " failed: " + describe(error), error);
+        }
     }
 
     public static Saves saves(){
@@ -276,8 +288,10 @@ public final class BrowserSaveRuntime{
         GameState previousState = Vars.state;
         World previousWorld = Vars.world;
         Waves previousWaves = Vars.waves;
+        String phase = "setup";
 
         try{
+            markPhase("roundtrip-setup");
             if(Groups.all == null){
                 Groups.init();
             }
@@ -302,11 +316,15 @@ public final class BrowserSaveRuntime{
             Vars.state.wavetime = 17.5f;
             SaveVersion.setWebPlaytime(totalPlaytimeForSave());
 
+            phase = "write";
+            markPhase("roundtrip-write");
             SaveIO.save(file);
             if(!SaveIO.isSaveValid(file)){
                 throw new IllegalStateException("Round-trip source MSAV is invalid before load");
             }
 
+            phase = "corrupt";
+            markPhase("roundtrip-corrupt");
             // Destroy the in-memory values so successful validation can only come
             // from the file reader, not from state accidentally retained in memory.
             Vars.world.resize(1, 1).fill();
@@ -316,8 +334,12 @@ public final class BrowserSaveRuntime{
             Vars.state.tick = 999.0;
             Vars.state.wavetime = 999f;
 
+            phase = "load";
+            markPhase("roundtrip-load");
             SaveIO.load(file);
 
+            phase = "verify";
+            markPhase("roundtrip-verify");
             Rules.TeamRule loadedTeamRule = Vars.state.rules.teams.get(Team.sharded);
             Tile floorTile = Vars.world.tile(1, 1);
             Tile wallTile = Vars.world.tile(2, 2);
@@ -349,8 +371,8 @@ public final class BrowserSaveRuntime{
             }
 
             markLoadReady();
-        }catch(SaveIO.SaveException error){
-            throw new IllegalStateException("Stock SaveIO.load browser round-trip threw", error);
+        }catch(Throwable error){
+            throw new IllegalStateException("Stock SaveIO.load browser round-trip failed at " + phase + ": " + describe(error), error);
         }finally{
             file.delete();
             backup.delete();
@@ -364,7 +386,7 @@ public final class BrowserSaveRuntime{
         StringBuilder out = new StringBuilder();
         Throwable current = error;
         int depth = 0;
-        while(current != null && depth++ < 5){
+        while(current != null && depth++ < 6){
             if(out.length() > 0) out.append(" <- ");
             out.append(current.getClass().getName()).append(':').append(String.valueOf(current.getMessage()));
             current = current.getCause();
@@ -382,6 +404,9 @@ public final class BrowserSaveRuntime{
         for(int i = 0; i < expected.length; i++) if(actual[i] != expected[i]) return false;
         return true;
     }
+
+    @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-saveio-phase', phase);")
+    private static native void markPhase(String phase);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-saveio-load','ready');")
     private static native void markLoadReady();
