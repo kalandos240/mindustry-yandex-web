@@ -1,6 +1,8 @@
 package mindustry.web;
 
+import arc.Core;
 import arc.Settings;
+import arc.files.Fi;
 import org.teavm.jso.JSBody;
 
 import java.util.Map;
@@ -26,6 +28,19 @@ public final class BrowserSettings extends Settings{
             throw new IllegalArgumentException("storageKey must not be empty");
         }
         this.storageKey = storageKey;
+    }
+
+    /**
+     * Mindustry derives saves/maps/previews from Settings.getDataDirectory(). Never
+     * fall back to Arc's OS absolute path in a browser; the Yandex data root is the
+     * persistent FileType.local namespace backed by IndexedDB.
+     */
+    @Override
+    public Fi getDataDirectory(){
+        if(Core.files == null || !Core.files.isLocalStorageAvailable()){
+            throw new IllegalStateException("Browser persistent local filesystem is not initialized");
+        }
+        return Core.files.local("");
     }
 
     @Override
