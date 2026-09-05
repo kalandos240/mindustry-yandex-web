@@ -106,6 +106,7 @@ jobs:
           bash scripts/apply-port.sh
           python3 scripts/patch-arc-fi-web.py work/Arc/arc-core/src/arc/files/Fi.java
           python3 scripts/patch-mindustry-block-reflection.py work/Mindustry/core/src/mindustry/world/Block.java
+          python3 scripts/patch-mindustry-fonts-web.py work/Mindustry/core/src/mindustry/ui/Fonts.java
 
       - name: Compile Arc Web backend
         working-directory: work/Arc
@@ -170,7 +171,7 @@ jobs:
           grep -q "requireLocal(input, 'fetch')" web-runtime/build/web/index.html
           grep -q "data-mindustry-network', 'local-only'" web-runtime/build/web/index.html
 
-      - name: Execute Mindustry core, content, fonts, local-only network, input and settings in headless Chrome
+      - name: Execute Mindustry core, content, UI shell, fonts, local-only network, input and settings in headless Chrome
         run: |
           command -v google-chrome
           cd web-runtime/build/web
@@ -198,6 +199,7 @@ jobs:
           grep -q 'data-mindustry-network="local-only"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-navigation="blocked"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-font="ready"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-ui-shell="ready"' /tmp/mindustry-web-dom.html
           grep -q 'Mindustry core' /tmp/mindustry-web-dom.html
           grep -q 'Arc GL20 ready' /tmp/mindustry-web-dom.html
           grep -q 'binary-png@Core.files' /tmp/mindustry-web-dom.html
