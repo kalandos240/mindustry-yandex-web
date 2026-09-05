@@ -51,12 +51,14 @@ public final class BrowserSaveRuntime{
         verifyMoveCopyDelete();
         verifyRealSaveMetaFormat();
 
-        // Saves.load() exercises the stock recursive save scanner. Its constructor
-        // installs a desktop absolute-path preview resolver, so immediately replace
-        // that loader with the browser-local implementation before any preview load.
-        saves = new Saves();
+        // BrowserSaves keeps upstream SaveSlot/SaveIO behavior but replaces desktop
+        // Future/ExecutorService metadata scanning with synchronous hydrated IndexedDB
+        // reads. The constructor's absolute preview loader is immediately replaced by
+        // the browser-local loader before any preview can be requested.
+        BrowserSaves browserSaves = new BrowserSaves();
         Core.assets.setLoader(Texture.class, ".spreview", new BrowserSavePreviewLoader());
-        saves.load();
+        browserSaves.load();
+        saves = browserSaves;
 
         initialized = true;
         markReady(saves.getSaveSlots().size);
