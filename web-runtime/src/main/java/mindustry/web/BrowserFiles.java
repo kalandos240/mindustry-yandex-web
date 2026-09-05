@@ -6,7 +6,9 @@ import org.teavm.jso.JSBody;
 
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Browser filesystem with two deliberately separate stores:
@@ -18,9 +20,14 @@ public final class BrowserFiles implements Files{
     private final String assetRoot;
     private final Map<String, String> textAssets = new LinkedHashMap<>();
     private final Map<String, byte[]> binaryAssets = new LinkedHashMap<>();
+    private final Set<String> localDirectories = new LinkedHashSet<>();
 
     public BrowserFiles(String assetRoot){
         this.assetRoot = trimSlashes(assetRoot == null ? "" : assetRoot);
+        localDirectories.add("");
+        if(persistentStorageReady()){
+            for(String path : localPaths()) registerParents(path);
+        }
     }
 
     /** Materialize one already-preloaded UTF-8 text asset into the Java-side cache. */
@@ -72,8 +79,7 @@ public final class BrowserFiles implements Files{
     }
 
     String text(String path, FileType type){
-        byte[] bytes = bytes(path, type);
-        return new String(bytes, StandardCharsets.UTF_8);
+        return new String(bytes(path, type), StandardCharsets.UTF_8);
     }
 
     byte[] bytes(String path, FileType type){
@@ -102,23 +108,46 @@ public final class BrowserFiles implements Files{
         String normalized = normalize(path);
         if(normalized.isEmpty()) throw new IllegalArgumentException("Cannot write the browser local root");
         if(!persistentStorageReady()) throw new IllegalStateException("Browser persistent storage is not initialized");
+        registerParents(normalized);
         storeLocalBytes(normalized, bytes);
     }
 
+    boolean mkdirLocal(String path){
+        String normalized = normalize(path);
+        int before = localDirectories.size();
+        registerDirectory(normalized);
+        return localDirectories.size() != before || localDirectories.contains(normalized);
+    }
+
     boolean removeLocal(String path){
-        return removeLocalFile(normalize(path));
+        String normalized = normalize(path);
+        if(localDirectories.contains(normalized) && hasChildren(normalized, FileType.local)) return false;
+        boolean removed = removeLocalFile(normalized);
+        if(!hasLocalFile(normalized)) localDirectories.remove(normalized);
+        return removed;
     }
 
     boolean removeLocalTree(String path){
-        return removeLocalDirectory(normalize(path));
+        String normalized = normalize(path);
+        boolean removed = removeLocalDirectory(normalized);
+        String prefix = normalized.isEmpty() ? "" : normalized + "/";
+        localDirectories.removeIf(dir -> dir.equals(normalized) || (!prefix.isEmpty() && dir.startsWith(prefix)));
+        localDirectories.add("");
+        return removed || !normalized.isEmpty();
     }
 
     boolean contains(String path, FileType type){
         String normalized = normalize(path);
-        if(type == FileType.local) return hasLocalFile(normalized);
+        if(type == FileType.local) return hasLocalFile(normalized) || localDirectories.contains(normalized);
         return textAssets.containsKey(normalized)
             || binaryAssets.containsKey(normalized)
             || hasPackagedAsset(normalized);
+    }
+
+    boolean isDirectory(String path, FileType type){
+        String normalized = normalize(path);
+        if(type == FileType.local) return localDirectories.contains(normalized) || (!hasLocalFile(normalized) && hasChildren(normalized, type));
+        return !contains(normalized, type) && hasChildren(normalized, type);
     }
 
     boolean hasChildren(String directory, FileType type){
@@ -127,6 +156,11 @@ public final class BrowserFiles implements Files{
         for(String key : paths(type)){
             if(key.startsWith(prefix) && key.length() > prefix.length()) return true;
         }
+        if(type == FileType.local){
+            for(String dir : localDirectories){
+                if(dir.startsWith(prefix) && dir.length() > prefix.length()) return true;
+            }
+        }
         return false;
     }
 
@@ -134,26 +168,48 @@ public final class BrowserFiles implements Files{
         String normalized = normalize(directory);
         String prefix = normalized.isEmpty() ? "" : normalized + "/";
         Map<String, Fi> children = new LinkedHashMap<>();
-        for(String key : paths(type)){
-            if(!key.startsWith(prefix) || key.length() <= prefix.length()) continue;
-            String remainder = key.substring(prefix.length());
-            int slash = remainder.indexOf('/');
-            String childName = slash < 0 ? remainder : remainder.substring(0, slash);
-            String childPath = prefix + childName;
-            children.put(childName, new BrowserFi(this, childPath, type));
+        for(String key : paths(type)) addChild(children, prefix, key, type);
+        if(type == FileType.local){
+            for(String dir : localDirectories) addChild(children, prefix, dir, type);
         }
         return children.values().toArray(new Fi[0]);
     }
 
+    private void addChild(Map<String, Fi> children, String prefix, String key, FileType type){
+        if(!key.startsWith(prefix) || key.length() <= prefix.length()) return;
+        String remainder = key.substring(prefix.length());
+        int slash = remainder.indexOf('/');
+        String childName = slash < 0 ? remainder : remainder.substring(0, slash);
+        String childPath = prefix + childName;
+        children.put(childName, new BrowserFi(this, childPath, type));
+    }
+
     long length(String path, FileType type){
         String normalized = normalize(path);
-        if(type == FileType.local) return localLength(normalized);
+        if(type == FileType.local) return hasLocalFile(normalized) ? localLength(normalized) : 0;
 
         byte[] binary = binaryAssets.get(normalized);
         if(binary != null) return binary.length;
         String text = textAssets.get(normalized);
         if(text != null) return text.getBytes(StandardCharsets.UTF_8).length;
         return preloadedLength(assetUrl(normalized));
+    }
+
+    private void registerParents(String filePath){
+        int slash = filePath.lastIndexOf('/');
+        if(slash >= 0) registerDirectory(filePath.substring(0, slash));
+    }
+
+    private void registerDirectory(String directory){
+        String normalized = normalize(directory);
+        localDirectories.add("");
+        if(normalized.isEmpty()) return;
+        String[] parts = normalized.split("/");
+        String current = "";
+        for(String part : parts){
+            current = current.isEmpty() ? part : current + "/" + part;
+            localDirectories.add(current);
+        }
     }
 
     private String[] paths(FileType type){
