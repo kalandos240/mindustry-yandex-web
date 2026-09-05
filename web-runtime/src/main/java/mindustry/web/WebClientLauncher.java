@@ -48,6 +48,7 @@ public final class WebClientLauncher extends ClientLauncher{
         Core.batch = new SpriteBatch();
         Core.assets = new AssetManager();
         tree = new FileTree();
+        verifyBrowserFontAssets();
 
         // Preserve the upstream networking boundary without pulling ArcNet/NIO into
         // TeaVM. Net's packet registry and common state are real Mindustry code;
@@ -71,6 +72,28 @@ public final class WebClientLauncher extends ClientLauncher{
         content = new ContentLoader();
         content.createBaseContent();
         content.init();
+    }
+
+    private static void verifyBrowserFontAssets(){
+        long main = Core.files.internal("fonts/font.woff").length();
+        long mono = Core.files.internal("fonts/monospace.woff").length();
+        long icon = Core.files.internal("fonts/icon.ttf").length();
+        long logic = Core.files.internal("fonts/logic.ttf").length();
+        long tech = Core.files.internal("fonts/tech.ttf").length();
+
+        if(main < 3_000_000L || mono < 100_000L || icon < 40_000L || logic < 40_000L || tech < 10_000L){
+            throw new IllegalStateException("Mindustry vanilla font assets are incomplete in the Web package: "
+                + main + "/" + mono + "/" + icon + "/" + logic + "/" + tech);
+        }
+
+        byte[] iconBytes = Core.files.internal("fonts/icon.ttf").readBytes();
+        if(iconBytes.length < 4
+        || iconBytes[0] != 0
+        || iconBytes[1] != 1
+        || iconBytes[2] != 0
+        || iconBytes[3] != 0){
+            throw new IllegalStateException("Mindustry icon.ttf failed browser binary asset verification");
+        }
     }
 
     @Override
