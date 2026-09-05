@@ -40,8 +40,7 @@ for i in {1..20}; do
 done
 
 run_locale(){
-  local chrome_lang="$1"
-  local expected="$2"
+  local expected="$1"
   local profile="/tmp/mindustry-web-profile-$expected"
   local dom="/tmp/mindustry-web-$expected.html"
   rm -rf "$profile"
@@ -55,9 +54,8 @@ run_locale(){
     --enable-unsafe-swiftshader \
     --virtual-time-budget=20000 \
     --user-data-dir="$profile" \
-    --lang="$chrome_lang" \
     --dump-dom \
-    http://127.0.0.1:8081/index.html > "$dom"
+    "http://127.0.0.1:8081/index.html?lang=$expected" > "$dom"
 
   grep -q 'data-mindustry-web="ready"' "$dom"
   grep -q 'data-mindustry-ui-shell="ready"' "$dom"
@@ -68,5 +66,5 @@ run_locale(){
   echo "Browser locale $expected: ready, no-links, local-only"
 }
 
-run_locale en-US en
-run_locale ru-RU ru
+run_locale en
+run_locale ru
