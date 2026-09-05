@@ -75,7 +75,10 @@ public final class BrowserApplication extends WebApplicationBase{
 
     @Override
     public boolean openURI(String uri){
-        return uri != null && !uri.isEmpty() && openWindow(uri);
+        // Yandex Games must not expose navigation to the upstream project's website,
+        // GitHub, Discord, stores or any other external resource. Keep this blocked at
+        // the platform boundary so future upstream UI additions cannot re-enable it.
+        return false;
     }
 
     @Override
@@ -93,14 +96,4 @@ public final class BrowserApplication extends WebApplicationBase{
         }
         """)
     private static native void writeClipboard(String text);
-
-    @JSBody(params = {"uri"}, script = """
-        try {
-            const opened = window.open(uri, '_blank', 'noopener,noreferrer');
-            return opened !== null;
-        } catch (e) {
-            return false;
-        }
-        """)
-    private static native boolean openWindow(String uri);
 }
