@@ -195,12 +195,18 @@ PY
 mkdir -p "$MINDUSTRY_DIR/core/src/mindustry/net"
 cp "$MINDUSTRY_CORE_WEB_SOURCE_DIR/mindustry/net/Streamable.java" "$MINDUSTRY_DIR/core/src/mindustry/net/Streamable.java"
 
-# The next save milestone reads stock v13 saves back through SaveIO.load(). Keep
-# browser-specific load compatibility isolated from the writer overlay so each PR
-# remains independently reviewable.
+# The current main branch reads stock v13 saves back through SaveIO.load(). Keep
+# browser-specific load compatibility isolated from the writer overlay.
 python3 "$ROOT_DIR/scripts/patch-mindustry-save-load-web.py"
+
+# Stock mobile/desktop input is part of the Web reachability graph now. Patch only
+# the browser-incompatible lock/zoom, formation executor and anonymous config-class
+# reflection paths while preserving stock gameplay semantics.
+python3 "$ROOT_DIR/scripts/patch-mindustry-input-web.py" \
+  "$MINDUSTRY_DIR/core/src/mindustry/input/InputHandler.java" \
+  "$MINDUSTRY_DIR/core/src/mindustry/input/MobileInput.java"
 
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
 echo "Applied Web single-thread asset and allocation-stable SpriteBatch VBO patches"
-echo "Applied Web-only Mindustry startup/network/stream patches"
+echo "Applied Web-only Mindustry startup/network/stream/save/input patches"

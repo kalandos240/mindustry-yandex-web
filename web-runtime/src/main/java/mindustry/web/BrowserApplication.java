@@ -23,6 +23,7 @@ public final class BrowserApplication extends WebApplicationBase{
     private final WebGraphics graphics;
     private final WebInput input;
     private final BrowserGL20 gl20;
+    private final boolean mobileBrowser;
     private String clipboard = "";
     private boolean platformPaused;
     private boolean lastPlatformPaused;
@@ -31,6 +32,14 @@ public final class BrowserApplication extends WebApplicationBase{
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
         super(listener, config);
+
+        // Arc's default Application.isMobile() only recognizes Android and iOS application
+        // types. A browser always reports ApplicationType.web, which otherwise leaves
+        // Mindustry's Vars.mobile=false even on phones/tablets and selects desktop controls.
+        // Detect a touch-first browser before Mindustry's ApplicationListener.init() runs so
+        // Vars.mobile is initialized correctly while ApplicationType remains web.
+        mobileBrowser = detectMobileBrowser();
+        markBrowserInputMode(mobileBrowser ? "mobile" : "desktop");
 
         if(!BrowserCanvas.initialize(config.canvasId, config.alpha, config.stencil, config.antialiasing,
         config.premultipliedAlpha, config.preserveDrawingBuffer)){
@@ -61,6 +70,11 @@ public final class BrowserApplication extends WebApplicationBase{
 
         initialize();
         requestAnimationFrame(frameCallback);
+    }
+
+    @Override
+    public boolean isMobile(){
+        return mobileBrowser;
     }
 
     private void onAnimationFrame(double timestamp){
@@ -169,6 +183,20 @@ public final class BrowserApplication extends WebApplicationBase{
         BrowserYandex.gameplayStop();
         BrowserCanvas.setStatus("stopped", "Mindustry Web runtime stopped");
     }
+
+    @JSBody(script = """
+        const forced = new URLSearchParams(location.search).get('mindustryMobile');
+        if(forced === '1') return true;
+        if(forced === '0') return false;
+        const points = Number(navigator.maxTouchPoints || 0);
+        const coarse = !!(globalThis.matchMedia && matchMedia('(pointer: coarse)').matches);
+        const noHover = !!(globalThis.matchMedia && matchMedia('(hover: none)').matches);
+        return points > 0 && (coarse || noHover);
+        """)
+    private static native boolean detectMobileBrowser();
+
+    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-input-mode', mode);")
+    private static native void markBrowserInputMode(String mode);
 
     @JSBody(params = {"callback"}, script = "window.requestAnimationFrame(callback);")
     private static native void requestAnimationFrame(FrameCallback callback);
