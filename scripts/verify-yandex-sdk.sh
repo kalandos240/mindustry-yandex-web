@@ -38,15 +38,17 @@ cat > "$SDK_STUB" <<'JS'
     function schedulePauseCycle(){
         if(pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
-        // Start only after Game Ready. Frame-based scheduling avoids wall-clock/virtual-
-        // time races and proves BrowserApplication keeps observing rAF while paused.
+        // Enter pause only after Game Ready and several browser frames, proving the
+        // TeaVM frame loop is already alive. Resume uses a timer deliberately: portal
+        // resume events are external to the game's animation lifecycle and must still be
+        // delivered even while game rendering/simulation is suspended.
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
             listeners.game_api_pause();
-        });
-        afterFrames(12, () => {
-            root.setAttribute('data-yandex-test-resume-sent', 'yes');
-            listeners.game_api_resume();
+            setTimeout(() => {
+                root.setAttribute('data-yandex-test-resume-sent', 'yes');
+                listeners.game_api_resume();
+            }, 100);
         });
     }
 
