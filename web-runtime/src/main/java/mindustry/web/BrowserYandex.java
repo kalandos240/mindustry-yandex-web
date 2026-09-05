@@ -24,6 +24,9 @@ public final class BrowserYandex{
     @JSBody(script = "return !!(globalThis.__mindustryYandex && globalThis.__mindustryYandex.gameplayStop && globalThis.__mindustryYandex.gameplayStop());")
     public static native boolean gameplayStop();
 
-    @JSBody(params = {"state"}, script = "document.documentElement.setAttribute('data-mindustry-platform-pause', state);")
+    @JSBody(params = {"state"}, script = """
+        document.documentElement.setAttribute('data-mindustry-platform-pause', state);
+        if(state === 'paused') document.documentElement.setAttribute('data-mindustry-platform-pause-observed', 'yes');
+        """)
     public static native void markPauseState(String state);
 }
