@@ -10,6 +10,7 @@ command -v google-chrome >/dev/null
 
 test -s "$EN_BUNDLE"
 test -s "$RU_BUNDLE"
+test -s "$WEB_DIR/assets/icons/icons.properties"
 
 # Validate the actual staged directory against machine-checkable Yandex release
 # requirements before opening it in a browser.
@@ -31,6 +32,13 @@ if grep -Fq 'Errors have occurred loading map content' "$RU_BUNDLE"; then
 fi
 if grep -Fq 'anukendev@gmail.com' "$EN_BUNDLE" "$RU_BUNDLE"; then
   echo 'External contact remained in staged credits.' >&2
+  exit 1
+fi
+
+# Touch-first Yandex build must not stage desktop cursor PNGs just to satisfy
+# stock UI.loadSync(). WebGraphics absorbs every cursor creation call instead.
+if [ -d "$WEB_DIR/assets/cursors" ] && find "$WEB_DIR/assets/cursors" -type f -name '*.png' | grep -q .; then
+  echo 'Desktop cursor PNGs unexpectedly staged in touch-first Web package.' >&2
   exit 1
 fi
 
@@ -64,11 +72,12 @@ run_locale(){
 
   grep -q 'data-mindustry-web="ready"' "$dom"
   grep -q 'data-mindustry-ui-shell="ready"' "$dom"
+  grep -q 'data-mindustry-ui-sync="ready"' "$dom"
   grep -q 'data-mindustry-links="none"' "$dom"
   grep -q "data-mindustry-locale=\"$expected\"" "$dom"
   grep -q 'data-mindustry-network="local-only"' "$dom"
   grep -q 'data-mindustry-navigation="blocked"' "$dom"
-  echo "Browser locale $expected: ready, no-links, local-only"
+  echo "Browser locale $expected: UI sync ready, no-links, local-only"
 }
 
 run_locale en
