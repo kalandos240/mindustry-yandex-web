@@ -131,6 +131,9 @@ jobs:
       - name: Compile current Mindustry and Arc bytecode with TeaVM
         run: work/Arc/gradlew -p web-runtime generateJavaScript stageWeb --no-daemon --stacktrace
 
+      - name: Remove TeaVM runtime documentation link
+        run: python3 scripts/sanitize-teavm-runtime-links.py
+
       - name: Validate staged browser smoke package
         run: |
           test -s web-runtime/build/web/index.html
