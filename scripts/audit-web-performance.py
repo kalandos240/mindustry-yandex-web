@@ -8,11 +8,26 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Baseline observed after current-v13 pruning: 8,718,418 bytes. Allow ~5.5% headroom
-# for legitimate gameplay/UI work, but make accidental desktop reachability fail CI.
-JS_BASELINE = 8_718_418
-JS_LIMIT = 9_200_000
+# Measured after bringing the stock Mindustry Renderer constructor/Shaders plus the
+# stock MobileInput/DesktopInput reachability graph into TeaVM. The previous 8.7 MiB
+# baseline represented the pre-renderer Web substrate and is no longer comparable.
+# Keep modest headroom while independently rejecting known desktop/network reachability.
+JS_BASELINE = 10_753_304
+JS_LIMIT = 11_500_000
+JS_GZIP_LIMIT = 1_700_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
+
+# TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
+# appear in the emitted JavaScript, the Web graph has regressed even if it still fits
+# the byte budget. Browser networking must remain behind WebNetProvider/Yandex only.
+FORBIDDEN_JS_MARKERS = (
+    "ArcNetProvider",
+    "HttpURLConnection",
+    "ServerSocket",
+    "java_net_Socket",
+    "ThreadPoolExecutor",
+    "ForkJoinPool",
+)
 
 
 def png_size(path: Path) -> tuple[int, int]:
@@ -41,6 +56,7 @@ if not js.is_file():
 files = [path for path in WEB.rglob("*") if path.is_file()]
 js_bytes = js.stat().st_size
 total_bytes = sum(path.stat().st_size for path in files)
+js_text = js.read_text(encoding="utf-8")
 with js.open("rb") as source:
     gzip_bytes = len(gzip.compress(source.read(), compresslevel=9))
 
@@ -48,6 +64,7 @@ atlas_pngs = sorted((WEB / "assets" / "sprites").glob("sprites*.png"))
 font_pngs = sorted((WEB / "assets" / "webfonts").glob("*.png"))
 atlas_rgba = rgba_bytes(atlas_pngs)
 font_rgba = rgba_bytes(font_pngs)
+forbidden_found = [marker for marker in FORBIDDEN_JS_MARKERS if marker in js_text]
 
 lines = [
     f"TeaVM JS bytes: {js_bytes}",
@@ -55,6 +72,8 @@ lines = [
     f"TeaVM JS delta bytes: {js_bytes - JS_BASELINE:+d}",
     f"TeaVM JS budget bytes: {JS_LIMIT}",
     f"TeaVM JS gzip-9 bytes: {gzip_bytes}",
+    f"TeaVM JS gzip-9 budget bytes: {JS_GZIP_LIMIT}",
+    f"Forbidden desktop/network JS markers: {', '.join(forbidden_found) if forbidden_found else 'none'}",
     f"Staged package bytes: {total_bytes}",
     f"Yandex unpacked limit bytes: {YANDEX_UNPACKED_LIMIT}",
     f"Staged file count: {len(files)}",
@@ -71,8 +90,21 @@ print(REPORT.read_text(encoding="utf-8"), end="")
 failed = False
 if js_bytes > JS_LIMIT:
     print(
-        f"ERROR: TeaVM JavaScript grew beyond performance budget: {js_bytes} > {JS_LIMIT}. "
-        "Check for accidental desktop/service reachability or new hot-path code.",
+        f"ERROR: TeaVM JavaScript grew beyond renderer/input performance budget: {js_bytes} > {JS_LIMIT}. "
+        "Check for accidental desktop/service reachability or unexpected gameplay graph growth.",
+        file=sys.stderr,
+    )
+    failed = True
+if gzip_bytes > JS_GZIP_LIMIT:
+    print(
+        f"ERROR: TeaVM gzip size grew beyond renderer/input budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
+        file=sys.stderr,
+    )
+    failed = True
+if forbidden_found:
+    print(
+        "ERROR: desktop-only/network implementation became reachable in TeaVM JS: "
+        + ", ".join(forbidden_found),
         file=sys.stderr,
     )
     failed = True
