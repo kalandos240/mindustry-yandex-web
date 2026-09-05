@@ -9,6 +9,7 @@ import arc.util.*;
 import mindustry.*;
 import mindustry.core.*;
 import mindustry.gen.*;
+import mindustry.input.*;
 import mindustry.net.*;
 import mindustry.net.Net.*;
 import mindustry.ui.*;
@@ -20,12 +21,23 @@ import static mindustry.Vars.*;
 public final class WebClientLauncher extends ClientLauncher{
     private final NetProvider netProvider = new WebNetProvider();
     private UI uiShell;
+    private InputHandler gameplayInput;
     private boolean uiSyncLoaded;
+    private boolean inputRuntimeLoaded;
 
     @Override
     public void setup(){
         platform = this;
         maxTextureSize = Gl.getInt(Gl.maxTextureSize);
+
+        // Vars normally receives this value from its AssetManager load phase. The Web
+        // launcher intentionally bypasses that desktop-oriented phase, so establish it
+        // before InputHandler is initialized. InputHandler has mobile-sensitive static
+        // constants and Control normally chooses MobileInput from this flag.
+        mobile = Core.app.isMobile();
+        ios = Core.app.isIOS();
+        android = Core.app.isAndroid();
+        markMindustryDeviceMode(mobile ? "mobile" : "desktop");
 
         Time.setDeltaProvider(() -> {
             float result = Core.graphics.getDeltaTime() * 60f;
@@ -66,9 +78,6 @@ public final class WebClientLauncher extends ClientLauncher{
         // Install browser-only factories while preserving the stock JsonIO format.
         BrowserJsonCompatibility.install();
 
-        // Establish only the browser persistence/Saves substrate. Stock Control is
-        // intentionally not constructed yet because it reaches audio, Mods, NetServer,
-        // full HUD and editor paths that are still outside the Web release graph.
         BrowserSaveRuntime.init();
 
         Vars.ui = uiShell = new UI();
@@ -81,7 +90,7 @@ public final class WebClientLauncher extends ClientLauncher{
             try{
                 loadUiSync();
             }catch(Throwable error){
-                BrowserCanvas.setStatus("error", "Mindustry Web UI sync failed: " + error.getClass().getName() + ": " + String.valueOf(error.getMessage()));
+                BrowserCanvas.setStatus("error", "Mindustry Web UI/input sync failed: " + error.getClass().getName() + ": " + String.valueOf(error.getMessage()));
                 throw error;
             }
         });
@@ -104,12 +113,53 @@ public final class WebClientLauncher extends ClientLauncher{
             throw new IllegalStateException("Mindustry Scene/Tex/Icon/Styles/content-icon initialization is incomplete on Web");
         }
 
+        initializeStockInputRuntime();
+
         uiSyncLoaded = true;
         markUiSyncReady();
     }
 
+    /**
+     * Bring the real Mindustry InputHandler/GestureDetector graph into the browser before
+     * the much larger Control/Renderer/Logic milestone. This is deliberately the stock
+     * MobileInput or DesktopInput implementation rather than a custom Web control scheme.
+     */
+    private void initializeStockInputRuntime(){
+        if(inputRuntimeLoaded) return;
+        if(Core.scene == null) throw new IllegalStateException("Mindustry input runtime requires Scene initialization");
+
+        if(Groups.all == null){
+            Groups.init();
+        }
+
+        if(player == null){
+            player = Player.create();
+            player.name = Core.settings.getString("name", "");
+            player.locale = Core.settings.getString("locale", BrowserI18n.locale());
+            player.color.set(Core.settings.getInt("color-0", playerColors[8].rgba()));
+        }
+
+        gameplayInput = mobile ? new MobileInput() : new DesktopInput();
+        gameplayInput.add();
+
+        if(mobile && !(gameplayInput instanceof MobileInput)){
+            throw new IllegalStateException("Touch browser did not activate stock MobileInput");
+        }
+        if(!mobile && !(gameplayInput instanceof DesktopInput)){
+            throw new IllegalStateException("Desktop browser did not activate stock DesktopInput");
+        }
+        if(gameplayInput.detector == null || !Core.input.getInputProcessors().contains(gameplayInput)){
+            throw new IllegalStateException("Stock Mindustry InputHandler/GestureDetector was not registered with Arc Web input");
+        }
+
+        inputRuntimeLoaded = true;
+        markStockInputReady(mobile ? "mobile" : "desktop");
+    }
+
     public boolean hasUiShell(){ return uiShell != null; }
     public boolean hasUiSync(){ return uiSyncLoaded; }
+    public boolean hasInputRuntime(){ return inputRuntimeLoaded; }
+    public InputHandler inputRuntime(){ return gameplayInput; }
 
     @Override
     public NetProvider getNet(){ return netProvider; }
@@ -122,4 +172,10 @@ public final class WebClientLauncher extends ClientLauncher{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-sync', 'ready');")
     private static native void markUiSyncReady();
+
+    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-device-mode', mode);")
+    private static native void markMindustryDeviceMode(String mode);
+
+    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-stock-input', mode); document.documentElement.setAttribute('data-mindustry-gesture-detector', 'ready');")
+    private static native void markStockInputReady(String mode);
 }
