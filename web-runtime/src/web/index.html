@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing" data-yandex-sdk="booting" data-mindustry-storage="booting">
+<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing" data-yandex-sdk="booting" data-mindustry-storage="booting" data-mindustry-audio="booting">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -105,20 +105,29 @@
             const manifest = globalThis.__mindustryAssetManifest || [];
             const cache = Object.create(null);
             globalThis.__mindustryAssetCache = cache;
+
+            // Arc's synchronous Fi bridge still needs the UI/atlas/content assets in
+            // memory before main(). Audio is different: it has a native browser URL
+            // backend, so keeping OGG files out of this preload avoids tens of megabytes
+            // of duplicate compressed bytes in the JavaScript heap at startup.
+            const eagerManifest = manifest.filter(path => !path.startsWith('sounds/') && !path.startsWith('music/'));
+            root.setAttribute('data-mindustry-assets-eager', String(eagerManifest.length));
+            root.setAttribute('data-mindustry-assets-streamed', String(manifest.length - eagerManifest.length));
+
             let next = 0, loaded = 0;
-            const workers = Math.max(1, Math.min(8, manifest.length));
+            const workers = Math.max(1, Math.min(8, eagerManifest.length));
 
             async function preloadWorker(){
                 while(true){
                     const index = next++;
-                    if(index >= manifest.length) return;
-                    const path = manifest[index];
+                    if(index >= eagerManifest.length) return;
+                    const path = eagerManifest[index];
                     const url = 'assets/' + path;
                     const response = await fetch(url);
                     if(!response.ok) throw new Error('Asset preload failed (' + response.status + '): ' + url);
                     cache[url] = new Int8Array(await response.arrayBuffer());
                     loaded++;
-                    status.textContent = 'Preloading Mindustry assets ' + loaded + '/' + manifest.length + '...';
+                    status.textContent = 'Preloading Mindustry assets ' + loaded + '/' + eagerManifest.length + '...';
                 }
             }
 

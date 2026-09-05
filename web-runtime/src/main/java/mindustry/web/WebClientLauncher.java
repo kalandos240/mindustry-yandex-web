@@ -41,6 +41,15 @@ public final class WebClientLauncher extends ClientLauncher{
 
         Core.batch = new SpriteBatch();
         Core.assets = new AssetManager();
+
+        // Install browser-native audio before vanilla content is created. All ordinary
+        // Mindustry sound/music creation can now keep using Core.audio unchanged while
+        // Web avoids the desktop SoLoud/JNI path entirely.
+        Core.audio = new BrowserAudio();
+        if(!Core.audio.initialized()){
+            throw new IllegalStateException("Mindustry Web audio backend failed initialization");
+        }
+
         tree = new FileTree();
 
         if(Core.app.openURI("external-navigation-probe")){
@@ -67,8 +76,8 @@ public final class WebClientLauncher extends ClientLauncher{
         BrowserJsonCompatibility.install();
 
         // Establish only the browser persistence/Saves substrate. Stock Control is
-        // intentionally not constructed yet because it reaches audio, Mods, NetServer,
-        // full HUD and editor paths that are still outside the Web release graph.
+        // intentionally not constructed yet because it reaches Mods, NetServer, full HUD
+        // and editor paths that are still outside the current Web release graph.
         BrowserSaveRuntime.init();
 
         Vars.ui = uiShell = new UI();
