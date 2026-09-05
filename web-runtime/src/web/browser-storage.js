@@ -7,6 +7,10 @@
     let db = null;
     let initPromise = null;
 
+    function markStage(stage){
+        document.documentElement.setAttribute('data-mindustry-storage', stage);
+    }
+
     function normalize(path){
         let value = String(path == null ? '' : path).replaceAll('\\', '/');
         while(value.startsWith('/')) value = value.slice(1);
@@ -21,12 +25,17 @@
 
     function openDatabase(){
         return new Promise((resolve, reject) => {
+            markStage('opening');
             const request = indexedDB.open(DB_NAME, 1);
             request.onupgradeneeded = () => {
                 const database = request.result;
                 if(!database.objectStoreNames.contains(STORE)) database.createObjectStore(STORE, {keyPath: 'path'});
             };
-            request.onsuccess = () => resolve(request.result);
+            request.onblocked = () => markStage('blocked');
+            request.onsuccess = () => {
+                markStage('opened');
+                resolve(request.result);
+            };
             request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
         });
     }
@@ -40,6 +49,7 @@
         if(initPromise) return initPromise;
         initPromise = (async () => {
             db = await openDatabase();
+            markStage('hydrating');
             await new Promise((resolve, reject) => {
                 const request = transaction('readonly').getAll();
                 request.onsuccess = () => {
@@ -52,10 +62,11 @@
                 };
                 request.onerror = () => reject(request.error || new Error('IndexedDB hydration failed'));
             });
-            document.documentElement.setAttribute('data-mindustry-storage', 'ready');
+            markStage('ready');
             return api;
         })().catch(error => {
-            document.documentElement.setAttribute('data-mindustry-storage', 'error');
+            markStage('error');
+            document.documentElement.setAttribute('data-mindustry-storage-error', String(error && error.name ? error.name : 'storage-error'));
             throw error;
         });
         return initPromise;
