@@ -30,17 +30,24 @@ cat > "$SDK_STUB" <<'JS'
         root.setAttribute(name, String(value));
     }
 
+    function afterFrames(count, callback){
+        if(count <= 0){ callback(); return; }
+        requestAnimationFrame(() => afterFrames(count - 1, callback));
+    }
+
     function schedulePauseCycle(){
         if(pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
-        setTimeout(() => {
+        // Start only after Game Ready. Frame-based scheduling avoids wall-clock/virtual-
+        // time races and proves BrowserApplication keeps observing rAF while paused.
+        afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
             listeners.game_api_pause();
-        }, 1000);
-        setTimeout(() => {
+        });
+        afterFrames(12, () => {
             root.setAttribute('data-yandex-test-resume-sent', 'yes');
             listeners.game_api_resume();
-        }, 2500);
+        });
     }
 
     globalThis.YaGames = {
@@ -48,12 +55,8 @@ cat > "$SDK_STUB" <<'JS'
             root.setAttribute('data-yandex-test-init', 'yes');
             return {
                 environment: {i18n: {lang: 'ru'}},
-                on(name, callback){
-                    listeners[name] = callback;
-                },
-                off(name){
-                    delete listeners[name];
-                },
+                on(name, callback){ listeners[name] = callback; },
+                off(name){ delete listeners[name]; },
                 features: {
                     LoadingAPI: {
                         ready(){
@@ -110,20 +113,31 @@ google-chrome \
   --dump-dom \
   "http://127.0.0.1:$PORT/index.html" > "$DOM"
 
-grep -q 'data-yandex-test-init="yes"' "$DOM"
-grep -q 'data-yandex-sdk="ready"' "$DOM"
-grep -q 'data-yandex-locale="ru"' "$DOM"
-grep -q 'data-mindustry-locale="ru"' "$DOM"
-grep -q 'data-yandex-test-loading-ready-count="1"' "$DOM"
+require_marker(){
+  local pattern="$1"
+  local label="$2"
+  if ! grep -q "$pattern" "$DOM"; then
+    echo "Yandex SDK smoke missing: $label" >&2
+    grep -o '<html[^>]*>' "$DOM" >&2 || true
+    exit 1
+  fi
+}
+
+require_marker 'data-yandex-test-init="yes"' 'YaGames.init'
+require_marker 'data-yandex-sdk="ready"' 'SDK ready state'
+require_marker 'data-yandex-locale="ru"' 'SDK environment locale'
+require_marker 'data-mindustry-locale="ru"' 'Mindustry locale from SDK'
+require_marker 'data-yandex-test-loading-ready-count="1"' 'exactly one LoadingAPI.ready call'
 if grep -q 'data-yandex-test-ready-too-early="yes"' "$DOM"; then
   echo 'LoadingAPI.ready was emitted before the game reached ready state.' >&2
+  grep -o '<html[^>]*>' "$DOM" >&2 || true
   exit 1
 fi
-grep -q 'data-yandex-test-pause-sent="yes"' "$DOM"
-grep -q 'data-yandex-test-resume-sent="yes"' "$DOM"
-grep -q 'data-mindustry-platform-pause-observed="yes"' "$DOM"
-grep -q 'data-mindustry-platform-pause="running"' "$DOM"
-grep -q 'data-mindustry-web="ready"' "$DOM"
-grep -q 'data-mindustry-network="local-only"' "$DOM"
+require_marker 'data-yandex-test-pause-sent="yes"' 'game_api_pause delivery'
+require_marker 'data-yandex-test-resume-sent="yes"' 'game_api_resume delivery'
+require_marker 'data-mindustry-platform-pause-observed="yes"' 'Java frame loop observing platform pause'
+require_marker 'data-mindustry-platform-pause="running"' 'Java frame loop returning to running state'
+require_marker 'data-mindustry-web="ready"' 'Mindustry ready state'
+require_marker 'data-mindustry-network="local-only"' 'local-only game network guard'
 
 echo 'Yandex SDK browser smoke: init + SDK locale + Game Ready + pause/resume PASS'
