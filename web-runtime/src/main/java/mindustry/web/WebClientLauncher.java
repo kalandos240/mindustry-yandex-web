@@ -62,6 +62,10 @@ public final class WebClientLauncher extends ClientLauncher{
         content.createBaseContent();
         content.init();
 
+        // TeaVM does not expose reflective constructors for every nested Rules type.
+        // Install browser-only factories while preserving the stock JsonIO format.
+        BrowserJsonCompatibility.install();
+
         // Establish only the browser persistence/Saves substrate. Stock Control is
         // intentionally not constructed yet because it reaches audio, Mods, NetServer,
         // full HUD and editor paths that are still outside the Web release graph.
