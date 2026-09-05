@@ -3,9 +3,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOUND = ROOT / "work" / "Arc" / "arc-core" / "src" / "arc" / "audio" / "Sound.java"
+BUFFERS = ROOT / "work" / "Arc" / "arc-core" / "src" / "arc" / "util" / "Buffers.java"
 
 if not SOUND.is_file():
     raise SystemExit(f"Missing pinned Arc Sound source: {SOUND}")
+if not BUFFERS.is_file():
+    raise SystemExit(f"Missing pinned Arc Buffers source: {BUFFERS}")
 
 text = SOUND.read_text(encoding="utf-8")
 
@@ -65,4 +68,23 @@ replace_once(
 )
 
 SOUND.write_text(text, encoding="utf-8")
+
+# Arc's VBO and VertexArray implementations both copy float vertex arrays through
+# desktop JNI memcpy helpers. TeaVM supports NIO buffers directly, so keep the same
+# byte-level contract with duplicate/slice views and never make native memcpy reachable.
+buffers = BUFFERS.read_text(encoding="utf-8")
+old_simple = '''    private native static void copyJni(float[] src, Buffer dst, int numFloats, int offset); /*\n\t\tmemcpy(dst, src + offset, numFloats << 2 );\n\t*/'''
+new_simple = '''    private static void copyJni(float[] src, Buffer dst, int numFloats, int offset){\n        copyFloatArray(src, offset, dst, 0, numFloats);\n    } /* Web: TeaVM-safe NIO copy; no JNI. */'''
+old_offset = '''    private native static void copyJni(float[] src, int srcOffset, Buffer dst, int dstOffset, int numBytes); /*\n\t\tmemcpy(dst + dstOffset, src + srcOffset, numBytes);\n\t*/'''
+new_offset = '''    private static void copyJni(float[] src, int srcOffset, Buffer dst, int dstOffset, int numBytes){\n        copyFloatArray(src, srcOffset, dst, dstOffset, numBytes >>> 2);\n    } /* Web: TeaVM-safe NIO copy; no JNI. */\n\n    private static void copyFloatArray(float[] src, int srcOffset, Buffer dst, int dstOffsetBytes, int count){\n        if(dst instanceof ByteBuffer bytes){\n            ByteBuffer target = bytes.duplicate().order(bytes.order());\n            target.position(dstOffsetBytes);\n            target.slice().order(bytes.order()).asFloatBuffer().put(src, srcOffset, count);\n        }else if(dst instanceof FloatBuffer floats){\n            FloatBuffer target = floats.duplicate();\n            target.position(dstOffsetBytes >>> 2);\n            target.put(src, srcOffset, count);\n        }else{\n            throw new ArcRuntimeException(\"Unsupported Web float buffer copy target: \" + dst.getClass().getName());\n        }\n    }'''
+for old, new, label in [
+    (old_simple, new_simple, "Buffers simple float copyJni"),
+    (old_offset, new_offset, "Buffers offset float copyJni"),
+]:
+    if buffers.count(old) != 1:
+        raise SystemExit(f"Arc Web buffer patch expected exactly one pinned match ({label})")
+    buffers = buffers.replace(old, new, 1)
+BUFFERS.write_text(buffers, encoding="utf-8")
+
 print("Applied TeaVM-safe no-op Arc Sound execution path")
+print("Applied TeaVM-safe Arc float vertex-buffer copies without JNI")
