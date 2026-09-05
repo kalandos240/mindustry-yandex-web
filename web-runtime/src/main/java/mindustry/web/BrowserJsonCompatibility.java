@@ -4,6 +4,7 @@ import arc.util.serialization.*;
 import arc.util.serialization.Json.*;
 import mindustry.game.*;
 import mindustry.io.JsonIO;
+import mindustry.type.MapLocales;
 
 /** Browser-only JSON factories for value types that TeaVM cannot reflectively construct/inspect reliably. */
 public final class BrowserJsonCompatibility{
@@ -46,6 +47,25 @@ public final class BrowserJsonCompatibility{
             public GameStats read(Json json, JsonValue data, Class type){
                 GameStats value = new GameStats();
                 json.readFields(value, data);
+                return value;
+            }
+        });
+
+        // MapLocales already owns an explicit JsonSerializable wire format; only the
+        // reflective constructor is unsuitable for TeaVM. Preserve its exact write/read
+        // implementation while constructing the container directly in Web builds.
+        JsonIO.json.setSerializer(MapLocales.class, new Serializer<MapLocales>(){
+            @Override
+            public void write(Json json, MapLocales value, Class knownType){
+                json.writeObjectStart();
+                value.write(json);
+                json.writeObjectEnd();
+            }
+
+            @Override
+            public MapLocales read(Json json, JsonValue data, Class type){
+                MapLocales value = new MapLocales();
+                value.read(json, data);
                 return value;
             }
         });
