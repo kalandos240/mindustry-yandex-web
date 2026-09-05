@@ -16,6 +16,7 @@ public final class BrowserApplication extends WebApplicationBase{
     private final WebInput input;
     private final BrowserGL20 gl20;
     private String clipboard = "";
+    private boolean lastPlatformPaused;
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
         super(listener, config);
@@ -47,7 +48,20 @@ public final class BrowserApplication extends WebApplicationBase{
         updateGraphicsMetrics();
         graphics.updateFrame(timestamp);
         input.update();
-        frame();
+
+        boolean platformPaused = BrowserYandex.paused();
+        if(platformPaused != lastPlatformPaused){
+            lastPlatformPaused = platformPaused;
+            BrowserYandex.markPauseState(platformPaused ? "paused" : "running");
+        }
+
+        // game_api_pause is sent for ads, tab/background changes and other portal
+        // interruptions. Keep requestAnimationFrame alive so resume is observed, but do
+        // not advance Mindustry simulation/render callbacks while the platform is paused.
+        if(!platformPaused){
+            frame();
+        }
+
         input.postUpdate();
         requestAnimationFrame(frameCallback);
     }
