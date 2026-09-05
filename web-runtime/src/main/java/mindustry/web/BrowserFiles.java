@@ -12,6 +12,9 @@ import java.util.Set;
 
 /** Browser packaged assets + persistent local user files. */
 public final class BrowserFiles implements Files{
+    private static final String persistenceProbePath = "ci/persist-probe.bin";
+    private static final byte[] persistenceProbeBytes = {0, 1, 2, 127, -1, 77, 83, 65};
+
     private final String assetRoot;
     private final Map<String, String> textAssets = new LinkedHashMap<>();
     private final Map<String, byte[]> binaryAssets = new LinkedHashMap<>();
@@ -20,7 +23,27 @@ public final class BrowserFiles implements Files{
     public BrowserFiles(String assetRoot){
         this.assetRoot = trimSlashes(assetRoot == null ? "" : assetRoot);
         localDirectories.add("");
-        if(persistentStorageReady()) for(String path : localPaths()) registerParents(path);
+        if(persistentStorageReady()){
+            for(String path : localPaths()) registerParents(path);
+            if(isPersistenceSeedRequested()) seedPersistenceProbeThroughFi();
+        }
+    }
+
+    private void seedPersistenceProbeThroughFi(){
+        Fi probe = new BrowserFi(this, persistenceProbePath, FileType.local);
+        probe.parent().mkdirs();
+        probe.writeBytes(persistenceProbeBytes, false);
+
+        byte[] immediate = probe.readBytes();
+        if(immediate.length != persistenceProbeBytes.length){
+            throw new IllegalStateException("BrowserFi persistence seed length mismatch");
+        }
+        for(int i = 0; i < immediate.length; i++){
+            if(immediate[i] != persistenceProbeBytes[i]){
+                throw new IllegalStateException("BrowserFi persistence seed byte mismatch at " + i);
+            }
+        }
+        flushAndMarkPersistenceSeed();
     }
 
     public void preloadText(String path){
@@ -202,4 +225,8 @@ public final class BrowserFiles implements Files{
     private static native String[] localPaths();
     @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage.byteLength(path);")
     private static native int localLength(String path);
+    @JSBody(script = "return new URLSearchParams(location.search).get('persistenceSeed') === '1';")
+    private static native boolean isPersistenceSeedRequested();
+    @JSBody(script = "globalThis.__mindustryStorage.flush().then(function(){document.documentElement.setAttribute('data-mindustry-java-persistence-seed','ready');}).catch(function(e){document.documentElement.setAttribute('data-mindustry-java-persistence-seed','error');});")
+    private static native void flushAndMarkPersistenceSeed();
 }
