@@ -47,9 +47,11 @@ public final class WebClientLauncher extends ClientLauncher{
         Core.assets = new AssetManager();
         tree = new FileTree();
 
-        // Yandex invariant: no external navigation is permitted from the game.
-        if(Core.app.openURI("https://example.invalid/mindustry-web-external-link-probe")){
-            throw new IllegalStateException("Browser platform unexpectedly allowed external URI navigation");
+        // Yandex invariant: URI navigation is unavailable at the Arc platform boundary.
+        // Keep the probe free of an actual URL literal so the final TeaVM bundle itself
+        // contains no hidden website strings.
+        if(Core.app.openURI("external-navigation-probe")){
+            throw new IllegalStateException("Browser platform unexpectedly allowed URI navigation");
         }
         markNoLinksReady();
 
