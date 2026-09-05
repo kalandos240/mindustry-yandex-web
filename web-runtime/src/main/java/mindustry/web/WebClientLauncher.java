@@ -8,6 +8,7 @@ import arc.math.*;
 import arc.util.*;
 import mindustry.*;
 import mindustry.core.*;
+import mindustry.net.*;
 import mindustry.net.Net.*;
 
 import static mindustry.Vars.*;
@@ -34,11 +35,27 @@ public final class WebClientLauncher extends ClientLauncher{
                 : Mathf.clamp(result, 0.0001f, maxDeltaClient);
         });
 
+        // Match the first platform-independent part of upstream ClientLauncher.
+        // UI color aliases are consumed by Scene styles later, and are safe before
+        // fonts/UI widgets exist because they only register Arc Color values.
+        UI.loadColors();
+        if(Colors.get("accent") == null || Colors.get("highlight") == null){
+            throw new IllegalStateException("Mindustry UI color aliases failed browser initialization");
+        }
+
         // Browser client foundation: real Arc rendering and asset machinery,
         // without desktop-only platform services.
         Core.batch = new SpriteBatch();
         Core.assets = new AssetManager();
         tree = new FileTree();
+
+        // Preserve the upstream networking boundary without pulling ArcNet/NIO into
+        // TeaVM. Net's packet registry and common state are real Mindustry code;
+        // WebNetProvider owns the browser transport edge and will later gain WebSocket.
+        Vars.net = new Net(platform.getNet());
+        if(Vars.net == null || platform.getNet() != netProvider){
+            throw new IllegalStateException("Mindustry browser NetProvider boundary failed initialization");
+        }
 
         // Vars.init() creates GameState before gameplay systems begin consuming
         // campaign/sector state. The Web bootstrap intentionally does not execute
