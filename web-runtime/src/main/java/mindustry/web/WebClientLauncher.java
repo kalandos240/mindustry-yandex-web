@@ -81,6 +81,19 @@ public final class WebClientLauncher extends ClientLauncher{
             throw new IllegalStateException("Mindustry UI shell lost baked Web font bindings");
         }
         markUiShellReady();
+
+        // Bootstrap.init() continues synchronously after setup(), loading the real atlas
+        // and all vanilla content regions. Arc Application runnables execute at the end
+        // of the first browser frame, so this preserves the proven bootstrap order while
+        // advancing the stock UI only after those resources exist.
+        Core.app.post(() -> {
+            try{
+                loadUiSync();
+            }catch(Throwable error){
+                BrowserCanvas.setStatus("error", "Mindustry Web UI sync failed: " + error.getClass().getName() + ": " + String.valueOf(error.getMessage()));
+                throw error;
+            }
+        });
     }
 
     /**
