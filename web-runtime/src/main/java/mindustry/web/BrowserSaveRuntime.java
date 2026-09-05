@@ -4,10 +4,15 @@ import arc.*;
 import arc.Files.FileType;
 import arc.files.*;
 import arc.graphics.*;
+import arc.struct.*;
 import arc.util.io.*;
 import mindustry.*;
+import mindustry.core.*;
 import mindustry.game.*;
+import mindustry.gen.*;
 import mindustry.io.*;
+import mindustry.maps.Map;
+import mindustry.world.*;
 import org.teavm.jso.JSBody;
 
 import java.io.*;
@@ -48,13 +53,11 @@ public final class BrowserSaveRuntime{
         Vars.tmpDirectory.mkdirs();
         Vars.schematicDirectory.mkdirs();
 
+        BrowserSave13.install();
         verifyMoveCopyDelete();
         verifyRealSaveMetaFormat();
+        verifyFullSaveWrite();
 
-        // BrowserSaves keeps upstream SaveSlot/SaveIO behavior but replaces desktop
-        // Future/ExecutorService metadata scanning with synchronous hydrated IndexedDB
-        // reads. The constructor's absolute preview loader is immediately replaced by
-        // the browser-local loader before any preview can be requested.
         BrowserSaves browserSaves = new BrowserSaves();
         Core.assets.setLoader(Texture.class, ".spreview", new BrowserSavePreviewLoader());
         browserSaves.load();
@@ -97,12 +100,6 @@ public final class BrowserSaveRuntime{
         }
     }
 
-    /**
-     * Build a genuine deflated Mindustry v13 save prefix with a real meta region,
-     * persist it through BrowserFi, then parse it with the stock SaveIO.getMeta().
-     * This tests the production MSAV header/version/string-map parser and Java zlib
-     * path without requiring World/Logic/Renderer to exist yet.
-     */
     private static void verifyRealSaveMetaFormat(){
         Fi file = Vars.saveDirectory.child("ci-meta.msav");
         Fi backup = SaveIO.backupFileFor(file);
@@ -157,6 +154,66 @@ public final class BrowserSaveRuntime{
         }
     }
 
+    /** Write every current v13 save region with the production SaveIO writer. */
+    private static void verifyFullSaveWrite(){
+        Fi file = Vars.saveDirectory.child("ci-full.msav");
+        Fi backup = SaveIO.backupFileFor(file);
+        file.delete();
+        backup.delete();
+
+        World previousWorld = Vars.world;
+        Map previousMap = Vars.state.map;
+        Rules previousRules = Vars.state.rules;
+        int previousWave = Vars.state.wave;
+        double previousTick = Vars.state.tick;
+        float previousWaveTime = Vars.state.wavetime;
+
+        try{
+            if(Groups.all == null){
+                Groups.init();
+            }
+
+            Vars.world = new World();
+            Vars.world.resize(4, 4).fill();
+            Vars.state.map = new Map(StringMap.of(
+                "name", "Web Full SaveIO Probe",
+                "author", "Mindustry Web",
+                "description", "Browser full save writer validation"
+            ));
+            Vars.state.rules = new Rules();
+            Vars.state.wave = 23;
+            Vars.state.tick = 321.5;
+            Vars.state.wavetime = 42f;
+
+            SaveIO.save(file);
+
+            if(!file.exists() || file.length() < 128 || !SaveIO.isSaveValid(file)){
+                throw new IllegalStateException("Stock SaveIO.save did not produce a valid persistent browser MSAV");
+            }
+
+            SaveMeta meta = SaveIO.getMeta(file);
+            if(meta == null
+            || meta.version != 13
+            || meta.wave != 23
+            || !"Web Full SaveIO Probe".equals(meta.tags.get("mapname"))
+            || meta.tags.getInt("width") != 4
+            || meta.tags.getInt("height") != 4
+            || meta.mods == null
+            || meta.mods.length != 0){
+                throw new IllegalStateException("Full browser SaveIO metadata validation failed");
+            }
+        }finally{
+            file.delete();
+            backup.delete();
+            Vars.world = previousWorld;
+            Vars.state.map = previousMap;
+            Vars.state.rules = previousRules;
+            Vars.state.wave = previousWave;
+            Vars.state.tick = previousTick;
+            Vars.state.wavetime = previousWaveTime;
+        }
+    }
+
     private static void writePair(DataOutputStream out, String key, String value) throws IOException{
         out.writeUTF(key);
         out.writeUTF(value);
@@ -168,6 +225,6 @@ public final class BrowserSaveRuntime{
         return true;
     }
 
-    @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-save-runtime','ready'); document.documentElement.setAttribute('data-mindustry-save-slots', String(count)); document.documentElement.setAttribute('data-mindustry-saveio-meta','ready');")
+    @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-save-runtime','ready'); document.documentElement.setAttribute('data-mindustry-save-slots', String(count)); document.documentElement.setAttribute('data-mindustry-saveio-meta','ready'); document.documentElement.setAttribute('data-mindustry-saveio-full','ready');")
     private static native void markReady(int count);
 }
