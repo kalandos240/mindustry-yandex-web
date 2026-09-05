@@ -207,6 +207,21 @@ public class WebGraphics extends Graphics{
         this.fullscreen = fullscreen;
     }
 
+    /**
+     * The Yandex/mobile Web target has no visible mouse cursor. Override the filename
+     * helpers as well as the Pixmap overload so stock Mindustry UI code cannot trigger
+     * cursor PNG reads just by initializing its Scene.
+     */
+    @Override
+    public Cursor newCursor(String filename, int scale){
+        return null;
+    }
+
+    @Override
+    public Cursor newCursor(String filename){
+        return null;
+    }
+
     @Override
     public Cursor newCursor(Pixmap pixmap, int xHotspot, int yHotspot){
         return null;
@@ -214,11 +229,11 @@ public class WebGraphics extends Graphics{
 
     @Override
     protected void setCursor(Cursor cursor){
-        // Implemented by the DOM cursor bridge in a later M1 step.
+        // Intentionally no-op: touch-first Web build has no custom cursor.
     }
 
     @Override
     protected void setSystemCursor(SystemCursor systemCursor){
-        // Implemented by the DOM cursor bridge in a later M1 step.
+        // Intentionally no-op: touch-first Web build has no system cursor changes.
     }
 }
