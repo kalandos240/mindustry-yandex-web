@@ -40,6 +40,12 @@ regex(
     "    private static void createLinks(){\n        links = new LinkEntry[0];\n    }\n\n    public static LinkEntry[] getLinks()",
     "Links.createLinks"
 )
+regex(
+    "ui/dialogs/AboutDialog.java",
+    r'''\n            table\.button\(Icon\.link, Styles\.clearNonei, \(\) -> \{\n                if\(link\.name\.equals\("wiki"\)\) Events\.fire\(Trigger\.openWiki\);\n\n                if\(!Core\.app\.openURI\(link\.link\)\)\{\n                    ui\.showErrorMessage\("@linkfail"\);\n                    Core\.app\.setClipboardText\(link\.link\);\n                \}\n            \}\)\.size\(h - 5, h\);''',
+    "",
+    "AboutDialog external link button"
+)
 
 # Main menu: remove Discord banner, Mods entry and any Steam Workshop entry. Local
 # About/Database/Settings remain available.
@@ -140,18 +146,18 @@ regex(
 
 # ModBrowserDialog is an online service and is not exposed in Yandex. Strip any
 # remaining direct external-navigation buttons from its details UI.
-path, text = read("ui/dialogs/ModBrowserDialog.java")
-text = re.sub(
+regex(
+    "ui/dialogs/ModBrowserDialog.java",
     r'''\n\s*sel\.buttons\.button\("@mods\.github\.open", Icon\.link, \(\) -> \{\n\s*Core\.app\.openURI\("https://github\.com/" \+ mod\.repo\);\n\s*\}\);''',
     "",
-    text,
+    "ModBrowserDialog repository button"
 )
-text = re.sub(
+regex(
+    "ui/dialogs/ModBrowserDialog.java",
     r'''\n\s*b\.button\("@mods\.github\.open-release", Icon\.link, \(\) -> Core\.app\.openURI\(release\.getString\("html_url"\)\)\);''',
     "",
-    text,
+    "ModBrowserDialog release button"
 )
-write(path, text)
 
 # Guardrail: after overlay application, no direct external-navigation call may
 # remain anywhere in user-facing UI/editor sources. Platform-level openURI is still
