@@ -41,6 +41,7 @@ public final class BrowserApplication extends WebApplicationBase{
         graphics.setWebGLVersion(BrowserCanvas.getWebGLMajor(config.canvasId));
         gl20 = new BrowserGL20(BrowserCanvas.getContext(config.canvasId));
         graphics.setGL20(gl20);
+        BrowserCanvas.resizeToDisplay(config.canvasId);
         updateGraphicsMetrics();
         Core.graphics = graphics;
 
@@ -76,8 +77,9 @@ public final class BrowserApplication extends WebApplicationBase{
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "resize";
-            BrowserCanvas.resizeToDisplay(config.canvasId);
-            updateGraphicsMetrics();
+            if(BrowserCanvas.resizeToDisplay(config.canvasId)){
+                updateGraphicsMetrics();
+            }
             graphics.updateFrame(timestamp);
             input.update();
             if(traceStartup) markFrameStage(phase, callbackIndex);
