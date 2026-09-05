@@ -152,12 +152,11 @@ public final class Bootstrap{
         Draw.proj(0f, 0f, width, height);
         Draw.color();
 
-        long before = SpriteBatch.totalDrawCalls;
+        // TextureRegion draws take SpriteBatch's direct drawSuper path while sorting is
+        // disabled, so totalDrawCalls is not updated for this overload. The authoritative
+        // browser verification is the GL error check plus framebuffer pixel readback below.
         Draw.rect(Vars.content.item("copper").uiIcon, width / 2f, height / 2f, 128f, 128f);
         Draw.flush();
-        if(SpriteBatch.totalDrawCalls <= before){
-            throw new IllegalStateException("Arc SpriteBatch did not submit the vanilla copper icon draw call");
-        }
 
         int error = Core.gl20.glGetError();
         if(error != GL20.GL_NO_ERROR){
