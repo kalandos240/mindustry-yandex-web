@@ -78,6 +78,7 @@ public final class BrowserApplication extends WebApplicationBase{
         // Yandex Games must not expose navigation to the upstream project's website,
         // GitHub, Discord, stores or any other external resource. Keep this blocked at
         // the platform boundary so future upstream UI additions cannot re-enable it.
+        markExternalNavigationBlocked();
         return false;
     }
 
@@ -96,4 +97,7 @@ public final class BrowserApplication extends WebApplicationBase{
         }
         """)
     private static native void writeClipboard(String text);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-navigation', 'blocked');")
+    private static native void markExternalNavigationBlocked();
 }
