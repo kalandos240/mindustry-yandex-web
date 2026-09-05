@@ -7,6 +7,7 @@ import arc.graphics.g2d.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.core.*;
+import mindustry.ctype.*;
 import mindustry.world.blocks.storage.*;
 
 /** First executable bridge between current Mindustry/Arc bytecode and a browser frame loop. */
@@ -64,11 +65,12 @@ public final class Bootstrap{
                 }
 
                 // Complete the client-side content lifecycle only after Core.atlas is the
-                // real vanilla atlas. loadColors() proves packaged block metadata is readable;
-                // load() resolves actual UI/full icons and every content-specific atlas region.
+                // real vanilla atlas. loadColors() proves packaged block metadata is readable.
+                // The diagnostic loader preserves ContentLoader.load()'s two-pass order while
+                // attaching the exact content type/name/phase to browser-only failures.
                 try{
                     Vars.content.loadColors();
-                    Vars.content.load();
+                    loadContentWithDiagnostics();
                     verifyContentRegions();
                 }catch(Throwable error){
                     BrowserCanvas.setStatus("error", "Mindustry Web content regions failed: " + describe(error));
@@ -124,6 +126,35 @@ public final class Bootstrap{
                 }
             }
         }, config);
+    }
+
+    private static void loadContentWithDiagnostics(){
+        for(ContentType type : ContentType.all){
+            for(Content content : Vars.content.getBy(type)){
+                try{
+                    content.loadIcon();
+                }catch(Throwable error){
+                    throw new IllegalStateException("loadIcon failed for " + contentLabel(content), error);
+                }
+            }
+        }
+
+        for(ContentType type : ContentType.all){
+            for(Content content : Vars.content.getBy(type)){
+                try{
+                    content.load();
+                }catch(Throwable error){
+                    throw new IllegalStateException("load failed for " + contentLabel(content), error);
+                }
+            }
+        }
+    }
+
+    private static String contentLabel(Content content){
+        if(content instanceof MappableContent mapped){
+            return content.getContentType().name() + ":" + mapped.name + "#" + content.id;
+        }
+        return content.getContentType().name() + ":" + content.toString();
     }
 
     private static void installAndVerifyFiles(){
