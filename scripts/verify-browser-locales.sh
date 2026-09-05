@@ -10,6 +10,10 @@ command -v google-chrome >/dev/null
 
 test -s "$EN_BUNDLE"
 test -s "$RU_BUNDLE"
+test -s "$WEB_DIR/assets/icons/icons.properties"
+for cursor in drill unload target repair; do
+  test -s "$WEB_DIR/assets/cursors/$cursor.png"
+done
 
 # The actual files that ship in the Yandex ZIP must not contain visible external
 # destinations or contact addresses. This is stricter than merely blocking clicks.
@@ -59,11 +63,12 @@ run_locale(){
 
   grep -q 'data-mindustry-web="ready"' "$dom"
   grep -q 'data-mindustry-ui-shell="ready"' "$dom"
+  grep -q 'data-mindustry-ui-sync="ready"' "$dom"
   grep -q 'data-mindustry-links="none"' "$dom"
   grep -q "data-mindustry-locale=\"$expected\"" "$dom"
   grep -q 'data-mindustry-network="local-only"' "$dom"
   grep -q 'data-mindustry-navigation="blocked"' "$dom"
-  echo "Browser locale $expected: ready, no-links, local-only"
+  echo "Browser locale $expected: Scene/Tex/Icon/Styles ready, no-links, local-only"
 }
 
 run_locale en
