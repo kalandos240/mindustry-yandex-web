@@ -3,6 +3,7 @@ package mindustry.web;
 import arc.*;
 import arc.files.*;
 import arc.util.*;
+import mindustry.*;
 import org.teavm.jso.JSBody;
 
 import java.util.*;
@@ -22,6 +23,10 @@ public final class BrowserI18n{
         require(russian, "play", null);
         require(russian, "campaign", null);
         require(russian, "settings", null);
+
+        // Yandex release exposes exactly two selectable languages. Do not inherit the
+        // upstream locale catalog or its special "router" pseudo-locale.
+        Vars.locales = new Locale[]{Locale.ENGLISH, new Locale("ru")};
 
         String requested = Core.settings == null ? "default" : Core.settings.getString("locale", "default");
         boolean useRussian;
