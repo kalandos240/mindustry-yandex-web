@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import gzip
+import struct
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,6 +13,23 @@ REPORT = ROOT / "work" / "web-performance-report.txt"
 JS_BASELINE = 8_718_418
 JS_LIMIT = 9_200_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
+
+
+def png_size(path: Path) -> tuple[int, int]:
+    with path.open("rb") as source:
+        header = source.read(24)
+    if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+        raise SystemExit(f"Invalid PNG while auditing GPU memory: {path}")
+    return struct.unpack(">II", header[16:24])
+
+
+def rgba_bytes(paths: list[Path]) -> int:
+    total = 0
+    for path in paths:
+        width, height = png_size(path)
+        total += width * height * 4
+    return total
+
 
 if not WEB.is_dir():
     raise SystemExit(f"Missing staged Web package: {WEB}")
@@ -26,8 +44,10 @@ total_bytes = sum(path.stat().st_size for path in files)
 with js.open("rb") as source:
     gzip_bytes = len(gzip.compress(source.read(), compresslevel=9))
 
-atlas_pngs = list((WEB / "assets" / "sprites").glob("sprites*.png"))
-font_pngs = list((WEB / "assets" / "webfonts").glob("*.png"))
+atlas_pngs = sorted((WEB / "assets" / "sprites").glob("sprites*.png"))
+font_pngs = sorted((WEB / "assets" / "webfonts").glob("*.png"))
+atlas_rgba = rgba_bytes(atlas_pngs)
+font_rgba = rgba_bytes(font_pngs)
 
 lines = [
     f"TeaVM JS bytes: {js_bytes}",
@@ -39,7 +59,10 @@ lines = [
     f"Yandex unpacked limit bytes: {YANDEX_UNPACKED_LIMIT}",
     f"Staged file count: {len(files)}",
     f"Atlas PNG pages: {len(atlas_pngs)}",
+    f"Atlas estimated RGBA GPU bytes: {atlas_rgba}",
     f"Baked font PNG pages: {len(font_pngs)}",
+    f"Fonts estimated RGBA GPU bytes: {font_rgba}",
+    f"Estimated staged texture RGBA GPU bytes: {atlas_rgba + font_rgba}",
 ]
 REPORT.parent.mkdir(parents=True, exist_ok=True)
 REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
