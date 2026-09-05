@@ -28,9 +28,16 @@ public final class BrowserI18n{
         // upstream locale catalog or its special "router" pseudo-locale.
         Vars.locales = new Locale[]{Locale.ENGLISH, new Locale("ru")};
 
+        // An explicit ?lang=en|ru is useful for deterministic platform/test startup and
+        // takes priority. Normal launches use the saved setting, then browser language.
+        String forced = queryLanguage();
         String requested = Core.settings == null ? "default" : Core.settings.getString("locale", "default");
         boolean useRussian;
-        if(requested == null || requested.isEmpty() || requested.equals("default")){
+        if("ru".equals(forced)){
+            useRussian = true;
+        }else if("en".equals(forced)){
+            useRussian = false;
+        }else if(requested == null || requested.isEmpty() || requested.equals("default")){
             useRussian = browserLanguage().toLowerCase(Locale.ROOT).startsWith("ru");
         }else{
             useRussian = requested.toLowerCase(Locale.ROOT).startsWith("ru");
@@ -52,6 +59,9 @@ public final class BrowserI18n{
             throw new IllegalStateException("Unexpected English localization value for " + key + ": " + value);
         }
     }
+
+    @JSBody(script = "var v = new URLSearchParams(location.search).get('lang'); return v === 'ru' || v === 'en' ? v : '';")
+    private static native String queryLanguage();
 
     @JSBody(script = "return (navigator.language || navigator.userLanguage || 'en');")
     private static native String browserLanguage();
