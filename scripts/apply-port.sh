@@ -52,6 +52,11 @@ if old not in text:
 path.write_text(text.replace(old, new))
 PY
 
+# Desktop Arc Sound lazy-loads with ExecutorService and calls JNI SoLoud. Keep all
+# sound call sites safe/no-op until the dedicated browser audio backend is wired;
+# this prevents unit/entity loading from pulling desktop threading/JNI into TeaVM.
+python3 "$ROOT_DIR/scripts/patch-arc-audio-web.py"
+
 # Arc's desktop unsafe buffers allocate/free native memory through JNI. TeaVM owns
 # JavaScript memory itself, so direct buffers can use the class-library allocator
 # and explicit native free becomes a no-op. Keep the rest of Buffers untouched
@@ -102,7 +107,8 @@ PY
 
 # The desktop SpriteBatch uses ForkJoinPool for sorting and requests a client-side
 # VertexArray. WebGL has no client-side vertex arrays, so the Web target must use
-# Arc's VBO path. Sorting also stays serial on the browser event loop.
+# Arc's VBO path. Sorting stays serial on the browser event loop and reuses its key
+# buffer so busy scenes do not allocate a new long[] every sorted frame.
 python3 - "$ARC_DIR/arc-core/src/arc/graphics/g2d/SpriteBatch.java" <<'PY'
 from pathlib import Path
 import sys
@@ -113,9 +119,9 @@ old_fields = '''    static ForkJoinHolder commonPool;\n    boolean multithreaded
 old_ctor = '''        if(multithreaded){\n            try{\n                commonPool = new ForkJoinHolder();\n            }catch(Throwable t){\n                multithreaded = false;\n            }\n        }\n'''
 old_mesh = '            mesh = new Mesh(true, false, size * 4, size * 6,'
 old_sort = '''    protected void sortRequests(){\n        if(multithreaded){\n            sortRequestsThreaded();\n        }else{\n            sortRequestsStandard();\n        }\n    }\n'''
-new_sort = '''    protected void sortRequests(){\n        int count = numRequests;\n        if(copy.length < count) copy = new DrawRequest[count + (count >> 3) + 1];\n        long[] keys = new long[count];\n        for(int i = 0; i < count; i++){\n            // High 32 bits preserve signed z ordering; low 32 bits preserve insertion order.\n            keys[i] = ((long)requestZ[i] << 32) | (i & 0xffffffffL);\n        }\n        Arrays.sort(keys);\n        for(int i = 0; i < count; i++){\n            copy[i] = requests[(int)keys[i]];\n        }\n    }\n'''
+new_sort = '''    protected void sortRequests(){\n        int count = numRequests;\n        if(copy.length < count) copy = new DrawRequest[count + (count >> 3) + 1];\n        if(sortKeys.length < count) sortKeys = new long[count + (count >> 3) + 1];\n        for(int i = 0; i < count; i++){\n            // High 32 bits preserve signed z ordering; low 32 bits preserve insertion order.\n            sortKeys[i] = ((long)requestZ[i] << 32) | (i & 0xffffffffL);\n        }\n        Arrays.sort(sortKeys, 0, count);\n        for(int i = 0; i < count; i++){\n            copy[i] = requests[(int)sortKeys[i]];\n        }\n    }\n'''
 for old, new, name in [
-    (old_fields, '    static ForkJoinHolder commonPool;\n', 'fields'),
+    (old_fields, '    static ForkJoinHolder commonPool;\n    long[] sortKeys = new long[0];\n', 'fields'),
     (old_ctor, '        // Web: serial request sorting; no ForkJoinPool is initialized.\n', 'constructor'),
     (old_mesh, '            mesh = new Mesh(false, false, size * 4, size * 6,', 'VBO mesh storage'),
     (old_sort, new_sort, 'sortRequests'),
@@ -189,14 +195,18 @@ PY
 mkdir -p "$MINDUSTRY_DIR/core/src/mindustry/net"
 cp "$MINDUSTRY_CORE_WEB_SOURCE_DIR/mindustry/net/Streamable.java" "$MINDUSTRY_DIR/core/src/mindustry/net/Streamable.java"
 
-# Stock mobile input is now part of the Web reachability graph one milestone before
-# the full Renderer module. Keep its lock/zoom transition safe while preserving the
-# original MobileInput implementation for all normal gameplay behavior.
+# The current main branch reads stock v13 saves back through SaveIO.load(). Keep
+# browser-specific load compatibility isolated from the writer overlay.
+python3 "$ROOT_DIR/scripts/patch-mindustry-save-load-web.py"
+
+# Stock mobile/desktop input is part of the Web reachability graph now. Patch only
+# the browser-incompatible lock/zoom, formation executor and anonymous config-class
+# reflection paths while preserving stock gameplay semantics.
 python3 "$ROOT_DIR/scripts/patch-mindustry-input-web.py" \
   "$MINDUSTRY_DIR/core/src/mindustry/input/InputHandler.java" \
   "$MINDUSTRY_DIR/core/src/mindustry/input/MobileInput.java"
 
 echo "Applied Arc Web overlay to $TARGET_DIR"
-echo "Applied Web-only Arc settings/core/buffer compatibility patches"
-echo "Applied Web single-thread asset and SpriteBatch VBO patches"
-echo "Applied Web-only Mindustry startup/network/stream/input patches"
+echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
+echo "Applied Web single-thread asset and allocation-stable SpriteBatch VBO patches"
+echo "Applied Web-only Mindustry startup/network/stream/save/input patches"
