@@ -138,6 +138,8 @@ jobs:
         run: |
           test -s web-runtime/build/web/index.html
           test -s web-runtime/build/web/mindustry.js
+          test -s web-runtime/build/web/yandex-platform.js
+          test -s web-runtime/build/web/browser-storage.js
           test -s web-runtime/build/web/assets-manifest.js
           test -s web-runtime/build/web/assets/sprites/error.png
           test -s web-runtime/build/web/assets/sprites/block_colors.png
@@ -163,6 +165,8 @@ jobs:
           grep -q 'mindustry-canvas' web-runtime/build/web/index.html
           grep -q 'mindustry-web-status' web-runtime/build/web/index.html
           grep -q 'data-mindustry-network' web-runtime/build/web/index.html
+          grep -q 'data-mindustry-storage' web-runtime/build/web/index.html
+          grep -q 'browser-storage.js' web-runtime/build/web/index.html
           grep -q 'assets-manifest.js' web-runtime/build/web/index.html
           grep -q 'sprites/error.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js
@@ -220,6 +224,7 @@ jobs:
           grep -Eq 'data-mindustry-gl="webgl(1|2)"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-network="local-only"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-storage="ready"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-navigation="blocked"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-links="none"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-font="ready"' /tmp/mindustry-web-dom.html
@@ -237,6 +242,9 @@ jobs:
 
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
+
+      - name: Verify persistent browser file recovery across reload
+        run: bash scripts/verify-browser-persistence.sh
 
       - name: Upload localization report
         if: always()
