@@ -25,12 +25,12 @@ text = text.replace(old_close, new_close, 1)
 unit_group_path.write_text(text, encoding="utf-8")
 
 # TeaVM 0.15 does not implement Class.isAnonymousClass(). Vanilla configuration routing
-# only needs to collapse anonymous subclasses to their declared superclass. Detect the
-# javac anonymous-class naming convention ($1, $2, ...) using Class.getName(), which is
-# supported by TeaVM, then preserve the same superclass behavior.
+# only needs to collapse anonymous subclasses to their declared superclass. The entity
+# processor feeds component method bodies through JavaPoet, where a literal dollar sign
+# is a format token; use its character code so the generated method remains processor-safe.
 text = building_comp_path.read_text(encoding="utf-8")
 old = """        //null is of type void.class; anonymous classes use their superclass.\n        Class<?> type = value == null ? void.class : value.getClass().isAnonymousClass() ? value.getClass().getSuperclass() : value.getClass();\n\n"""
-new = """        //null is of type void.class; anonymous classes use their superclass.\n        // Web: Class.isAnonymousClass() is not implemented by TeaVM. javac names\n        // anonymous classes with a numeric suffix after the final '$', so detect that\n        // shape without pulling unsupported reflection into the browser graph.\n        Class<?> type = value == null ? void.class : value.getClass();\n        if(value != null){\n            String className = type.getName();\n            int dollar = className.lastIndexOf('$');\n            boolean anonymous = dollar >= 0 && dollar + 1 < className.length();\n            for(int i = dollar + 1; anonymous && i < className.length(); i++){\n                char c = className.charAt(i);\n                anonymous = c >= '0' && c <= '9';\n            }\n            if(anonymous && type.getSuperclass() != null){\n                type = type.getSuperclass();\n            }\n        }\n\n"""
+new = """        //null is of type void.class; anonymous classes use their superclass.\n        // Web: Class.isAnonymousClass() is not implemented by TeaVM. Detect the javac\n        // anonymous-class numeric suffix without using unsupported reflection.\n        Class<?> type = value == null ? void.class : value.getClass();\n        if(value != null){\n            String className = type.getName();\n            int separator = className.lastIndexOf((char)36);\n            boolean anonymous = separator >= 0 && separator + 1 < className.length();\n            for(int i = separator + 1; anonymous && i < className.length(); i++){\n                char c = className.charAt(i);\n                anonymous = c >= '0' && c <= '9';\n            }\n            if(anonymous && type.getSuperclass() != null){\n                type = type.getSuperclass();\n            }\n        }\n\n"""
 if old not in text:
     raise SystemExit("BuildingComp anonymous-config patch no longer matches pinned upstream")
 text = text.replace(old, new, 1)
