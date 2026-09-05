@@ -59,6 +59,11 @@ tasks.register("stageWeb", Copy) {
         include "sprites/error.png"
         include "sprites/block_colors.png"
 
+        // Stock UI.loadSync() registers content glyphs from this local index.
+        // Cursor PNGs are deliberately not staged: WebGraphics overrides all cursor
+        // creation helpers as no-ops for the touch-first Yandex target.
+        include "icons/icons.properties"
+
         // Every runtime font is pre-baked by tools:webFontBake. Do not ship the
         // original WOFF/TTF sources: the browser never executes FreeType/JNI and
         // the Yandex archive stays smaller and fully self-contained.
