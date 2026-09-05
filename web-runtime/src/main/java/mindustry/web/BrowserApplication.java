@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.backend.web.*;
+import mindustry.*;
 import org.teavm.jso.*;
 
 /** Concrete TeaVM browser scheduler for the current Arc Application API. */
@@ -17,6 +18,7 @@ public final class BrowserApplication extends WebApplicationBase{
     private final BrowserGL20 gl20;
     private String clipboard = "";
     private boolean lastPlatformPaused;
+    private boolean lastGameplayActive;
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
         super(listener, config);
@@ -60,10 +62,23 @@ public final class BrowserApplication extends WebApplicationBase{
         // not advance Mindustry simulation/render callbacks while the platform is paused.
         if(!platformPaused){
             frame();
+            syncGameplayMarker();
         }
 
         input.postUpdate();
         requestAnimationFrame(frameCallback);
+    }
+
+    private void syncGameplayMarker(){
+        boolean gameplayActive = Vars.state != null && Vars.state.isPlaying();
+        if(gameplayActive == lastGameplayActive) return;
+
+        lastGameplayActive = gameplayActive;
+        if(gameplayActive){
+            BrowserYandex.gameplayStart();
+        }else{
+            BrowserYandex.gameplayStop();
+        }
     }
 
     private void updateGraphicsMetrics(){
@@ -99,6 +114,7 @@ public final class BrowserApplication extends WebApplicationBase{
     @Override
     public void exit(){
         super.exit();
+        BrowserYandex.gameplayStop();
         BrowserCanvas.setStatus("stopped", "Mindustry Web runtime stopped");
     }
 
