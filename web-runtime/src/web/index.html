@@ -24,8 +24,11 @@
             // Yandex SDK must initialize before the game chooses its locale or starts.
             await globalThis.__mindustryYandex.init();
 
-            // After platform initialization, game-owned runtime traffic is local-only.
-            // This protects the packaged game from accidental third-party dependencies.
+            // Off-platform development gets a hard same-origin network guard. On the
+            // Yandex host we intentionally do not monkey-patch browser networking after
+            // SDK initialization: Player/ads are allowed to use Yandex-owned transport.
+            // Game code itself stays offline by construction: compiled/staged files are
+            // URL-free, WebNetProvider exposes no remote transport, and openURI is blocked.
             const blocked = [];
             globalThis.__mindustryExternalRequests = blocked;
 
@@ -50,46 +53,54 @@
                 throw new Error(message);
             }
 
-            const nativeFetch = globalThis.fetch.bind(globalThis);
-            globalThis.fetch = (input, init) => {
-                requireLocal(input, 'fetch');
-                return nativeFetch(input, init);
-            };
-
-            if(globalThis.XMLHttpRequest){
-                const nativeOpen = XMLHttpRequest.prototype.open;
-                XMLHttpRequest.prototype.open = function(method, url, ...rest){
-                    requireLocal(url, 'xhr');
-                    return nativeOpen.call(this, method, url, ...rest);
+            if(!globalThis.__mindustryYandex.available){
+                const nativeFetch = globalThis.fetch.bind(globalThis);
+                globalThis.fetch = (input, init) => {
+                    requireLocal(input, 'fetch');
+                    return nativeFetch(input, init);
                 };
+
+                if(globalThis.XMLHttpRequest){
+                    const nativeOpen = XMLHttpRequest.prototype.open;
+                    XMLHttpRequest.prototype.open = function(method, url, ...rest){
+                        requireLocal(url, 'xhr');
+                        return nativeOpen.call(this, method, url, ...rest);
+                    };
+                }
+
+                if(globalThis.WebSocket){
+                    const NativeWebSocket = globalThis.WebSocket;
+                    globalThis.WebSocket = function(url, protocols){
+                        requireLocal(url, 'websocket');
+                        return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
+                    };
+                    globalThis.WebSocket.prototype = NativeWebSocket.prototype;
+                }
+
+                if(globalThis.EventSource){
+                    const NativeEventSource = globalThis.EventSource;
+                    globalThis.EventSource = function(url, init){
+                        requireLocal(url, 'eventsource');
+                        return init === undefined ? new NativeEventSource(url) : new NativeEventSource(url, init);
+                    };
+                    globalThis.EventSource.prototype = NativeEventSource.prototype;
+                }
+
+                if(navigator.sendBeacon){
+                    const nativeBeacon = navigator.sendBeacon.bind(navigator);
+                    navigator.sendBeacon = (url, data) => {
+                        requireLocal(url, 'beacon');
+                        return nativeBeacon(url, data);
+                    };
+                }
+
+                root.setAttribute('data-mindustry-network', 'local-only');
+            }else{
+                root.setAttribute('data-mindustry-network', 'yandex-sdk-only');
             }
 
-            if(globalThis.WebSocket){
-                const NativeWebSocket = globalThis.WebSocket;
-                globalThis.WebSocket = function(url, protocols){
-                    requireLocal(url, 'websocket');
-                    return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
-                };
-                globalThis.WebSocket.prototype = NativeWebSocket.prototype;
-            }
-
-            if(globalThis.EventSource){
-                const NativeEventSource = globalThis.EventSource;
-                globalThis.EventSource = function(url, init){
-                    requireLocal(url, 'eventsource');
-                    return init === undefined ? new NativeEventSource(url) : new NativeEventSource(url, init);
-                };
-                globalThis.EventSource.prototype = NativeEventSource.prototype;
-            }
-
-            if(navigator.sendBeacon){
-                const nativeBeacon = navigator.sendBeacon.bind(navigator);
-                navigator.sendBeacon = (url, data) => {
-                    requireLocal(url, 'beacon');
-                    return nativeBeacon(url, data);
-                };
-            }
-
+            // External navigation is never needed by the SDK; keep window.open local-only
+            // on every host so game UI cannot escape to websites.
             const nativeWindowOpen = window.open.bind(window);
             window.open = (url, target, features) => {
                 try{
@@ -103,7 +114,6 @@
 
             document.addEventListener('contextmenu', event => event.preventDefault(), {passive: false});
             document.addEventListener('selectstart', event => event.preventDefault(), {passive: false});
-            root.setAttribute('data-mindustry-network', 'local-only');
 
             function loadScript(path){
                 return new Promise((resolve, reject) => {
