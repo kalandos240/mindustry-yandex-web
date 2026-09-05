@@ -81,6 +81,12 @@ public final class BrowserCanvas{
 
     @JSBody(params = {"state", "text"}, script = """
         document.documentElement.dataset.mindustryWeb = state;
+        if (state === 'error') {
+            const compact = String(text == null ? '' : text).replace(/\s+/g, ' ').slice(0, 800);
+            document.documentElement.setAttribute('data-mindustry-error', compact);
+        } else {
+            document.documentElement.removeAttribute('data-mindustry-error');
+        }
         const status = document.getElementById('mindustry-web-status');
         if (status) status.textContent = text;
         """)
