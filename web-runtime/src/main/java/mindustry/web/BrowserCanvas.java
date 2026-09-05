@@ -72,10 +72,17 @@ public final class BrowserCanvas{
         """)
     public static native void clearSmokeFrame(String canvasId, double timeSeconds);
 
+    public static void setStatus(String state, String text){
+        setStatusDom(state, text);
+        if("ready".equals(state)){
+            BrowserYandex.loadingReady();
+        }
+    }
+
     @JSBody(params = {"state", "text"}, script = """
         document.documentElement.dataset.mindustryWeb = state;
         const status = document.getElementById('mindustry-web-status');
         if (status) status.textContent = text;
         """)
-    public static native void setStatus(String state, String text);
+    private static native void setStatusDom(String state, String text);
 }
