@@ -28,19 +28,24 @@ public final class BrowserI18n{
         // upstream locale catalog or its special "router" pseudo-locale.
         Vars.locales = new Locale[]{Locale.ENGLISH, new Locale("ru")};
 
-        // An explicit ?lang=en|ru is useful for deterministic platform/test startup and
-        // takes priority. Normal launches use the saved setting, then browser language.
+        // ?lang=en|ru is reserved for deterministic CI/debug startup. A previously
+        // selected in-game locale remains explicit user choice. Otherwise the required
+        // Yandex SDK environment.i18n.lang is the authoritative startup language, with
+        // navigator.language only as an off-platform development fallback.
         String forced = queryLanguage();
         String requested = Core.settings == null ? "default" : Core.settings.getString("locale", "default");
+        String platform = yandexLanguage();
+        String automatic = platform == null || platform.isEmpty() ? browserLanguage() : platform;
+
         boolean useRussian;
         if("ru".equals(forced)){
             useRussian = true;
         }else if("en".equals(forced)){
             useRussian = false;
-        }else if(requested == null || requested.isEmpty() || requested.equals("default")){
-            useRussian = browserLanguage().toLowerCase(Locale.ROOT).startsWith("ru");
-        }else{
+        }else if(requested != null && !requested.isEmpty() && !requested.equals("default")){
             useRussian = requested.toLowerCase(Locale.ROOT).startsWith("ru");
+        }else{
+            useRussian = automatic.toLowerCase(Locale.ROOT).startsWith("ru");
         }
 
         Locale chosen = useRussian ? new Locale("ru") : Locale.ENGLISH;
@@ -62,6 +67,9 @@ public final class BrowserI18n{
 
     @JSBody(script = "var v = new URLSearchParams(location.search).get('lang'); return v === 'ru' || v === 'en' ? v : '';")
     private static native String queryLanguage();
+
+    @JSBody(script = "return globalThis.__mindustryYandex && globalThis.__mindustryYandex.locale ? globalThis.__mindustryYandex.locale : '';")
+    private static native String yandexLanguage();
 
     @JSBody(script = "return (navigator.language || navigator.userLanguage || 'en');")
     private static native String browserLanguage();

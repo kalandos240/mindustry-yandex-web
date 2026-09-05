@@ -11,6 +11,10 @@ command -v google-chrome >/dev/null
 test -s "$EN_BUNDLE"
 test -s "$RU_BUNDLE"
 
+# Validate the actual staged directory against machine-checkable Yandex release
+# requirements before opening it in a browser.
+bash "$ROOT_DIR/scripts/audit-yandex-release.sh"
+
 # The actual files that ship in the Yandex ZIP must not contain visible external
 # destinations or contact addresses. This is stricter than merely blocking clicks.
 for bundle in "$EN_BUNDLE" "$RU_BUNDLE"; do
@@ -33,7 +37,8 @@ fi
 cd "$WEB_DIR"
 python3 -m http.server 8081 --bind 127.0.0.1 >/tmp/mindustry-web-i18n-http.log 2>&1 &
 server_pid=$!
-trap 'kill $server_pid 2>/dev/null || true' EXIT
+cleanup_locale(){ kill "$server_pid" 2>/dev/null || true; }
+trap cleanup_locale EXIT
 for i in {1..20}; do
   if curl -fsS http://127.0.0.1:8081/index.html >/dev/null; then break; fi
   sleep 0.25
@@ -68,3 +73,8 @@ run_locale(){
 
 run_locale en
 run_locale ru
+
+# Stop the fallback/local browser server before the independent SDK-backed test.
+cleanup_locale
+trap - EXIT
+bash "$ROOT_DIR/scripts/verify-yandex-sdk.sh"

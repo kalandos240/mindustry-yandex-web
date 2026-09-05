@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.backend.web.*;
+import mindustry.*;
 import org.teavm.jso.*;
 
 /** Concrete TeaVM browser scheduler for the current Arc Application API. */
@@ -11,11 +12,21 @@ public final class BrowserApplication extends WebApplicationBase{
         void run(double timestamp);
     }
 
+    @JSFunctor
+    private interface LifecycleCallback extends JSObject{
+        void run();
+    }
+
     private final FrameCallback frameCallback = this::onAnimationFrame;
+    private final LifecycleCallback platformPauseCallback = () -> setPlatformPaused(true);
+    private final LifecycleCallback platformResumeCallback = () -> setPlatformPaused(false);
     private final WebGraphics graphics;
     private final WebInput input;
     private final BrowserGL20 gl20;
     private String clipboard = "";
+    private boolean platformPaused;
+    private boolean lastPlatformPaused;
+    private boolean lastGameplayActive;
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
         super(listener, config);
@@ -36,6 +47,16 @@ public final class BrowserApplication extends WebApplicationBase{
         Core.input = input;
         BrowserInputBridge.install(config.canvasId, input);
 
+        // Portal pause/resume events are external to requestAnimationFrame. Observe them
+        // directly so a resume can be accepted even while a browser throttles animation
+        // frames for an ad, background tab or other platform interruption. A sampled
+        // fallback remains in onAnimationFrame in case an event was emitted before this
+        // application object was installed.
+        platformPaused = BrowserYandex.paused();
+        lastPlatformPaused = platformPaused;
+        if(platformPaused) BrowserYandex.markPauseState("paused");
+        installPlatformLifecycle(platformPauseCallback, platformResumeCallback);
+
         initialize();
         requestAnimationFrame(frameCallback);
     }
@@ -47,9 +68,39 @@ public final class BrowserApplication extends WebApplicationBase{
         updateGraphicsMetrics();
         graphics.updateFrame(timestamp);
         input.update();
-        frame();
+
+        boolean sampledPause = BrowserYandex.paused();
+        if(sampledPause != platformPaused) setPlatformPaused(sampledPause);
+
+        // game_api_pause is sent for ads, tab/background changes and other portal
+        // interruptions. Keep the scheduler alive, but do not advance Mindustry
+        // simulation/render callbacks while the platform is paused.
+        if(!platformPaused){
+            frame();
+            syncGameplayMarker();
+        }
+
         input.postUpdate();
         requestAnimationFrame(frameCallback);
+    }
+
+    private void setPlatformPaused(boolean paused){
+        platformPaused = paused;
+        if(paused == lastPlatformPaused) return;
+        lastPlatformPaused = paused;
+        BrowserYandex.markPauseState(paused ? "paused" : "running");
+    }
+
+    private void syncGameplayMarker(){
+        boolean gameplayActive = Vars.state != null && Vars.state.isPlaying();
+        if(gameplayActive == lastGameplayActive) return;
+
+        lastGameplayActive = gameplayActive;
+        if(gameplayActive){
+            BrowserYandex.gameplayStart();
+        }else{
+            BrowserYandex.gameplayStop();
+        }
     }
 
     private void updateGraphicsMetrics(){
@@ -85,11 +136,18 @@ public final class BrowserApplication extends WebApplicationBase{
     @Override
     public void exit(){
         super.exit();
+        BrowserYandex.gameplayStop();
         BrowserCanvas.setStatus("stopped", "Mindustry Web runtime stopped");
     }
 
     @JSBody(params = {"callback"}, script = "window.requestAnimationFrame(callback);")
     private static native void requestAnimationFrame(FrameCallback callback);
+
+    @JSBody(params = {"pauseCallback", "resumeCallback"}, script = """
+        window.addEventListener('mindustry:yandex-pause', pauseCallback);
+        window.addEventListener('mindustry:yandex-resume', resumeCallback);
+        """)
+    private static native void installPlatformLifecycle(LifecycleCallback pauseCallback, LifecycleCallback resumeCallback);
 
     @JSBody(params = {"text"}, script = """
         if (navigator.clipboard && navigator.clipboard.writeText) {

@@ -1,24 +1,31 @@
 <!doctype html>
-<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing">
+<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing" data-yandex-sdk="booting">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <title>Mindustry Web</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Mindustry</title>
     <style>
-        html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #111; color: #fff; font-family: sans-serif; }
-        #mindustry-canvas { display: block; width: 100vw; height: 100vh; }
+        html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; background: #111; color: #fff; font-family: sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        #mindustry-canvas { display: block; width: 100vw; height: 100vh; touch-action: none; outline: none; }
         #mindustry-web-status { position: fixed; left: 12px; bottom: 12px; z-index: 2; font-size: 12px; opacity: .75; pointer-events: none; }
     </style>
 </head>
 <body>
-    <canvas id="mindustry-canvas" width="1280" height="720"></canvas>
-    <div id="mindustry-web-status">Booting Mindustry Web runtime...</div>
+    <canvas id="mindustry-canvas" width="1280" height="720" tabindex="0"></canvas>
+    <div id="mindustry-web-status">Initializing Yandex Games...</div>
+    <script src="yandex-platform.js"></script>
     <script>
-        // Yandex build invariant: game-owned runtime traffic is local-only. Assets may
-        // come from the uploaded archive (same origin), data: or blob:. Any attempt to
-        // reach another host is recorded, blocked and therefore fails CI immediately.
-        (() => {
+        (async () => {
             const root = document.documentElement;
+            const status = document.getElementById('mindustry-web-status');
+
+            // Yandex SDK must initialize before the game chooses its locale or starts.
+            await globalThis.__mindustryYandex.init();
+
+            // After platform initialization, game-owned runtime traffic is local-only.
+            // This protects the packaged game from accidental third-party dependencies.
             const blocked = [];
             globalThis.__mindustryExternalRequests = blocked;
 
@@ -94,14 +101,25 @@
                 return nativeWindowOpen(url, target, features);
             };
 
+            document.addEventListener('contextmenu', event => event.preventDefault(), {passive: false});
+            document.addEventListener('selectstart', event => event.preventDefault(), {passive: false});
             root.setAttribute('data-mindustry-network', 'local-only');
-        })();
-    </script>
-    <script src="assets-manifest.js"></script>
-    <script src="mindustry.js"></script>
-    <script>
-        (async () => {
-            const status = document.getElementById('mindustry-web-status');
+
+            function loadScript(path){
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = path;
+                    script.async = false;
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error('Local script load failed: ' + path));
+                    document.body.appendChild(script);
+                });
+            }
+
+            status.textContent = 'Loading Mindustry runtime...';
+            await loadScript('assets-manifest.js');
+            await loadScript('mindustry.js');
+
             const manifest = globalThis.__mindustryAssetManifest || [];
             const cache = Object.create(null);
             globalThis.__mindustryAssetCache = cache;
@@ -130,16 +148,13 @@
             for(let i = 0; i < workers; i++) tasks.push(preloadWorker());
             await Promise.all(tasks);
 
-            status.textContent = 'Starting Mindustry Web runtime...';
+            status.textContent = 'Starting Mindustry...';
             main();
         })().catch(error => {
-            // Java startup stages report a much more precise failure through
-            // BrowserCanvas.setStatus(). Do not overwrite that diagnostic with
-            // TeaVM's occasionally opaque JS wrapper value (for example Error: null).
             const root = document.documentElement;
             if(root.getAttribute('data-mindustry-web') !== 'error'){
                 root.setAttribute('data-mindustry-web', 'error');
-                document.getElementById('mindustry-web-status').textContent = 'Mindustry Web asset bootstrap failed: ' + error;
+                document.getElementById('mindustry-web-status').textContent = 'Mindustry Web bootstrap failed: ' + error;
             }
             console.error(error);
         });
