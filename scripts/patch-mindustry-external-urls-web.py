@@ -86,7 +86,10 @@ patch_arc("util/serialization/Json.java", [
      'Json.getDefaultValues anonymous class'),
     ('if(knownType != null && knownType.isAnonymousClass()){',
      'if(knownType != null && webIsAnonymousClass(knownType)){',
-     'Json.writeValue anonymous class'),
+     'Json.writeValue knownType anonymous class'),
+    ('Class actualType = value.getClass().isAnonymousClass() ? value.getClass().getSuperclass() : value.getClass();',
+     'Class actualType = webIsAnonymousClass(value.getClass()) ? value.getClass().getSuperclass() : value.getClass();',
+     'Json.writeValue actualType anonymous class'),
 ])
 
 # JsonIO has one additional direct anonymous-class check in the MapObjectives
