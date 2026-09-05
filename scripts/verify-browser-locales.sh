@@ -48,35 +48,27 @@ run_locale(){
   local expected="$1"
   local profile="/tmp/mindustry-web-profile-$expected"
   local dom="/tmp/mindustry-web-$expected.html"
+  local cdp_port="$2"
   rm -rf "$profile"
 
-  # IndexedDB completion depends on real browser I/O tasks. Do not use Chromium
-  # virtual time here: it can fast-forward timers and dump the DOM while IDB is
-  # still opening/hydrating. A real timeout tests the storage path users run.
-  google-chrome \
-    --headless=new \
-    --no-sandbox \
-    --disable-dev-shm-usage \
-    --use-gl=angle \
-    --use-angle=swiftshader \
-    --enable-unsafe-swiftshader \
-    --timeout=20000 \
-    --user-data-dir="$profile" \
-    --dump-dom \
-    "http://127.0.0.1:8081/index.html?lang=$expected" > "$dom"
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:8081/index.html?lang=$expected" \
+    --profile "$profile" \
+    --port "$cdp_port" \
+    --timeout 30 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-ui-shell="ready"' \
+    --require 'data-mindustry-links="none"' \
+    --require "data-mindustry-locale=\"$expected\"" \
+    --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-storage="ready"' \
+    --require 'data-mindustry-navigation="blocked"' > "$dom"
 
-  grep -q 'data-mindustry-web="ready"' "$dom"
-  grep -q 'data-mindustry-ui-shell="ready"' "$dom"
-  grep -q 'data-mindustry-links="none"' "$dom"
-  grep -q "data-mindustry-locale=\"$expected\"" "$dom"
-  grep -q 'data-mindustry-network="local-only"' "$dom"
-  grep -q 'data-mindustry-storage="ready"' "$dom"
-  grep -q 'data-mindustry-navigation="blocked"' "$dom"
   echo "Browser locale $expected: ready, storage-ready, no-links, local-only"
 }
 
-run_locale en
-run_locale ru
+run_locale en 9224
+run_locale ru 9225
 
 # Stop the fallback/local browser server before the independent SDK-backed test.
 cleanup_locale
