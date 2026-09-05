@@ -136,4 +136,15 @@ patch("io/SaveVersion.java", [
      'SaveVersion controlledType metadata'),
 ])
 
+# SaveVersion.writeMeta() does not store a "version" tag, even though getMeta()
+# reads one. The authoritative format version is already present in the outer MSAV
+# header and SaveIO reads it before selecting the codec. Preserve the stock file
+# format and expose that authoritative value through SaveMeta for browser saves and
+# existing imported saves alike.
+patch("io/SaveIO.java", [
+    ('            SaveMeta meta = ver.getMeta(stream);\n            stream.close();\n            return meta;',
+     '            SaveMeta meta = ver.getMeta(stream);\n            meta.version = version; // Web: use the authoritative MSAV header version.\n            stream.close();\n            return meta;',
+     'SaveIO SaveMeta header version'),
+])
+
 print("Stripped upstream external URLs and applied browser-safe save serialization overlays")
