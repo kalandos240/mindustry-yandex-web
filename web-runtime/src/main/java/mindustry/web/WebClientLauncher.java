@@ -16,13 +16,7 @@ import org.teavm.jso.JSBody;
 
 import static mindustry.Vars.*;
 
-/**
- * Browser-specific Mindustry client startup.
- *
- * The desktop ClientLauncher setup eagerly wires networking, native FreeType,
- * mod scripting, editor tooling and JVM worker pools. Those systems are added
- * back to the Web target only after a browser-native implementation exists.
- */
+/** Browser-specific Mindustry client startup. */
 public final class WebClientLauncher extends ClientLauncher{
     private final NetProvider netProvider = new WebNetProvider();
     private UI uiShell;
@@ -49,18 +43,12 @@ public final class WebClientLauncher extends ClientLauncher{
         Core.assets = new AssetManager();
         tree = new FileTree();
 
-        // Yandex invariant: URI navigation is unavailable at the Arc platform boundary.
-        // Keep the probe free of an actual URL literal so the final TeaVM bundle itself
-        // contains no hidden website strings.
         if(Core.app.openURI("external-navigation-probe")){
             throw new IllegalStateException("Browser platform unexpectedly allowed URI navigation");
         }
         markNoLinksReady();
 
         BrowserFonts.loadAndVerifyRendering();
-
-        // Localization must be selected before createBaseContent(): content constructors
-        // resolve localized names/descriptions from Core.bundle and retain them.
         BrowserI18n.loadAndVerify();
 
         Vars.net = new Net(platform.getNet());
@@ -74,18 +62,17 @@ public final class WebClientLauncher extends ClientLauncher{
         content.createBaseContent();
         content.init();
 
-        // Match stock ClientLauncher: the singleton Vars.ui and the module instance are
-        // the same object before any Scene/dialog code becomes reachable.
+        // Establish only the browser persistence/Saves substrate. Stock Control is
+        // intentionally not constructed yet because it reaches audio, Mods, NetServer,
+        // full HUD and editor paths that are still outside the Web release graph.
+        BrowserSaveRuntime.init();
+
         Vars.ui = uiShell = new UI();
         if(Fonts.def == null || Fonts.outline == null || Fonts.icon == null || Fonts.logic == null){
             throw new IllegalStateException("Mindustry UI shell lost baked Web font bindings");
         }
         markUiShellReady();
 
-        // Bootstrap.init() continues synchronously after setup(), loading the real atlas
-        // and all vanilla content regions. Arc Application runnables execute at the end
-        // of the first browser frame, so this preserves the proven bootstrap order while
-        // advancing the stock UI only after those resources exist.
         Core.app.post(() -> {
             try{
                 loadUiSync();
@@ -96,11 +83,6 @@ public final class WebClientLauncher extends ClientLauncher{
         });
     }
 
-    /**
-     * Runs the stock synchronous UI skin phase once the real vanilla atlas/content
-     * regions are live. This creates Arc Scene and Mindustry Tex/Icon/Styles, then
-     * registers atlas-backed content glyphs into the baked fonts.
-     */
     public void loadUiSync(){
         if(uiSyncLoaded) return;
         if(uiShell == null || Core.atlas == null){
@@ -122,18 +104,11 @@ public final class WebClientLauncher extends ClientLauncher{
         markUiSyncReady();
     }
 
-    public boolean hasUiShell(){
-        return uiShell != null;
-    }
-
-    public boolean hasUiSync(){
-        return uiSyncLoaded;
-    }
+    public boolean hasUiShell(){ return uiShell != null; }
+    public boolean hasUiSync(){ return uiSyncLoaded; }
 
     @Override
-    public NetProvider getNet(){
-        return netProvider;
-    }
+    public NetProvider getNet(){ return netProvider; }
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-links', 'none');")
     private static native void markNoLinksReady();
