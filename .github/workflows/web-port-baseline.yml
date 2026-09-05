@@ -87,6 +87,19 @@ jobs:
           echo "Vanilla atlas pages: $pages"
           test "$pages" -gt 0
 
+      - name: Bake browser-safe Mindustry UI font
+        run: |
+          bash scripts/install-web-font-baker.sh
+          cd work/Mindustry
+          chmod +x gradlew
+          ./gradlew tools:webFontBake --no-daemon --stacktrace
+          test -s core/assets/webfonts/default.fnt
+          test -s core/assets/webfonts/default-0.png
+          pages="$(find core/assets/webfonts -maxdepth 1 -type f -name 'default-*.png' | wc -l)"
+          echo "Baked BMFont bytes: $(wc -c < core/assets/webfonts/default.fnt)"
+          echo "Baked font pages: $pages"
+          test "$pages" -gt 0
+
       - name: Apply current Web compatibility overlays
         run: |
           bash scripts/apply-port.sh
@@ -118,20 +131,40 @@ jobs:
           test -s web-runtime/build/web/assets/sprites/block_colors.png
           test -s web-runtime/build/web/assets/sprites/sprites.aatls
           test -s web-runtime/build/web/assets/sprites/sprites.png
+          test -s web-runtime/build/web/assets/webfonts/default.fnt
+          test -s web-runtime/build/web/assets/webfonts/default-0.png
+          test -s web-runtime/build/web/assets/bundles/bundle_ru.properties
           grep -q 'mindustry-canvas' web-runtime/build/web/index.html
           grep -q 'mindustry-web-status' web-runtime/build/web/index.html
+          grep -q 'data-mindustry-network' web-runtime/build/web/index.html
           grep -q 'assets-manifest.js' web-runtime/build/web/index.html
           grep -q 'sprites/error.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.aatls' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'webfonts/default.fnt' web-runtime/build/web/assets-manifest.js
+          grep -q 'webfonts/default-0.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'bundles/bundle_ru.properties' web-runtime/build/web/assets-manifest.js
           echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
           echo "PNG smoke bytes: $(wc -c < web-runtime/build/web/assets/sprites/error.png)"
           echo "Block colors bytes: $(wc -c < web-runtime/build/web/assets/sprites/block_colors.png)"
           echo "Staged AATLS bytes: $(wc -c < web-runtime/build/web/assets/sprites/sprites.aatls)"
           echo "Staged atlas pages: $(find web-runtime/build/web/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)"
+          echo "Staged font pages: $(find web-runtime/build/web/assets/webfonts -maxdepth 1 -type f -name 'default-*.png' | wc -l)"
 
-      - name: Execute Mindustry core, content, SpriteBatch frame, input and settings in headless Chrome
+      - name: Enforce self-contained Yandex package
+        run: |
+          # Deployment entrypoints/metadata must never contain an absolute external host.
+          # Generated TeaVM bytecode may retain inert upstream URL strings, so behavior is
+          # enforced separately at the Arc platform boundary and by the runtime network guard.
+          if grep -REn --include='*.html' --include='*.css' --include='*.fnt' --include='assets-manifest.js' 'https?://|wss?://' web-runtime/build/web; then
+            echo 'External URL found in deployable entrypoint/metadata.' >&2
+            exit 1
+          fi
+          grep -q "requireLocal(input, 'fetch')" web-runtime/build/web/index.html
+          grep -q "data-mindustry-network', 'local-only'" web-runtime/build/web/index.html
+
+      - name: Execute Mindustry core, content, fonts, local-only network, input and settings in headless Chrome
         run: |
           command -v google-chrome
           cd web-runtime/build/web
@@ -156,6 +189,9 @@ jobs:
           grep -q 'data-mindustry-web="ready"' /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-gl="webgl(1|2)"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-network="local-only"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-navigation="blocked"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-font="ready"' /tmp/mindustry-web-dom.html
           grep -q 'Mindustry core' /tmp/mindustry-web-dom.html
           grep -q 'Arc GL20 ready' /tmp/mindustry-web-dom.html
           grep -q 'binary-png@Core.files' /tmp/mindustry-web-dom.html
