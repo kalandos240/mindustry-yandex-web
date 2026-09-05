@@ -87,18 +87,19 @@ jobs:
           echo "Vanilla atlas pages: $pages"
           test "$pages" -gt 0
 
-      - name: Bake browser-safe Mindustry UI font
+      - name: Bake browser-safe Mindustry UI fonts
         run: |
           bash scripts/install-web-font-baker.sh
           cd work/Mindustry
           chmod +x gradlew
           ./gradlew tools:webFontBake --no-daemon --stacktrace
-          test -s core/assets/webfonts/default.fnt
-          test -s core/assets/webfonts/default-0.png
-          pages="$(find core/assets/webfonts -maxdepth 1 -type f -name 'default-*.png' | wc -l)"
-          echo "Baked BMFont bytes: $(wc -c < core/assets/webfonts/default.fnt)"
-          echo "Baked font pages: $pages"
-          test "$pages" -gt 0
+          for name in default outline monospace icon iconLarge tech logic; do
+            test -s "core/assets/webfonts/$name.fnt"
+            test -s "core/assets/webfonts/$name-0.png"
+            pages="$(find core/assets/webfonts -maxdepth 1 -type f -name "$name-*.png" | wc -l)"
+            echo "Baked font $name: fnt=$(wc -c < "core/assets/webfonts/$name.fnt") bytes pages=$pages"
+            test "$pages" -gt 0
+          done
 
       - name: Apply current Web compatibility overlays
         run: |
@@ -131,9 +132,18 @@ jobs:
           test -s web-runtime/build/web/assets/sprites/block_colors.png
           test -s web-runtime/build/web/assets/sprites/sprites.aatls
           test -s web-runtime/build/web/assets/sprites/sprites.png
-          test -s web-runtime/build/web/assets/webfonts/default.fnt
-          test -s web-runtime/build/web/assets/webfonts/default-0.png
           test -s web-runtime/build/web/assets/bundles/bundle_ru.properties
+          for name in default outline monospace icon iconLarge tech logic; do
+            test -s "web-runtime/build/web/assets/webfonts/$name.fnt"
+            test -s "web-runtime/build/web/assets/webfonts/$name-0.png"
+            grep -q "webfonts/$name.fnt" web-runtime/build/web/assets-manifest.js
+            grep -q "webfonts/$name-0.png" web-runtime/build/web/assets-manifest.js
+          done
+          test ! -e web-runtime/build/web/assets/fonts/font.woff
+          test ! -e web-runtime/build/web/assets/fonts/monospace.woff
+          test ! -e web-runtime/build/web/assets/fonts/icon.ttf
+          test ! -e web-runtime/build/web/assets/fonts/logic.ttf
+          test ! -e web-runtime/build/web/assets/fonts/tech.ttf
           grep -q 'mindustry-canvas' web-runtime/build/web/index.html
           grep -q 'mindustry-web-status' web-runtime/build/web/index.html
           grep -q 'data-mindustry-network' web-runtime/build/web/index.html
@@ -142,15 +152,11 @@ jobs:
           grep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.aatls' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.png' web-runtime/build/web/assets-manifest.js
-          grep -q 'webfonts/default.fnt' web-runtime/build/web/assets-manifest.js
-          grep -q 'webfonts/default-0.png' web-runtime/build/web/assets-manifest.js
           grep -q 'bundles/bundle_ru.properties' web-runtime/build/web/assets-manifest.js
           echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
-          echo "PNG smoke bytes: $(wc -c < web-runtime/build/web/assets/sprites/error.png)"
-          echo "Block colors bytes: $(wc -c < web-runtime/build/web/assets/sprites/block_colors.png)"
           echo "Staged AATLS bytes: $(wc -c < web-runtime/build/web/assets/sprites/sprites.aatls)"
           echo "Staged atlas pages: $(find web-runtime/build/web/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)"
-          echo "Staged font pages: $(find web-runtime/build/web/assets/webfonts -maxdepth 1 -type f -name 'default-*.png' | wc -l)"
+          echo "Total baked font PNGs: $(find web-runtime/build/web/assets/webfonts -maxdepth 1 -type f -name '*.png' | wc -l)"
 
       - name: Enforce self-contained Yandex package
         run: |
