@@ -26,7 +26,11 @@ public final class BrowserYandex{
 
     @JSBody(params = {"state"}, script = """
         document.documentElement.setAttribute('data-mindustry-platform-pause', state);
-        if(state === 'paused') document.documentElement.setAttribute('data-mindustry-platform-pause-observed', 'yes');
+        if(state === 'paused'){
+            document.documentElement.setAttribute('data-mindustry-platform-pause-observed', 'yes');
+        }else if(state === 'running'){
+            document.documentElement.setAttribute('data-mindustry-platform-resume-observed', 'yes');
+        }
         """)
     public static native void markPauseState(String state);
 }
