@@ -22,6 +22,7 @@ import static mindustry.Vars.*;
  */
 public final class WebClientLauncher extends ClientLauncher{
     private final NetProvider netProvider = new WebNetProvider();
+    private UI uiShell;
 
     @Override
     public void setup(){
@@ -84,6 +85,19 @@ public final class WebClientLauncher extends ClientLauncher{
         content = new ContentLoader();
         content.createBaseContent();
         content.init();
+
+        // Construct the real Mindustry UI module. Its constructor normally queues
+        // FreeType font loading; the Web overlay turns that call into a validation of
+        // the already baked BrowserFonts set. loadSync()/init() remain a later milestone
+        // because they require the full Tex/Icon/Styles and client module graph.
+        uiShell = new UI();
+        if(Fonts.def == null || Fonts.outline == null || Fonts.icon == null || Fonts.logic == null){
+            throw new IllegalStateException("Mindustry UI shell lost baked Web font bindings");
+        }
+    }
+
+    public boolean hasUiShell(){
+        return uiShell != null;
     }
 
     @Override
