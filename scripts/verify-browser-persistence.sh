@@ -48,43 +48,24 @@ for i in {1..30}; do
   sleep 0.25
 done
 
-# Real wall-clock waiting is intentional: IndexedDB work is serviced by browser I/O
-# tasks that Chromium virtual time does not reliably wait for before --dump-dom exits.
-google-chrome \
-  --headless=new \
-  --no-sandbox \
-  --disable-dev-shm-usage \
-  --timeout=5000 \
-  --user-data-dir="$PROFILE" \
-  --dump-dom \
-  "http://127.0.0.1:$PORT/persistence-seed.html" > "$SEED_DOM"
-
-if ! grep -q 'data-persistence-seed="ready"' "$SEED_DOM"; then
-  echo 'IndexedDB seed write did not complete.' >&2
-  grep -o '<html[^>]*>' "$SEED_DOM" >&2 || true
-  exit 1
-fi
+# Keep Chrome alive through the real IndexedDB transaction instead of relying on
+# --dump-dom's load-event snapshot.
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/persistence-seed.html" \
+  --profile "$PROFILE" \
+  --port 9227 \
+  --timeout 15 \
+  --require 'data-persistence-seed="ready"' > "$SEED_DOM"
 
 # New browser process, same profile + origin: IndexedDB must hydrate before TeaVM
 # main(), then BrowserFi reads the binary probe into Java and marks recovery.
-google-chrome \
-  --headless=new \
-  --no-sandbox \
-  --disable-dev-shm-usage \
-  --use-gl=angle \
-  --use-angle=swiftshader \
-  --enable-unsafe-swiftshader \
-  --timeout=20000 \
-  --user-data-dir="$PROFILE" \
-  --dump-dom \
-  "http://127.0.0.1:$PORT/index.html?lang=en" > "$GAME_DOM"
-
-if ! grep -q 'data-mindustry-file-persistence="recovered"' "$GAME_DOM"; then
-  echo 'IndexedDB file did not survive reload through the TeaVM BrowserFi bridge.' >&2
-  grep -o '<html[^>]*>' "$GAME_DOM" >&2 || true
-  exit 1
-fi
-grep -q 'data-mindustry-storage="ready"' "$GAME_DOM"
-grep -q 'data-mindustry-web="ready"' "$GAME_DOM"
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en" \
+  --profile "$PROFILE" \
+  --port 9228 \
+  --timeout 35 \
+  --require 'data-mindustry-storage="ready"' \
+  --require 'data-mindustry-file-persistence="recovered"' \
+  --require 'data-mindustry-web="ready"' > "$GAME_DOM"
 
 echo 'Browser persistence smoke: IndexedDB write -> reload -> Java byte[] recovery PASS'
