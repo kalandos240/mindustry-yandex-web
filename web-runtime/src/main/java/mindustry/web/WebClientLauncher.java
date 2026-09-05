@@ -74,6 +74,11 @@ public final class WebClientLauncher extends ClientLauncher{
         content.createBaseContent();
         content.init();
 
+        // Establish only the local persistence substrate needed by Saves/SaveIO.
+        // Do not construct stock Control here: its constructor reaches audio, mods,
+        // NetServer, full HUD and editor paths that are intentionally absent on Web.
+        BrowserSaveRuntime.init();
+
         // Match stock ClientLauncher: the singleton Vars.ui and the module instance are
         // the same object before any Scene/dialog code becomes reachable.
         Vars.ui = uiShell = new UI();
