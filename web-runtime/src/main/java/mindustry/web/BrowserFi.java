@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.Files.FileType;
 import arc.files.Fi;
+import org.teavm.jso.JSBody;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -12,6 +13,13 @@ import java.nio.charset.Charset;
 
 /** Fi backed by immutable packaged assets or BrowserFiles' persistent local store. */
 public final class BrowserFi extends Fi{
+    private static final String persistenceProbePath = "ci/persist-probe.bin";
+    private static final byte[] persistenceProbeBytes = {0, 1, 2, 127, -1, 77, 83, 65};
+
+    static{
+        verifyPersistedProbe();
+    }
+
     private final BrowserFiles files;
     private final String browserPath;
 
@@ -178,6 +186,30 @@ public final class BrowserFi extends Fi{
             throw new UnsupportedOperationException("Browser packaged assets are read-only: " + browserPath + " (" + type + ")");
         }
     }
+
+    private static void verifyPersistedProbe(){
+        byte[] probe = readPersistenceProbe(persistenceProbePath);
+        if(probe == null) return;
+        if(probe.length != persistenceProbeBytes.length){
+            throw new IllegalStateException("IndexedDB persistence probe length mismatch: " + probe.length);
+        }
+        for(int i = 0; i < probe.length; i++){
+            if(probe[i] != persistenceProbeBytes[i]){
+                throw new IllegalStateException("IndexedDB persistence probe byte mismatch at " + i);
+            }
+        }
+        markPersistenceRecovered();
+        removePersistenceProbe(persistenceProbePath);
+    }
+
+    @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage ? globalThis.__mindustryStorage.get(path) : null;")
+    private static native byte[] readPersistenceProbe(String path);
+
+    @JSBody(params = {"path"}, script = "if(globalThis.__mindustryStorage) globalThis.__mindustryStorage.remove(path);")
+    private static native void removePersistenceProbe(String path);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-file-persistence', 'recovered');")
+    private static native void markPersistenceRecovered();
 
     private static final class PersistentOutputStream extends ByteArrayOutputStream{
         private final BrowserFiles files;
