@@ -46,7 +46,12 @@ patch("entities/EntityGroup.java", [
 # small reset routine makes its full AI/server/update-loop graph reachable in TeaVM.
 # Keep the pinned reset semantics directly at the Web SaveIO boundary, while clearing
 # old entity groups without lifecycle callbacks because the old world is discarded.
+# The browser release reads/writes the current v13 format only; pruning Save1..Save12
+# removes migration-only classes and legacy patch infrastructure from the JS graph.
 patch("io/SaveIO.java", [
+    ('public static final Seq<SaveVersion> versionArray = Seq.with(new Save1(), new Save2(), new Save3(), new Save4(), new Save5(), new Save6(), new Save7(), new Save8(), new Save9(), new Save10(), new Save11(), new Save12(), new Save13());',
+     'public static final Seq<SaveVersion> versionArray = Seq.with(new Save13()); // Web: current v13 saves only.',
+     'SaveIO current-only version graph'),
     ('import mindustry.game.EventType.*;\nimport mindustry.io.versions.*;',
      'import mindustry.game.EventType.*;\nimport mindustry.core.*;\nimport mindustry.gen.*;\nimport mindustry.io.versions.*;',
      'SaveIO Web reset imports'),
@@ -56,6 +61,15 @@ patch("io/SaveIO.java", [
     ('    /** Loads from a deflated (!) input stream. */\n    public static void load(InputStream is, WorldContext context) throws SaveException{',
      '''    /** Web equivalent of the pinned Logic.reset() save-load preamble. */\n    private static void webReset(){\n        if(Groups.all != null) Groups.all.clearRaw();\n        if(Groups.player != null) Groups.player.clearRaw();\n        if(Groups.bullet != null) Groups.bullet.clearRaw();\n        if(Groups.unit != null) Groups.unit.clearRaw();\n        if(Groups.build != null) Groups.build.clearRaw();\n        if(Groups.sync != null) Groups.sync.clearRaw();\n        if(Groups.draw != null) Groups.draw.clearRaw();\n        if(Groups.fire != null) Groups.fire.clearRaw();\n        if(Groups.puddle != null) Groups.puddle.clearRaw();\n        if(Groups.weather != null) Groups.weather.clearRaw();\n        if(Groups.label != null) Groups.label.clearRaw();\n        if(Groups.powerGraph != null) Groups.powerGraph.clearRaw();\n        Time.clear();\n        Events.fire(new ResetEvent());\n        world.tiles = new Tiles(0, 0);\n\n        state.data.unload();\n        var previous = state.getState();\n        state = new GameState();\n        Events.fire(new StateChangeEvent(previous, GameState.State.menu));\n\n        Core.settings.manualSave();\n    }\n\n    /** Loads from a deflated (!) input stream. */\n    public static void load(InputStream is, WorldContext context) throws SaveException{''',
      'SaveIO webReset helper'),
+])
+
+# This reflection helper only used isAnonymousClass() to improve an exception label.
+# TeaVM does not implement that Class API. Keep all null-field validation behavior,
+# but use the concrete class simple name for the diagnostic on Web.
+patch("mod/ContentParser.java", [
+    ('((object.getClass().isAnonymousClass() ? object.getClass().getSuperclass() : object.getClass()).getSimpleName())',
+     'object.getClass().getSimpleName()',
+     'ContentParser anonymous diagnostic'),
 ])
 
 # Restore gameplay metadata without desktop Control/input/camera or the desktop Maps
@@ -94,4 +108,17 @@ replace_method(
     'SaveVersion browser readDataPatches'
 )
 
-print("Applied browser-safe stock SaveIO.load/reset/read overlays")
+# Versions below 11 used this method to synthesize an empty data-patch load event,
+# which reaches DataManager/DataImagePacker even though current v13 saves never take
+# that branch. The Web package only exposes Save13, so keep only content remapping.
+read_content_header = '''    public void readContentHeader(DataInput stream) throws IOException{\n        int mapped = stream.readUnsignedByte();\n\n        MappableContent[][] map = new MappableContent[ContentType.all.length][0];\n\n        for(int i = 0; i < mapped; i++){\n            ContentType type = ContentType.all[stream.readByte()];\n            short total = stream.readShort();\n            map[type.ordinal()] = new MappableContent[total];\n\n            for(int j = 0; j < total; j++){\n                String name = stream.readUTF();\n                map[type.ordinal()][j] = content.getByName(type, type == ContentType.block ? fallback.get(name, name) : name);\n            }\n        }\n\n        content.setTemporaryMapper(map);\n    }'''
+
+replace_method(
+    "io/SaveVersion.java",
+    '    public void readContentHeader(DataInput stream) throws IOException{',
+    '    public void writeContentHeader(DataOutput stream) throws IOException{',
+    read_content_header,
+    'SaveVersion current-only content header'
+)
+
+print("Applied browser-safe current-v13 SaveIO.load/reset/read overlays")
