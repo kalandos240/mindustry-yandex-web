@@ -192,20 +192,56 @@ public final class BrowserSaveRuntime{
 
             SaveIO.save(file);
 
-            if(!file.exists() || file.length() < 128 || !SaveIO.isSaveValid(file)){
-                throw new IllegalStateException("Stock SaveIO.save did not produce a valid persistent browser MSAV");
+            boolean exists = file.exists();
+            long length = exists ? file.length() : -1L;
+            int rawLength = -1;
+            String rawReadError = "none";
+            if(exists){
+                try{
+                    rawLength = file.readBytes().length;
+                }catch(Throwable error){
+                    rawReadError = describe(error);
+                }
             }
 
-            SaveMeta meta = SaveIO.getMeta(file);
-            if(meta == null
-            || meta.version != 13
+            boolean valid = exists && SaveIO.isSaveValid(file);
+            SaveMeta directMeta = null;
+            String directMetaError = "none";
+            if(exists){
+                try{
+                    directMeta = SaveIO.getMeta(SaveIO.getStream(file));
+                }catch(Throwable error){
+                    directMetaError = describe(error);
+                }
+            }
+
+            if(!exists || length < 128 || rawLength < 0 || rawLength != length || !valid || directMeta == null){
+                throw new IllegalStateException(
+                    "Stock SaveIO.save browser MSAV validation failed: exists=" + exists
+                    + ", length=" + length
+                    + ", rawLength=" + rawLength
+                    + ", isSaveValid=" + valid
+                    + ", rawReadError=" + rawReadError
+                    + ", directMetaError=" + directMetaError
+                );
+            }
+
+            SaveMeta meta = directMeta;
+            if(meta.version != 13
             || meta.wave != 23
             || !"Web Full SaveIO Probe".equals(meta.tags.get("mapname"))
             || meta.tags.getInt("width") != 4
             || meta.tags.getInt("height") != 4
             || meta.mods == null
             || meta.mods.length != 0){
-                throw new IllegalStateException("Full browser SaveIO metadata validation failed");
+                throw new IllegalStateException(
+                    "Full browser SaveIO metadata validation failed: version=" + meta.version
+                    + ", wave=" + meta.wave
+                    + ", mapname=" + meta.tags.get("mapname")
+                    + ", width=" + meta.tags.getInt("width")
+                    + ", height=" + meta.tags.getInt("height")
+                    + ", mods=" + (meta.mods == null ? -1 : meta.mods.length)
+                );
             }
         }finally{
             file.delete();
@@ -217,6 +253,18 @@ public final class BrowserSaveRuntime{
             Vars.state.tick = previousTick;
             Vars.state.wavetime = previousWaveTime;
         }
+    }
+
+    private static String describe(Throwable error){
+        StringBuilder out = new StringBuilder();
+        Throwable current = error;
+        int depth = 0;
+        while(current != null && depth++ < 5){
+            if(out.length() > 0) out.append(" <- ");
+            out.append(current.getClass().getName()).append(':').append(String.valueOf(current.getMessage()));
+            current = current.getCause();
+        }
+        return out.toString();
     }
 
     private static void writePair(DataOutputStream out, String key, String value) throws IOException{
