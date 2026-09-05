@@ -39,9 +39,9 @@ public final class WebClientLauncher extends ClientLauncher{
         android = Core.app.isAndroid();
         markMindustryDeviceMode(mobile ? "mobile" : "desktop");
 
-        // Renderer owns the production camera, but stock MobileInput already relies on
-        // Core.camera for coordinate transforms and pinch fallback. Install a valid camera
-        // now; the real Renderer will replace it at the renderer milestone.
+        // Stock Renderer is initialized below after the content substrate exists. Keep a
+        // temporary camera available during the earlier bootstrap steps; Renderer replaces
+        // Core.camera with its production camera in its constructor.
         if(Core.camera == null){
             Core.camera = new Camera();
             Core.camera.width = Math.max(1f, Core.graphics.getWidth() / 4f);
@@ -88,6 +88,15 @@ public final class WebClientLauncher extends ClientLauncher{
         // Install browser-only factories while preserving the stock JsonIO format.
         BrowserJsonCompatibility.install();
 
+        // Activate the real Mindustry renderer substrate now that its shaders are packaged
+        // locally. Do not run Renderer.init/update yet; this milestone proves constructor,
+        // shader compilation, framebuffers and production camera reachability first.
+        renderer = new Renderer();
+        if(Core.camera == null || renderer.getScale() <= 0f){
+            throw new IllegalStateException("Stock Mindustry Renderer failed Web camera initialization");
+        }
+        markRendererReady();
+
         BrowserSaveRuntime.init();
 
         Vars.ui = uiShell = new UI();
@@ -131,7 +140,7 @@ public final class WebClientLauncher extends ClientLauncher{
 
     /**
      * Bring the real Mindustry InputHandler/GestureDetector graph into the browser before
-     * the much larger Control/Renderer/Logic milestone. This is deliberately the stock
+     * the larger Control/Logic gameplay milestone. This is deliberately the stock
      * MobileInput or DesktopInput implementation rather than a custom Web control scheme.
      */
     private void initializeStockInputRuntime(){
@@ -176,6 +185,9 @@ public final class WebClientLauncher extends ClientLauncher{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-links', 'none');")
     private static native void markNoLinksReady();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer', 'constructed');")
+    private static native void markRendererReady();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-shell', 'ready');")
     private static native void markUiShellReady();
