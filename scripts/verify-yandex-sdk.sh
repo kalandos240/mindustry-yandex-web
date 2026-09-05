@@ -7,10 +7,12 @@ SDK_STUB="$WEB_DIR/sdk.js"
 PROFILE="/tmp/mindustry-yandex-sdk-profile"
 DOM="/tmp/mindustry-yandex-sdk-dom.html"
 PORT=8082
+CDP_PORT=9225
 
 command -v google-chrome >/dev/null
 [ -s "$WEB_DIR/index.html" ]
 [ -s "$WEB_DIR/yandex-platform.js" ]
+[ -s "$WEB_DIR/browser-storage.js" ]
 [ ! -e "$SDK_STUB" ]
 
 cleanup(){
@@ -38,9 +40,6 @@ cat > "$SDK_STUB" <<'JS'
     function schedulePauseCycle(){
         if(pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
-        // Enter pause only after Game Ready and several browser frames, proving the
-        // TeaVM runtime is already alive. Resume is deliberately timer-driven because
-        // portal lifecycle events are external to the game's animation scheduler.
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
             listeners.game_api_pause();
@@ -102,44 +101,30 @@ for i in {1..30}; do
   sleep 0.25
 done
 
-google-chrome \
-  --headless=new \
-  --no-sandbox \
-  --disable-dev-shm-usage \
-  --use-gl=angle \
-  --use-angle=swiftshader \
-  --enable-unsafe-swiftshader \
-  --virtual-time-budget=20000 \
-  --user-data-dir="$PROFILE" \
-  --dump-dom \
-  "http://127.0.0.1:$PORT/index.html" > "$DOM"
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html" \
+  --profile "$PROFILE" \
+  --port "$CDP_PORT" \
+  --timeout 30 \
+  --require 'data-yandex-test-init="yes"' \
+  --require 'data-yandex-sdk="ready"' \
+  --require 'data-yandex-locale="ru"' \
+  --require 'data-mindustry-locale="ru"' \
+  --require 'data-yandex-test-loading-ready-count="1"' \
+  --require 'data-yandex-test-pause-sent="yes"' \
+  --require 'data-yandex-test-resume-sent="yes"' \
+  --require 'data-mindustry-platform-pause-observed="yes"' \
+  --require 'data-mindustry-platform-resume-observed="yes"' \
+  --require 'data-mindustry-platform-pause="running"' \
+  --require 'data-mindustry-storage="ready"' \
+  --require 'data-mindustry-ui-sync="ready"' \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-network="yandex-sdk-only"' > "$DOM"
 
-require_marker(){
-  local pattern="$1"
-  local label="$2"
-  if ! grep -q "$pattern" "$DOM"; then
-    echo "Yandex SDK smoke missing: $label" >&2
-    grep -o '<html[^>]*>' "$DOM" >&2 || true
-    exit 1
-  fi
-}
-
-require_marker 'data-yandex-test-init="yes"' 'YaGames.init'
-require_marker 'data-yandex-sdk="ready"' 'SDK ready state'
-require_marker 'data-yandex-locale="ru"' 'SDK environment locale'
-require_marker 'data-mindustry-locale="ru"' 'Mindustry locale from SDK'
-require_marker 'data-yandex-test-loading-ready-count="1"' 'exactly one LoadingAPI.ready call'
 if grep -q 'data-yandex-test-ready-too-early="yes"' "$DOM"; then
   echo 'LoadingAPI.ready was emitted before the game reached ready state.' >&2
   grep -o '<html[^>]*>' "$DOM" >&2 || true
   exit 1
 fi
-require_marker 'data-yandex-test-pause-sent="yes"' 'game_api_pause delivery'
-require_marker 'data-yandex-test-resume-sent="yes"' 'game_api_resume delivery'
-require_marker 'data-mindustry-platform-pause-observed="yes"' 'Java bridge observing platform pause'
-require_marker 'data-mindustry-platform-resume-observed="yes"' 'Java bridge observing platform resume'
-require_marker 'data-mindustry-platform-pause="running"' 'Java platform state returning to running'
-require_marker 'data-mindustry-web="ready"' 'Mindustry ready state'
-require_marker 'data-mindustry-network="yandex-sdk-only"' 'official Yandex SDK transport boundary'
 
-echo 'Yandex SDK browser smoke: init + SDK locale + Game Ready + pause/resume + SDK transport PASS'
+echo 'Yandex SDK browser smoke: init + SDK locale + storage + UI sync + Game Ready + pause/resume + SDK transport PASS'

@@ -138,6 +138,8 @@ jobs:
         run: |
           test -s web-runtime/build/web/index.html
           test -s web-runtime/build/web/mindustry.js
+          test -s web-runtime/build/web/yandex-platform.js
+          test -s web-runtime/build/web/browser-storage.js
           test -s web-runtime/build/web/assets-manifest.js
           test -s web-runtime/build/web/assets/sprites/error.png
           test -s web-runtime/build/web/assets/sprites/block_colors.png
@@ -145,6 +147,7 @@ jobs:
           test -s web-runtime/build/web/assets/sprites/sprites.png
           test -s web-runtime/build/web/assets/bundles/bundle.properties
           test -s web-runtime/build/web/assets/bundles/bundle_ru.properties
+          test -s web-runtime/build/web/assets/icons/icons.properties
           test -s web-runtime/build/web/assets/locales
           grep -qx 'en' web-runtime/build/web/assets/locales
           grep -qx 'ru' web-runtime/build/web/assets/locales
@@ -163,6 +166,8 @@ jobs:
           grep -q 'mindustry-canvas' web-runtime/build/web/index.html
           grep -q 'mindustry-web-status' web-runtime/build/web/index.html
           grep -q 'data-mindustry-network' web-runtime/build/web/index.html
+          grep -q 'data-mindustry-storage' web-runtime/build/web/index.html
+          grep -q 'browser-storage.js' web-runtime/build/web/index.html
           grep -q 'assets-manifest.js' web-runtime/build/web/index.html
           grep -q 'sprites/error.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js
@@ -170,6 +175,7 @@ jobs:
           grep -q 'sprites/sprites.png' web-runtime/build/web/assets-manifest.js
           grep -q 'bundles/bundle.properties' web-runtime/build/web/assets-manifest.js
           grep -q 'bundles/bundle_ru.properties' web-runtime/build/web/assets-manifest.js
+          grep -q 'icons/icons.properties' web-runtime/build/web/assets-manifest.js
           grep -q 'locales' web-runtime/build/web/assets-manifest.js
           echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
           echo "Staged AATLS bytes: $(wc -c < web-runtime/build/web/assets/sprites/sprites.aatls)"
@@ -178,12 +184,8 @@ jobs:
 
       - name: Enforce self-contained no-links Yandex package
         run: |
-          if grep -REn --include='*.html' --include='*.css' --include='*.fnt' --include='*.properties' --include='assets-manifest.js' 'https?://|wss?://' web-runtime/build/web; then
-            echo 'External URL found in deployable assets/metadata.' >&2
-            exit 1
-          fi
-          if grep -En 'https?://|wss?://' web-runtime/build/web/mindustry.js; then
-            echo 'External URL literal found in compiled TeaVM JavaScript.' >&2
+          if grep -REn --include='*.html' --include='*.css' --include='*.fnt' --include='*.properties' --include='*.js' 'https?://|wss?://' web-runtime/build/web; then
+            echo 'External URL found in deployable HTML/CSS/font/bundle/JavaScript files.' >&2
             exit 1
           fi
           if grep -RFn 'Core.app.openURI(' work/Mindustry/core/src/mindustry/ui work/Mindustry/core/src/mindustry/editor; then
@@ -192,11 +194,12 @@ jobs:
           fi
           grep -q "requireLocal(input, 'fetch')" web-runtime/build/web/index.html
           grep -q "data-mindustry-network', 'local-only'" web-runtime/build/web/index.html
-          echo 'Deployable package contains no external URL literals in HTML/CSS/BMFont/bundles/manifest/TeaVM JS.'
+          echo 'Deployable package contains no external URL literals in staged HTML/CSS/BMFont/bundles/JavaScript.'
 
-      - name: Execute Mindustry core, content, UI shell, fonts, local-only network, input and settings in headless Chrome
+      - name: Execute Mindustry core, content, UI, storage, local-only network, input and settings in headless Chrome
         run: |
           command -v google-chrome
+          rm -rf /tmp/mindustry-web-main-profile
           cd web-runtime/build/web
           python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/mindustry-web-http.log 2>&1 &
           server_pid=$!
@@ -205,25 +208,23 @@ jobs:
             if curl -fsS http://127.0.0.1:8080/index.html >/dev/null; then break; fi
             sleep 0.25
           done
-          google-chrome \
-            --headless=new \
-            --no-sandbox \
-            --disable-dev-shm-usage \
-            --use-gl=angle \
-            --use-angle=swiftshader \
-            --enable-unsafe-swiftshader \
-            --virtual-time-budget=20000 \
-            --dump-dom \
-            http://127.0.0.1:8080/index.html > /tmp/mindustry-web-dom.html
+          python3 "$GITHUB_WORKSPACE/scripts/chrome-wait-dom.py" \
+            --url http://127.0.0.1:8080/index.html \
+            --profile /tmp/mindustry-web-main-profile \
+            --port 9224 \
+            --timeout 35 \
+            --require 'data-mindustry-web="ready"' \
+            --require 'data-mindustry-storage="ready"' \
+            --require 'data-mindustry-ui-sync="ready"' \
+            --require 'data-mindustry-network="local-only"' > /tmp/mindustry-web-dom.html
           cat /tmp/mindustry-web-dom.html
-          grep -q 'data-mindustry-web="ready"' /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-gl="webgl(1|2)"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-dom.html
-          grep -q 'data-mindustry-network="local-only"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-navigation="blocked"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-links="none"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-font="ready"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-ui-shell="ready"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-ui-sync="ready"' /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-locale="(en|ru)"' /tmp/mindustry-web-dom.html
           grep -q 'Mindustry core' /tmp/mindustry-web-dom.html
           grep -q 'Arc GL20 ready' /tmp/mindustry-web-dom.html
@@ -237,6 +238,9 @@ jobs:
 
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
+
+      - name: Verify persistent browser files across a real browser restart
+        run: bash scripts/verify-browser-persistence.sh
 
       - name: Upload localization report
         if: always()

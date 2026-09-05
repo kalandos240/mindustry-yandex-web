@@ -11,6 +11,7 @@ command -v google-chrome >/dev/null
 test -s "$EN_BUNDLE"
 test -s "$RU_BUNDLE"
 test -s "$WEB_DIR/assets/icons/icons.properties"
+test -s "$WEB_DIR/browser-storage.js"
 
 bash "$ROOT_DIR/scripts/audit-yandex-release.sh"
 
@@ -50,28 +51,25 @@ run_locale(){
   local expected="$1"
   local profile="/tmp/mindustry-web-profile-$expected"
   local dom="/tmp/mindustry-web-$expected.html"
+  local cdp_port
+  if [ "$expected" = "en" ]; then cdp_port=9226; else cdp_port=9227; fi
   rm -rf "$profile"
 
-  google-chrome \
-    --headless=new \
-    --no-sandbox \
-    --disable-dev-shm-usage \
-    --use-gl=angle \
-    --use-angle=swiftshader \
-    --enable-unsafe-swiftshader \
-    --virtual-time-budget=20000 \
-    --user-data-dir="$profile" \
-    --dump-dom \
-    "http://127.0.0.1:8081/index.html?lang=$expected" > "$dom"
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:8081/index.html?lang=$expected" \
+    --profile "$profile" \
+    --port "$cdp_port" \
+    --timeout 30 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-ui-shell="ready"' \
+    --require 'data-mindustry-ui-sync="ready"' \
+    --require 'data-mindustry-links="none"' \
+    --require "data-mindustry-locale=\"$expected\"" \
+    --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-storage="ready"' \
+    --require 'data-mindustry-navigation="blocked"' > "$dom"
 
-  grep -q 'data-mindustry-web="ready"' "$dom"
-  grep -q 'data-mindustry-ui-shell="ready"' "$dom"
-  grep -q 'data-mindustry-ui-sync="ready"' "$dom"
-  grep -q 'data-mindustry-links="none"' "$dom"
-  grep -q "data-mindustry-locale=\"$expected\"" "$dom"
-  grep -q 'data-mindustry-network="local-only"' "$dom"
-  grep -q 'data-mindustry-navigation="blocked"' "$dom"
-  echo "Browser locale $expected: UI sync ready, no-links, local-only"
+  echo "Browser locale $expected: storage + UI sync ready, no-links, local-only"
 }
 
 run_locale en

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing" data-yandex-sdk="booting">
+<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing" data-yandex-sdk="booting" data-mindustry-storage="booting">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -14,28 +14,27 @@
 </head>
 <body>
     <canvas id="mindustry-canvas" width="1280" height="720" tabindex="0"></canvas>
-    <div id="mindustry-web-status">Initializing Yandex Games...</div>
+    <div id="mindustry-web-status">Initializing Yandex Games and storage...</div>
+    <script src="browser-storage.js"></script>
     <script src="yandex-platform.js"></script>
     <script>
         (async () => {
             const root = document.documentElement;
             const status = document.getElementById('mindustry-web-status');
 
-            // Yandex SDK must initialize before the game chooses its locale or starts.
-            await globalThis.__mindustryYandex.init();
+            // Platform state and user-file hydration are independent. Finish both before
+            // TeaVM starts so Arc's synchronous Fi API can read persistent files safely.
+            await Promise.all([
+                globalThis.__mindustryYandex.init(),
+                globalThis.__mindustryStorage.init()
+            ]);
 
-            // Off-platform development gets a hard same-origin network guard. On the
-            // Yandex host we intentionally do not monkey-patch browser networking after
-            // SDK initialization: Player/ads are allowed to use Yandex-owned transport.
-            // Game code itself stays offline by construction: compiled/staged files are
-            // URL-free, WebNetProvider exposes no remote transport, and openURI is blocked.
             const blocked = [];
             globalThis.__mindustryExternalRequests = blocked;
 
             function resolveInput(input){
                 const raw = input && typeof input === 'object' && typeof input.url === 'string'
-                    ? input.url
-                    : String(input == null ? '' : input);
+                    ? input.url : String(input == null ? '' : input);
                 return new URL(raw, location.href);
             }
 
@@ -43,10 +42,8 @@
                 const url = resolveInput(input);
                 const inline = url.protocol === 'data:' || url.protocol === 'blob:';
                 const httpLocal = (url.protocol === 'http:' || url.protocol === 'https:') && url.origin === location.origin;
-                const wsLocal = (url.protocol === 'ws:' || url.protocol === 'wss:')
-                    && url.hostname === location.hostname && url.port === location.port;
+                const wsLocal = (url.protocol === 'ws:' || url.protocol === 'wss:') && url.hostname === location.hostname && url.port === location.port;
                 if(inline || httpLocal || wsLocal) return url;
-
                 const message = kind + ' blocked external URL: ' + url.href;
                 blocked.push(message);
                 root.setAttribute('data-mindustry-network', 'blocked');
@@ -55,60 +52,35 @@
 
             if(!globalThis.__mindustryYandex.available){
                 const nativeFetch = globalThis.fetch.bind(globalThis);
-                globalThis.fetch = (input, init) => {
-                    requireLocal(input, 'fetch');
-                    return nativeFetch(input, init);
-                };
+                globalThis.fetch = (input, init) => { requireLocal(input, 'fetch'); return nativeFetch(input, init); };
 
                 if(globalThis.XMLHttpRequest){
                     const nativeOpen = XMLHttpRequest.prototype.open;
-                    XMLHttpRequest.prototype.open = function(method, url, ...rest){
-                        requireLocal(url, 'xhr');
-                        return nativeOpen.call(this, method, url, ...rest);
-                    };
+                    XMLHttpRequest.prototype.open = function(method, url, ...rest){ requireLocal(url, 'xhr'); return nativeOpen.call(this, method, url, ...rest); };
                 }
-
                 if(globalThis.WebSocket){
                     const NativeWebSocket = globalThis.WebSocket;
-                    globalThis.WebSocket = function(url, protocols){
-                        requireLocal(url, 'websocket');
-                        return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
-                    };
+                    globalThis.WebSocket = function(url, protocols){ requireLocal(url, 'websocket'); return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols); };
                     globalThis.WebSocket.prototype = NativeWebSocket.prototype;
                 }
-
                 if(globalThis.EventSource){
                     const NativeEventSource = globalThis.EventSource;
-                    globalThis.EventSource = function(url, init){
-                        requireLocal(url, 'eventsource');
-                        return init === undefined ? new NativeEventSource(url) : new NativeEventSource(url, init);
-                    };
+                    globalThis.EventSource = function(url, init){ requireLocal(url, 'eventsource'); return init === undefined ? new NativeEventSource(url) : new NativeEventSource(url, init); };
                     globalThis.EventSource.prototype = NativeEventSource.prototype;
                 }
-
                 if(navigator.sendBeacon){
                     const nativeBeacon = navigator.sendBeacon.bind(navigator);
-                    navigator.sendBeacon = (url, data) => {
-                        requireLocal(url, 'beacon');
-                        return nativeBeacon(url, data);
-                    };
+                    navigator.sendBeacon = (url, data) => { requireLocal(url, 'beacon'); return nativeBeacon(url, data); };
                 }
-
                 root.setAttribute('data-mindustry-network', 'local-only');
             }else{
                 root.setAttribute('data-mindustry-network', 'yandex-sdk-only');
             }
 
-            // External navigation is never needed by the SDK; keep window.open local-only
-            // on every host so game UI cannot escape to websites.
             const nativeWindowOpen = window.open.bind(window);
             window.open = (url, target, features) => {
-                try{
-                    requireLocal(url, 'window.open');
-                }catch(error){
-                    console.warn(error.message);
-                    return null;
-                }
+                try{ requireLocal(url, 'window.open'); }
+                catch(error){ console.warn(error.message); return null; }
                 return nativeWindowOpen(url, target, features);
             };
 
@@ -133,9 +105,7 @@
             const manifest = globalThis.__mindustryAssetManifest || [];
             const cache = Object.create(null);
             globalThis.__mindustryAssetCache = cache;
-
-            let next = 0;
-            let loaded = 0;
+            let next = 0, loaded = 0;
             const workers = Math.max(1, Math.min(8, manifest.length));
 
             async function preloadWorker(){
@@ -145,9 +115,7 @@
                     const path = manifest[index];
                     const url = 'assets/' + path;
                     const response = await fetch(url);
-                    if(!response.ok){
-                        throw new Error('Asset preload failed (' + response.status + '): ' + url);
-                    }
+                    if(!response.ok) throw new Error('Asset preload failed (' + response.status + '): ' + url);
                     cache[url] = new Int8Array(await response.arrayBuffer());
                     loaded++;
                     status.textContent = 'Preloading Mindustry assets ' + loaded + '/' + manifest.length + '...';
@@ -157,7 +125,6 @@
             const tasks = [];
             for(let i = 0; i < workers; i++) tasks.push(preloadWorker());
             await Promise.all(tasks);
-
             status.textContent = 'Starting Mindustry...';
             main();
         })().catch(error => {
