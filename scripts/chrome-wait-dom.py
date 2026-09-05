@@ -40,8 +40,12 @@ class WebSocket:
         parsed = urlparse(url)
         if parsed.scheme != "ws":
             raise ValueError(f"Unsupported CDP WebSocket URL: {url}")
-        self.sock = socket.create_connection((parsed.hostname, parsed.port or 80), timeout=5)
-        self.sock.settimeout(5)
+        # TeaVM's first synchronous startup frame can keep Chrome's renderer busy for
+        # well over five seconds. The outer harness still enforces its own total
+        # deadline; this transport timeout only prevents a healthy CDP request from
+        # being killed while the JavaScript main thread is legitimately occupied.
+        self.sock = socket.create_connection((parsed.hostname, parsed.port or 80), timeout=10)
+        self.sock.settimeout(30)
         key = base64.b64encode(os.urandom(16)).decode("ascii")
         path = parsed.path or "/"
         if parsed.query:
