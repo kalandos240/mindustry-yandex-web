@@ -39,9 +39,8 @@ cat > "$SDK_STUB" <<'JS'
         if(pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
         // Enter pause only after Game Ready and several browser frames, proving the
-        // TeaVM frame loop is already alive. Resume uses a timer deliberately: portal
-        // resume events are external to the game's animation lifecycle and must still be
-        // delivered even while game rendering/simulation is suspended.
+        // TeaVM runtime is already alive. Resume is deliberately timer-driven because
+        // portal lifecycle events are external to the game's animation scheduler.
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
             listeners.game_api_pause();
@@ -137,8 +136,9 @@ if grep -q 'data-yandex-test-ready-too-early="yes"' "$DOM"; then
 fi
 require_marker 'data-yandex-test-pause-sent="yes"' 'game_api_pause delivery'
 require_marker 'data-yandex-test-resume-sent="yes"' 'game_api_resume delivery'
-require_marker 'data-mindustry-platform-pause-observed="yes"' 'Java frame loop observing platform pause'
-require_marker 'data-mindustry-platform-pause="running"' 'Java frame loop returning to running state'
+require_marker 'data-mindustry-platform-pause-observed="yes"' 'Java bridge observing platform pause'
+require_marker 'data-mindustry-platform-resume-observed="yes"' 'Java bridge observing platform resume'
+require_marker 'data-mindustry-platform-pause="running"' 'Java platform state returning to running'
 require_marker 'data-mindustry-web="ready"' 'Mindustry ready state'
 require_marker 'data-mindustry-network="local-only"' 'local-only game network guard'
 
