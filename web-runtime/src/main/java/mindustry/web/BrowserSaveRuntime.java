@@ -4,10 +4,15 @@ import arc.*;
 import arc.Files.FileType;
 import arc.files.*;
 import arc.graphics.*;
+import arc.struct.*;
 import arc.util.io.*;
 import mindustry.*;
+import mindustry.core.*;
 import mindustry.game.*;
+import mindustry.gen.*;
 import mindustry.io.*;
+import mindustry.maps.Map;
+import mindustry.world.*;
 import org.teavm.jso.JSBody;
 
 import java.io.*;
@@ -50,15 +55,13 @@ public final class BrowserSaveRuntime{
 
         verifyMoveCopyDelete();
         verifyRealSaveMetaFormat();
+        verifyFullSaveWrite();
 
-        // BrowserSaves keeps upstream SaveSlot/SaveIO behavior but replaces desktop
-        // Future/ExecutorService metadata scanning with synchronous hydrated IndexedDB
-        // reads. The constructor's absolute preview loader is immediately replaced by
-        // the browser-local loader before any preview can be requested.
         BrowserSaves browserSaves = new BrowserSaves();
         Core.assets.setLoader(Texture.class, ".spreview", new BrowserSavePreviewLoader());
         browserSaves.load();
         saves = browserSaves;
+        SaveVersion.setWebPlaytime(browserSaves.getTotalPlaytime());
 
         initialized = true;
         markReady(saves.getSaveSlots().size);
@@ -67,6 +70,10 @@ public final class BrowserSaveRuntime{
     public static Saves saves(){
         if(!initialized) throw new IllegalStateException("Browser save runtime is not initialized");
         return saves;
+    }
+
+    static long totalPlaytimeForSave(){
+        return saves == null ? 0L : saves.getTotalPlaytime();
     }
 
     private static void verifyMoveCopyDelete(){
@@ -97,12 +104,6 @@ public final class BrowserSaveRuntime{
         }
     }
 
-    /**
-     * Build a genuine deflated Mindustry v13 save prefix with a real meta region,
-     * persist it through BrowserFi, then parse it with the stock SaveIO.getMeta().
-     * This tests the production MSAV header/version/string-map parser and Java zlib
-     * path without requiring World/Logic/Renderer to exist yet.
-     */
     private static void verifyRealSaveMetaFormat(){
         Fi file = Vars.saveDirectory.child("ci-meta.msav");
         Fi backup = SaveIO.backupFileFor(file);
@@ -157,6 +158,124 @@ public final class BrowserSaveRuntime{
         }
     }
 
+    /** Write every current v13 save region with the production SaveIO writer. */
+    private static void verifyFullSaveWrite(){
+        Fi file = Vars.saveDirectory.child("ci-full.msav");
+        Fi backup = SaveIO.backupFileFor(file);
+        file.delete();
+        backup.delete();
+
+        World previousWorld = Vars.world;
+        Map previousMap = Vars.state.map;
+        Rules previousRules = Vars.state.rules;
+        int previousWave = Vars.state.wave;
+        double previousTick = Vars.state.tick;
+        float previousWaveTime = Vars.state.wavetime;
+
+        try{
+            if(Groups.all == null){
+                Groups.init();
+            }
+
+            Vars.world = new World();
+            Vars.world.resize(4, 4).fill();
+            Vars.state.map = new Map(StringMap.of(
+                "name", "Web Full SaveIO Probe",
+                "author", "Mindustry Web",
+                "description", "Browser full save writer validation"
+            ));
+            Vars.state.rules = new Rules();
+            Rules.TeamRule webTeamRule = Vars.state.rules.teams.get(Team.sharded);
+            webTeamRule.cheat = true;
+            webTeamRule.buildSpeedMultiplier = 1.75f;
+            Vars.state.wave = 23;
+            Vars.state.tick = 321.5;
+            Vars.state.wavetime = 42f;
+            SaveVersion.setWebPlaytime(totalPlaytimeForSave());
+
+            SaveIO.save(file);
+
+            boolean exists = file.exists();
+            long length = exists ? file.length() : -1L;
+            int rawLength = -1;
+            String rawReadError = "none";
+            if(exists){
+                try{
+                    rawLength = file.readBytes().length;
+                }catch(Throwable error){
+                    rawReadError = describe(error);
+                }
+            }
+
+            boolean valid = exists && SaveIO.isSaveValid(file);
+            SaveMeta directMeta = null;
+            String directMetaError = "none";
+            if(exists){
+                try{
+                    directMeta = SaveIO.getMeta(SaveIO.getStream(file));
+                }catch(Throwable error){
+                    directMetaError = describe(error);
+                }
+            }
+
+            if(!exists || length < 128 || rawLength < 0 || rawLength != length || !valid || directMeta == null){
+                throw new IllegalStateException(
+                    "Stock SaveIO.save browser MSAV validation failed: exists=" + exists
+                    + ", length=" + length
+                    + ", rawLength=" + rawLength
+                    + ", isSaveValid=" + valid
+                    + ", rawReadError=" + rawReadError
+                    + ", directMetaError=" + directMetaError
+                );
+            }
+
+            SaveMeta meta = directMeta;
+            Rules.TeamRule savedTeamRule = meta.rules == null ? null : meta.rules.teams.get(Team.sharded);
+            if(meta.version != 13
+            || meta.wave != 23
+            || !"Web Full SaveIO Probe".equals(meta.tags.get("mapname"))
+            || meta.tags.getInt("width") != 4
+            || meta.tags.getInt("height") != 4
+            || meta.mods == null
+            || meta.mods.length != 0
+            || savedTeamRule == null
+            || !savedTeamRule.cheat
+            || Math.abs(savedTeamRule.buildSpeedMultiplier - 1.75f) > 0.0001f){
+                throw new IllegalStateException(
+                    "Full browser SaveIO metadata validation failed: version=" + meta.version
+                    + ", wave=" + meta.wave
+                    + ", mapname=" + meta.tags.get("mapname")
+                    + ", width=" + meta.tags.getInt("width")
+                    + ", height=" + meta.tags.getInt("height")
+                    + ", mods=" + (meta.mods == null ? -1 : meta.mods.length)
+                    + ", teamCheat=" + (savedTeamRule != null && savedTeamRule.cheat)
+                    + ", teamBuildSpeed=" + (savedTeamRule == null ? -1f : savedTeamRule.buildSpeedMultiplier)
+                );
+            }
+        }finally{
+            file.delete();
+            backup.delete();
+            Vars.world = previousWorld;
+            Vars.state.map = previousMap;
+            Vars.state.rules = previousRules;
+            Vars.state.wave = previousWave;
+            Vars.state.tick = previousTick;
+            Vars.state.wavetime = previousWaveTime;
+        }
+    }
+
+    private static String describe(Throwable error){
+        StringBuilder out = new StringBuilder();
+        Throwable current = error;
+        int depth = 0;
+        while(current != null && depth++ < 5){
+            if(out.length() > 0) out.append(" <- ");
+            out.append(current.getClass().getName()).append(':').append(String.valueOf(current.getMessage()));
+            current = current.getCause();
+        }
+        return out.toString();
+    }
+
     private static void writePair(DataOutputStream out, String key, String value) throws IOException{
         out.writeUTF(key);
         out.writeUTF(value);
@@ -164,10 +283,10 @@ public final class BrowserSaveRuntime{
 
     private static boolean matches(byte[] actual, byte[] expected){
         if(actual.length != expected.length) return false;
-        for(int i = 0; i < actual.length; i++) if(actual[i] != expected[i]) return false;
+        for(int i = 0; i < expected.length; i++) if(actual[i] != expected[i]) return false;
         return true;
     }
 
-    @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-save-runtime','ready'); document.documentElement.setAttribute('data-mindustry-save-slots', String(count)); document.documentElement.setAttribute('data-mindustry-saveio-meta','ready');")
+    @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-save-runtime','ready'); document.documentElement.setAttribute('data-mindustry-save-slots', String(count)); document.documentElement.setAttribute('data-mindustry-saveio-meta','ready'); document.documentElement.setAttribute('data-mindustry-saveio-full','ready');")
     private static native void markReady(int count);
 }

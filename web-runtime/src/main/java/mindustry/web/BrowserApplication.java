@@ -27,6 +27,7 @@ public final class BrowserApplication extends WebApplicationBase{
     private boolean platformPaused;
     private boolean lastPlatformPaused;
     private boolean lastGameplayActive;
+    private int browserFrameCallbacks;
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
         super(listener, config);
@@ -64,24 +65,45 @@ public final class BrowserApplication extends WebApplicationBase{
     private void onAnimationFrame(double timestamp){
         if(!isRunning()) return;
 
-        BrowserCanvas.resizeToDisplay(config.canvasId);
-        updateGraphicsMetrics();
-        graphics.updateFrame(timestamp);
-        input.update();
+        int callbackIndex = ++browserFrameCallbacks;
+        String phase = "entry";
+        try{
+            markFrameStage(phase, callbackIndex);
 
-        boolean sampledPause = BrowserYandex.paused();
-        if(sampledPause != platformPaused) setPlatformPaused(sampledPause);
+            phase = "resize";
+            BrowserCanvas.resizeToDisplay(config.canvasId);
+            updateGraphicsMetrics();
+            graphics.updateFrame(timestamp);
+            input.update();
+            markFrameStage(phase, callbackIndex);
 
-        // game_api_pause is sent for ads, tab/background changes and other portal
-        // interruptions. Keep the scheduler alive, but do not advance Mindustry
-        // simulation/render callbacks while the platform is paused.
-        if(!platformPaused){
-            frame();
-            syncGameplayMarker();
+            phase = "pause-sample";
+            boolean sampledPause = BrowserYandex.paused();
+            if(sampledPause != platformPaused) setPlatformPaused(sampledPause);
+            markFrameStage(phase, callbackIndex);
+
+            // game_api_pause is sent for ads, tab/background changes and other portal
+            // interruptions. Keep the scheduler alive, but do not advance Mindustry
+            // simulation/render callbacks while the platform is paused.
+            phase = "application-frame";
+            if(!platformPaused){
+                frame();
+                syncGameplayMarker();
+            }
+            markFrameStage(phase, callbackIndex);
+
+            phase = "input-post-update";
+            input.postUpdate();
+            markFrameStage(phase, callbackIndex);
+
+            phase = "reschedule";
+            requestAnimationFrame(frameCallback);
+            markFrameStage("scheduled", callbackIndex);
+        }catch(Throwable error){
+            BrowserCanvas.setStatus("error", "Mindustry Web frame loop failed at " + phase + " #" + callbackIndex + ": "
+                + error.getClass().getName() + ": " + String.valueOf(error.getMessage()));
+            throw error;
         }
-
-        input.postUpdate();
-        requestAnimationFrame(frameCallback);
     }
 
     private void setPlatformPaused(boolean paused){
@@ -142,6 +164,9 @@ public final class BrowserApplication extends WebApplicationBase{
 
     @JSBody(params = {"callback"}, script = "window.requestAnimationFrame(callback);")
     private static native void requestAnimationFrame(FrameCallback callback);
+
+    @JSBody(params = {"phase", "index"}, script = "document.documentElement.setAttribute('data-mindustry-frame-stage', phase); document.documentElement.setAttribute('data-mindustry-frame-callbacks', String(index));")
+    private static native void markFrameStage(String phase, int index);
 
     @JSBody(params = {"pauseCallback", "resumeCallback"}, script = """
         window.addEventListener('mindustry:yandex-pause', pauseCallback);

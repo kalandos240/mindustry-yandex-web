@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry"
+ARC_CORE = ROOT / "work" / "Arc" / "arc-core" / "src" / "arc"
 
 
 def patch(path_rel, replacements):
@@ -12,7 +13,19 @@ def patch(path_rel, replacements):
     text = path.read_text(encoding="utf-8")
     for old, new, label in replacements:
         if old not in text:
-            raise SystemExit(f"External-URL patch no longer matches pinned upstream ({label}): {path_rel}")
+            raise SystemExit(f"External-URL/Web patch no longer matches pinned upstream ({label}): {path_rel}")
+        text = text.replace(old, new, 1)
+    path.write_text(text, encoding="utf-8")
+
+
+def patch_arc(path_rel, replacements):
+    path = ARC_CORE / path_rel
+    if not path.is_file():
+        raise SystemExit(f"Missing pinned Arc source: {path}")
+    text = path.read_text(encoding="utf-8")
+    for old, new, label in replacements:
+        if old not in text:
+            raise SystemExit(f"Arc Web patch no longer matches pinned upstream ({label}): {path_rel}")
         text = text.replace(old, new, 1)
     path.write_text(text, encoding="utf-8")
 
@@ -59,4 +72,79 @@ patch("content/SectorPresets.java", [
      'SectorSubmissions.registerSectors'),
 ])
 
-print("Stripped upstream external URL constants and sector-submission URL reachability")
+# TeaVM 0.15 does not implement Class.isAnonymousClass(), but Arc Json uses it only
+# to normalize anonymous subclasses to their superclass. Preserve that behavior with
+# the JVM binary-name rule used by Java compilers (Outer$1, Outer$2, ...), avoiding
+# a broad reflection downgrade. This keeps normal JSON/UBJSON save serialization,
+# including MapMarkers, on the stock codec.
+patch_arc("util/serialization/Json.java", [
+    ('public class Json{\n    private static final boolean debug = false;',
+     '''public class Json{\n    private static final boolean debug = false;\n\n    // Web: TeaVM 0.15 lacks Class.isAnonymousClass(). Java anonymous classes use\n    // a binary name whose final '$' component is numeric (Outer$1, Outer$2, ...).\n    private static boolean webIsAnonymousClass(Class type){\n        String name = type.getName();\n        int dollar = name.lastIndexOf('$');\n        if(dollar < 0 || dollar == name.length() - 1) return false;\n        for(int i = dollar + 1; i < name.length(); i++){\n            char c = name.charAt(i);\n            if(c < '0' || c > '9') return false;\n        }\n        return true;\n    }''',
+     'Json.webIsAnonymousClass helper'),
+    ('if(type.isAnonymousClass()) type = type.getSuperclass();',
+     'if(webIsAnonymousClass(type)) type = type.getSuperclass();',
+     'Json.getDefaultValues anonymous class'),
+    ('if(knownType != null && knownType.isAnonymousClass()){',
+     'if(knownType != null && webIsAnonymousClass(knownType)){',
+     'Json.writeValue knownType anonymous class'),
+    ('Class actualType = value.getClass().isAnonymousClass() ? value.getClass().getSuperclass() : value.getClass();',
+     'Class actualType = webIsAnonymousClass(value.getClass()) ? value.getClass().getSuperclass() : value.getClass();',
+     'Json.writeValue actualType anonymous class'),
+])
+
+# JsonIO has one additional direct anonymous-class check in the MapObjectives
+# serializer. Rules are stored in save metadata, so keep that serializer functional
+# with the same Web-safe binary-name test rather than deleting objective data.
+patch("io/JsonIO.java", [
+    ('public class JsonIO{\n    public static final Json json = new Json(){',
+     '''public class JsonIO{\n    private static boolean webIsAnonymousClass(Class type){\n        String name = type.getName();\n        int dollar = name.lastIndexOf('$');\n        if(dollar < 0 || dollar == name.length() - 1) return false;\n        for(int i = dollar + 1; i < name.length(); i++){\n            char c = name.charAt(i);\n            if(c < '0' || c > '9') return false;\n        }\n        return true;\n    }\n\n    public static final Json json = new Json(){''',
+     'JsonIO.webIsAnonymousClass helper'),
+    ('json.writeObjectStart(obj.getClass().isAnonymousClass() ? obj.getClass().getSuperclass() : obj.getClass(), null);',
+     'json.writeObjectStart(webIsAnonymousClass(obj.getClass()) ? obj.getClass().getSuperclass() : obj.getClass(), null);',
+     'JsonIO MapObjectives anonymous class'),
+])
+
+# The stock Serpulo pre-save hook updates only the visual planet mesh. Its async
+# ExecutorService path is a desktop rendering side effect and is not part of save
+# data. Keep SectorInfo.prepare()/saveInfo() fully intact and remove only this hook.
+patch("maps/planet/SerpuloPlanetGenerator.java", [
+    ('    public void beforeSaveWrite(Sector sector){\n        sector.planet.reloadMeshAsync();\n    }',
+     '    public void beforeSaveWrite(Sector sector){\n        // Web: visual planet mesh reload is deferred; save data is already prepared.\n    }',
+     'SerpuloPlanetGenerator.beforeSaveWrite'),
+])
+
+# SaveVersion is shared core code, but the Yandex/Web target deliberately has no
+# desktop Control or Mods subsystem. Patch only the metadata fields that otherwise
+# make those subsystems reachable. The v13 region layout and all game-state writers
+# remain stock. A Web runtime may update webPlaytime before a save without depending
+# from core on browser-specific classes.
+patch("io/SaveVersion.java", [
+    ('    public final int version;\n',
+     '''    public final int version;\n    private static long webPlaytime;\n\n    public static void setWebPlaytime(long value){\n        webPlaytime = Math.max(value, 0L);\n    }\n''',
+     'SaveVersion.webPlaytime bridge'),
+    ('            "playtime", headless ? 0 : control.saves.getTotalPlaytime(),',
+     '            "playtime", webPlaytime,',
+     'SaveVersion playtime'),
+    ('            "mods", JsonIO.write(mods.getModStrings().toArray(String.class)),',
+     '            "mods", "[]",',
+     'SaveVersion mods metadata'),
+    ('            "controlGroups", headless || control == null ? "null" : JsonIO.write(control.input.controlGroups),',
+     '            "controlGroups", "null",',
+     'SaveVersion controlGroups metadata'),
+    ('            "controlledType", headless || control.input.controlledType == null ? "null" : control.input.controlledType.name,',
+     '            "controlledType", "null",',
+     'SaveVersion controlledType metadata'),
+])
+
+# SaveVersion.writeMeta() does not store a "version" tag, even though getMeta()
+# reads one. The authoritative format version is already present in the outer MSAV
+# header and SaveIO reads it before selecting the codec. Preserve the stock file
+# format and expose that authoritative value through SaveMeta for browser saves and
+# existing imported saves alike.
+patch("io/SaveIO.java", [
+    ('            SaveMeta meta = ver.getMeta(stream);\n            stream.close();\n            return meta;',
+     '            SaveMeta meta = ver.getMeta(stream);\n            meta.version = version; // Web: use the authoritative MSAV header version.\n            stream.close();\n            return meta;',
+     'SaveIO SaveMeta header version'),
+])
+
+print("Stripped upstream external URLs and applied browser-safe save serialization overlays")
