@@ -10,6 +10,7 @@ import mindustry.*;
 import mindustry.core.*;
 import mindustry.net.*;
 import mindustry.net.Net.*;
+import mindustry.ui.*;
 
 import static mindustry.Vars.*;
 
