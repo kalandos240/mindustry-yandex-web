@@ -11,6 +11,7 @@ import mindustry.core.*;
 import mindustry.net.*;
 import mindustry.net.Net.*;
 import mindustry.ui.*;
+import org.teavm.jso.JSBody;
 
 import static mindustry.Vars.*;
 
@@ -95,6 +96,7 @@ public final class WebClientLauncher extends ClientLauncher{
         if(Fonts.def == null || Fonts.outline == null || Fonts.icon == null || Fonts.logic == null){
             throw new IllegalStateException("Mindustry UI shell lost baked Web font bindings");
         }
+        markUiShellReady();
     }
 
     public boolean hasUiShell(){
@@ -105,4 +107,7 @@ public final class WebClientLauncher extends ClientLauncher{
     public NetProvider getNet(){
         return netProvider;
     }
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-shell', 'ready');")
+    private static native void markUiShellReady();
 }
