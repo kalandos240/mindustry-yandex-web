@@ -36,11 +36,11 @@ cat > "$SDK_STUB" <<'JS'
         setTimeout(() => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
             listeners.game_api_pause();
-        }, 7000);
+        }, 1000);
         setTimeout(() => {
             root.setAttribute('data-yandex-test-resume-sent', 'yes');
             listeners.game_api_resume();
-        }, 10000);
+        }, 2500);
     }
 
     globalThis.YaGames = {
@@ -50,7 +50,6 @@ cat > "$SDK_STUB" <<'JS'
                 environment: {i18n: {lang: 'ru'}},
                 on(name, callback){
                     listeners[name] = callback;
-                    schedulePauseCycle();
                 },
                 off(name){
                     delete listeners[name];
@@ -62,6 +61,7 @@ cat > "$SDK_STUB" <<'JS'
                             if(root.getAttribute('data-mindustry-web') !== 'ready'){
                                 root.setAttribute('data-yandex-test-ready-too-early', 'yes');
                             }
+                            schedulePauseCycle();
                         }
                     },
                     GameplayAPI: {
