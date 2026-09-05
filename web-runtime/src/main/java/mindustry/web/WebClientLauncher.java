@@ -135,7 +135,7 @@ public final class WebClientLauncher extends ClientLauncher{
         if(player == null){
             player = Player.create();
             player.name = Core.settings.getString("name", "");
-            player.locale = Core.settings.getString("locale", BrowserI18n.locale());
+            player.locale = Core.settings.getString("locale", "en");
             player.color.set(Core.settings.getInt("color-0", playerColors[8].rgba()));
         }
 
