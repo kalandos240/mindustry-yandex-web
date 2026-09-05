@@ -216,7 +216,7 @@ jobs:
             --use-gl=angle \
             --use-angle=swiftshader \
             --enable-unsafe-swiftshader \
-            --virtual-time-budget=20000 \
+            --timeout=20000 \
             --dump-dom \
             http://127.0.0.1:8080/index.html > /tmp/mindustry-web-dom.html
           cat /tmp/mindustry-web-dom.html
