@@ -40,6 +40,13 @@ public final class WebClientLauncher extends ClientLauncher{
         Core.assets = new AssetManager();
         tree = new FileTree();
 
+        // Vars.init() creates GameState before gameplay systems begin consuming
+        // campaign/sector state. The Web bootstrap intentionally does not execute
+        // all of Vars.init() yet, so preserve that invariant explicitly. Serpulo's
+        // emissive planet mesh queries Sector.isCaptured() during Content.load(),
+        // which in turn requires state to exist even while the client is at menu.
+        state = new GameState();
+
         // Use the exact upstream vanilla registration sequence now that TeaVM keeps
         // the narrow reflection metadata required by Block.initBuilding() and campaign
         // metadata JSON. Content.init() is deliberately executed before texture loading:
