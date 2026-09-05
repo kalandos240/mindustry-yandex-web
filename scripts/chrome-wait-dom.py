@@ -174,7 +174,8 @@ def main() -> int:
 
     profile = Path(args.profile)
     profile.mkdir(parents=True, exist_ok=True)
-    deadline = time.monotonic() + args.timeout
+    started = time.monotonic()
+    deadline = started + args.timeout
     command = [
         args.chrome,
         "--headless=new",
@@ -190,13 +191,17 @@ def main() -> int:
     process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     ws: WebSocket | None = None
     last_html = ""
+    polls = 0
     try:
         ws = WebSocket(target_websocket(args.port, args.url, deadline))
         message_id = 1
         while time.monotonic() < deadline:
             last_html = evaluate(ws, message_id, "document.documentElement.outerHTML")
+            polls += 1
             message_id += 1
             if all(marker in last_html for marker in args.require):
+                elapsed = time.monotonic() - started
+                sys.stderr.write(f"Chrome required markers ready in {elapsed:.3f}s after {polls} DOM poll(s).\n")
                 sys.stdout.write("<!DOCTYPE html>\n" + last_html + "\n")
                 return 0
             time.sleep(0.1)
