@@ -7,6 +7,7 @@ import arc.graphics.*;
 import arc.struct.*;
 import arc.util.io.*;
 import mindustry.*;
+import mindustry.content.*;
 import mindustry.core.*;
 import mindustry.game.*;
 import mindustry.gen.*;
@@ -53,18 +54,31 @@ public final class BrowserSaveRuntime{
         Vars.tmpDirectory.mkdirs();
         Vars.schematicDirectory.mkdirs();
 
-        verifyMoveCopyDelete();
-        verifyRealSaveMetaFormat();
-        verifyFullSaveWrite();
+        runPhase("fi", BrowserSaveRuntime::verifyMoveCopyDelete);
+        runPhase("meta", BrowserSaveRuntime::verifyRealSaveMetaFormat);
+        runPhase("full-write", BrowserSaveRuntime::verifyFullSaveWrite);
+        runPhase("roundtrip", BrowserSaveRuntime::verifyFullSaveRoundTrip);
 
-        BrowserSaves browserSaves = new BrowserSaves();
-        Core.assets.setLoader(Texture.class, ".spreview", new BrowserSavePreviewLoader());
-        browserSaves.load();
-        saves = browserSaves;
-        SaveVersion.setWebPlaytime(browserSaves.getTotalPlaytime());
+        runPhase("saves-index", () -> {
+            BrowserSaves browserSaves = new BrowserSaves();
+            Core.assets.setLoader(Texture.class, ".spreview", new BrowserSavePreviewLoader());
+            browserSaves.load();
+            saves = browserSaves;
+            SaveVersion.setWebPlaytime(browserSaves.getTotalPlaytime());
+        });
 
         initialized = true;
+        markPhase("ready");
         markReady(saves.getSaveSlots().size);
+    }
+
+    private static void runPhase(String phase, Runnable action){
+        markPhase(phase);
+        try{
+            action.run();
+        }catch(Throwable error){
+            throw new IllegalStateException("Browser save phase " + phase + " failed: " + describe(error), error);
+        }
     }
 
     public static Saves saves(){
@@ -264,11 +278,139 @@ public final class BrowserSaveRuntime{
         }
     }
 
+    /** Prove the same stock v13 file restores through production SaveIO.load(). */
+    private static void verifyFullSaveRoundTrip(){
+        Fi file = Vars.saveDirectory.child("ci-roundtrip.msav");
+        Fi backup = SaveIO.backupFileFor(file);
+        file.delete();
+        backup.delete();
+
+        GameState previousState = Vars.state;
+        World previousWorld = Vars.world;
+        Waves previousWaves = Vars.waves;
+        String phase = "setup";
+
+        try{
+            phase = "setup-groups";
+            markPhase("roundtrip-setup-groups");
+            if(Groups.all == null){
+                Groups.init();
+            }
+
+            // Reuse the already initialized browser GameState, exactly like the
+            // proven full-writer probe. SaveIO.load() itself will replace it with
+            // a fresh GameState, so the read-side round-trip remains independent.
+            phase = "setup-world";
+            markPhase("roundtrip-setup-world");
+            Vars.world = new World();
+            Vars.world.resize(4, 4).fill();
+
+            phase = "setup-tiles";
+            markPhase("roundtrip-setup-tiles");
+            // Tile mutation normally recaches Renderer/pathfinder state. This probe
+            // is building a generated map before Renderer exists, so use Mindustry's
+            // normal generation mode to suppress those live-world side effects.
+            Vars.world.setGenerating(true);
+            try{
+                Vars.world.tile(1, 1).setFloor(Blocks.sand.asFloor());
+                Vars.world.tile(2, 2).setBlock(Blocks.stoneWall);
+            }finally{
+                Vars.world.setGenerating(false);
+            }
+
+            phase = "setup-map";
+            markPhase("roundtrip-setup-map");
+            Vars.state.map = new Map(StringMap.of(
+                "name", "Web SaveIO Round Trip",
+                "author", "Mindustry Web",
+                "description", "Browser stock save/load validation"
+            ));
+
+            phase = "setup-rules";
+            markPhase("roundtrip-setup-rules");
+            Vars.state.rules = new Rules();
+            Rules.TeamRule teamRule = Vars.state.rules.teams.get(Team.sharded);
+            if(teamRule == null){
+                throw new IllegalStateException("Team.sharded rules were not initialized");
+            }
+            teamRule.cheat = true;
+            teamRule.buildSpeedMultiplier = 1.75f;
+            Vars.state.wave = 31;
+            Vars.state.tick = 654.25;
+            Vars.state.wavetime = 17.5f;
+            SaveVersion.setWebPlaytime(totalPlaytimeForSave());
+
+            phase = "write";
+            markPhase("roundtrip-write");
+            SaveIO.save(file);
+            if(!SaveIO.isSaveValid(file)){
+                throw new IllegalStateException("Round-trip source MSAV is invalid before load");
+            }
+
+            phase = "corrupt";
+            markPhase("roundtrip-corrupt");
+            // Destroy the in-memory values so successful validation can only come
+            // from the file reader, not from state accidentally retained in memory.
+            Vars.world.resize(1, 1).fill();
+            Vars.state.map = new Map(StringMap.of("name", "corrupted-before-load"));
+            Vars.state.rules = new Rules();
+            Vars.state.wave = 999;
+            Vars.state.tick = 999.0;
+            Vars.state.wavetime = 999f;
+
+            phase = "load";
+            markPhase("roundtrip-load");
+            SaveIO.load(file);
+
+            phase = "verify";
+            markPhase("roundtrip-verify");
+            Rules.TeamRule loadedTeamRule = Vars.state.rules.teams.get(Team.sharded);
+            Tile floorTile = Vars.world.tile(1, 1);
+            Tile wallTile = Vars.world.tile(2, 2);
+            if(Vars.world.width() != 4
+            || Vars.world.height() != 4
+            || Vars.state.wave != 31
+            || Math.abs(Vars.state.tick - 654.25) > 0.0001
+            || Math.abs(Vars.state.wavetime - 17.5f) > 0.0001f
+            || Vars.state.map == null
+            || !"Web SaveIO Round Trip".equals(Vars.state.map.name())
+            || loadedTeamRule == null
+            || !loadedTeamRule.cheat
+            || Math.abs(loadedTeamRule.buildSpeedMultiplier - 1.75f) > 0.0001f
+            || floorTile == null
+            || floorTile.floor() != Blocks.sand.asFloor()
+            || wallTile == null
+            || wallTile.block() != Blocks.stoneWall){
+                throw new IllegalStateException(
+                    "Stock SaveIO.load browser round-trip failed: size=" + Vars.world.width() + "x" + Vars.world.height()
+                    + ", wave=" + Vars.state.wave
+                    + ", tick=" + Vars.state.tick
+                    + ", wavetime=" + Vars.state.wavetime
+                    + ", map=" + (Vars.state.map == null ? "null" : Vars.state.map.name())
+                    + ", teamCheat=" + (loadedTeamRule != null && loadedTeamRule.cheat)
+                    + ", teamBuildSpeed=" + (loadedTeamRule == null ? -1f : loadedTeamRule.buildSpeedMultiplier)
+                    + ", floor=" + (floorTile == null ? "null" : floorTile.floor().name)
+                    + ", wall=" + (wallTile == null ? "null" : wallTile.block().name)
+                );
+            }
+
+            markLoadReady();
+        }catch(Throwable error){
+            throw new IllegalStateException("Stock SaveIO.load browser round-trip failed at " + phase + ": " + describe(error), error);
+        }finally{
+            file.delete();
+            backup.delete();
+            Vars.state = previousState;
+            Vars.world = previousWorld;
+            Vars.waves = previousWaves;
+        }
+    }
+
     private static String describe(Throwable error){
         StringBuilder out = new StringBuilder();
         Throwable current = error;
         int depth = 0;
-        while(current != null && depth++ < 5){
+        while(current != null && depth++ < 6){
             if(out.length() > 0) out.append(" <- ");
             out.append(current.getClass().getName()).append(':').append(String.valueOf(current.getMessage()));
             current = current.getCause();
@@ -286,6 +428,12 @@ public final class BrowserSaveRuntime{
         for(int i = 0; i < expected.length; i++) if(actual[i] != expected[i]) return false;
         return true;
     }
+
+    @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-saveio-phase', phase);")
+    private static native void markPhase(String phase);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-saveio-load','ready');")
+    private static native void markLoadReady();
 
     @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-save-runtime','ready'); document.documentElement.setAttribute('data-mindustry-save-slots', String(count)); document.documentElement.setAttribute('data-mindustry-saveio-meta','ready'); document.documentElement.setAttribute('data-mindustry-saveio-full','ready');")
     private static native void markReady(int count);

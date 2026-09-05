@@ -79,6 +79,7 @@ public final class BrowserApplication extends WebApplicationBase{
             phase = "resize";
             if(BrowserCanvas.resizeToDisplay(config.canvasId, config.maxPixelRatio)){
                 updateGraphicsMetrics();
+                resize(graphics.getWidth(), graphics.getHeight());
             }
             graphics.updateFrame(timestamp);
             input.update();
