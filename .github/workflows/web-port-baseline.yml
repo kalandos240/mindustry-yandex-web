@@ -115,20 +115,23 @@ jobs:
           test -s web-runtime/build/web/mindustry.js
           test -s web-runtime/build/web/assets-manifest.js
           test -s web-runtime/build/web/assets/sprites/error.png
+          test -s web-runtime/build/web/assets/sprites/block_colors.png
           test -s web-runtime/build/web/assets/sprites/sprites.aatls
           test -s web-runtime/build/web/assets/sprites/sprites.png
           grep -q 'mindustry-canvas' web-runtime/build/web/index.html
           grep -q 'mindustry-web-status' web-runtime/build/web/index.html
           grep -q 'assets-manifest.js' web-runtime/build/web/index.html
           grep -q 'sprites/error.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.aatls' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.png' web-runtime/build/web/assets-manifest.js
           echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
           echo "PNG smoke bytes: $(wc -c < web-runtime/build/web/assets/sprites/error.png)"
+          echo "Block colors bytes: $(wc -c < web-runtime/build/web/assets/sprites/block_colors.png)"
           echo "Staged AATLS bytes: $(wc -c < web-runtime/build/web/assets/sprites/sprites.aatls)"
           echo "Staged atlas pages: $(find web-runtime/build/web/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)"
 
-      - name: Execute Mindustry core, Arc GL20, atlas, input and settings in headless Chrome
+      - name: Execute Mindustry core, Arc GL20, atlas, content regions, input and settings in headless Chrome
         run: |
           command -v google-chrome
           cd web-runtime/build/web
@@ -158,6 +161,7 @@ jobs:
           grep -q 'binary-png@Core.files' /tmp/mindustry-web-dom.html
           grep -q 'texture-upload@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'vanilla-atlas@WebGL' /tmp/mindustry-web-dom.html
+          grep -q 'content-regions@atlas' /tmp/mindustry-web-dom.html
           grep -q 'settings@localStorage' /tmp/mindustry-web-dom.html
 
       - name: Upload browser smoke package

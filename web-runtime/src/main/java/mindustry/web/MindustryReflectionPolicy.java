@@ -8,9 +8,9 @@ import org.teavm.extension.spi.reflection.SimpleReflectionPolicy;
  *
  * Block.initBuilding() walks declared nested classes and invokes the public constructor
  * of the first Building subtype it finds. Arc Json also constructs Planet.PlanetData and
- * its ObjectIntMap field while loading packaged Serpulo campaign metadata. TeaVM strips
- * this metadata by default, so retain only these narrow surfaces instead of enabling
- * arbitrary application-wide reflection.
+ * its ObjectIntMap field while loading packaged Serpulo campaign metadata. Content loading
+ * resolves BuildVisibility by its public static fields. TeaVM strips this metadata by
+ * default, so retain only these narrow surfaces instead of enabling arbitrary reflection.
  */
 @Autoregistered
 public final class MindustryReflectionPolicy extends SimpleReflectionPolicy{
@@ -23,6 +23,9 @@ public final class MindustryReflectionPolicy extends SimpleReflectionPolicy{
             .reflectablePublicMembers();
 
         selectClass("arc.struct.ObjectIntMap")
+            .reflectablePublicMembers();
+
+        selectClass("mindustry.world.meta.BuildVisibility")
             .reflectablePublicMembers();
     }
 }

@@ -3,6 +3,7 @@ package mindustry.web;
 import arc.*;
 import arc.backend.web.*;
 import arc.graphics.*;
+import arc.graphics.g2d.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.core.*;
@@ -62,6 +63,18 @@ public final class Bootstrap{
                     throw error;
                 }
 
+                // Complete the client-side content lifecycle only after Core.atlas is the
+                // real vanilla atlas. loadColors() proves packaged block metadata is readable;
+                // load() resolves actual UI/full icons and every content-specific atlas region.
+                try{
+                    Vars.content.loadColors();
+                    Vars.content.load();
+                    verifyContentRegions();
+                }catch(Throwable error){
+                    BrowserCanvas.setStatus("error", "Mindustry Web content regions failed: " + describe(error));
+                    throw error;
+                }
+
                 if(Vars.content == null
                 || Vars.content.item("copper") == null
                 || Vars.content.liquid("water") == null
@@ -96,7 +109,7 @@ public final class Bootstrap{
                     throw new IllegalStateException("Mindustry browser content.init campaign/tech-tree state failed runtime initialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init, campaign metadata, tech trees and specialized block factories ready; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; settings@localStorage; waiting for animation frames...");
+                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init/load, campaign metadata, tech trees, specialized block factories and real content regions ready; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; content-regions@atlas; settings@localStorage; waiting for animation frames...");
             }
 
             @Override
@@ -107,7 +120,7 @@ public final class Bootstrap{
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
-                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; settings@localStorage: " + glVersion);
+                    BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init/load + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; content-regions@atlas; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
@@ -169,6 +182,25 @@ public final class Bootstrap{
             }
         }finally{
             texture.dispose();
+        }
+    }
+
+    private static void verifyContentRegions(){
+        requireAtlasRegion("dagger.fullIcon", Vars.content.unit("dagger").fullIcon);
+        requireAtlasRegion("copper.uiIcon", Vars.content.item("copper").uiIcon);
+        requireAtlasRegion("water.uiIcon", Vars.content.liquid("water").uiIcon);
+        requireAtlasRegion("duo.uiIcon", Vars.content.block("duo").uiIcon);
+        requireAtlasRegion("core-shard.uiIcon", Vars.content.block("core-shard").uiIcon);
+    }
+
+    private static void requireAtlasRegion(String name, TextureRegion region){
+        if(region == null
+        || !region.found()
+        || region.texture == null
+        || region.width <= 0
+        || region.height <= 0
+        || region.texture.getTextureObjectHandle() == 0){
+            throw new IllegalStateException("Mindustry content region is not backed by a live vanilla atlas texture: " + name);
         }
     }
 
