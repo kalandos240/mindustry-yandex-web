@@ -73,7 +73,7 @@ public final class WebFontBaker{
         chars.add('\0');
 
         // English + Russian are the first browser release targets. Reading values
-        // through java.util.Properties resolves \uXXXX escapes before glyph baking.
+        // through java.util.Properties resolves escaped Unicode code points first.
         String[] names = {"bundle.properties", "bundle_ru.properties"};
         for(String name : names){
             Fi file = bundles.child(name);
