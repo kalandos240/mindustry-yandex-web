@@ -10,13 +10,10 @@ command -v google-chrome >/dev/null
 
 test -s "$EN_BUNDLE"
 test -s "$RU_BUNDLE"
+test -s "$WEB_DIR/assets/icons/icons.properties"
 
-# Validate the actual staged directory against machine-checkable Yandex release
-# requirements before opening it in a browser.
 bash "$ROOT_DIR/scripts/audit-yandex-release.sh"
 
-# The actual files that ship in the Yandex ZIP must not contain visible external
-# destinations or contact addresses. This is stricter than merely blocking clicks.
 for bundle in "$EN_BUNDLE" "$RU_BUNDLE"; do
   if grep -EIn 'https?://|www\.|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' "$bundle"; then
     echo "External URL/contact remained in staged localization: $bundle" >&2
@@ -31,6 +28,11 @@ if grep -Fq 'Errors have occurred loading map content' "$RU_BUNDLE"; then
 fi
 if grep -Fq 'anukendev@gmail.com' "$EN_BUNDLE" "$RU_BUNDLE"; then
   echo 'External contact remained in staged credits.' >&2
+  exit 1
+fi
+
+if [ -d "$WEB_DIR/assets/cursors" ] && find "$WEB_DIR/assets/cursors" -type f -name '*.png' | grep -q .; then
+  echo 'Desktop cursor PNGs unexpectedly staged in touch-first Web package.' >&2
   exit 1
 fi
 
@@ -64,17 +66,17 @@ run_locale(){
 
   grep -q 'data-mindustry-web="ready"' "$dom"
   grep -q 'data-mindustry-ui-shell="ready"' "$dom"
+  grep -q 'data-mindustry-ui-sync="ready"' "$dom"
   grep -q 'data-mindustry-links="none"' "$dom"
   grep -q "data-mindustry-locale=\"$expected\"" "$dom"
   grep -q 'data-mindustry-network="local-only"' "$dom"
   grep -q 'data-mindustry-navigation="blocked"' "$dom"
-  echo "Browser locale $expected: ready, no-links, local-only"
+  echo "Browser locale $expected: UI sync ready, no-links, local-only"
 }
 
 run_locale en
 run_locale ru
 
-# Stop the fallback/local browser server before the independent SDK-backed test.
 cleanup_locale
 trap - EXIT
 bash "$ROOT_DIR/scripts/verify-yandex-sdk.sh"
