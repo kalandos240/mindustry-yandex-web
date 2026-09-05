@@ -8,6 +8,7 @@ import arc.math.*;
 import arc.util.*;
 import mindustry.*;
 import mindustry.core.*;
+import mindustry.gen.*;
 import mindustry.net.*;
 import mindustry.net.Net.*;
 import mindustry.ui.*;
@@ -25,6 +26,7 @@ import static mindustry.Vars.*;
 public final class WebClientLauncher extends ClientLauncher{
     private final NetProvider netProvider = new WebNetProvider();
     private UI uiShell;
+    private boolean uiSyncLoaded;
 
     @Override
     public void setup(){
@@ -72,17 +74,60 @@ public final class WebClientLauncher extends ClientLauncher{
         content.createBaseContent();
         content.init();
 
-        // Construct the real Mindustry UI module. Its constructor normally queues
-        // FreeType font loading; the Web overlay validates the baked BrowserFonts set.
-        uiShell = new UI();
+        // Match stock ClientLauncher: the singleton Vars.ui and the module instance are
+        // the same object before any Scene/dialog code becomes reachable.
+        Vars.ui = uiShell = new UI();
         if(Fonts.def == null || Fonts.outline == null || Fonts.icon == null || Fonts.logic == null){
             throw new IllegalStateException("Mindustry UI shell lost baked Web font bindings");
         }
         markUiShellReady();
+
+        // Bootstrap.init() continues synchronously after setup(), loading the real atlas
+        // and all vanilla content regions. Arc Application runnables execute at the end
+        // of the first browser frame, so this preserves the proven bootstrap order while
+        // advancing the stock UI only after those resources exist.
+        Core.app.post(() -> {
+            try{
+                loadUiSync();
+            }catch(Throwable error){
+                BrowserCanvas.setStatus("error", "Mindustry Web UI sync failed: " + error.getClass().getName() + ": " + String.valueOf(error.getMessage()));
+                throw error;
+            }
+        });
+    }
+
+    /**
+     * Runs the stock synchronous UI skin phase once the real vanilla atlas/content
+     * regions are live. This creates Arc Scene and Mindustry Tex/Icon/Styles, then
+     * registers atlas-backed content glyphs into the baked fonts.
+     */
+    public void loadUiSync(){
+        if(uiSyncLoaded) return;
+        if(uiShell == null || Core.atlas == null){
+            throw new IllegalStateException("Mindustry UI sync requested before UI shell/atlas initialization");
+        }
+
+        uiShell.loadSync();
+
+        if(Core.scene == null
+        || Tex.whiteui == null
+        || Styles.defaultLabel == null
+        || Styles.defaultt == null
+        || Icon.play == null
+        || !Fonts.hasUnicodeStr("copper")){
+            throw new IllegalStateException("Mindustry Scene/Tex/Icon/Styles/content-icon initialization is incomplete on Web");
+        }
+
+        uiSyncLoaded = true;
+        markUiSyncReady();
     }
 
     public boolean hasUiShell(){
         return uiShell != null;
+    }
+
+    public boolean hasUiSync(){
+        return uiSyncLoaded;
     }
 
     @Override
@@ -95,4 +140,7 @@ public final class WebClientLauncher extends ClientLauncher{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-shell', 'ready');")
     private static native void markUiShellReady();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-sync', 'ready');")
+    private static native void markUiSyncReady();
 }
