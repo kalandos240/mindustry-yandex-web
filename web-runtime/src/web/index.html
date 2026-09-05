@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing" data-yandex-sdk="booting">
+<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing" data-yandex-sdk="booting" data-mindustry-storage="booting">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -15,14 +15,19 @@
 <body>
     <canvas id="mindustry-canvas" width="1280" height="720" tabindex="0"></canvas>
     <div id="mindustry-web-status">Initializing Yandex Games...</div>
+    <script src="browser-storage.js"></script>
     <script src="yandex-platform.js"></script>
     <script>
         (async () => {
             const root = document.documentElement;
             const status = document.getElementById('mindustry-web-status');
 
-            // Yandex SDK must initialize before the game chooses its locale or starts.
-            await globalThis.__mindustryYandex.init();
+            // Initialize the mandatory Yandex platform and hydrate user files before
+            // TeaVM starts. They are independent, so do both without serial startup cost.
+            await Promise.all([
+                globalThis.__mindustryYandex.init(),
+                globalThis.__mindustryStorage.init()
+            ]);
 
             // After platform initialization, game-owned runtime traffic is local-only.
             // This protects the packaged game from accidental third-party dependencies.
