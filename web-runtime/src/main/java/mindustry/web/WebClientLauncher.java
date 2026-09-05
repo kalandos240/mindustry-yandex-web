@@ -74,9 +74,9 @@ public final class WebClientLauncher extends ClientLauncher{
         content.createBaseContent();
         content.init();
 
-        // Construct the real Mindustry UI module. Its constructor normally queues
-        // FreeType font loading; the Web overlay validates the baked BrowserFonts set.
-        uiShell = new UI();
+        // Match stock ClientLauncher: the singleton Vars.ui and the module instance are
+        // the same object before any Scene/dialog code becomes reachable.
+        Vars.ui = uiShell = new UI();
         if(Fonts.def == null || Fonts.outline == null || Fonts.icon == null || Fonts.logic == null){
             throw new IllegalStateException("Mindustry UI shell lost baked Web font bindings");
         }
