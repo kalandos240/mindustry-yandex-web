@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-mindustry-web="booting">
+<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -13,6 +13,90 @@
 <body>
     <canvas id="mindustry-canvas" width="1280" height="720"></canvas>
     <div id="mindustry-web-status">Booting Mindustry Web runtime...</div>
+    <script>
+        // Yandex build invariant: game-owned runtime traffic is local-only. Assets may
+        // come from the uploaded archive (same origin), data: or blob:. Any attempt to
+        // reach another host is recorded, blocked and therefore fails CI immediately.
+        (() => {
+            const root = document.documentElement;
+            const blocked = [];
+            globalThis.__mindustryExternalRequests = blocked;
+
+            function resolveInput(input){
+                const raw = input && typeof input === 'object' && typeof input.url === 'string'
+                    ? input.url
+                    : String(input == null ? '' : input);
+                return new URL(raw, location.href);
+            }
+
+            function requireLocal(input, kind){
+                const url = resolveInput(input);
+                const inline = url.protocol === 'data:' || url.protocol === 'blob:';
+                const httpLocal = (url.protocol === 'http:' || url.protocol === 'https:') && url.origin === location.origin;
+                const wsLocal = (url.protocol === 'ws:' || url.protocol === 'wss:')
+                    && url.hostname === location.hostname && url.port === location.port;
+                if(inline || httpLocal || wsLocal) return url;
+
+                const message = kind + ' blocked external URL: ' + url.href;
+                blocked.push(message);
+                root.setAttribute('data-mindustry-network', 'blocked');
+                throw new Error(message);
+            }
+
+            const nativeFetch = globalThis.fetch.bind(globalThis);
+            globalThis.fetch = (input, init) => {
+                requireLocal(input, 'fetch');
+                return nativeFetch(input, init);
+            };
+
+            if(globalThis.XMLHttpRequest){
+                const nativeOpen = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function(method, url, ...rest){
+                    requireLocal(url, 'xhr');
+                    return nativeOpen.call(this, method, url, ...rest);
+                };
+            }
+
+            if(globalThis.WebSocket){
+                const NativeWebSocket = globalThis.WebSocket;
+                globalThis.WebSocket = function(url, protocols){
+                    requireLocal(url, 'websocket');
+                    return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
+                };
+                globalThis.WebSocket.prototype = NativeWebSocket.prototype;
+            }
+
+            if(globalThis.EventSource){
+                const NativeEventSource = globalThis.EventSource;
+                globalThis.EventSource = function(url, init){
+                    requireLocal(url, 'eventsource');
+                    return init === undefined ? new NativeEventSource(url) : new NativeEventSource(url, init);
+                };
+                globalThis.EventSource.prototype = NativeEventSource.prototype;
+            }
+
+            if(navigator.sendBeacon){
+                const nativeBeacon = navigator.sendBeacon.bind(navigator);
+                navigator.sendBeacon = (url, data) => {
+                    requireLocal(url, 'beacon');
+                    return nativeBeacon(url, data);
+                };
+            }
+
+            const nativeWindowOpen = window.open.bind(window);
+            window.open = (url, target, features) => {
+                try{
+                    requireLocal(url, 'window.open');
+                }catch(error){
+                    console.warn(error.message);
+                    return null;
+                }
+                return nativeWindowOpen(url, target, features);
+            };
+
+            root.setAttribute('data-mindustry-network', 'local-only');
+        })();
+    </script>
     <script src="assets-manifest.js"></script>
     <script src="mindustry.js"></script>
     <script>
