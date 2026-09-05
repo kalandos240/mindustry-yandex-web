@@ -5,6 +5,7 @@ import arc.util.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.content.TechTree.*;
+import mindustry.core.*;
 import mindustry.io.*;
 import mindustry.io.versions.*;
 
