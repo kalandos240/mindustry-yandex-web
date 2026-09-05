@@ -20,6 +20,14 @@ public class WebConfig{
     public boolean preserveDrawingBuffer = false;
     public boolean debugGl = false;
 
+    /**
+     * Maximum backing-buffer scale relative to CSS pixels. Modern phones commonly
+     * report DPR 3-4, which turns a full-screen canvas into 9-16x as many pixels.
+     * 2x remains visually sharp while putting a predictable ceiling on fill-rate,
+     * framebuffer memory and post-processing cost for the Yandex mobile target.
+     */
+    public float maxPixelRatio = 2f;
+
     /** Pause game updates when the document becomes hidden. */
     public boolean pauseWhenHidden = true;
 
