@@ -63,6 +63,14 @@ run_locale(){
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-ui-shell="ready"' \
     --require 'data-mindustry-ui-sync="ready"' \
+    --require 'data-mindustry-renderer="constructed"' \
+    --require 'data-mindustry-renderer-init="ready"' \
+    --require 'data-mindustry-stock-input="desktop"' \
+    --require 'data-mindustry-gesture-detector="ready"' \
+    --require 'data-mindustry-control="ready"' \
+    --require 'data-mindustry-control-saves="browser"' \
+    --require 'data-mindustry-control-load="ready"' \
+    --require 'data-mindustry-audio="disabled-local"' \
     --require 'data-mindustry-saveio-load="ready"' \
     --require 'data-mindustry-links="none"' \
     --require "data-mindustry-locale=\"$expected\"" \
@@ -70,7 +78,7 @@ run_locale(){
     --require 'data-mindustry-storage="ready"' \
     --require 'data-mindustry-navigation="blocked"' > "$dom"
 
-  echo "Browser locale $expected: storage + SaveIO load round-trip + UI sync ready, no-links, local-only"
+  echo "Browser locale $expected: renderer + stock input + BrowserSaves Control + storage + SaveIO round-trip ready, no-links, local-only"
 }
 
 run_locale en
