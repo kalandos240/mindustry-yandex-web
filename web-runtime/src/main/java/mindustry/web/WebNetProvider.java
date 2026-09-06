@@ -8,24 +8,29 @@ import mindustry.net.Net.*;
 import java.io.*;
 
 /**
- * Browser networking boundary for Mindustry.
+ * Permanent single-player networking boundary for the browser build.
  *
- * The desktop ArcNet provider depends on java.nio socket channels, UDP discovery
- * and JVM worker threads, none of which exist in TeaVM JavaScript. This provider
- * deliberately keeps those dependencies out of the Web graph. WebSocket packet
- * transport will be implemented behind this same NetProvider contract.
+ * This Yandex/Web target intentionally has no multiplayer transport at all: no
+ * ArcNet sockets, no WebSocket client, no LAN discovery, no host mode and no
+ * remote server list. Net still exists because stock Mindustry gameplay queries
+ * net.client()/net.server()/net.active(), but this provider can never transition
+ * that facade into an active network session.
  */
 public final class WebNetProvider implements NetProvider{
     private final Seq<NetConnection> connections = new Seq<>();
 
+    private static IOException multiplayerDisabled(){
+        return new IOException("Multiplayer is disabled in this single-player Web build");
+    }
+
     @Override
     public void connectClient(String ip, int port, Runnable success) throws IOException{
-        throw new IOException("Browser WebSocket transport is not initialized yet");
+        throw multiplayerDisabled();
     }
 
     @Override
     public void sendClient(Object object, boolean reliable){
-        // No active browser connection until the WebSocket transport is installed.
+        // Intentionally inert: this build never has a remote client connection.
     }
 
     @Override
@@ -35,19 +40,18 @@ public final class WebNetProvider implements NetProvider{
 
     @Override
     public void discoverServers(Cons<Host> callback, Runnable done){
-        // Browsers cannot perform UDP/LAN discovery. A platform server list can be
-        // supplied later through HTTP/Yandex services without exposing ArcNet.
+        // No LAN, remote or platform-backed server discovery in the single-player build.
         if(done != null) done.run();
     }
 
     @Override
     public void pingHost(String address, int port, Cons<Host> valid, Cons<Exception> failed){
-        if(failed != null) failed.get(new IOException("Raw host ping is unavailable in browsers"));
+        if(failed != null) failed.get(multiplayerDisabled());
     }
 
     @Override
     public void hostServer(int port) throws IOException{
-        throw new IOException("Hosting a raw TCP/UDP Mindustry server is unavailable in browsers");
+        throw multiplayerDisabled();
     }
 
     @Override
