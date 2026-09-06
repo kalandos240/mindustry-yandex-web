@@ -15,8 +15,13 @@ import static mindustry.Vars.*;
  * This does not fake gameplay by assigning GameState directly. It enters the already
  * loaded deterministic world through stock Logic.play(), which fires PlayEvent and the
  * normal Control player-registration path. A real vanilla alpha unit is attached to the
- * local Player through the generated entity/controller API, then the stock client module
- * order runs for one playing frame.
+ * local Player through the generated entity/controller API, then the production playing
+ * core and stock Control -> Renderer -> UI order run for one frame.
+ *
+ * The Logic entry point is a Web-specific extraction of the stock playing branch with
+ * runtime assertions that fog/waves/weather/campaign/team AI are disabled. This keeps
+ * those impossible optional branches out of TeaVM reachability while preserving the real
+ * state clock, team stats, GlobalVars, entity physics/update and gameplay events.
  *
  * The smoke deliberately restores menu state afterward. Continuous playing remains the
  * next milestone; keeping this one-shot makes failures attributable while the remaining
@@ -73,7 +78,7 @@ public final class BrowserPlayingRuntime{
         }
 
         markPhase("logic");
-        logic.update();
+        logic.updateWebPlayingCore();
         markPhase("logic-ready");
 
         // JVM worker schedulers are replaced by explicit browser-frame steps; the
