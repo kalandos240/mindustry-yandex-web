@@ -13,6 +13,7 @@ command -v google-chrome >/dev/null
 [ -s "$WEB_DIR/index.html" ]
 [ -s "$WEB_DIR/yandex-platform.js" ]
 [ -s "$WEB_DIR/browser-storage.js" ]
+[ -s "$WEB_DIR/browser-audio.js" ]
 [ ! -e "$SDK_STUB" ]
 
 cleanup(){
@@ -105,7 +106,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --url "http://127.0.0.1:$PORT/index.html" \
   --profile "$PROFILE" \
   --port "$CDP_PORT" \
-  --timeout 30 \
+  --timeout 35 \
   --require 'data-yandex-test-init="yes"' \
   --require 'data-yandex-sdk="ready"' \
   --require 'data-yandex-locale="ru"' \
@@ -116,7 +117,14 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-platform-pause-observed="yes"' \
   --require 'data-mindustry-platform-resume-observed="yes"' \
   --require 'data-mindustry-platform-pause="running"' \
+  --require 'data-mindustry-audio="ready"' \
+  --require 'data-mindustry-audio-pause-observed="yes"' \
+  --require 'data-mindustry-audio-resume-observed="yes"' \
+  --require 'data-mindustry-audio-platform="running"' \
   --require 'data-mindustry-storage="ready"' \
+  --require 'data-mindustry-renderer-init="ready"' \
+  --require 'data-mindustry-control="ready"' \
+  --require 'data-mindustry-gameplay-runtime="ready"' \
   --require 'data-mindustry-ui-sync="ready"' \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-network="yandex-sdk-only"' > "$DOM"
@@ -127,4 +135,5 @@ if grep -q 'data-yandex-test-ready-too-early="yes"' "$DOM"; then
   exit 1
 fi
 
-echo 'Yandex SDK browser smoke: init + SDK locale + storage + UI sync + Game Ready + pause/resume + SDK transport PASS'
+grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
+echo 'Yandex SDK browser smoke: init + SDK locale + storage + renderer/control/gameplay + Game Ready + pause/resume + BrowserAudio pause/resume + SDK transport PASS'
