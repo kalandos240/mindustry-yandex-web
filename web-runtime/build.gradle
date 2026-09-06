@@ -50,12 +50,15 @@ tasks.register("stageWeb", Copy) {
         include "sprites/block_colors.png"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
-        // shaders/** and its noise/caustics/space textures. Renderer.init() additionally
-        // creates PlanetRenderer/Bloom, EnvRenderers and the cloud texture, so package
-        // every asset that those constructors/loaders resolve before any gameplay starts.
+        // shaders/** and its noise/caustics/space textures. Content.load() also queues
+        // ParticleWeather noise textures before Renderer.init() drains the pending asset
+        // graph. Renderer.init() then creates PlanetRenderer/Bloom, EnvRenderers and the
+        // cloud texture, so package every asset reached by this startup milestone.
         include "shaders/**"
         include "bloomshaders/**"
         include "sprites/noise.png"
+        include "sprites/noiseAlpha.png"
+        include "sprites/fog.png"
         include "sprites/caustics.png"
         include "sprites/space.png"
         include "sprites/clouds.png"
