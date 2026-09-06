@@ -126,8 +126,17 @@ public final class BrowserPlayingRuntime{
         ui.update();
         markPhase("ui-ready");
 
-        if(!state.isPlaying() || state.updateId <= beforeUpdateId || player.unit() != unit || !unit.isAdded()){
-            throw new IllegalStateException("Real Web playing client frame did not advance stock game state/entity ownership");
+        if(!state.isPlaying()){
+            throw new IllegalStateException("Real Web playing client frame unexpectedly left playing state");
+        }
+        if(state.updateId <= beforeUpdateId){
+            throw new IllegalStateException("Real Web playing client frame did not advance GameState updateId: before=" + beforeUpdateId + ", after=" + state.updateId);
+        }
+        if(player.unit() != unit){
+            throw new IllegalStateException("Real Web playing client frame changed local player unit ownership");
+        }
+        if(!unit.isAdded()){
+            throw new IllegalStateException("Real Web playing client frame removed the local alpha entity");
         }
 
         markReady(state.updateId, unit.id, unit.type.name);
