@@ -8,15 +8,17 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Measured after bringing the stock Renderer, stock MobileInput/DesktopInput,
-# browser-safe Control/BrowserSaves and the first single-thread gameplay substrate
-# (World/Waves/Collisions/Universe/WaveSpawner/BlockIndexer/GlobalVars/Logic event
-# graph) into TeaVM. The older 10.75 MiB baseline represented only renderer/input
-# reachability and would now reject intentional gameplay code. Keep raw-JS headroom
-# modest while retaining the tighter compressed-size and forbidden-class guards.
-JS_BASELINE = 12_958_384
+# Measured at the first real-world milestone: stock Renderer/Control/input/audio plus
+# World/Logic/FogControl/Pathfinder/ControlPathfinder, with ControlPathfinder converted
+# from its JVM daemon scheduler to browser-frame stepping and an actual 8x8
+# World.loadGenerator -> WorldLoadEvent graph reachable in TeaVM. This is intentional
+# gameplay code, not accidental desktop reachability. Keep ~2.5% raw/compressed
+# headroom from this measured point while retaining the forbidden-class and Yandex
+# package-size guards below.
+JS_BASELINE = 13_167_984
 JS_LIMIT = 13_500_000
-JS_GZIP_LIMIT = 1_700_000
+JS_GZIP_BASELINE = 1_716_847
+JS_GZIP_LIMIT = 1_760_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
@@ -74,6 +76,8 @@ lines = [
     f"TeaVM JS delta bytes: {js_bytes - JS_BASELINE:+d}",
     f"TeaVM JS budget bytes: {JS_LIMIT}",
     f"TeaVM JS gzip-9 bytes: {gzip_bytes}",
+    f"TeaVM JS gzip-9 baseline bytes: {JS_GZIP_BASELINE}",
+    f"TeaVM JS gzip-9 delta bytes: {gzip_bytes - JS_GZIP_BASELINE:+d}",
     f"TeaVM JS gzip-9 budget bytes: {JS_GZIP_LIMIT}",
     f"Forbidden desktop/network JS markers: {', '.join(forbidden_found) if forbidden_found else 'none'}",
     f"Staged package bytes: {total_bytes}",
@@ -92,14 +96,14 @@ print(REPORT.read_text(encoding="utf-8"), end="")
 failed = False
 if js_bytes > JS_LIMIT:
     print(
-        f"ERROR: TeaVM JavaScript grew beyond gameplay-substrate performance budget: {js_bytes} > {JS_LIMIT}. "
+        f"ERROR: TeaVM JavaScript grew beyond world-runtime performance budget: {js_bytes} > {JS_LIMIT}. "
         "Check for accidental desktop/service reachability or unexpected gameplay graph growth.",
         file=sys.stderr,
     )
     failed = True
 if gzip_bytes > JS_GZIP_LIMIT:
     print(
-        f"ERROR: TeaVM gzip size grew beyond gameplay-substrate budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
+        f"ERROR: TeaVM gzip size grew beyond world-runtime budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
         file=sys.stderr,
     )
     failed = True
