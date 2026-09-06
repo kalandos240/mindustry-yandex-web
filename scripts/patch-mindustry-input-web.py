@@ -128,8 +128,8 @@ mobile_text = mobile_text.replace(old_zoom, new_zoom, 1)
 # A missing console means simply "console not shown"; once UI.init/local fragments are
 # introduced later, the exact stock shown() result is used again.
 mobile_console_refs = mobile_text.count("ui.consolefrag.shown()")
-if mobile_console_refs < 2:
-    raise SystemExit(f"Expected multiple pinned MobileInput console visibility checks, found {mobile_console_refs}")
+if mobile_console_refs != 3:
+    raise SystemExit(f"Expected 3 pinned MobileInput console visibility checks, found {mobile_console_refs}")
 mobile_text = mobile_text.replace(
     "ui.consolefrag.shown()",
     "(ui.consolefrag != null && ui.consolefrag.shown())",
@@ -137,20 +137,21 @@ mobile_text = mobile_text.replace(
 mobile_path.write_text(mobile_text, encoding="utf-8")
 
 # DesktopInput also queries fragment visibility during ordinary game frames, before any
-# key is pressed. Keep those reads transition-safe without constructing Chat/Console/
-# Minimap/Hud fragments just to answer false/true visibility questions.
+# key is pressed. Pinned v159.7 exposes HudFragment.shown as a public boolean field while
+# Chat/Console/Minimap use shown() methods. Keep those exact reads transition-safe without
+# constructing any of the heavy fragments merely to answer visibility questions.
 desktop_path = input_path.with_name("DesktopInput.java")
 desktop_text = desktop_path.read_text(encoding="utf-8")
 visibility_replacements = [
-    ("ui.hudfrag.shown()", "(ui.hudfrag == null || ui.hudfrag.shown())", "hud visibility", 1),
-    ("ui.chatfrag.shown()", "(ui.chatfrag != null && ui.chatfrag.shown())", "chat visibility", 1),
+    ("ui.hudfrag.shown", "(ui.hudfrag == null || ui.hudfrag.shown)", "hud visibility", 2),
+    ("ui.chatfrag.shown()", "(ui.chatfrag != null && ui.chatfrag.shown())", "chat visibility", 3),
     ("ui.consolefrag.shown()", "(ui.consolefrag != null && ui.consolefrag.shown())", "console visibility", 1),
     ("ui.minimapfrag.shown()", "(ui.minimapfrag != null && ui.minimapfrag.shown())", "minimap visibility", 2),
 ]
-for old, new, label, minimum in visibility_replacements:
+for old, new, label, expected in visibility_replacements:
     count = desktop_text.count(old)
-    if count < minimum:
-        raise SystemExit(f"Expected pinned DesktopInput {label} checks, found {count}")
+    if count != expected:
+        raise SystemExit(f"Expected {expected} pinned DesktopInput {label} checks, found {count}")
     desktop_text = desktop_text.replace(old, new)
 desktop_path.write_text(desktop_text, encoding="utf-8")
 
