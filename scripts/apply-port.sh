@@ -159,7 +159,8 @@ path.write_text(text)
 PY
 
 # Browser builds must never instantiate ArcNetProvider: raw TCP/UDP/NIO sockets are
-# impossible in browser JavaScript. WebClientLauncher supplies WebNetProvider.
+# impossible in browser JavaScript. WebClientLauncher supplies the permanent
+# single-player WebNetProvider instead.
 python3 - "$MINDUSTRY_DIR/core/src/mindustry/core/Platform.java" <<'PY'
 from pathlib import Path
 import sys
@@ -173,9 +174,9 @@ if old not in text:
 path.write_text(text.replace(old, new, 1))
 PY
 
-# Net's ping helper is also desktop-threaded. The Web provider owns the asynchronous
-# browser transport boundary, so call it directly and remove the JVM executor/LZ4
-# error-type reachability from the common Net class.
+# Net's ping helper is desktop-threaded. The Web provider is intentionally
+# single-player, so call the provider directly and keep JVM executor/LZ4 error-type
+# reachability out of the common Net facade.
 python3 - "$MINDUSTRY_DIR/core/src/mindustry/net/Net.java" <<'PY'
 from pathlib import Path
 import sys
@@ -220,12 +221,15 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-input-web.py" \
 # Serpulo visual mesh refresh uses ExecutorService, which is unavailable in TeaVM.
 python3 "$ROOT_DIR/scripts/patch-mindustry-planet-events-web.py"
 
-# The browser reaches stock Logic.update before the optional local server facade is
-# installed. Keep server administration bookkeeping null-safe while preserving the
-# same behavior automatically once a NetServer exists.
+# The browser has no NetServer/NetClient gameplay role. Keep stock Logic server
+# bookkeeping null-safe and expose the incremental single-thread Web transition paths.
 python3 "$ROOT_DIR/scripts/patch-mindustry-logic-web.py"
+
+# The Web/Yandex build is intentionally single-player. Remove Join from both menu
+# layouts, assign local PlayEvent players to rules.defaultTeam, and disable PvP auto-host.
+python3 "$ROOT_DIR/scripts/patch-mindustry-singleplayer-web.py"
 
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
 echo "Applied Web single-thread asset and allocation-stable SpriteBatch VBO patches"
-echo "Applied Web-only Mindustry startup/network/stream/save/input/gameplay patches"
+echo "Applied Web-only Mindustry startup/single-player/save/input/gameplay patches"
