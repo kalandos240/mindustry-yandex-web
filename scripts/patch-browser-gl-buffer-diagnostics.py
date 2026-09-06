@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import re
+import runpy
 
 ROOT = Path(__file__).resolve().parents[1]
 BROWSER_GL = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserGL20.java"
 
 if not BROWSER_GL.is_file():
     raise SystemExit(f"Missing BrowserGL20 source: {BROWSER_GL}")
+
+# Keep the temporary diagnostic ordered after the permanent texture-pixel fix while
+# this script remains wired into apply-port.sh. Once the browser smoke turns green,
+# apply-port will call the texture patch directly and this diagnostic will be removed.
+runpy.run_path(str(ROOT / "scripts" / "patch-browser-gl-texture-pixels.py"), run_name="__main__")
 
 text = BROWSER_GL.read_text(encoding="utf-8")
 
