@@ -46,6 +46,7 @@ tasks.register("stageWeb", Copy) {
         include "bundles/bundle.properties"
         include "bundles/bundle_ru.properties"
         include "planets/serpulo.json"
+        include "logicids.dat"
         include "sprites/error.png"
         include "sprites/block_colors.png"
 
