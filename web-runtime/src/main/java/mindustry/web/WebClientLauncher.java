@@ -197,6 +197,10 @@ public final class WebClientLauncher extends ClientLauncher{
         initializeControlRuntime();
         markUiSyncPhase("control-runtime-ready");
 
+        markUiSyncPhase("gameplay-runtime");
+        BrowserGameplayRuntime.init();
+        markUiSyncPhase("gameplay-runtime-ready");
+
         uiSyncLoaded = true;
         markUiSyncReady();
         markUiSyncPhase("ready");
@@ -295,6 +299,7 @@ public final class WebClientLauncher extends ClientLauncher{
     public boolean hasInputRuntime(){ return inputRuntimeLoaded; }
     public boolean hasRendererRuntime(){ return rendererRuntimeLoaded; }
     public boolean hasControlRuntime(){ return controlRuntimeLoaded; }
+    public boolean hasGameplayRuntime(){ return BrowserGameplayRuntime.initialized(); }
     public InputHandler inputRuntime(){ return gameplayInput; }
 
     @Override
