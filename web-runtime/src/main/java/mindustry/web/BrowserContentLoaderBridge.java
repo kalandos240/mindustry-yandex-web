@@ -4,7 +4,7 @@ import arc.*;
 import arc.assets.*;
 import arc.assets.loaders.*;
 import arc.files.*;
-import mindustry.ctype.*;
+import mindustry.core.*;
 
 /**
  * Reinstalls the tiny AssetManager contract that stock Maps expects from the desktop
