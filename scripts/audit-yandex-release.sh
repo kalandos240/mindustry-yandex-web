@@ -17,6 +17,7 @@ fail(){
 [ -s "$PLATFORM" ] || fail "yandex-platform.js is missing"
 [ -s "$WEB_DIR/mindustry.js" ] || fail "mindustry.js is missing"
 [ -s "$WEB_DIR/assets-manifest.js" ] || fail "assets-manifest.js is missing"
+[ -s "$WEB_DIR/assets/logicids.dat" ] || fail "processor logic ID mapping is missing"
 
 # Stock Renderer must remain completely local. Shaders.init(), Content.load(),
 # Renderer.init(), PlanetRenderer/Bloom and EnvRenderers all execute in the browser
