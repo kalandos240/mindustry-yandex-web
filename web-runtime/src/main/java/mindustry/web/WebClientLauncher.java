@@ -10,6 +10,7 @@ import arc.util.*;
 import mindustry.*;
 import mindustry.core.*;
 import mindustry.gen.*;
+import mindustry.graphics.*;
 import mindustry.input.*;
 import mindustry.net.*;
 import mindustry.net.Net.*;
@@ -109,6 +110,18 @@ public final class WebClientLauncher extends ClientLauncher{
         // proven. Renderer.init() is deferred until the post-bootstrap UI callback, when
         // Bootstrap has loaded the real atlas and completed the content load lifecycle.
         renderer = new Renderer();
+
+        // Stock Vars.init() installs the global CacheLayer registry before worlds render.
+        // The Web launcher intentionally bypasses Vars.init(), so restore that safe piece
+        // of the lifecycle explicitly after Renderer() has initialized Shaders and before
+        // any renderer-owned WorldLoadEvent can build floor caches.
+        if(CacheLayer.all.length == 0){
+            CacheLayer.init();
+        }
+        if(CacheLayer.walls == null || CacheLayer.normal == null || CacheLayer.all.length == 0){
+            throw new IllegalStateException("Stock Mindustry CacheLayer lifecycle failed Web initialization");
+        }
+
         if(Core.camera == null || renderer.getScale() <= 0f){
             throw new IllegalStateException("Stock Mindustry Renderer failed Web camera initialization");
         }
