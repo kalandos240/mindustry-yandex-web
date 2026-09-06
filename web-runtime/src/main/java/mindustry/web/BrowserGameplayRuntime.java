@@ -21,12 +21,14 @@ import static mindustry.Vars.*;
  * The stock World/Logic/FogControl/Pathfinder/ControlPathfinder graph is constructed
  * on the browser event loop. Worker schedulers are replaced by explicit frame steps,
  * while the underlying fog, flow-field, cluster and A* algorithms remain stock.
- * A real world is not entered until the world-load smoke stage; meanwhile the exact
- * stock-equivalent Logic menu path and an isolated GameState clock tick remain live.
+ * After the menu loop stabilizes, an 8x8 vanilla world is loaded through the real
+ * World.loadGenerator lifecycle while state remains menu. This crosses the production
+ * WorldLoadEvent graph without yet enabling the full playing Logic.update branch.
  */
 public final class BrowserGameplayRuntime{
     private static boolean initialized;
     private static int menuUpdateFrames;
+    private static boolean worldLoadSmokeComplete;
 
     private BrowserGameplayRuntime(){}
 
@@ -47,6 +49,7 @@ public final class BrowserGameplayRuntime{
         // a narrower initialization path, so establish the same stock values explicitly.
         if(emptyMap == null) emptyMap = new Map(new StringMap());
         if(emptyTile == null) emptyTile = new Tile(Short.MAX_VALUE - 20, Short.MAX_VALUE - 20);
+        if(state.map == null) state.map = emptyMap;
 
         if(logicVars == null){
             logicVars = new GlobalVars();
@@ -75,7 +78,7 @@ public final class BrowserGameplayRuntime{
         if(world == null || waves == null || collisions == null || universe == null
         || spawner == null || indexer == null || logicVars == null || logic == null
         || fogControl == null || pathfinder == null || controlPath == null
-        || emptyMap == null || emptyTile == null){
+        || emptyMap == null || emptyTile == null || state.map == null){
             throw new IllegalStateException("Mindustry single-thread gameplay substrate is incomplete on Web");
         }
 
@@ -125,7 +128,48 @@ public final class BrowserGameplayRuntime{
                 throw new IllegalStateException("Browser GameState tick smoke did not restore the real menu state");
             }
             markGameStateTickReady(smokeUpdateId);
+        }else if(menuUpdateFrames == 4){
+            runWorldLoadSmoke();
         }
+    }
+
+    /**
+     * Cross the real Mindustry world-loading event graph with a small deterministic
+     * vanilla map. No fake event is fired: World.loadGenerator performs beginMapLoad(),
+     * tile installation, endMapLoad() and WorldLoadEvent exactly as production loads do.
+     * The game remains in menu so the larger Logic.update playing branch stays gated.
+     */
+    private static void runWorldLoadSmoke(){
+        if(worldLoadSmokeComplete) return;
+        if(!state.isMenu()){
+            throw new IllegalStateException("Browser world-load smoke must start from menu state");
+        }
+
+        state.rules.waves = false;
+        state.rules.fog = false;
+        state.rules.staticFog = false;
+        state.rules.canGameOver = false;
+        state.rules.pvp = false;
+        state.map = emptyMap;
+
+        final int size = 8;
+        world.loadGenerator(size, size, tiles -> {
+            for(int x = 0; x < size; x++){
+                for(int y = 0; y < size; y++){
+                    tiles.set(x, y, new Tile(x, y, Blocks.stone, Blocks.air, Blocks.air));
+                }
+            }
+        });
+
+        if(world.width() != size || world.height() != size || !state.isMenu()){
+            throw new IllegalStateException("Real browser World.loadGenerator smoke produced invalid world/state");
+        }
+        if(controlPath == null || !controlPath.webActive()){
+            throw new IllegalStateException("WorldLoadEvent did not restart browser ControlPathfinder");
+        }
+
+        worldLoadSmokeComplete = true;
+        markWorldLoadReady(size, size);
     }
 
     public static boolean initialized(){
@@ -143,4 +187,7 @@ public final class BrowserGameplayRuntime{
 
     @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-game-state-tick-smoke', 'ready'); document.documentElement.setAttribute('data-mindustry-game-state-tick-update-id', String(updateId));")
     private static native void markGameStateTickReady(long updateId);
+
+    @JSBody(params = {"width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-world-load-smoke', 'ready'); document.documentElement.setAttribute('data-mindustry-world-size', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-control-pathfinder', 'world-active-web-single-thread');")
+    private static native void markWorldLoadReady(int width, int height);
 }
