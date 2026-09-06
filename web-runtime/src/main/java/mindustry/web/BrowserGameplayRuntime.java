@@ -25,13 +25,12 @@ import static mindustry.Vars.*;
  * Before the production module loop starts, Control.init() executes after the browser
  * launcher has already completed UI.loadSync(). UI.loadSync() owns the Scene/Tex/Icon/
  * Styles lifecycle required by UI.update(); the much larger UI.init() dialog/menu graph
- * remains a separate Web milestone so it cannot make tens of MiB of unrelated dialog
- * code reachable merely to prove the production client update order.
+ * remains intentionally absent from the Yandex build.
  *
- * Normal production startup remains in the real menu loop and never mutates the live
- * world merely to satisfy CI. A temporary isolated GameState clock probe is retained as
- * a startup invariant, but the deterministic 8x8 world + multi-frame playing gate is
- * enabled only by the explicit ?mindustrySmoke=1 query parameter used by browser tests.
+ * Normal production startup remains in the real menu loop. User-selected packaged maps
+ * are handled by BrowserLocalMapRuntime and keep running until the user returns to the
+ * map selector. The deterministic 8x8 world + three-frame playing gate remains available
+ * only behind the explicit ?mindustrySmoke=1 query parameter used by CI.
  */
 public final class BrowserGameplayRuntime{
     private static boolean initialized;
@@ -112,10 +111,17 @@ public final class BrowserGameplayRuntime{
         if(!initialized || logic == null || state == null) return;
 
         if(state.isPlaying()){
-            if(!smokeMode || !BrowserPlayingRuntime.active()){
-                throw new IllegalStateException("Web entered playing state outside the explicit CI gameplay smoke");
+            if(smokeMode){
+                if(!BrowserPlayingRuntime.active()){
+                    throw new IllegalStateException("CI Web entered playing state outside the explicit deterministic gameplay smoke");
+                }
+                BrowserPlayingRuntime.updateFrame();
+            }else{
+                if(!BrowserLocalMapRuntime.active()){
+                    throw new IllegalStateException("Production Web entered playing state outside a user/local built-in map session");
+                }
+                BrowserLocalMapRuntime.updateFrame();
             }
-            BrowserPlayingRuntime.updateFrame();
             return;
         }
 
@@ -141,6 +147,11 @@ public final class BrowserGameplayRuntime{
             runWorldLoadSmoke();
         }else if(smokeMode && menuUpdateFrames == 5){
             BrowserPlayingRuntime.begin();
+        }else if(!smokeMode && menuUpdateFrames == 4){
+            // CI can request one real packaged-map launch without changing normal
+            // production startup. Without mindustryMapSmoke this is a no-op and the
+            // user remains in the selector until clicking a map.
+            BrowserLocalMapRuntime.maybeStartTestMap();
         }
     }
 
