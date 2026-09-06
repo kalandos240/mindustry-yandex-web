@@ -21,6 +21,15 @@ if old_lock not in input_text:
     raise SystemExit("InputHandler Web lock patch no longer matches pinned upstream")
 input_text = input_text.replace(old_lock, new_lock, 1)
 
+# Stock InputHandler.update() mirrors local chat visibility into Player.typing every game
+# frame. Browser bootstrap intentionally runs a real playing frame before ChatFragment is
+# constructed by full UI.init(); absent chat means simply "not typing" during this stage.
+old_typing = "        player.typing = ui.chatfrag.shown();"
+new_typing = "        player.typing = ui.chatfrag != null && ui.chatfrag.shown();"
+if input_text.count(old_typing) != 1:
+    raise SystemExit(f"Expected one pinned InputHandler chat typing read, found {input_text.count(old_typing)}")
+input_text = input_text.replace(old_typing, new_typing, 1)
+
 # Stock desktop startup calls UI.init() before ClientLoadEvent invokes input.add().
 # Browser startup registers the processors immediately after UI.loadSync(), then a later
 # local-UI stage creates hudGroup and calls add() again. Bind the stock input-owned UI as
