@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="$ROOT_DIR/web-runtime/build/web"
 INDEX="$WEB_DIR/index.html"
 PLATFORM="$WEB_DIR/yandex-platform.js"
+MANIFEST="$WEB_DIR/assets-manifest.js"
 MAX_BYTES=$((100 * 1024 * 1024))
 
 fail(){
@@ -16,8 +17,17 @@ fail(){
 [ -s "$INDEX" ] || fail "index.html is not in archive root"
 [ -s "$PLATFORM" ] || fail "yandex-platform.js is missing"
 [ -s "$WEB_DIR/mindustry.js" ] || fail "mindustry.js is missing"
-[ -s "$WEB_DIR/assets-manifest.js" ] || fail "assets-manifest.js is missing"
+[ -s "$MANIFEST" ] || fail "assets-manifest.js is missing"
 [ -s "$WEB_DIR/assets/logicids.dat" ] || fail "processor logic ID mapping is missing"
+
+# Original builtin local skirmish maps from the pinned release must be available inside
+# the archive before the next user-controlled map-selection/start milestone is enabled.
+[ -s "$WEB_DIR/assets/maps/default/maze.msav" ] || fail "builtin local map maze.msav missing"
+[ -s "$WEB_DIR/assets/maps/default/archipelago.msav" ] || fail "builtin local map archipelago.msav missing"
+grep -Fq 'maps/default/maze.msav' "$MANIFEST" || fail "builtin local map missing from asset manifest"
+map_count="$(find "$WEB_DIR/assets/maps/default" -maxdepth 1 -type f -name '*.msav' | wc -l)"
+[ "$map_count" -gt 1 ] || fail "builtin local map set is unexpectedly incomplete"
+echo "Builtin local maps staged: $map_count"
 
 # Stock Renderer must remain completely local. Shaders.init(), Content.load(),
 # Renderer.init(), PlanetRenderer/Bloom and EnvRenderers all execute in the browser
