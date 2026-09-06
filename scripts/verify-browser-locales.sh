@@ -72,6 +72,9 @@ run_locale(){
     --require 'data-mindustry-control="ready"' \
     --require 'data-mindustry-control-saves="browser"' \
     --require 'data-mindustry-control-load="ready"' \
+    --require 'data-mindustry-local-ui="ready"' \
+    --require 'data-mindustry-input-ui="bound"' \
+    --require 'data-mindustry-input-ui-fragments="deferred"' \
     --require 'data-mindustry-audio="ready"' \
     --require 'data-mindustry-gameplay-runtime="ready"' \
     --require 'data-mindustry-module-loop="menu-stable"' \
@@ -100,7 +103,7 @@ run_locale(){
 
   grep -Eq 'data-mindustry-logic-copper-id="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
-  echo "Browser locale $expected: stock Logic->Control->Renderer->UI menu module loop + BrowserAudio + real 8x8 WorldLoadEvent + browser-single-thread pathfinding + persistence boundary ready"
+  echo "Browser locale $expected: stock input-owned local UI + Logic->Control->Renderer->UI menu module loop + BrowserAudio + real 8x8 WorldLoadEvent + browser-single-thread pathfinding + persistence boundary ready"
 }
 
 run_mobile(){
@@ -123,6 +126,9 @@ run_mobile(){
     --require 'data-mindustry-gesture-detector="ready"' \
     --require 'data-mindustry-control="ready"' \
     --require 'data-mindustry-control-saves="browser"' \
+    --require 'data-mindustry-local-ui="ready"' \
+    --require 'data-mindustry-input-ui="bound"' \
+    --require 'data-mindustry-input-ui-fragments="deferred"' \
     --require 'data-mindustry-audio="ready"' \
     --require 'data-mindustry-gameplay-runtime="ready"' \
     --require 'data-mindustry-module-loop="menu-stable"' \
@@ -145,7 +151,7 @@ run_mobile(){
     --require 'data-mindustry-navigation="blocked"' > "$dom"
 
   grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
-  echo "Browser mobile: stock MobileInput + Logic->Control->Renderer->UI menu module loop + real 8x8 WorldLoadEvent ready"
+  echo "Browser mobile: stock MobileInput-owned local UI + Logic->Control->Renderer->UI menu module loop + real 8x8 WorldLoadEvent ready"
 }
 
 run_locale en
