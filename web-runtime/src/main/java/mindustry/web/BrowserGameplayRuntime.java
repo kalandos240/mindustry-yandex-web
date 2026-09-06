@@ -126,8 +126,8 @@ public final class BrowserGameplayRuntime{
         if(!initialized || logic == null || state == null) return;
 
         // Once a real world is entered, browser-safe pathfinding workers advance on the
-        // browser frame instead of JVM daemon threads. Full Logic/Control/Renderer/UI
-        // playing updates are a later gate; do not fake gameplay by only setting state.
+        // browser frame instead of JVM daemon threads. Full continuous playing updates
+        // remain gated until the one-shot production playing frame below is proven.
         if(state.isPlaying()){
             pathfinder.updateWeb();
             controlPath.updateWeb();
@@ -151,6 +151,8 @@ public final class BrowserGameplayRuntime{
             markGameStateTickReady(smokeUpdateId);
         }else if(menuUpdateFrames == 4){
             runWorldLoadSmoke();
+        }else if(menuUpdateFrames == 5){
+            BrowserPlayingRuntime.runOneFrame();
         }
     }
 
