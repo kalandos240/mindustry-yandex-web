@@ -24,6 +24,7 @@ public final class WebClientLauncher extends ClientLauncher{
     private InputHandler gameplayInput;
     private boolean uiSyncLoaded;
     private boolean inputRuntimeLoaded;
+    private boolean rendererRuntimeLoaded;
 
     @Override
     public void setup(){
@@ -95,8 +96,8 @@ public final class WebClientLauncher extends ClientLauncher{
         BrowserSaveRuntime.init();
 
         // Activate the real Mindustry renderer substrate after the save substrate is
-        // proven. Do not run Renderer.init/update yet; this milestone proves constructor,
-        // shader compilation, framebuffers and production camera reachability first.
+        // proven. Renderer.init() is deferred until Bootstrap has loaded the real atlas
+        // and completed the content load lifecycle.
         renderer = new Renderer();
         if(Core.camera == null || renderer.getScale() <= 0f){
             throw new IllegalStateException("Stock Mindustry Renderer failed Web camera initialization");
@@ -117,6 +118,49 @@ public final class WebClientLauncher extends ClientLauncher{
                 throw error;
             }
         });
+    }
+
+    /**
+     * Run the stock Renderer.init() lifecycle only after the real vanilla atlas/content
+     * is ready. Renderer.init() constructs PlanetRenderer/Bloom, installs environment
+     * renderers and queues clouds/rays/distortion textures. Drain that queue explicitly
+     * because the browser bootstrap does not run ClientLauncher's desktop loader loop.
+     */
+    public void initRendererRuntime(){
+        if(rendererRuntimeLoaded) return;
+        if(renderer == null || Core.atlas == null){
+            throw new IllegalStateException("Mindustry Renderer.init requested before renderer/atlas bootstrap");
+        }
+
+        renderer.init();
+        drainAssetQueue("Mindustry Renderer.init");
+
+        Texture clouds = Core.assets.get("sprites/clouds.png", Texture.class);
+        Texture rays = Core.assets.get("sprites/rays.png", Texture.class);
+        Texture distort = Core.assets.get("sprites/distortAlpha.png", Texture.class);
+        if(clouds == null || rays == null || distort == null
+        || clouds.getTextureObjectHandle() == 0
+        || rays.getTextureObjectHandle() == 0
+        || distort.getTextureObjectHandle() == 0){
+            throw new IllegalStateException("Stock Mindustry Renderer.init local texture queue failed WebGL initialization");
+        }
+
+        int error = Core.gl20.glGetError();
+        if(error != GL20.GL_NO_ERROR){
+            throw new IllegalStateException("Stock Mindustry Renderer.init failed with GL error 0x" + Integer.toHexString(error));
+        }
+
+        rendererRuntimeLoaded = true;
+        markRendererInitialized();
+    }
+
+    private static void drainAssetQueue(String label){
+        int updates = 0;
+        while(!Core.assets.update()){
+            if(++updates > 10000){
+                throw new IllegalStateException(label + " asset queue did not finish loading in browser runtime");
+            }
+        }
     }
 
     public void loadUiSync(){
@@ -191,6 +235,7 @@ public final class WebClientLauncher extends ClientLauncher{
     public boolean hasUiShell(){ return uiShell != null; }
     public boolean hasUiSync(){ return uiSyncLoaded; }
     public boolean hasInputRuntime(){ return inputRuntimeLoaded; }
+    public boolean hasRendererRuntime(){ return rendererRuntimeLoaded; }
     public InputHandler inputRuntime(){ return gameplayInput; }
 
     @Override
@@ -201,6 +246,9 @@ public final class WebClientLauncher extends ClientLauncher{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer', 'constructed');")
     private static native void markRendererReady();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer-init', 'ready');")
+    private static native void markRendererInitialized();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-shell', 'ready');")
     private static native void markUiShellReady();
