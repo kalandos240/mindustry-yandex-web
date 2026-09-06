@@ -204,6 +204,12 @@ public final class WebClientLauncher extends ClientLauncher{
         initializeControlRuntime();
         markUiSyncPhase("control-runtime-ready");
 
+        // Bind the stock InputHandler-owned HUD subtree only after the minimal local UI
+        // identity objects exist. This is deliberately much narrower than full UI.init().
+        markUiSyncPhase("local-ui-runtime");
+        BrowserUiRuntime.init(gameplayInput);
+        markUiSyncPhase("local-ui-runtime-ready");
+
         markUiSyncPhase("gameplay-runtime");
         BrowserGameplayRuntime.init();
         markUiSyncPhase("gameplay-runtime-ready");
@@ -302,6 +308,7 @@ public final class WebClientLauncher extends ClientLauncher{
     public boolean hasInputRuntime(){ return inputRuntimeLoaded; }
     public boolean hasRendererRuntime(){ return rendererRuntimeLoaded; }
     public boolean hasControlRuntime(){ return controlRuntimeLoaded; }
+    public boolean hasLocalUiRuntime(){ return BrowserUiRuntime.initialized(); }
     public boolean hasGameplayRuntime(){ return BrowserGameplayRuntime.initialized(); }
     public InputHandler inputRuntime(){ return gameplayInput; }
 
