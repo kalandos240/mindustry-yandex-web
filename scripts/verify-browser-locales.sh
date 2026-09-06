@@ -11,6 +11,7 @@ command -v google-chrome >/dev/null
 test -s "$EN_BUNDLE"
 test -s "$RU_BUNDLE"
 test -s "$WEB_DIR/assets/icons/icons.properties"
+test -s "$WEB_DIR/assets/logicids.dat"
 test -s "$WEB_DIR/browser-storage.js"
 
 bash "$ROOT_DIR/scripts/audit-yandex-release.sh"
@@ -71,6 +72,11 @@ run_locale(){
     --require 'data-mindustry-control-saves="browser"' \
     --require 'data-mindustry-control-load="ready"' \
     --require 'data-mindustry-audio="disabled-local"' \
+    --require 'data-mindustry-gameplay-runtime="ready"' \
+    --require 'data-mindustry-world="ready"' \
+    --require 'data-mindustry-logic="constructed"' \
+    --require 'data-mindustry-logicvars="ready"' \
+    --require 'data-mindustry-gameplay-loop="deferred-threaded-deps"' \
     --require 'data-mindustry-saveio-load="ready"' \
     --require 'data-mindustry-links="none"' \
     --require "data-mindustry-locale=\"$expected\"" \
@@ -78,7 +84,8 @@ run_locale(){
     --require 'data-mindustry-storage="ready"' \
     --require 'data-mindustry-navigation="blocked"' > "$dom"
 
-  echo "Browser locale $expected: renderer + stock input + BrowserSaves Control + storage + SaveIO round-trip ready, no-links, local-only"
+  grep -Eq 'data-mindustry-logic-copper-id="[0-9]+"' "$dom"
+  echo "Browser locale $expected: renderer + input + BrowserSaves Control + World/Logic substrate + logic IDs + persistence boundary ready"
 }
 
 run_locale en
