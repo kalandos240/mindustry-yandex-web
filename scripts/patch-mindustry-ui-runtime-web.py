@@ -38,6 +38,19 @@ map_info = replace_once(
 )
 map_info_path.write_text(map_info, encoding="utf-8")
 
+# Community server discovery is permanently unavailable in the single-player Yandex
+# build. Leaving this preference in SettingsMenuDialog makes JoinDialog.fetchServers()
+# and Arc Http's ThreadPoolExecutor reachable even though JoinDialog itself is pruned.
+settings_path = MINDUSTRY / "ui" / "dialogs" / "SettingsMenuDialog.java"
+settings = read(settings_path)
+settings = replace_once(
+    settings,
+    '''        game.checkPref("communityservers", true, val -> {\n            defaultServers.clear();\n            if(val){\n                JoinDialog.fetchServers();\n            }\n        });\n\n''',
+    '''        // Web/Yandex single-player: community server discovery is unavailable.\n\n''',
+    "SettingsMenuDialog community server preference",
+)
+settings_path.write_text(settings, encoding="utf-8")
+
 # Map preview generation is user-triggered editor work. The desktop implementation
 # submits it to mainExecutor and keeps a Future solely to wait during Apply. In the
 # browser there is one event loop, so execute the exact filter algorithm synchronously.
@@ -119,5 +132,5 @@ strings_path.write_text(strings, encoding="utf-8")
 
 print(
     "Applied Web-safe local UI runtime: editor preview sync, planet mesh sync, "
-    f"anonymous reflection compatibility ({anonymous_replacements}), and byte formatter"
+    f"anonymous reflection compatibility ({anonymous_replacements}), byte formatter, and single-player settings"
 )
