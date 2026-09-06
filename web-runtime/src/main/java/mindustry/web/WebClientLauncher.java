@@ -5,6 +5,7 @@ import arc.assets.*;
 import arc.audio.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
+import arc.input.*;
 import arc.math.*;
 import arc.util.*;
 import mindustry.*;
@@ -246,8 +247,9 @@ public final class WebClientLauncher extends ClientLauncher{
      * Construct the stock client Control graph without invoking its desktop loader phase.
      * The browser already has a verified Player and stock InputHandler, so Control.loadSync()
      * would incorrectly replace both. Audio(false) supplies the normal Arc buses while
-     * keeping SoLoud/JNI disabled; this is enough for SoundControl's constructor and lets
-     * Saves/AttackIndicators become real gameplay state without an external/native backend.
+     * keeping SoLoud/JNI disabled. The browser save index was already hydrated and verified
+     * before renderer startup, so bind that exact BrowserSaves instance instead of calling
+     * stock Saves.load(), whose desktop implementation depends on Future/mainExecutor.
      */
     private void initializeControlRuntime(){
         if(controlRuntimeLoaded) return;
@@ -264,9 +266,24 @@ public final class WebClientLauncher extends ClientLauncher{
 
         control = new Control();
         control.input = gameplayInput;
+        control.saves = BrowserSaveRuntime.saves();
 
-        if(control.saves == null || control.sound == null || control.indicators == null || control.input != gameplayInput){
-            throw new IllegalStateException("Stock Mindustry Control graph failed browser initialization");
+        // This is the browser-safe half of Control.loadAsync(). Save scanning itself was
+        // completed synchronously by BrowserSaveRuntime before Renderer listeners existed.
+        Draw.scl = 1f / Core.atlas.find("scale_marker").width;
+        Core.input.setCatch(KeyCode.back, true);
+        Core.settings.defaults(
+            "ip", "localhost",
+            "color-0", playerColors[8].rgba(),
+            "name", "",
+            "lastBuild", 0
+        );
+
+        if(control.saves == null || !(control.saves instanceof BrowserSaves)
+        || control.saves != BrowserSaveRuntime.saves()
+        || control.sound == null || control.indicators == null || control.input != gameplayInput
+        || Draw.scl <= 0f){
+            throw new IllegalStateException("Stock Mindustry Control graph failed browser save/input initialization");
         }
 
         controlRuntimeLoaded = true;
@@ -292,7 +309,7 @@ public final class WebClientLauncher extends ClientLauncher{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer-init', 'ready');")
     private static native void markRendererInitialized();
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-control', 'ready'); document.documentElement.setAttribute('data-mindustry-audio', 'disabled-local');")
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-control', 'ready'); document.documentElement.setAttribute('data-mindustry-control-saves', 'browser'); document.documentElement.setAttribute('data-mindustry-control-load', 'ready'); document.documentElement.setAttribute('data-mindustry-audio', 'disabled-local');")
     private static native void markControlReady();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-shell', 'ready');")
