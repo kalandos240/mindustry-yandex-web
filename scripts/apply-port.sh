@@ -225,11 +225,15 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-planet-events-web.py"
 # bookkeeping null-safe and expose the incremental single-thread Web transition paths.
 python3 "$ROOT_DIR/scripts/patch-mindustry-logic-web.py"
 
+# Fog visibility/exploration keeps its stock data, save chunk, rasterizer and
+# double-buffer logic, but executes on the browser frame instead of JVM daemon threads.
+python3 "$ROOT_DIR/scripts/patch-mindustry-fog-web.py"
+
 # The Web/Yandex build is intentionally single-player. Remove Join from both menu
 # layouts, assign local PlayEvent players to rules.defaultTeam, and disable PvP auto-host.
 python3 "$ROOT_DIR/scripts/patch-mindustry-singleplayer-web.py"
 
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
-echo "Applied Web single-thread asset and allocation-stable SpriteBatch VBO patches"
+echo "Applied Web single-thread asset, SpriteBatch and FogControl scheduler patches"
 echo "Applied Web-only Mindustry startup/single-player/save/input/gameplay patches"
