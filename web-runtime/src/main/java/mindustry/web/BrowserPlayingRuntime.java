@@ -63,11 +63,17 @@ public final class BrowserPlayingRuntime{
         player.team(Team.sharded);
         player.set(x, y);
         player.unit(unit);
+        // CoreBlock player spawning marks the controlled unit as core-spawned before
+        // adding it. This is semantically important: player core units are exempt from
+        // the normal unit cap, while this deterministic smoke world intentionally has no
+        // core and therefore keeps Rules.unitCap at its stock zero value.
+        unit.spawnedByCore(true);
         unit.add();
         Core.camera.position.set(unit);
 
-        if(player.unit() != unit || unit.type != UnitTypes.alpha || unit.team() != Team.sharded || !unit.isAdded()){
-            throw new IllegalStateException("Vanilla alpha/player controller binding failed before Web playing frame");
+        if(player.unit() != unit || unit.type != UnitTypes.alpha || unit.team() != Team.sharded
+        || !unit.spawnedByCore() || !unit.isAdded() || !unit.isValid() || unit.controller() != player){
+            throw new IllegalStateException("Vanilla core-spawned alpha/player controller binding failed before Web playing frame");
         }
 
         long beforeUpdateId = state.updateId;
