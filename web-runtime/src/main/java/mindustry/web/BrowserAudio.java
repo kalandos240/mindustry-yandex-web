@@ -39,6 +39,8 @@ public final class BrowserAudio extends Audio{
             }
         });
 
+        // Decode one real packaged OGG without playing it. CI waits for this marker,
+        // proving both the local asset path and the browser codec path are functional.
         verifyPackagedSound(smokeSound);
     }
 
@@ -48,19 +50,29 @@ public final class BrowserAudio extends Audio{
     }
 
     @Override
-    public boolean initialized(){ return initialized; }
+    public boolean initialized(){
+        return initialized;
+    }
 
     @Override
-    public Sound newSound(Fi file){ return initialized ? new BrowserSound(file) : new Sound(); }
+    public Sound newSound(Fi file){
+        return initialized ? new BrowserSound(file) : new Sound();
+    }
 
     @Override
-    public Music newMusic(Fi file){ return initialized ? new BrowserMusic(file) : new Music(); }
+    public Music newMusic(Fi file){
+        return initialized ? new BrowserMusic(file) : new Music();
+    }
 
     @Override
-    public boolean isPlaying(int soundId){ return initialized && voicePlaying(soundId); }
+    public boolean isPlaying(int soundId){
+        return initialized && voicePlaying(soundId);
+    }
 
     @Override
-    public void protect(int voice, boolean protect){}
+    public void protect(int voice, boolean protect){
+        // Browser voices are explicitly owned and are never mixer-stolen.
+    }
 
     @Override
     public int play(AudioSource source, float volume, float pitch, float pan, boolean loop){
@@ -81,13 +93,19 @@ public final class BrowserAudio extends Audio{
     }
 
     @Override
-    public void stop(int soundId){ if(initialized) stopVoice(soundId); }
+    public void stop(int soundId){
+        if(initialized) stopVoice(soundId);
+    }
 
     @Override
-    public void setPaused(int soundId, boolean paused){ if(initialized) pauseVoice(soundId, paused); }
+    public void setPaused(int soundId, boolean paused){
+        if(initialized) pauseVoice(soundId, paused);
+    }
 
     @Override
-    public void setLooping(int soundId, boolean looping){ if(initialized) loopVoice(soundId, looping); }
+    public void setLooping(int soundId, boolean looping){
+        if(initialized) loopVoice(soundId, looping);
+    }
 
     @Override
     public void setPitch(int soundId, float pitch){
@@ -111,13 +129,19 @@ public final class BrowserAudio extends Audio{
     }
 
     @Override
-    public void fadeFilterParam(int voice, int filter, int attribute, float value, float timeSec){}
+    public void fadeFilterParam(int voice, int filter, int attribute, float value, float timeSec){
+        // SoLoud DSP filters have no direct browser backend equivalent.
+    }
 
     @Override
-    public void setFilterParam(int voice, int filter, int attribute, float value){}
+    public void setFilterParam(int voice, int filter, int attribute, float value){
+        // SoLoud DSP filters have no direct browser backend equivalent.
+    }
 
     @Override
-    public void setFilter(int index, @Nullable AudioFilter filter){}
+    public void setFilter(int index, @Nullable AudioFilter filter){
+        // Global SoLoud filters are intentionally omitted from the browser graph.
+    }
 
     @Override
     public int countPlaying(AudioSource source){
@@ -126,7 +150,9 @@ public final class BrowserAudio extends Audio{
     }
 
     @Override
-    public int countTotalPlaying(){ return initialized ? activeVoiceCountBrowser() : 0; }
+    public int countTotalPlaying(){
+        return initialized ? activeVoiceCountBrowser() : 0;
+    }
 
     @Override
     public void dispose(){
@@ -135,7 +161,10 @@ public final class BrowserAudio extends Audio{
         initialized = false;
     }
 
-    public void setPortalPaused(boolean paused){ if(initialized) platformPause(paused); }
+    /** Called from browser/Yandex pause-resume lifecycle so ads cannot leave audio running. */
+    public void setPortalPaused(boolean paused){
+        if(initialized) platformPause(paused);
+    }
 
     static String assetUrl(Fi file){
         String path = file == null ? "" : file.path().replace('\\', '/');
