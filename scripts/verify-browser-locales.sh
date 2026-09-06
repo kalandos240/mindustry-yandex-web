@@ -11,7 +11,9 @@ command -v google-chrome >/dev/null
 test -s "$EN_BUNDLE"
 test -s "$RU_BUNDLE"
 test -s "$WEB_DIR/assets/icons/icons.properties"
+test -s "$WEB_DIR/assets/logicids.dat"
 test -s "$WEB_DIR/browser-storage.js"
+test -s "$WEB_DIR/browser-audio.js"
 
 bash "$ROOT_DIR/scripts/audit-yandex-release.sh"
 
@@ -63,14 +65,36 @@ run_locale(){
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-ui-shell="ready"' \
     --require 'data-mindustry-ui-sync="ready"' \
+    --require 'data-mindustry-renderer="constructed"' \
+    --require 'data-mindustry-renderer-init="ready"' \
+    --require 'data-mindustry-stock-input="desktop"' \
+    --require 'data-mindustry-gesture-detector="ready"' \
+    --require 'data-mindustry-control="ready"' \
+    --require 'data-mindustry-control-saves="browser"' \
+    --require 'data-mindustry-control-load="ready"' \
+    --require 'data-mindustry-audio="ready"' \
+    --require 'data-mindustry-gameplay-runtime="ready"' \
+    --require 'data-mindustry-world="ready"' \
+    --require 'data-mindustry-logic="constructed"' \
+    --require 'data-mindustry-logicvars="ready"' \
+    --require 'data-mindustry-fog-control="constructed-web-single-thread"' \
+    --require 'data-mindustry-pathfinder="constructed-web-single-thread"' \
+    --require 'data-mindustry-gameplay-loop="menu-stable"' \
+    --require 'data-mindustry-logic-menu-update="ready"' \
+    --require 'data-mindustry-logic-menu-update-frames="3"' \
+    --require 'data-mindustry-game-state-tick-smoke="ready"' \
+    --require 'data-mindustry-game-state-tick-update-id="1"' \
     --require 'data-mindustry-saveio-load="ready"' \
     --require 'data-mindustry-links="none"' \
     --require "data-mindustry-locale=\"$expected\"" \
     --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-network-mode="singleplayer-only"' \
     --require 'data-mindustry-storage="ready"' \
     --require 'data-mindustry-navigation="blocked"' > "$dom"
 
-  echo "Browser locale $expected: storage + SaveIO load round-trip + UI sync ready, no-links, local-only"
+  grep -Eq 'data-mindustry-logic-copper-id="[0-9]+"' "$dom"
+  grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
+  echo "Browser locale $expected: renderer + input + BrowserAudio + BrowserSaves Control + World/Logic/FogControl/Pathfinder substrate + isolated single-player GameState tick + logic IDs + persistence boundary ready"
 }
 
 run_locale en

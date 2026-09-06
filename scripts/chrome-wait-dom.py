@@ -181,6 +181,14 @@ def main() -> int:
         "--headless=new",
         "--no-sandbox",
         "--disable-dev-shm-usage",
+        # CI drives the page through CDP without a visible desktop surface. Some
+        # hosted Chrome runs otherwise classify the target as background/occluded
+        # after the first requestAnimationFrame and stop delivering subsequent
+        # frames. Disable only those headless throttles; production browser timing
+        # remains untouched and still uses normal requestAnimationFrame semantics.
+        "--disable-background-timer-throttling",
+        "--disable-renderer-backgrounding",
+        "--disable-backgrounding-occluded-windows",
         "--use-gl=angle",
         "--use-angle=swiftshader",
         "--enable-unsafe-swiftshader",

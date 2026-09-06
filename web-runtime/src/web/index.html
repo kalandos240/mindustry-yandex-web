@@ -107,10 +107,8 @@
             const cache = Object.create(null);
             globalThis.__mindustryAssetCache = cache;
 
-            // Arc's synchronous Fi bridge still needs the UI/atlas/content assets in
-            // memory before main(). Audio is different: it has a native browser URL
-            // backend, so keeping OGG files out of this preload avoids tens of megabytes
-            // of duplicate compressed bytes in the JavaScript heap at startup.
+            // Arc's synchronous Fi bridge needs renderer/UI/content assets in memory before
+            // main(). Audio is URL-backed, so omit OGG files from this duplicate byte[] cache.
             const eagerManifest = manifest.filter(path => !path.startsWith('sounds/') && !path.startsWith('music/'));
             root.setAttribute('data-mindustry-assets-eager', String(eagerManifest.length));
             root.setAttribute('data-mindustry-assets-streamed', String(manifest.length - eagerManifest.length));

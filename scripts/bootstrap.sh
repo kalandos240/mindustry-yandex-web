@@ -2,6 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Fail fast on shell syntax errors before cloning/building upstream sources. This
+# prevents a typo in a late browser verifier from wasting an atlas/TeaVM run.
+for script in "$ROOT_DIR"/scripts/*.sh; do
+  bash -n "$script"
+done
+
 # shellcheck disable=SC1091
 source "$ROOT_DIR/upstream.lock"
 

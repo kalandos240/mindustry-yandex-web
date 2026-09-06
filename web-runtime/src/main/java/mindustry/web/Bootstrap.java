@@ -303,6 +303,12 @@ public final class Bootstrap{
         while(current != null && depth++ < 6){
             if(out.length() > 0) out.append(" <- ");
             out.append(current.getClass().getName()).append(": ").append(String.valueOf(current.getMessage()));
+            StackTraceElement[] stack = current.getStackTrace();
+            int frames = Math.min(stack == null ? 0 : stack.length, 8);
+            for(int i = 0; i < frames; i++){
+                out.append(" @ ").append(stack[i].getClassName()).append('.').append(stack[i].getMethodName())
+                    .append(':').append(stack[i].getLineNumber());
+            }
             current = current.getCause();
         }
         return out.toString();

@@ -33,6 +33,11 @@ public final class BrowserInputBridge{
         void handle(float amountX, float amountY);
     }
 
+    @JSFunctor
+    private interface VoidCallback extends JSObject{
+        void handle();
+    }
+
     public static void install(String canvasId, WebInput input){
         installNative(
             canvasId,
@@ -44,7 +49,8 @@ public final class BrowserInputBridge{
             (pointer, x, y, button) -> input.pointerDown(pointer, x, y, BrowserKeymap.mouseButton(button)),
             (pointer, x, y, button) -> input.pointerUp(pointer, x, y, BrowserKeymap.mouseButton(button)),
             input::pointerMove,
-            input::scroll
+            input::scroll,
+            input::releaseAllPointers
         );
     }
 
@@ -63,7 +69,7 @@ public final class BrowserInputBridge{
         }
     }
 
-    @JSBody(params = {"canvasId", "keyDown", "keyUp", "pointerDown", "pointerUp", "pointerMove", "scroll"}, script = """
+    @JSBody(params = {"canvasId", "keyDown", "keyUp", "pointerDown", "pointerUp", "pointerMove", "scroll", "releasePointers"}, script = """
         const canvas = document.getElementById(canvasId);
         if (!canvas) throw new Error('Canvas #' + canvasId + ' not found');
         canvas.tabIndex = 0;
@@ -114,6 +120,11 @@ public final class BrowserInputBridge{
         window.addEventListener('blur', () => {
             downCodes.forEach(function(code){ keyUp(code); });
             downCodes.clear();
+            if(pointerSlots.size > 0){
+                releasePointers();
+                pointerSlots.clear();
+                document.documentElement.setAttribute('data-mindustry-pointer-reset', 'blur');
+            }
         });
 
         canvas.addEventListener('pointerdown', event => {
@@ -156,5 +167,6 @@ public final class BrowserInputBridge{
         """)
     private static native void installNative(String canvasId, KeyDownCallback keyDown, KeyUpCallback keyUp,
                                               PointerCallback pointerDown, PointerCallback pointerUp,
-                                              PointerMoveCallback pointerMove, ScrollCallback scroll);
+                                              PointerMoveCallback pointerMove, ScrollCallback scroll,
+                                              VoidCallback releasePointers);
 }
