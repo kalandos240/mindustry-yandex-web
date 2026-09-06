@@ -21,13 +21,22 @@ import static mindustry.Vars.*;
  * The stock World/Logic/FogControl/Pathfinder/ControlPathfinder graph is constructed
  * on the browser event loop. Worker schedulers are replaced by explicit frame steps,
  * while the underlying fog, flow-field, cluster and A* algorithms remain stock.
- * After the menu loop stabilizes, an 8x8 vanilla world is loaded through the real
- * World.loadGenerator lifecycle while state remains menu. This crosses the production
- * WorldLoadEvent graph without yet enabling the full playing Logic.update branch.
+ *
+ * Before the production module loop starts, Control.init() executes after the browser
+ * launcher has already completed UI.loadSync(). UI.loadSync() owns the Scene/Tex/Icon/
+ * Styles lifecycle required by UI.update(); the much larger UI.init() dialog/menu graph
+ * remains a separate Web milestone so it cannot make tens of MiB of unrelated dialog
+ * code reachable merely to prove the production client update order.
+ *
+ * In menu state the client modules execute in Mindustry's stock order:
+ * Logic -> Control -> Renderer -> UI. Logic uses the exact browser menu-only extraction
+ * until the playing branch is enabled; Control/Renderer/UI execute their real update()
+ * methods. This proves the client module loop before a playing-world transition.
  */
 public final class BrowserGameplayRuntime{
     private static boolean initialized;
     private static int menuUpdateFrames;
+    private static int moduleLoopFrames;
     private static boolean worldLoadSmokeComplete;
 
     private BrowserGameplayRuntime(){}
@@ -87,6 +96,18 @@ public final class BrowserGameplayRuntime{
             throw new IllegalStateException("Server gameplay modules entered the single-player Web substrate");
         }
 
+        // Control is the dependency immediately before UI in the stock client lifecycle.
+        // UI.loadSync() already established Core.scene and the complete render styles in
+        // WebClientLauncher; do not eagerly instantiate the enormous dialog/menu graph here.
+        markClientInitPhase("control-init");
+        control.init();
+        markClientInitPhase("control-init-ready");
+
+        if(Core.scene == null || Core.scene.root == null){
+            throw new IllegalStateException("Mindustry UI.loadSync Scene is incomplete before production UI.update");
+        }
+        markClientInitReady();
+
         initialized = true;
         markReady(copperLogicId);
 
@@ -105,8 +126,8 @@ public final class BrowserGameplayRuntime{
         if(!initialized || logic == null || state == null) return;
 
         // Once a real world is entered, browser-safe pathfinding workers advance on the
-        // browser frame instead of JVM daemon threads. Full Logic.update activation is a
-        // separate gate so path schedulers can be verified independently first.
+        // browser frame instead of JVM daemon threads. Full Logic/Control/Renderer/UI
+        // playing updates are a later gate; do not fake gameplay by only setting state.
         if(state.isPlaying()){
             pathfinder.updateWeb();
             controlPath.updateWeb();
@@ -115,13 +136,13 @@ public final class BrowserGameplayRuntime{
 
         if(!state.isMenu()) return;
 
-        logic.updateWebMenu();
+        runMenuModuleFrame();
         menuUpdateFrames++;
 
         if(menuUpdateFrames == 1){
             markMenuLoopReady();
         }else if(menuUpdateFrames == 3){
-            markMenuLoopStable(menuUpdateFrames);
+            markMenuLoopStable(menuUpdateFrames, moduleLoopFrames);
 
             long smokeUpdateId = logic.updateWebGameStateSmoke();
             if(smokeUpdateId != 1L || !state.isMenu()){
@@ -130,6 +151,35 @@ public final class BrowserGameplayRuntime{
             markGameStateTickReady(smokeUpdateId);
         }else if(menuUpdateFrames == 4){
             runWorldLoadSmoke();
+        }
+    }
+
+    /**
+     * Execute the client-side module order used by ApplicationCore on desktop, excluding
+     * the permanently forbidden NetServer/NetClient modules. The phase marker is set
+     * before and after every production module call so a browser-frame failure identifies
+     * the exact boundary even when TeaVM only surfaces a bare NullPointerException.
+     */
+    private static void runMenuModuleFrame(){
+        markModulePhase("logic");
+        logic.updateWebMenu();
+        markModulePhase("logic-ready");
+
+        markModulePhase("control");
+        control.update();
+        markModulePhase("control-ready");
+
+        markModulePhase("renderer");
+        renderer.update();
+        markModulePhase("renderer-ready");
+
+        markModulePhase("ui");
+        ui.update();
+        markModulePhase("ui-ready");
+
+        moduleLoopFrames++;
+        if(moduleLoopFrames == 1){
+            markModuleLoopLive();
         }
     }
 
@@ -176,14 +226,26 @@ public final class BrowserGameplayRuntime{
         return initialized;
     }
 
-    @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-fog-control', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-control-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame');")
+    @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-fog-control', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-control-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame'); document.documentElement.setAttribute('data-mindustry-module-loop', 'waiting'); document.documentElement.setAttribute('data-mindustry-module-phase', 'waiting');")
     private static native void markReady(int logicId);
+
+    @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-client-init-phase', phase);")
+    private static native void markClientInitPhase(String phase);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-client-init', 'ready'); document.documentElement.setAttribute('data-mindustry-control-init', 'ready'); document.documentElement.setAttribute('data-mindustry-ui-frame-scene', 'ready');")
+    private static native void markClientInitReady();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-live'); document.documentElement.setAttribute('data-mindustry-logic-menu-update', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-menu-update-frames', '1');")
     private static native void markMenuLoopReady();
 
-    @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-stable'); document.documentElement.setAttribute('data-mindustry-logic-menu-update-frames', String(frames));")
-    private static native void markMenuLoopStable(int frames);
+    @JSBody(params = {"frames", "moduleFrames"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-stable'); document.documentElement.setAttribute('data-mindustry-logic-menu-update-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-module-loop', 'menu-stable'); document.documentElement.setAttribute('data-mindustry-module-loop-frames', String(moduleFrames));")
+    private static native void markMenuLoopStable(int frames, int moduleFrames);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-module-loop', 'menu-live'); document.documentElement.setAttribute('data-mindustry-module-order', 'logic-control-renderer-ui');")
+    private static native void markModuleLoopLive();
+
+    @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-module-phase', phase);")
+    private static native void markModulePhase(String phase);
 
     @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-game-state-tick-smoke', 'ready'); document.documentElement.setAttribute('data-mindustry-game-state-tick-update-id', String(updateId));")
     private static native void markGameStateTickReady(long updateId);

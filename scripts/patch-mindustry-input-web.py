@@ -16,29 +16,31 @@ if old_lock not in input_text:
     raise SystemExit("InputHandler Web lock patch no longer matches pinned upstream")
 input_text = input_text.replace(old_lock, new_lock, 1)
 
-# The stock desktop startup calls UI.init() before ClientLoadEvent invokes input.add().
-# The browser milestone intentionally activates stock input earlier, after UI.loadSync(),
-# so UI.hudGroup does not exist yet. Create only the normal HUD root required by
-# InputHandler.add() instead of pulling the entire dialog/Control/mod graph into TeaVM.
+# Stock desktop startup calls UI.init() before ClientLoadEvent invokes input.add().
+# This browser milestone registers stock input immediately after UI.loadSync(), before
+# hudGroup/hudfrag exist. Register InputHandler/GestureDetector now, but defer only the
+# HUD element binding until the real stock UI lifecycle has created those objects.
+# Do not synthesize a partial hudGroup: DesktopInput/MobileInput buildUI callbacks assume
+# hudfrag and other UI.init() fields are already valid and Scene.act() will execute them.
 old_add = """    public void add(){
         Core.input.getInputProcessors().remove(i -> i instanceof InputHandler || (i instanceof GestureDetector && ((GestureDetector)i).getListener() instanceof InputHandler));
+        Core.input.addProcessor(detector = new GestureDetector(20, 0.5f, 0.3f, 0.15f, this));
+        Core.input.addProcessor(this);
+        if(Core.scene != null){
 """
 new_add = """    public void add(){
-        if(ui.hudGroup == null){
-            ui.hudGroup = new WidgetGroup();
-            ui.hudGroup.setFillParent(true);
-            Core.scene.add(ui.hudGroup);
-        }
-
         Core.input.getInputProcessors().remove(i -> i instanceof InputHandler || (i instanceof GestureDetector && ((GestureDetector)i).getListener() instanceof InputHandler));
+        Core.input.addProcessor(detector = new GestureDetector(20, 0.5f, 0.3f, 0.15f, this));
+        Core.input.addProcessor(this);
+        if(Core.scene != null && ui.hudGroup != null && ui.hudfrag != null){
 """
 if old_add not in input_text:
-    raise SystemExit("InputHandler Web early HUD-root patch no longer matches pinned upstream")
+    raise SystemExit("InputHandler Web deferred HUD binding patch no longer matches pinned upstream")
 input_text = input_text.replace(old_add, new_add, 1)
 
 # Full UI.init() normally inserts an element named overlaymarker before input is added.
-# During the earlier browser input milestone it is absent. Preserve the normal ordering
-# when present and append to the same stock HUD root when it is not.
+# Preserve stock ordering when present. The fallback is retained for later Web-specific
+# UI composition, but this block is now unreachable until hudGroup/hudfrag are complete.
 old_overlay = """            group.setFillParent(true);
             Vars.ui.hudGroup.addChildBefore(Core.scene.find(\"overlaymarker\"), group);
 
@@ -122,8 +124,10 @@ mobile_text = mobile_text.replace(old_zoom, new_zoom, 1)
 mobile_path.write_text(mobile_text, encoding="utf-8")
 
 # Stock InputHandler and Control make more gameplay code reachable than the earlier
-# shell. Apply browser-only executor/reflection and audio fixes discovered by TeaVM
-# from that graph while preserving stock gameplay/input semantics.
+# shell. Apply browser-only executor/reflection/audio fixes discovered by TeaVM while
+# preserving stock gameplay/input semantics. The Web/Yandex single-player overlay
+# prunes the desktop whole-map screenshot hotkey before TeaVM, so Renderer screenshot
+# encoding intentionally remains unreachable instead of retaining PNG/Deflater code.
 mindustry_root = input_path.parent.parent
 unit_group = mindustry_root / "ai" / "UnitGroup.java"
 building_comp = mindustry_root / "entities" / "comp" / "BuildingComp.java"

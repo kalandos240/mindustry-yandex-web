@@ -8,17 +8,17 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Measured at the first real-world milestone: stock Renderer/Control/input/audio plus
-# World/Logic/FogControl/Pathfinder/ControlPathfinder, with ControlPathfinder converted
-# from its JVM daemon scheduler to browser-frame stepping and an actual 8x8
-# World.loadGenerator -> WorldLoadEvent graph reachable in TeaVM. This is intentional
-# gameplay code, not accidental desktop reachability. Keep ~2.5% raw/compressed
-# headroom from this measured point while retaining the forbidden-class and Yandex
-# package-size guards below.
-JS_BASELINE = 13_167_984
-JS_LIMIT = 13_500_000
-JS_GZIP_BASELINE = 1_716_847
-JS_GZIP_LIMIT = 1_760_000
+# Measured after activating the production client module update graph in stock order:
+# Logic(menu extraction) -> Control.update() -> Renderer.update() -> UI.update().
+# Calling production Control.update() intentionally makes the real input/gameplay/client
+# branch reachable in TeaVM even while this milestone executes in menu state; that graph
+# is required by the later playing-world milestone. The desktop whole-map screenshot
+# hotkey is explicitly pruned on Web/Yandex and forbidden desktop/network markers remain
+# audited below. Keep ~3% raw/compressed headroom from this measured module-loop point.
+JS_BASELINE = 18_645_294
+JS_LIMIT = 19_200_000
+JS_GZIP_BASELINE = 2_235_158
+JS_GZIP_LIMIT = 2_300_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
@@ -96,14 +96,14 @@ print(REPORT.read_text(encoding="utf-8"), end="")
 failed = False
 if js_bytes > JS_LIMIT:
     print(
-        f"ERROR: TeaVM JavaScript grew beyond world-runtime performance budget: {js_bytes} > {JS_LIMIT}. "
+        f"ERROR: TeaVM JavaScript grew beyond stock-module-loop performance budget: {js_bytes} > {JS_LIMIT}. "
         "Check for accidental desktop/service reachability or unexpected gameplay graph growth.",
         file=sys.stderr,
     )
     failed = True
 if gzip_bytes > JS_GZIP_LIMIT:
     print(
-        f"ERROR: TeaVM gzip size grew beyond world-runtime budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
+        f"ERROR: TeaVM gzip size grew beyond stock-module-loop budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
         file=sys.stderr,
     )
     failed = True
