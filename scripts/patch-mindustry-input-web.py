@@ -9,6 +9,11 @@ if len(sys.argv) != 3:
 input_path = Path(sys.argv[1])
 mobile_path = Path(sys.argv[2])
 
+def replace_once(text: str, old: str, new: str, label: str) -> str:
+    if old not in text:
+        raise SystemExit(f"{label} no longer matches pinned upstream")
+    return text.replace(old, new, 1)
+
 input_text = input_path.read_text(encoding="utf-8")
 old_lock = "    public Seq<Boolp> inputLocks = Seq.with(() -> renderer.isCutscene(), () -> logicCutscene);"
 new_lock = "    public Seq<Boolp> inputLocks = Seq.with(() -> renderer != null && renderer.isCutscene(), () -> logicCutscene);"
@@ -17,11 +22,9 @@ if old_lock not in input_text:
 input_text = input_text.replace(old_lock, new_lock, 1)
 
 # Stock desktop startup calls UI.init() before ClientLoadEvent invokes input.add().
-# This browser milestone registers stock input immediately after UI.loadSync(), before
-# hudGroup/hudfrag exist. Register InputHandler/GestureDetector now, but defer only the
-# HUD element binding until the real stock UI lifecycle has created those objects.
-# Do not synthesize a partial hudGroup: DesktopInput/MobileInput buildUI callbacks assume
-# hudfrag and other UI.init() fields are already valid and Scene.act() will execute them.
+# Browser startup registers the processors immediately after UI.loadSync(), then a later
+# local-UI stage creates hudGroup and calls add() again. Bind the stock input-owned UI as
+# soon as hudGroup exists; do not require HudFragment or any dialog/fragment constructor.
 old_add = """    public void add(){
         Core.input.getInputProcessors().remove(i -> i instanceof InputHandler || (i instanceof GestureDetector && ((GestureDetector)i).getListener() instanceof InputHandler));
         Core.input.addProcessor(detector = new GestureDetector(20, 0.5f, 0.3f, 0.15f, this));
@@ -32,15 +35,14 @@ new_add = """    public void add(){
         Core.input.getInputProcessors().remove(i -> i instanceof InputHandler || (i instanceof GestureDetector && ((GestureDetector)i).getListener() instanceof InputHandler));
         Core.input.addProcessor(detector = new GestureDetector(20, 0.5f, 0.3f, 0.15f, this));
         Core.input.addProcessor(this);
-        if(Core.scene != null && ui.hudGroup != null && ui.hudfrag != null){
+        if(Core.scene != null && ui.hudGroup != null){
 """
 if old_add not in input_text:
     raise SystemExit("InputHandler Web deferred HUD binding patch no longer matches pinned upstream")
 input_text = input_text.replace(old_add, new_add, 1)
 
 # Full UI.init() normally inserts an element named overlaymarker before input is added.
-# Preserve stock ordering when present. The fallback is retained for later Web-specific
-# UI composition, but this block is now unreachable until hudGroup/hudfrag are complete.
+# Preserve stock ordering when present; local Web input binding has no full HUD marker yet.
 old_overlay = """            group.setFillParent(true);
             Vars.ui.hudGroup.addChildBefore(Core.scene.find(\"overlaymarker\"), group);
 
@@ -121,7 +123,37 @@ new_zoom = """    @Override
 if old_zoom not in mobile_text:
     raise SystemExit("MobileInput zoom Web patch no longer matches pinned upstream")
 mobile_text = mobile_text.replace(old_zoom, new_zoom, 1)
+
+# MobileInput's input-owned tables are built before the full ConsoleFragment exists.
+# A missing console means simply "console not shown"; once UI.init/local fragments are
+# introduced later, the exact stock shown() result is used again.
+mobile_console_refs = mobile_text.count("ui.consolefrag.shown()")
+if mobile_console_refs != 3:
+    raise SystemExit(f"Expected 3 pinned MobileInput console visibility checks, found {mobile_console_refs}")
+mobile_text = mobile_text.replace(
+    "ui.consolefrag.shown()",
+    "(ui.consolefrag != null && ui.consolefrag.shown())",
+)
 mobile_path.write_text(mobile_text, encoding="utf-8")
+
+# DesktopInput also queries fragment visibility during ordinary game frames, before any
+# key is pressed. Pinned v159.7 exposes HudFragment.shown as a public boolean field while
+# Chat/Console/Minimap use shown() methods. Keep those exact reads transition-safe without
+# constructing any of the heavy fragments merely to answer visibility questions.
+desktop_path = input_path.with_name("DesktopInput.java")
+desktop_text = desktop_path.read_text(encoding="utf-8")
+visibility_replacements = [
+    ("ui.hudfrag.shown", "(ui.hudfrag == null || ui.hudfrag.shown)", "hud visibility", 2),
+    ("ui.chatfrag.shown()", "(ui.chatfrag != null && ui.chatfrag.shown())", "chat visibility", 3),
+    ("ui.consolefrag.shown()", "(ui.consolefrag != null && ui.consolefrag.shown())", "console visibility", 1),
+    ("ui.minimapfrag.shown()", "(ui.minimapfrag != null && ui.minimapfrag.shown())", "minimap visibility", 2),
+]
+for old, new, label, expected in visibility_replacements:
+    count = desktop_text.count(old)
+    if count != expected:
+        raise SystemExit(f"Expected {expected} pinned DesktopInput {label} checks, found {count}")
+    desktop_text = desktop_text.replace(old, new)
+desktop_path.write_text(desktop_text, encoding="utf-8")
 
 # Stock InputHandler and Control make more gameplay code reachable than the earlier
 # shell. Apply browser-only executor/reflection/audio fixes discovered by TeaVM while
