@@ -55,7 +55,7 @@ public final class BrowserUiRuntime{
         // detector/input processors and builds the stock InputHandler-owned UI subtree.
         input.add();
 
-        if(input.uiGroup == null || input.uiGroup.getParent() != ui.hudGroup){
+        if(input.uiGroup == null || input.uiGroup.parent != ui.hudGroup){
             throw new IllegalStateException("Stock InputHandler UI did not bind to browser HUD group");
         }
         if(!Core.input.getInputProcessors().contains(input) || input.detector == null){
