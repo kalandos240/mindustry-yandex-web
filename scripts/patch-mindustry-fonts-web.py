@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
 import sys
 
 if len(sys.argv) != 2:
@@ -43,3 +44,8 @@ for old, new, label in replacements:
 
 path.write_text(text)
 print(f"Patched Web font lifecycle in {path}")
+
+# This post-overlay source-fix stage already runs after apply-port.sh in CI/build
+# assembly. Keep the local map registry's constructor browser-safe at the same point.
+root = Path(__file__).resolve().parents[1]
+subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-maps-web.py")], check=True)
