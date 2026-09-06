@@ -80,11 +80,13 @@ public final class BrowserPlayingRuntime{
         markPhase("logic");
         logic.updateWebPlayingCore();
         markPhase("logic-ready");
+        assertOwnership("logic", unit);
 
         // JVM worker schedulers are replaced by explicit browser-frame steps; the
         // underlying Pathfinder and ControlPathfinder algorithms remain stock.
         pathfinder.updateWeb();
         controlPath.updateWeb();
+        assertOwnership("pathfinding", unit);
 
         // Diagnostic preflight: execute the ordinary playing-only Control components
         // individually so a TeaVM NPE reports an exact stock subphase. This is temporary
@@ -92,26 +94,32 @@ public final class BrowserPlayingRuntime{
         markPhase("control-input-state");
         control.input.updateState();
         markPhase("control-input-state-ready");
+        assertOwnership("control-input-state", unit);
 
         markPhase("control-sound");
         control.sound.update();
         markPhase("control-sound-ready");
+        assertOwnership("control-sound", unit);
 
         markPhase("control-input");
         control.input.update();
         markPhase("control-input-ready");
+        assertOwnership("control-input", unit);
 
         markPhase("control-quadtree");
         control.input.updateSelectQuadtree();
         markPhase("control-quadtree-ready");
+        assertOwnership("control-quadtree", unit);
 
         markPhase("control-indicators");
         control.indicators.update();
         markPhase("control-indicators-ready");
+        assertOwnership("control-indicators", unit);
 
         markPhase("control-stock");
         control.update();
         markPhase("control-ready");
+        assertOwnership("control", unit);
 
         // Temporary renderer phase hook narrows the first world-render failure without
         // duplicating Renderer.update(). The hook is removed with the Control preflight
@@ -121,22 +129,18 @@ public final class BrowserPlayingRuntime{
         renderer.update();
         renderer.webPhaseHook = null;
         markPhase("renderer-ready");
+        assertOwnership("renderer", unit);
 
         markPhase("ui");
         ui.update();
         markPhase("ui-ready");
+        assertOwnership("ui", unit);
 
         if(!state.isPlaying()){
             throw new IllegalStateException("Real Web playing client frame unexpectedly left playing state");
         }
         if(state.updateId <= beforeUpdateId){
             throw new IllegalStateException("Real Web playing client frame did not advance GameState updateId: before=" + beforeUpdateId + ", after=" + state.updateId);
-        }
-        if(player.unit() != unit){
-            throw new IllegalStateException("Real Web playing client frame changed local player unit ownership");
-        }
-        if(!unit.isAdded()){
-            throw new IllegalStateException("Real Web playing client frame removed the local alpha entity");
         }
 
         markReady(state.updateId, unit.id, unit.type.name);
@@ -150,6 +154,29 @@ public final class BrowserPlayingRuntime{
 
         complete = true;
         markRestored();
+    }
+
+    private static void assertOwnership(String phase, Unit expected){
+        Unit actual = player.unit();
+        if(actual != expected){
+            throw new IllegalStateException(
+                "Web playing ownership changed during " + phase
+                + ": actual=" + (actual == null ? "null" : actual.type.name + "#" + actual.id)
+                + ", expected=" + expected.type.name + "#" + expected.id
+                + ", expectedAdded=" + expected.isAdded()
+                + ", expectedValid=" + expected.isValid()
+                + ", expectedControllerIsPlayer=" + (expected.controller() == player)
+                + ", playerAdded=" + player.isAdded()
+            );
+        }
+        if(!expected.isAdded() || !expected.isValid() || expected.controller() != player){
+            throw new IllegalStateException(
+                "Web playing unit became invalid during " + phase
+                + ": added=" + expected.isAdded()
+                + ", valid=" + expected.isValid()
+                + ", controllerIsPlayer=" + (expected.controller() == player)
+            );
+        }
     }
 
     public static boolean complete(){
