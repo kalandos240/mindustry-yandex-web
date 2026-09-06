@@ -46,12 +46,15 @@ patch("entities/EntityGroup.java", [
 # small reset routine makes its full AI/server/update-loop graph reachable in TeaVM.
 # Keep the pinned reset semantics directly at the Web SaveIO boundary, while clearing
 # old entity groups without lifecycle callbacks because the old world is discarded.
-# The browser release reads/writes the current v13 format only; pruning Save1..Save12
-# removes migration-only classes and legacy patch infrastructure from the JS graph.
+#
+# The browser writer stays current v13. The pinned built-in skirmish map catalog still
+# contains old v4 .msav files, so keep exactly Save4 for reading those local packaged
+# maps plus Save13 for current browser saves. Other legacy migrations remain pruned and
+# are added only if a pinned built-in asset proves that it actually requires one.
 patch("io/SaveIO.java", [
     ('public static final Seq<SaveVersion> versionArray = Seq.with(new Save1(), new Save2(), new Save3(), new Save4(), new Save5(), new Save6(), new Save7(), new Save8(), new Save9(), new Save10(), new Save11(), new Save12(), new Save13());',
-     'public static final Seq<SaveVersion> versionArray = Seq.with(new Save13()); // Web: current v13 saves only.',
-     'SaveIO current-only version graph'),
+     'public static final Seq<SaveVersion> versionArray = Seq.with(new Save4(), new Save13()); // Web: pinned built-in v4 maps + current v13 saves.',
+     'SaveIO minimal map/save version graph'),
     ('import mindustry.game.EventType.*;\nimport mindustry.io.versions.*;',
      'import mindustry.game.EventType.*;\nimport mindustry.core.*;\nimport mindustry.gen.*;\nimport mindustry.io.versions.*;',
      'SaveIO Web reset imports'),
@@ -73,8 +76,9 @@ patch("mod/ContentParser.java", [
 ])
 
 # Restore gameplay metadata without desktop Control/input/camera or the desktop Maps
-# registry. The binary v13 format and region reader remain stock. Method-boundary
-# replacement is intentionally strict: exactly one pinned readMeta/readRules pair must exist.
+# registry. The binary format and region reader remain stock. This method is shared by
+# the retained Save4 map reader and Save13 browser-save reader; the version check keeps
+# the legacy rules region behavior intact.
 read_meta = '''    public void readMeta(DataInput stream, SaveReadState saveState) throws IOException{\n        StringMap map = readStringMap(stream);\n\n        state.wave = map.getInt("wave");\n        state.wavetime = map.getFloat("wavetime", state.rules.waveSpacing);\n        state.tick = map.getFloat("tick");\n        state.stats = JsonIO.read(GameStats.class, map.get("stats", "{}"));\n        state.mapLocales = JsonIO.read(MapLocales.class, map.get("locales", "{}"));\n        saveState.ruleString = map.get("rules", "{}");\n\n        if(version < 13){\n            readRules(saveState);\n        }\n\n        String name = map.get("mapname", "Unknown");\n        state.map = new Map(StringMap.of(\n            "name", name,\n            "width", map.get("width", "1"),\n            "height", map.get("height", "1")\n        ));\n    }'''
 
 replace_method(
@@ -108,9 +112,10 @@ replace_method(
     'SaveVersion browser readDataPatches'
 )
 
-# Versions below 11 used this method to synthesize an empty data-patch load event,
-# which reaches DataManager/DataImagePacker even though current v13 saves never take
-# that branch. The Web package only exposes Save13, so keep only content remapping.
+# Legacy v4 and current v13 both need the normal content ID remapping. Versions below
+# 11 previously synthesized an empty data-patch load event here; the Yandex package has
+# no external data patches, so keep only the stock mapping table and avoid desktop
+# DataManager/DataImagePacker reachability.
 read_content_header = '''    public void readContentHeader(DataInput stream) throws IOException{\n        int mapped = stream.readUnsignedByte();\n\n        MappableContent[][] map = new MappableContent[ContentType.all.length][0];\n\n        for(int i = 0; i < mapped; i++){\n            ContentType type = ContentType.all[stream.readByte()];\n            short total = stream.readShort();\n            map[type.ordinal()] = new MappableContent[total];\n\n            for(int j = 0; j < total; j++){\n                String name = stream.readUTF();\n                map[type.ordinal()][j] = content.getByName(type, type == ContentType.block ? fallback.get(name, name) : name);\n            }\n        }\n\n        content.setTemporaryMapper(map);\n    }'''
 
 replace_method(
@@ -118,7 +123,7 @@ replace_method(
     '    public void readContentHeader(DataInput stream) throws IOException{',
     '    public void writeContentHeader(DataOutput stream) throws IOException{',
     read_content_header,
-    'SaveVersion current-only content header'
+    'SaveVersion retained-version content header'
 )
 
-print("Applied browser-safe current-v13 SaveIO.load/reset/read overlays")
+print("Applied browser-safe Save4 built-in map + current-v13 save load/reset/read overlays")
