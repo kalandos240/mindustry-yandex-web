@@ -14,17 +14,108 @@ old_lock = "    public Seq<Boolp> inputLocks = Seq.with(() -> renderer.isCutscen
 new_lock = "    public Seq<Boolp> inputLocks = Seq.with(() -> renderer != null && renderer.isCutscene(), () -> logicCutscene);"
 if old_lock not in input_text:
     raise SystemExit("InputHandler Web lock patch no longer matches pinned upstream")
-input_path.write_text(input_text.replace(old_lock, new_lock, 1), encoding="utf-8")
+input_text = input_text.replace(old_lock, new_lock, 1)
+
+# The stock desktop startup calls UI.init() before ClientLoadEvent invokes input.add().
+# The browser milestone intentionally activates stock input earlier, after UI.loadSync(),
+# so UI.hudGroup does not exist yet. Create only the normal HUD root required by
+# InputHandler.add() instead of pulling the entire dialog/Control/mod graph into TeaVM.
+old_add = """    public void add(){
+        Core.input.getInputProcessors().remove(i -> i instanceof InputHandler || (i instanceof GestureDetector && ((GestureDetector)i).getListener() instanceof InputHandler));
+"""
+new_add = """    public void add(){
+        if(ui.hudGroup == null){
+            ui.hudGroup = new WidgetGroup();
+            ui.hudGroup.setFillParent(true);
+            Core.scene.add(ui.hudGroup);
+        }
+
+        Core.input.getInputProcessors().remove(i -> i instanceof InputHandler || (i instanceof GestureDetector && ((GestureDetector)i).getListener() instanceof InputHandler));
+"""
+if old_add not in input_text:
+    raise SystemExit("InputHandler Web early HUD-root patch no longer matches pinned upstream")
+input_text = input_text.replace(old_add, new_add, 1)
+
+# Full UI.init() normally inserts an element named overlaymarker before input is added.
+# During the earlier browser input milestone it is absent. Preserve the normal ordering
+# when present and append to the same stock HUD root when it is not.
+old_overlay = """            group.setFillParent(true);
+            Vars.ui.hudGroup.addChildBefore(Core.scene.find(\"overlaymarker\"), group);
+
+            inv.build(group);
+"""
+new_overlay = """            group.setFillParent(true);
+            Element overlayMarker = Core.scene.find(\"overlaymarker\");
+            if(overlayMarker == null){
+                Vars.ui.hudGroup.addChild(group);
+            }else{
+                Vars.ui.hudGroup.addChildBefore(overlayMarker, group);
+            }
+
+            inv.build(group);
+"""
+if old_overlay not in input_text:
+    raise SystemExit("InputHandler Web overlay-marker fallback patch no longer matches pinned upstream")
+input_text = input_text.replace(old_overlay, new_overlay, 1)
+input_path.write_text(input_text, encoding="utf-8")
 
 mobile_text = mobile_path.read_text(encoding="utf-8")
-old_touch_up = """    @Override\n    public boolean touchUp(int screenX, int screenY, int pointer, KeyCode button){\n        lastZoom = renderer.getScale();\n"""
-new_touch_up = """    @Override\n    public boolean touchUp(int screenX, int screenY, int pointer, KeyCode button){\n        lastZoom = currentWebSafeScale();\n"""
+old_touch_up = """    @Override
+    public boolean touchUp(int screenX, int screenY, int pointer, KeyCode button){
+        lastZoom = renderer.getScale();
+"""
+new_touch_up = """    @Override
+    public boolean touchUp(int screenX, int screenY, int pointer, KeyCode button){
+        lastZoom = currentWebSafeScale();
+"""
 if old_touch_up not in mobile_text:
     raise SystemExit("MobileInput touchUp Web patch no longer matches pinned upstream")
 mobile_text = mobile_text.replace(old_touch_up, new_touch_up, 1)
 
-old_zoom = """    @Override\n    public boolean zoom(float initialDistance, float distance){\n        if(Core.settings.getBool(\"keyboard\")) return false;\n        if(lastZoom < 0){\n            lastZoom = renderer.getScale();\n        }\n\n        renderer.setScale(distance / initialDistance * lastZoom);\n        return true;\n    }\n"""
-new_zoom = """    @Override\n    public boolean zoom(float initialDistance, float distance){\n        if(Core.settings.getBool(\"keyboard\") || initialDistance <= 0f) return false;\n        if(lastZoom < 0){\n            lastZoom = currentWebSafeScale();\n        }\n\n        setWebSafeScale(distance / initialDistance * lastZoom);\n        return true;\n    }\n\n    /**\n     * Browser bootstrap activates the stock MobileInput graph one milestone before the\n     * full Renderer module. Keep pinch/touch-up safe during that transition; once the\n     * Renderer exists these methods delegate to the normal renderer scale path.\n     */\n    private float currentWebSafeScale(){\n        if(renderer != null) return renderer.getScale();\n        if(Core.camera == null || Core.graphics == null || Core.camera.width <= 0f) return 1f;\n        return Core.graphics.getWidth() / Core.camera.width;\n    }\n\n    private void setWebSafeScale(float scale){\n        scale = Mathf.clamp(scale, 0.5f, 6f);\n        if(renderer != null){\n            renderer.setScale(scale);\n        }else if(Core.camera != null && Core.graphics != null){\n            Core.camera.width = Core.graphics.getWidth() / scale;\n            Core.camera.height = Core.graphics.getHeight() / scale;\n            Core.camera.update();\n        }\n    }\n"""
+old_zoom = """    @Override
+    public boolean zoom(float initialDistance, float distance){
+        if(Core.settings.getBool(\"keyboard\")) return false;
+        if(lastZoom < 0){
+            lastZoom = renderer.getScale();
+        }
+
+        renderer.setScale(distance / initialDistance * lastZoom);
+        return true;
+    }
+"""
+new_zoom = """    @Override
+    public boolean zoom(float initialDistance, float distance){
+        if(Core.settings.getBool(\"keyboard\") || initialDistance <= 0f) return false;
+        if(lastZoom < 0){
+            lastZoom = currentWebSafeScale();
+        }
+
+        setWebSafeScale(distance / initialDistance * lastZoom);
+        return true;
+    }
+
+    /**
+     * Browser bootstrap activates the stock MobileInput graph one milestone before the
+     * full Renderer module. Keep pinch/touch-up safe during that transition; once the
+     * Renderer exists these methods delegate to the normal renderer scale path.
+     */
+    private float currentWebSafeScale(){
+        if(renderer != null) return renderer.getScale();
+        if(Core.camera == null || Core.graphics == null || Core.camera.width <= 0f) return 1f;
+        return Core.graphics.getWidth() / Core.camera.width;
+    }
+
+    private void setWebSafeScale(float scale){
+        scale = Mathf.clamp(scale, 0.5f, 6f);
+        if(renderer != null){
+            renderer.setScale(scale);
+        }else if(Core.camera != null && Core.graphics != null){
+            Core.camera.width = Core.graphics.getWidth() / scale;
+            Core.camera.height = Core.graphics.getHeight() / scale;
+            Core.camera.update();
+        }
+    }
+"""
 if old_zoom not in mobile_text:
     raise SystemExit("MobileInput zoom Web patch no longer matches pinned upstream")
 mobile_text = mobile_text.replace(old_zoom, new_zoom, 1)
