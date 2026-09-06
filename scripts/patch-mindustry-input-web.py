@@ -122,8 +122,10 @@ mobile_text = mobile_text.replace(old_zoom, new_zoom, 1)
 mobile_path.write_text(mobile_text, encoding="utf-8")
 
 # Stock InputHandler and Control make more gameplay code reachable than the earlier
-# shell. Apply browser-only executor/reflection/audio/renderer fixes discovered by
-# TeaVM from that graph while preserving stock gameplay/input semantics.
+# shell. Apply browser-only executor/reflection/audio fixes discovered by TeaVM while
+# preserving stock gameplay/input semantics. The Web/Yandex single-player overlay
+# prunes the desktop whole-map screenshot hotkey before TeaVM, so Renderer screenshot
+# encoding intentionally remains unreachable instead of retaining PNG/Deflater code.
 mindustry_root = input_path.parent.parent
 unit_group = mindustry_root / "ai" / "UnitGroup.java"
 building_comp = mindustry_root / "entities" / "comp" / "BuildingComp.java"
@@ -138,10 +140,6 @@ subprocess.run([
     sys.executable,
     str(Path(__file__).with_name("patch-mindustry-sound-web.py")),
     str(sound_control),
-], check=True)
-subprocess.run([
-    sys.executable,
-    str(Path(__file__).with_name("patch-mindustry-renderer-web.py")),
 ], check=True)
 
 # The stock ControlPathfinder owns the remaining gameplay worker thread. Convert only
