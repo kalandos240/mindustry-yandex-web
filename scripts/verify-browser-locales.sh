@@ -92,7 +92,7 @@ run_locale(){
 
   grep -Eq 'data-mindustry-logic-copper-id="[0-9]+"' "$dom"
   echo "Browser locale $expected: renderer + input + BrowserSaves Control + World/Logic/FogControl substrate + isolated single-player GameState tick + logic IDs + persistence boundary ready"
-done
+}
 
 run_locale en
 run_locale ru
