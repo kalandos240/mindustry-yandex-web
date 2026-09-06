@@ -9,9 +9,10 @@ BROWSER_GL = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web
 if not BROWSER_GL.is_file():
     raise SystemExit(f"Missing BrowserGL20 source: {BROWSER_GL}")
 
-# Keep the temporary diagnostic ordered after the permanent texture-pixel fix while
-# this script remains wired into apply-port.sh. Once the browser smoke turns green,
-# apply-port will call the texture patch directly and this diagnostic will be removed.
+# Gameplay/Renderer makes Arc VBOs, uniforms and texture uploads reachable. Apply the
+# permanent Java-NIO -> JavaScript typed-array bridges before adding the temporary DOM
+# diagnostic marker used to identify any remaining Buffer-bearing GL entry point.
+runpy.run_path(str(ROOT / "scripts" / "patch-arc-webgl-nio.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "patch-browser-gl-texture-pixels.py"), run_name="__main__")
 
 text = BROWSER_GL.read_text(encoding="utf-8")
@@ -26,6 +27,7 @@ pattern = re.compile(
 
 seen = []
 
+
 def instrument(match):
     whole, name = match.group(1), match.group(2)
     marker = f'markBufferBridge("{name}");'
@@ -33,6 +35,7 @@ def instrument(match):
         return whole
     seen.append(name)
     return whole + "\n        " + marker
+
 
 text = pattern.sub(instrument, text)
 if not seen:
