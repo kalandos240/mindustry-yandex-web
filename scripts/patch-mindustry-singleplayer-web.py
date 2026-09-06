@@ -49,11 +49,27 @@ control_replacements = [
 ''',
         "PvP auto-host",
     ),
+    (
+        '''            if(!mobile && Core.input.keyTap(Binding.screenshot) && !scene.hasField() && !scene.hasKeyboard()){
+                renderer.takeMapScreenshot();
+            }
+
+''',
+        '''            // Web/Yandex: the desktop whole-map screenshot hotkey is omitted.
+            // Reaching Renderer.takeMapScreenshot() retains Arc's full PNG/Deflater
+            // encoder in TeaVM and adds several MiB for a non-gameplay desktop utility.
+
+''',
+        "desktop whole-map screenshot hotkey",
+    ),
 ]
 for old, new, label in control_replacements:
     if old not in control:
         raise SystemExit(f"Single-player Control patch no longer matches pinned upstream ({label})")
     control = control.replace(old, new, 1)
+
+if "renderer.takeMapScreenshot();" in control:
+    raise SystemExit("Single-player Web Control still reaches whole-map screenshot encoder")
 CONTROL.write_text(control, encoding="utf-8")
 
 menu = MENU.read_text(encoding="utf-8")
@@ -105,4 +121,4 @@ for old, new, label in menu_replacements:
     menu = menu.replace(old, new, 1)
 MENU.write_text(menu, encoding="utf-8")
 
-print("Applied permanent single-player Control and menu paths for Web/Yandex")
+print("Applied permanent single-player Control/menu paths and pruned desktop screenshot encoder on Web/Yandex")
