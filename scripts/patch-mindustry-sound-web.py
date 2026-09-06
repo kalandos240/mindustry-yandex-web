@@ -26,7 +26,7 @@ replacements = [
     ),
     (
         """    public void addAmbientSource(AmbientSource source){\n        if(headless) return;\n\n        if(launchingAmbientThread && ambientThread != null){\n            ambientThread.sources.add(source); //directly add to buffer while thread is launching; this prevents a million add calls to the queue during map load\n        }else if(ambientThread != null){\n            ambientThread.inputSources.add(source);\n        }else{\n            launchingAmbientThread = true;\n            ambientThread = new AudioThread();\n            ambientThread.setDaemon(true);\n\n            //start thread with all the sources that were added during launch\n            Core.app.post(() -> {\n                if(ambientThread != null){\n                    if(!ambientThread.isAlive()) ambientThread.start();\n                    launchingAmbientThread = false;\n                }\n            });\n        }\n    }\n""",
-        """    public void addAmbientSource(AmbientSource source){\n        // Web: Core.audio is intentionally Audio(false). Ambient sources have no audible\n        // output, and the desktop implementation requires LinkedBlockingQueue/Thread.sleep,\n        // which do not exist in TeaVM JavaScript. Keep the API callable but do no work.\n    }\n""",
+        """    public void addAmbientSource(AmbientSource source){\n        // Web: Core.audio is intentionally Audio(false). Ambient sources have no audible\n        // output, and the desktop worker primitives are unavailable in TeaVM JavaScript.\n        // Keep the stock API callable while doing no work in the disabled-audio backend.\n    }\n""",
         "addAmbientSource",
     ),
     (
@@ -49,7 +49,7 @@ end_marker = "\n    }\n}"
 end = text.find(end_marker, start)
 if end < 0:
     raise SystemExit("SoundControl Web patch could not locate AudioThread end")
-text = text[:start] + "    // Web: desktop AudioThread removed; browser audio is intentionally disabled.\n" + text[end + len("\n    }"):]
+text = text[:start] + "    // Web: desktop ambient worker removed; browser audio is intentionally disabled.\n" + text[end + len("\n    }"):]
 
 for forbidden in ("LinkedBlockingQueue", "Thread.sleep", "new AudioThread", ".interrupt()"):
     if forbidden in text:
