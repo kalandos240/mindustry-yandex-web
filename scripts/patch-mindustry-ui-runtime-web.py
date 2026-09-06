@@ -83,12 +83,15 @@ planet_path.write_text(planet, encoding="utf-8")
 # TeaVM's Class subset has getSimpleName()/getSuperclass(), but not isAnonymousClass().
 # Java anonymous classes have an empty simple name, so this is the equivalent test and
 # preserves the upstream superclass fallback used by serializers/localization helpers.
-# Block.java is deliberately excluded: patch-mindustry-block-reflection.py owns that
-# pinned transformation later in the overlay pipeline and must see the upstream form.
+# Files with dedicated compatibility overlays are deliberately excluded so those
+# patches retain ownership of their pinned source transformations.
 anonymous_replacements = 0
-block_path = MINDUSTRY / "world" / "Block.java"
+anonymous_owned_elsewhere = {
+    MINDUSTRY / "world" / "Block.java",
+    MINDUSTRY / "io" / "JsonIO.java",
+}
 for path in MINDUSTRY.rglob("*.java"):
-    if path == block_path:
+    if path in anonymous_owned_elsewhere:
         continue
     text = path.read_text(encoding="utf-8")
     count = text.count(".isAnonymousClass()")
