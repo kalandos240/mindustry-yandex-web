@@ -50,6 +50,12 @@ tasks.register("stageWeb", Copy) {
         include "sprites/error.png"
         include "sprites/block_colors.png"
 
+        // Package the original built-in local skirmish maps from the pinned Mindustry
+        // release. They remain same-origin assets inside the Yandex upload and form the
+        // first real user-controlled map/start surface after deterministic CI gameplay
+        // was separated from normal production startup.
+        include "maps/default/**"
+
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
         // ParticleWeather noise textures before Renderer.init() drains the pending asset

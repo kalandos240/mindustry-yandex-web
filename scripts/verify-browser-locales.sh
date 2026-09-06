@@ -49,6 +49,32 @@ for i in {1..20}; do
   sleep 0.25
 done
 
+run_production_menu(){
+  local profile="/tmp/mindustry-web-profile-production-menu"
+  local dom="/tmp/mindustry-web-production-menu.html"
+  rm -rf "$profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:8081/index.html?lang=en" \
+    --profile "$profile" \
+    --port 9230 \
+    --timeout 30 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="production"' \
+    --require 'data-mindustry-gameplay-runtime="ready"' \
+    --require 'data-mindustry-gameplay-loop="menu-stable"' \
+    --require 'data-mindustry-module-loop="menu-stable"' \
+    --require 'data-mindustry-game-state-tick-smoke="ready"' \
+    --require 'data-mindustry-network="local-only"' > "$dom"
+
+  if grep -Eq 'data-mindustry-world-load-smoke=|data-mindustry-world-size=|data-mindustry-playing-frame=|data-mindustry-playing-loop=|data-mindustry-playing-state=' "$dom"; then
+    echo 'Normal production startup unexpectedly executed deterministic world/playing smoke.' >&2
+    grep -o '<html[^>]*>' "$dom" >&2 || true
+    exit 1
+  fi
+  echo 'Browser production startup: stable menu only; deterministic world/playing smoke absent'
+}
+
 run_locale(){
   local expected="$1"
   local profile="/tmp/mindustry-web-profile-$expected"
@@ -58,11 +84,12 @@ run_locale(){
   rm -rf "$profile"
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:8081/index.html?lang=$expected" \
+    --url "http://127.0.0.1:8081/index.html?lang=$expected&mindustrySmoke=1" \
     --profile "$profile" \
     --port "$cdp_port" \
     --timeout 30 \
     --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="ci"' \
     --require 'data-mindustry-ui-shell="ready"' \
     --require 'data-mindustry-ui-sync="ready"' \
     --require 'data-mindustry-renderer="constructed"' \
@@ -113,7 +140,7 @@ run_locale(){
   grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$dom"
-  echo "Browser locale $expected: stock input-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + BrowserAudio + real 8x8 WorldLoadEvent + browser-single-thread pathfinding + persistence boundary ready"
+  echo "Browser locale $expected: explicit CI smoke + stock input-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + BrowserAudio + real 8x8 WorldLoadEvent + browser-single-thread pathfinding + persistence boundary ready"
 }
 
 run_mobile(){
@@ -122,11 +149,12 @@ run_mobile(){
   rm -rf "$profile"
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=en" \
+    --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=en&mindustrySmoke=1" \
     --profile "$profile" \
     --port 9228 \
     --timeout 30 \
     --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="ci"' \
     --require 'data-mindustry-ui-shell="ready"' \
     --require 'data-mindustry-ui-sync="ready"' \
     --require 'data-mindustry-renderer-init="ready"' \
@@ -171,9 +199,10 @@ run_mobile(){
   grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$dom"
-  echo "Browser mobile: stock MobileInput-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + real 8x8 WorldLoadEvent ready"
+  echo "Browser mobile: explicit CI smoke + stock MobileInput-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + real 8x8 WorldLoadEvent ready"
 }
 
+run_production_menu
 run_locale en
 run_locale ru
 run_mobile

@@ -28,13 +28,14 @@ import static mindustry.Vars.*;
  * remains a separate Web milestone so it cannot make tens of MiB of unrelated dialog
  * code reachable merely to prove the production client update order.
  *
- * Menu and deterministic playing states both execute the client modules in Mindustry's
- * production order: Logic -> Control -> Renderer -> UI. BrowserPlayingRuntime owns the
- * short multi-requestAnimationFrame playing session used by CI until user-controlled HUD
- * navigation is enabled in the next staged milestone.
+ * Normal production startup remains in the real menu loop and never mutates the live
+ * world merely to satisfy CI. A temporary isolated GameState clock probe is retained as
+ * a startup invariant, but the deterministic 8x8 world + multi-frame playing gate is
+ * enabled only by the explicit ?mindustrySmoke=1 query parameter used by browser tests.
  */
 public final class BrowserGameplayRuntime{
     private static boolean initialized;
+    private static boolean smokeMode;
     private static int menuUpdateFrames;
     private static int moduleLoopFrames;
     private static boolean worldLoadSmokeComplete;
@@ -54,8 +55,6 @@ public final class BrowserGameplayRuntime{
         if(spawner == null) spawner = new WaveSpawner();
         if(indexer == null) indexer = new BlockIndexer();
 
-        // Vars.init() normally supplies these two sentinels. The browser launcher uses
-        // a narrower initialization path, so establish the same stock values explicitly.
         if(emptyMap == null) emptyMap = new Map(new StringMap());
         if(emptyTile == null) emptyTile = new Tile(Short.MAX_VALUE - 20, Short.MAX_VALUE - 20);
         if(state.map == null) state.map = emptyMap;
@@ -65,23 +64,14 @@ public final class BrowserGameplayRuntime{
             logicVars.init();
         }
 
-        // This proves logicids.dat is packaged and parsed instead of silently running
-        // with empty processor lookup tables.
         int copperLogicId = logicVars.lookupLogicId(Items.copper);
         if(copperLogicId < 0 || logicVars.lookupContent(mindustry.ctype.ContentType.item, copperLogicId) != Items.copper){
             throw new IllegalStateException("Mindustry logicids.dat mapping failed browser initialization");
         }
 
         if(logic == null) logic = new Logic();
-
-        // Pathfinder must register its WorldLoad/Reset/TileChange event graph before
-        // ControlPathfinder registers the dependent cluster-path event graph, matching
-        // the stock Vars.init() ordering. Both Web overlays only replace JVM schedulers.
         if(pathfinder == null) pathfinder = new Pathfinder();
         if(controlPath == null) controlPath = new ControlPathfinder();
-
-        // FogControl's stock constructor registers Reset/WorldLoad/tile/unit events and
-        // the static-fog-data SaveVersion chunk. Its Web overlay removes only workers.
         if(fogControl == null) fogControl = new FogControl();
 
         if(world == null || waves == null || collisions == null || universe == null
@@ -91,14 +81,10 @@ public final class BrowserGameplayRuntime{
             throw new IllegalStateException("Mindustry single-thread gameplay substrate is incomplete on Web");
         }
 
-        // NetServer/NetClient remain forbidden permanently: Web/Yandex is single-player.
         if(netServer != null || netClient != null){
             throw new IllegalStateException("Server gameplay modules entered the single-player Web substrate");
         }
 
-        // Control is the dependency immediately before UI in the stock client lifecycle.
-        // UI.loadSync() already established Core.scene and the complete render styles in
-        // WebClientLauncher; do not eagerly instantiate the enormous dialog/menu graph here.
         markClientInitPhase("control-init");
         control.init();
         markClientInitPhase("control-init-ready");
@@ -108,12 +94,12 @@ public final class BrowserGameplayRuntime{
         }
         markClientInitReady();
 
+        smokeMode = smokeRequested();
+        markSmokeMode(smokeMode ? "ci" : "production");
+
         initialized = true;
         markReady(copperLogicId);
 
-        // BrowserApplication runs posted tasks after the current listener pass, so this
-        // listener starts on the next requestAnimationFrame without modifying the active
-        // listener iteration.
         Core.app.addListener(new ApplicationListener(){
             @Override
             public void update(){
@@ -125,13 +111,9 @@ public final class BrowserGameplayRuntime{
     private static void updateFrame(){
         if(!initialized || logic == null || state == null) return;
 
-        // The deterministic continuous-playing gate is intentionally advanced from this
-        // listener so every call is a distinct BrowserApplication/requestAnimationFrame
-        // turn. BrowserPlayingRuntime itself owns the production module order and restores
-        // menu only after the target number of real playing frames has completed.
         if(state.isPlaying()){
-            if(!BrowserPlayingRuntime.active()){
-                throw new IllegalStateException("Web entered playing state outside the active continuous-playing gate");
+            if(!smokeMode || !BrowserPlayingRuntime.active()){
+                throw new IllegalStateException("Web entered playing state outside the explicit CI gameplay smoke");
             }
             BrowserPlayingRuntime.updateFrame();
             return;
@@ -147,19 +129,21 @@ public final class BrowserGameplayRuntime{
         }else if(menuUpdateFrames == 3){
             markMenuLoopStable(menuUpdateFrames, moduleLoopFrames);
 
+            // Keep this tiny state-clock invariant in both production and CI. It swaps in
+            // a temporary GameState and restores the real menu in finally; unlike the
+            // gated world/play smoke below it never mutates the live map or enters play.
             long smokeUpdateId = logic.updateWebGameStateSmoke();
             if(smokeUpdateId != 1L || !state.isMenu()){
                 throw new IllegalStateException("Browser GameState tick smoke did not restore the real menu state");
             }
             markGameStateTickReady(smokeUpdateId);
-        }else if(menuUpdateFrames == 4){
+        }else if(smokeMode && menuUpdateFrames == 4){
             runWorldLoadSmoke();
-        }else if(menuUpdateFrames == 5){
+        }else if(smokeMode && menuUpdateFrames == 5){
             BrowserPlayingRuntime.begin();
         }
     }
 
-    /** Execute the client-side module order used by ApplicationCore in menu state. */
     private static void runMenuModuleFrame(){
         markModulePhase("logic");
         logic.updateWebMenu();
@@ -183,16 +167,11 @@ public final class BrowserGameplayRuntime{
         }
     }
 
-    /**
-     * Cross the real Mindustry world-loading event graph with a small deterministic
-     * vanilla map. No fake event is fired: World.loadGenerator performs beginMapLoad(),
-     * tile installation, endMapLoad() and WorldLoadEvent exactly as production loads do.
-     * The game remains in menu so optional gameplay systems remain gated.
-     */
+    /** CI-only real WorldLoadEvent gate; normal production startup never calls this. */
     private static void runWorldLoadSmoke(){
         if(worldLoadSmokeComplete) return;
-        if(!state.isMenu()){
-            throw new IllegalStateException("Browser world-load smoke must start from menu state");
+        if(!smokeMode || !state.isMenu()){
+            throw new IllegalStateException("Browser world-load smoke requires explicit CI mode and menu state");
         }
 
         state.rules.waves = false;
@@ -225,6 +204,12 @@ public final class BrowserGameplayRuntime{
     public static boolean initialized(){
         return initialized;
     }
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustrySmoke') === '1';")
+    private static native boolean smokeRequested();
+
+    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-smoke-mode', mode);")
+    private static native void markSmokeMode(String mode);
 
     @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-fog-control', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-control-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame'); document.documentElement.setAttribute('data-mindustry-module-loop', 'waiting'); document.documentElement.setAttribute('data-mindustry-module-phase', 'waiting');")
     private static native void markReady(int logicId);
