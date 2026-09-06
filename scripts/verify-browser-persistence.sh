@@ -29,8 +29,8 @@ done
 
 # First full game process: Java BrowserFi writes the binary probe. The marker is
 # emitted only after browser-storage.js confirms the IndexedDB transaction flushed.
-# The same process must also execute the stock client menu module loop, bind the local
-# stock input-owned UI, and cross the real WorldLoadEvent graph.
+# The same process must also execute the stock client menu loop and first real playing
+# frame, bind the local stock input-owned UI, and cross the real WorldLoadEvent graph.
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --url "http://127.0.0.1:$PORT/index.html?lang=en&persistenceSeed=1" \
   --profile "$PROFILE" \
@@ -50,15 +50,21 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-world-load-smoke="ready"' \
   --require 'data-mindustry-world-size="8x8"' \
   --require 'data-mindustry-control-pathfinder="world-active-web-single-thread"' \
+  --require 'data-mindustry-playing-frame="ready"' \
+  --require 'data-mindustry-playing-unit="alpha"' \
+  --require 'data-mindustry-playing-module-order="logic-control-renderer-ui"' \
+  --require 'data-mindustry-playing-state="restored-menu"' \
   --require 'data-mindustry-ui-sync="ready"' \
   --require 'data-mindustry-web="ready"' > "$SEED_DOM"
 
 grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$SEED_DOM"
+grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$SEED_DOM"
+grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$SEED_DOM"
 
 # Second completely new Chrome process, same origin + profile: storage hydrates
 # before TeaVM main(), then BrowserFi's Java byte[] static probe must recover the
-# exact persisted values (including -1/0xFF). The full menu module loop, local input UI
-# and world substrate must recover again so restart recovery is not storage-only.
+# exact persisted values (including -1/0xFF). The full client loop and first real
+# playing frame must recover again so restart recovery is not storage-only.
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --url "http://127.0.0.1:$PORT/index.html?lang=en" \
   --profile "$PROFILE" \
@@ -79,9 +85,15 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-world-load-smoke="ready"' \
   --require 'data-mindustry-world-size="8x8"' \
   --require 'data-mindustry-control-pathfinder="world-active-web-single-thread"' \
+  --require 'data-mindustry-playing-frame="ready"' \
+  --require 'data-mindustry-playing-unit="alpha"' \
+  --require 'data-mindustry-playing-module-order="logic-control-renderer-ui"' \
+  --require 'data-mindustry-playing-state="restored-menu"' \
   --require 'data-mindustry-ui-sync="ready"' \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-network="local-only"' > "$GAME_DOM"
 
 grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$GAME_DOM"
-echo 'Browser persistence smoke: Java BrowserFi write -> IndexedDB flush -> Chrome restart -> Java byte[] recovery + stock input-owned local UI + client menu module loop + BrowserAudio + real WorldLoadEvent recovery PASS'
+grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$GAME_DOM"
+grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$GAME_DOM"
+echo 'Browser persistence smoke: Java BrowserFi write -> IndexedDB flush -> Chrome restart -> Java byte[] recovery + stock local UI + real Logic->Control->Renderer->UI playing frame + BrowserAudio + real WorldLoadEvent recovery PASS'
