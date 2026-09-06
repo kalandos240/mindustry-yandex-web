@@ -1,5 +1,6 @@
 package mindustry.web;
 
+import arc.*;
 import arc.struct.*;
 import mindustry.*;
 import mindustry.ai.*;
@@ -20,12 +21,12 @@ import static mindustry.Vars.*;
  * This deliberately constructs only Mindustry systems whose setup is synchronous on
  * the browser event loop. Pathfinder, ControlPathfinder and FogControl retain desktop
  * worker threads upstream and are therefore introduced by later Web-specific phases.
- * Logic is constructed here so its stock event graph is live, but its frame update is
- * not scheduled until those dependencies (and the local single-player net facade) are
- * browser-safe.
+ * The stock Logic frame loop is now live while the game is in menu state. Entering a
+ * real world remains gated until those gameplay dependencies are browser-safe.
  */
 public final class BrowserGameplayRuntime{
     private static boolean initialized;
+    private static int menuUpdateFrames;
 
     private BrowserGameplayRuntime(){}
 
@@ -75,12 +76,41 @@ public final class BrowserGameplayRuntime{
 
         initialized = true;
         markReady(copperLogicId);
+
+        // BrowserApplication runs posted tasks after the current listener pass, so this
+        // listener starts on the next requestAnimationFrame without modifying the active
+        // listener iteration. It exercises the actual stock Logic.update() every menu frame.
+        Core.app.addListener(new ApplicationListener(){
+            @Override
+            public void update(){
+                updateFrame();
+            }
+        });
+    }
+
+    private static void updateFrame(){
+        if(!initialized || logic == null || state == null || !state.isMenu()) return;
+
+        logic.update();
+        menuUpdateFrames++;
+
+        if(menuUpdateFrames == 1){
+            markMenuLoopReady();
+        }else if(menuUpdateFrames == 3){
+            markMenuLoopStable(menuUpdateFrames);
+        }
     }
 
     public static boolean initialized(){
         return initialized;
     }
 
-    @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'deferred-threaded-deps');")
+    @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame');")
     private static native void markReady(int logicId);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-live'); document.documentElement.setAttribute('data-mindustry-logic-update', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-update-frames', '1');")
+    private static native void markMenuLoopReady();
+
+    @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-stable'); document.documentElement.setAttribute('data-mindustry-logic-update-frames', String(frames));")
+    private static native void markMenuLoopStable(int frames);
 }
