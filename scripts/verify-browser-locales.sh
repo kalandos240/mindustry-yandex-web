@@ -103,8 +103,54 @@ run_locale(){
   echo "Browser locale $expected: stock Logic->Control->Renderer->UI menu module loop + BrowserAudio + real 8x8 WorldLoadEvent + browser-single-thread pathfinding + persistence boundary ready"
 }
 
+run_mobile(){
+  local profile="/tmp/mindustry-web-profile-mobile-module"
+  local dom="/tmp/mindustry-web-mobile-module.html"
+  rm -rf "$profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=en" \
+    --profile "$profile" \
+    --port 9228 \
+    --timeout 30 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-ui-shell="ready"' \
+    --require 'data-mindustry-ui-sync="ready"' \
+    --require 'data-mindustry-renderer-init="ready"' \
+    --require 'data-mindustry-input-mode="mobile"' \
+    --require 'data-mindustry-device-mode="mobile"' \
+    --require 'data-mindustry-stock-input="mobile"' \
+    --require 'data-mindustry-gesture-detector="ready"' \
+    --require 'data-mindustry-control="ready"' \
+    --require 'data-mindustry-control-saves="browser"' \
+    --require 'data-mindustry-audio="ready"' \
+    --require 'data-mindustry-gameplay-runtime="ready"' \
+    --require 'data-mindustry-module-loop="menu-stable"' \
+    --require 'data-mindustry-module-order="logic-control-renderer-ui"' \
+    --require 'data-mindustry-module-loop-frames="3"' \
+    --require 'data-mindustry-world-load-smoke="ready"' \
+    --require 'data-mindustry-world-size="8x8"' \
+    --require 'data-mindustry-control-pathfinder="world-active-web-single-thread"' \
+    --require 'data-mindustry-gameplay-loop="menu-stable"' \
+    --require 'data-mindustry-logic-menu-update="ready"' \
+    --require 'data-mindustry-logic-menu-update-frames="3"' \
+    --require 'data-mindustry-game-state-tick-smoke="ready"' \
+    --require 'data-mindustry-game-state-tick-update-id="1"' \
+    --require 'data-mindustry-saveio-load="ready"' \
+    --require 'data-mindustry-links="none"' \
+    --require 'data-mindustry-locale="en"' \
+    --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-network-mode="singleplayer-only"' \
+    --require 'data-mindustry-storage="ready"' \
+    --require 'data-mindustry-navigation="blocked"' > "$dom"
+
+  grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
+  echo "Browser mobile: stock MobileInput + Logic->Control->Renderer->UI menu module loop + real 8x8 WorldLoadEvent ready"
+}
+
 run_locale en
 run_locale ru
+run_mobile
 
 cleanup_locale
 trap - EXIT
