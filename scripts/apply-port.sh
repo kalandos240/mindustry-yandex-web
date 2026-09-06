@@ -204,6 +204,11 @@ cp "$MINDUSTRY_CORE_WEB_SOURCE_DIR/mindustry/net/Streamable.java" "$MINDUSTRY_DI
 # browser-specific load compatibility isolated from the writer overlay.
 python3 "$ROOT_DIR/scripts/patch-mindustry-save-load-web.py"
 
+# SaveSlot itself remains stock, including save metadata and current-v13 SaveIO.
+# Its preview PNG is deferred through the browser event loop instead of the JVM
+# main ExecutorService, preserving previews without pulling unsupported threads.
+python3 "$ROOT_DIR/scripts/patch-mindustry-save-preview-web.py"
+
 # Stock mobile/desktop input is part of the Web reachability graph now. Patch only
 # the browser-incompatible lock/zoom, formation executor and anonymous config-class
 # reflection paths while preserving stock gameplay semantics.
