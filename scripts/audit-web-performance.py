@@ -8,12 +8,14 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Measured after bringing the stock Mindustry Renderer constructor/Shaders plus the
-# stock MobileInput/DesktopInput reachability graph into TeaVM. The previous 8.7 MiB
-# baseline represented the pre-renderer Web substrate and is no longer comparable.
-# Keep modest headroom while independently rejecting known desktop/network reachability.
-JS_BASELINE = 10_753_304
-JS_LIMIT = 11_500_000
+# Measured after bringing the stock Renderer, stock MobileInput/DesktopInput,
+# browser-safe Control/BrowserSaves and the first single-thread gameplay substrate
+# (World/Waves/Collisions/Universe/WaveSpawner/BlockIndexer/GlobalVars/Logic event
+# graph) into TeaVM. The older 10.75 MiB baseline represented only renderer/input
+# reachability and would now reject intentional gameplay code. Keep raw-JS headroom
+# modest while retaining the tighter compressed-size and forbidden-class guards.
+JS_BASELINE = 12_958_384
+JS_LIMIT = 13_500_000
 JS_GZIP_LIMIT = 1_700_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
@@ -90,14 +92,14 @@ print(REPORT.read_text(encoding="utf-8"), end="")
 failed = False
 if js_bytes > JS_LIMIT:
     print(
-        f"ERROR: TeaVM JavaScript grew beyond renderer/input performance budget: {js_bytes} > {JS_LIMIT}. "
+        f"ERROR: TeaVM JavaScript grew beyond gameplay-substrate performance budget: {js_bytes} > {JS_LIMIT}. "
         "Check for accidental desktop/service reachability or unexpected gameplay graph growth.",
         file=sys.stderr,
     )
     failed = True
 if gzip_bytes > JS_GZIP_LIMIT:
     print(
-        f"ERROR: TeaVM gzip size grew beyond renderer/input budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
+        f"ERROR: TeaVM gzip size grew beyond gameplay-substrate budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
         file=sys.stderr,
     )
     failed = True
