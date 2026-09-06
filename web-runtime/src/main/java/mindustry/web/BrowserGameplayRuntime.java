@@ -28,13 +28,13 @@ import static mindustry.Vars.*;
  * remains a separate Web milestone so it cannot make tens of MiB of unrelated dialog
  * code reachable merely to prove the production client update order.
  *
- * Menu and deterministic playing states both execute the client modules in Mindustry's
- * production order: Logic -> Control -> Renderer -> UI. BrowserPlayingRuntime owns the
- * short multi-requestAnimationFrame playing session used by CI until user-controlled HUD
- * navigation is enabled in the next staged milestone.
+ * Normal production startup now remains in the real menu loop and never mutates the
+ * world merely to satisfy CI. The deterministic 8x8 world + multi-frame playing gate is
+ * enabled only by the explicit ?mindustrySmoke=1 query parameter used by browser tests.
  */
 public final class BrowserGameplayRuntime{
     private static boolean initialized;
+    private static boolean smokeMode;
     private static int menuUpdateFrames;
     private static int moduleLoopFrames;
     private static boolean worldLoadSmokeComplete;
@@ -108,6 +108,9 @@ public final class BrowserGameplayRuntime{
         }
         markClientInitReady();
 
+        smokeMode = smokeRequested();
+        markSmokeMode(smokeMode ? "ci" : "production");
+
         initialized = true;
         markReady(copperLogicId);
 
@@ -125,13 +128,12 @@ public final class BrowserGameplayRuntime{
     private static void updateFrame(){
         if(!initialized || logic == null || state == null) return;
 
-        // The deterministic continuous-playing gate is intentionally advanced from this
-        // listener so every call is a distinct BrowserApplication/requestAnimationFrame
-        // turn. BrowserPlayingRuntime itself owns the production module order and restores
-        // menu only after the target number of real playing frames has completed.
+        // Deterministic CI play is the only path allowed to enter playing until the next
+        // user-controlled local-map milestone is enabled. Normal Yandex startup therefore
+        // remains a stable menu and cannot silently run a hidden synthetic world.
         if(state.isPlaying()){
-            if(!BrowserPlayingRuntime.active()){
-                throw new IllegalStateException("Web entered playing state outside the active continuous-playing gate");
+            if(!smokeMode || !BrowserPlayingRuntime.active()){
+                throw new IllegalStateException("Web entered playing state outside the explicit CI gameplay smoke");
             }
             BrowserPlayingRuntime.updateFrame();
             return;
@@ -147,14 +149,16 @@ public final class BrowserGameplayRuntime{
         }else if(menuUpdateFrames == 3){
             markMenuLoopStable(menuUpdateFrames, moduleLoopFrames);
 
-            long smokeUpdateId = logic.updateWebGameStateSmoke();
-            if(smokeUpdateId != 1L || !state.isMenu()){
-                throw new IllegalStateException("Browser GameState tick smoke did not restore the real menu state");
+            if(smokeMode){
+                long smokeUpdateId = logic.updateWebGameStateSmoke();
+                if(smokeUpdateId != 1L || !state.isMenu()){
+                    throw new IllegalStateException("Browser GameState tick smoke did not restore the real menu state");
+                }
+                markGameStateTickReady(smokeUpdateId);
             }
-            markGameStateTickReady(smokeUpdateId);
-        }else if(menuUpdateFrames == 4){
+        }else if(smokeMode && menuUpdateFrames == 4){
             runWorldLoadSmoke();
-        }else if(menuUpdateFrames == 5){
+        }else if(smokeMode && menuUpdateFrames == 5){
             BrowserPlayingRuntime.begin();
         }
     }
@@ -187,12 +191,12 @@ public final class BrowserGameplayRuntime{
      * Cross the real Mindustry world-loading event graph with a small deterministic
      * vanilla map. No fake event is fired: World.loadGenerator performs beginMapLoad(),
      * tile installation, endMapLoad() and WorldLoadEvent exactly as production loads do.
-     * The game remains in menu so optional gameplay systems remain gated.
+     * This method is CI-only and cannot run during normal production startup.
      */
     private static void runWorldLoadSmoke(){
         if(worldLoadSmokeComplete) return;
-        if(!state.isMenu()){
-            throw new IllegalStateException("Browser world-load smoke must start from menu state");
+        if(!smokeMode || !state.isMenu()){
+            throw new IllegalStateException("Browser world-load smoke requires explicit CI mode and menu state");
         }
 
         state.rules.waves = false;
@@ -225,6 +229,12 @@ public final class BrowserGameplayRuntime{
     public static boolean initialized(){
         return initialized;
     }
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustrySmoke') === '1';")
+    private static native boolean smokeRequested();
+
+    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-smoke-mode', mode);")
+    private static native void markSmokeMode(String mode);
 
     @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-fog-control', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-control-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame'); document.documentElement.setAttribute('data-mindustry-module-loop', 'waiting'); document.documentElement.setAttribute('data-mindustry-module-phase', 'waiting');")
     private static native void markReady(int logicId);
