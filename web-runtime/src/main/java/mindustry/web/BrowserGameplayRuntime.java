@@ -21,8 +21,9 @@ import static mindustry.Vars.*;
  * This deliberately constructs only Mindustry systems whose setup is synchronous on
  * the browser event loop. Pathfinder, ControlPathfinder and FogControl retain desktop
  * worker threads upstream and are therefore introduced by later Web-specific phases.
- * The stock-equivalent Logic menu path is live on browser frames. Entering a real
- * world remains gated until those gameplay dependencies are browser-safe.
+ * The stock-equivalent Logic menu path is live on browser frames. A one-shot isolated
+ * core game-state tick is also verified without entering a real world; full gameplay
+ * remains gated until the remaining dependencies are browser-safe.
  */
 public final class BrowserGameplayRuntime{
     private static boolean initialized;
@@ -100,6 +101,12 @@ public final class BrowserGameplayRuntime{
             markMenuLoopReady();
         }else if(menuUpdateFrames == 3){
             markMenuLoopStable(menuUpdateFrames);
+
+            long smokeUpdateId = logic.updateWebGameCoreSmoke();
+            if(smokeUpdateId != 1L || !state.isMenu()){
+                throw new IllegalStateException("Browser core game tick smoke did not restore the real menu state");
+            }
+            markGameCoreTickReady(smokeUpdateId);
         }
     }
 
@@ -115,4 +122,7 @@ public final class BrowserGameplayRuntime{
 
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-stable'); document.documentElement.setAttribute('data-mindustry-logic-menu-update-frames', String(frames));")
     private static native void markMenuLoopStable(int frames);
+
+    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-game-core-tick-smoke', 'ready'); document.documentElement.setAttribute('data-mindustry-game-core-tick-update-id', String(updateId));")
+    private static native void markGameCoreTickReady(long updateId);
 }
