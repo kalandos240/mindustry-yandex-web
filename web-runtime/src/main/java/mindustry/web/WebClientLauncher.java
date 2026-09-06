@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.assets.*;
+import arc.audio.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
 import arc.math.*;
@@ -25,6 +26,7 @@ public final class WebClientLauncher extends ClientLauncher{
     private boolean uiSyncLoaded;
     private boolean inputRuntimeLoaded;
     private boolean rendererRuntimeLoaded;
+    private boolean controlRuntimeLoaded;
 
     @Override
     public void setup(){
@@ -190,6 +192,10 @@ public final class WebClientLauncher extends ClientLauncher{
         initializeStockInputRuntime();
         markUiSyncPhase("stock-input-ready");
 
+        markUiSyncPhase("control-runtime");
+        initializeControlRuntime();
+        markUiSyncPhase("control-runtime-ready");
+
         uiSyncLoaded = true;
         markUiSyncReady();
         markUiSyncPhase("ready");
@@ -236,10 +242,42 @@ public final class WebClientLauncher extends ClientLauncher{
         markStockInputReady(mobile ? "mobile" : "desktop");
     }
 
+    /**
+     * Construct the stock client Control graph without invoking its desktop loader phase.
+     * The browser already has a verified Player and stock InputHandler, so Control.loadSync()
+     * would incorrectly replace both. Audio(false) supplies the normal Arc buses while
+     * keeping SoLoud/JNI disabled; this is enough for SoundControl's constructor and lets
+     * Saves/AttackIndicators become real gameplay state without an external/native backend.
+     */
+    private void initializeControlRuntime(){
+        if(controlRuntimeLoaded) return;
+        if(!rendererRuntimeLoaded || gameplayInput == null || player == null){
+            throw new IllegalStateException("Mindustry Control runtime requires renderer, player and stock input initialization");
+        }
+
+        if(Core.audio == null){
+            Core.audio = new Audio(false);
+        }
+        if(Core.audio.initialized()){
+            throw new IllegalStateException("Browser Control runtime unexpectedly initialized native SoLoud audio");
+        }
+
+        control = new Control();
+        control.input = gameplayInput;
+
+        if(control.saves == null || control.sound == null || control.indicators == null || control.input != gameplayInput){
+            throw new IllegalStateException("Stock Mindustry Control graph failed browser initialization");
+        }
+
+        controlRuntimeLoaded = true;
+        markControlReady();
+    }
+
     public boolean hasUiShell(){ return uiShell != null; }
     public boolean hasUiSync(){ return uiSyncLoaded; }
     public boolean hasInputRuntime(){ return inputRuntimeLoaded; }
     public boolean hasRendererRuntime(){ return rendererRuntimeLoaded; }
+    public boolean hasControlRuntime(){ return controlRuntimeLoaded; }
     public InputHandler inputRuntime(){ return gameplayInput; }
 
     @Override
@@ -253,6 +291,9 @@ public final class WebClientLauncher extends ClientLauncher{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer-init', 'ready');")
     private static native void markRendererInitialized();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-control', 'ready'); document.documentElement.setAttribute('data-mindustry-audio', 'disabled-local');")
+    private static native void markControlReady();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-shell', 'ready');")
     private static native void markUiShellReady();
