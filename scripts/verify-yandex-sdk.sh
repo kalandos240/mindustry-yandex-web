@@ -103,7 +103,7 @@ for i in {1..30}; do
 done
 
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-  --url "http://127.0.0.1:$PORT/index.html" \
+  --url "http://127.0.0.1:$PORT/index.html?mindustrySmoke=1" \
   --profile "$PROFILE" \
   --port "$CDP_PORT" \
   --timeout 35 \
@@ -111,6 +111,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-yandex-sdk="ready"' \
   --require 'data-yandex-locale="ru"' \
   --require 'data-mindustry-locale="ru"' \
+  --require 'data-mindustry-smoke-mode="ci"' \
   --require 'data-yandex-test-loading-ready-count="1"' \
   --require 'data-yandex-test-pause-sent="yes"' \
   --require 'data-yandex-test-resume-sent="yes"' \
@@ -146,4 +147,4 @@ fi
 grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$DOM"
-echo 'Yandex SDK browser smoke: init + SDK locale + storage + 3-frame continuous play + Game Ready + pause/resume + BrowserAudio pause/resume + SDK transport PASS'
+echo 'Yandex SDK browser smoke: explicit CI mode + SDK locale + storage + 3-frame continuous play + Game Ready + pause/resume + BrowserAudio pause/resume + SDK transport PASS'
