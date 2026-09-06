@@ -48,7 +48,8 @@ for old, new, label in replacements:
 # it can execute yet. Expose the exact menu-relevant prefix/suffix of stock update()
 # as a Web transition method. Also expose a one-shot core game-state smoke that uses
 # a temporary GameState and only the synchronous stock tick primitives already safe
-# on Web. Neither method replaces the eventual full gameplay update path.
+# on Web. Team/entity aggregation remains a later real-world milestone; pulling it
+# into this isolated smoke needlessly retains entity gameplay code before a world exists.
 marker = '''    @Override
     public void update(){
 '''
@@ -75,10 +76,10 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
     }
 
     /**
-     * Web transition smoke for the synchronous core of an unpaused game tick.
-     * Uses a temporary isolated GameState so no menu/game transition events fire and
-     * no test state leaks into the real browser session. Fog, waves, AI and entity
-     * updates are intentionally separate milestones.
+     * Web transition smoke for the synchronous clock/logic-variable core of an
+     * unpaused game tick. Uses a temporary isolated GameState so no menu/game
+     * transition events fire and no test state leaks into the real browser session.
+     * Team/entity aggregation, fog, waves and AI are intentionally separate milestones.
      * @return the temporary state's updateId after exactly one core tick.
      */
     public long updateWebGameCoreSmoke(){
@@ -98,7 +99,6 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
             float delta = Core.graphics.getDeltaTime();
             state.tick += Float.isNaN(delta) || Float.isInfinite(delta) ? 0f : delta * 60f;
             state.updateId ++;
-            state.teams.updateTeamStats();
             Time.update();
             logicVars.update();
 
@@ -120,4 +120,4 @@ if marker not in text:
 text = text.replace(marker, web_methods, 1)
 
 PATH.write_text(text, encoding="utf-8")
-print("Applied Web-safe Logic menu path and controlled core game tick smoke")
+print("Applied Web-safe Logic menu path and allocation-light core game tick smoke")
