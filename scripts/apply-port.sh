@@ -211,7 +211,11 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-input-web.py" \
   "$MINDUSTRY_DIR/core/src/mindustry/input/InputHandler.java" \
   "$MINDUSTRY_DIR/core/src/mindustry/input/MobileInput.java"
 
+# Logic's sector captured/lost events only need to update campaign state. The stock
+# Serpulo visual mesh refresh uses ExecutorService, which is unavailable in TeaVM.
+python3 "$ROOT_DIR/scripts/patch-mindustry-planet-events-web.py"
+
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
 echo "Applied Web single-thread asset and allocation-stable SpriteBatch VBO patches"
-echo "Applied Web-only Mindustry startup/network/stream/save/input patches"
+echo "Applied Web-only Mindustry startup/network/stream/save/input/gameplay patches"
