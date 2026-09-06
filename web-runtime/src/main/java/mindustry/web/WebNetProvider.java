@@ -4,6 +4,7 @@ import arc.func.*;
 import arc.struct.*;
 import mindustry.net.*;
 import mindustry.net.Net.*;
+import org.teavm.jso.JSBody;
 
 import java.io.*;
 
@@ -18,6 +19,10 @@ import java.io.*;
  */
 public final class WebNetProvider implements NetProvider{
     private final Seq<NetConnection> connections = new Seq<>();
+
+    public WebNetProvider(){
+        markSinglePlayerOnly();
+    }
 
     private static IOException multiplayerDisabled(){
         return new IOException("Multiplayer is disabled in this single-player Web build");
@@ -63,4 +68,7 @@ public final class WebNetProvider implements NetProvider{
     public void closeServer(){
         connections.clear();
     }
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-network-mode', 'singleplayer-only');")
+    private static native void markSinglePlayerOnly();
 }
