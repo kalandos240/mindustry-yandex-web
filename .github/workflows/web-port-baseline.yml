@@ -140,7 +140,13 @@ jobs:
           test -s web-runtime/build/web/mindustry.js
           test -s web-runtime/build/web/yandex-platform.js
           test -s web-runtime/build/web/browser-storage.js
+          test -s web-runtime/build/web/browser-audio.js
           test -s web-runtime/build/web/assets-manifest.js
+          test -s web-runtime/build/web/assets/sounds/ui/uiButton.ogg
+          test -s web-runtime/build/web/assets/logicids.dat
+          test -s web-runtime/build/web/assets/sprites/clouds.png
+          test -s web-runtime/build/web/assets/sprites/rays.png
+          test -s web-runtime/build/web/assets/sprites/distortAlpha.png
           test -s web-runtime/build/web/assets/sprites/error.png
           test -s web-runtime/build/web/assets/sprites/block_colors.png
           test -s web-runtime/build/web/assets/sprites/sprites.aatls
@@ -167,8 +173,15 @@ jobs:
           grep -q 'mindustry-web-status' web-runtime/build/web/index.html
           grep -q 'data-mindustry-network' web-runtime/build/web/index.html
           grep -q 'data-mindustry-storage' web-runtime/build/web/index.html
+          grep -q 'data-mindustry-audio' web-runtime/build/web/index.html
           grep -q 'browser-storage.js' web-runtime/build/web/index.html
+          grep -q 'browser-audio.js' web-runtime/build/web/index.html
           grep -q 'assets-manifest.js' web-runtime/build/web/index.html
+          grep -q 'sounds/ui/uiButton.ogg' web-runtime/build/web/assets-manifest.js
+          grep -q 'logicids.dat' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/clouds.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/rays.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/distortAlpha.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/error.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.aatls' web-runtime/build/web/assets-manifest.js
@@ -196,7 +209,7 @@ jobs:
           grep -q "data-mindustry-network', 'local-only'" web-runtime/build/web/index.html
           echo 'Deployable package contains no external URL literals in staged HTML/CSS/BMFont/bundles/JavaScript.'
 
-      - name: Execute Mindustry core, content, UI, storage, local-only network, input and settings in headless Chrome
+      - name: Execute integrated desktop and mobile runtime in headless Chrome
         run: |
           command -v google-chrome
           rm -rf /tmp/mindustry-web-main-profile /tmp/mindustry-web-mobile-profile
@@ -208,19 +221,38 @@ jobs:
             if curl -fsS http://127.0.0.1:8080/index.html >/dev/null; then break; fi
             sleep 0.25
           done
+
           python3 "$GITHUB_WORKSPACE/scripts/chrome-wait-dom.py" \
             --url http://127.0.0.1:8080/index.html \
             --profile /tmp/mindustry-web-main-profile \
             --port 9224 \
-            --timeout 35 \
+            --timeout 45 \
             --require 'data-mindustry-web="ready"' \
             --require 'data-mindustry-storage="ready"' \
+            --require 'data-mindustry-audio="ready"' \
             --require 'data-mindustry-ui-sync="ready"' \
+            --require 'data-mindustry-renderer-init="ready"' \
+            --require 'data-mindustry-control="ready"' \
+            --require 'data-mindustry-gameplay-runtime="ready"' \
+            --require 'data-mindustry-game-state-tick-smoke="ready"' \
             --require 'data-mindustry-network="local-only"' > /tmp/mindustry-web-dom.html
           cat /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-gl="webgl(1|2)"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-input-mode="desktop"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-device-mode="desktop"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-stock-input="desktop"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-audio="ready"' /tmp/mindustry-web-dom.html
+          grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-renderer="constructed"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-renderer-init="ready"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-control="ready"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-control-saves="browser"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-gameplay-runtime="ready"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-gameplay-loop="menu-stable"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-game-state-tick-smoke="ready"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-fog-control="constructed-web-single-thread"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-pathfinder="constructed-web-single-thread"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-navigation="blocked"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-links="none"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-font="ready"' /tmp/mindustry-web-dom.html
@@ -237,19 +269,33 @@ jobs:
           grep -q 'framebuffer-readback@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'settings@localStorage' /tmp/mindustry-web-dom.html
 
-          # Arc reports ApplicationType.web in every browser. This deterministic override
-          # verifies that BrowserApplication.isMobile() can still put Mindustry into its
-          # native mobile/touch UI path without pretending to be Android or iOS.
+          # Deterministically force the touch-first path. This verifies BrowserApplication
+          # mobile detection, Vars.mobile, stock MobileInput and the same gameplay/audio
+          # substrate without pretending ApplicationType.web is Android or iOS.
           python3 "$GITHUB_WORKSPACE/scripts/chrome-wait-dom.py" \
             --url 'http://127.0.0.1:8080/index.html?mindustryMobile=1' \
             --profile /tmp/mindustry-web-mobile-profile \
             --port 9225 \
-            --timeout 35 \
+            --timeout 45 \
             --require 'data-mindustry-web="ready"' \
+            --require 'data-mindustry-audio="ready"' \
             --require 'data-mindustry-input-mode="mobile"' \
+            --require 'data-mindustry-device-mode="mobile"' \
+            --require 'data-mindustry-stock-input="mobile"' \
+            --require 'data-mindustry-renderer-init="ready"' \
+            --require 'data-mindustry-control="ready"' \
+            --require 'data-mindustry-gameplay-runtime="ready"' \
+            --require 'data-mindustry-game-state-tick-smoke="ready"' \
             --require 'data-mindustry-network="local-only"' > /tmp/mindustry-web-mobile-dom.html
           grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-mobile-dom.html
           grep -q 'data-mindustry-input-mode="mobile"' /tmp/mindustry-web-mobile-dom.html
+          grep -q 'data-mindustry-device-mode="mobile"' /tmp/mindustry-web-mobile-dom.html
+          grep -q 'data-mindustry-stock-input="mobile"' /tmp/mindustry-web-mobile-dom.html
+          grep -q 'data-mindustry-audio="ready"' /tmp/mindustry-web-mobile-dom.html
+          grep -q 'data-mindustry-renderer-init="ready"' /tmp/mindustry-web-mobile-dom.html
+          grep -q 'data-mindustry-control="ready"' /tmp/mindustry-web-mobile-dom.html
+          grep -q 'data-mindustry-gameplay-runtime="ready"' /tmp/mindustry-web-mobile-dom.html
+          grep -q 'data-mindustry-game-state-tick-smoke="ready"' /tmp/mindustry-web-mobile-dom.html
 
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
