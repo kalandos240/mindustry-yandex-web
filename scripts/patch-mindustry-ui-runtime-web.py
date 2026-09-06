@@ -72,63 +72,6 @@ overlay = replace_once(
 )
 overlay_path.write_text(overlay, encoding="utf-8")
 
-# Temporary playing-frame diagnostics. Renderer.update() was already proven in menu, so
-# these callbacks only identify the first state-dependent world-render failure without
-# changing any rendering decisions. BrowserPlayingRuntime installs the callback for its
-# one-shot frame; this instrumentation is removed once the renderer blocker is fixed.
-renderer_path = MINDUSTRY / "core" / "Renderer.java"
-renderer = read(renderer_path)
-renderer = replace_once(renderer, "import arc.*;\n", "import arc.*;\nimport arc.func.*;\n", "Renderer diagnostic Cons import")
-renderer = replace_once(
-    renderer,
-    "    private int glErrors;\n",
-    '''    private int glErrors;\n    public Cons<String> webPhaseHook;\n\n    private void webPhase(String phase){\n        if(webPhaseHook != null) webPhaseHook.get(phase);\n    }\n''',
-    "Renderer diagnostic hook",
-)
-renderer = replace_once(
-    renderer,
-    '''        }else{\n            minimap.update();\n\n            if(shakeTime > 0){\n''',
-    '''        }else{\n            webPhase("renderer-minimap");\n            minimap.update();\n            webPhase("renderer-minimap-ready");\n\n            if(shakeTime > 0){\n''',
-    "Renderer minimap phase",
-)
-renderer = replace_once(
-    renderer,
-    '''            if(renderer.pixelate){\n                pixelator.drawPixelate();\n            }else{\n                draw();\n            }\n\n            camera.position.sub(camShakeOffset);\n''',
-    '''            webPhase("renderer-world-draw");\n            if(renderer.pixelate){\n                pixelator.drawPixelate();\n            }else{\n                draw();\n            }\n            webPhase("renderer-world-draw-ready");\n\n            camera.position.sub(camShakeOffset);\n''',
-    "Renderer world draw phase",
-)
-renderer = replace_once(
-    renderer,
-    '''    public void draw(){\n        Events.fire(Trigger.preDraw);\n        MapPreviewLoader.checkPreviews();\n\n        camera.update();\n''',
-    '''    public void draw(){\n        webPhase("renderer-draw-predraw");\n        Events.fire(Trigger.preDraw);\n        MapPreviewLoader.checkPreviews();\n\n        webPhase("renderer-draw-camera");\n        camera.update();\n''',
-    "Renderer preDraw phase",
-)
-renderer = replace_once(
-    renderer,
-    '''        Draw.proj(camera);\n\n        blocks.checkChanges();\n        blocks.processBlocks();\n\n        Draw.sort(true);\n\n        Events.fire(Trigger.draw);\n        MapPreviewLoader.checkPreviews();\n''',
-    '''        Draw.proj(camera);\n\n        webPhase("renderer-draw-blocks");\n        blocks.checkChanges();\n        blocks.processBlocks();\n\n        Draw.sort(true);\n\n        webPhase("renderer-draw-trigger");\n        Events.fire(Trigger.draw);\n        MapPreviewLoader.checkPreviews();\n''',
-    "Renderer blocks/trigger phases",
-)
-renderer = replace_once(
-    renderer,
-    '''        control.input.drawCommanded();\n\n        Draw.draw(Layer.plans, overlays::drawBottom);\n''',
-    '''        webPhase("renderer-draw-input-overlay-schedule");\n        control.input.drawCommanded();\n\n        Draw.draw(Layer.plans, overlays::drawBottom);\n''',
-    "Renderer input overlay schedule phase",
-)
-renderer = replace_once(
-    renderer,
-    '''        Events.fire(Trigger.drawOver);\n        blocks.drawBlocks();\n\n        Groups.draw.draw(Drawc::draw);\n''',
-    '''        webPhase("renderer-draw-over");\n        Events.fire(Trigger.drawOver);\n        blocks.drawBlocks();\n\n        webPhase("renderer-draw-entities");\n        Groups.draw.draw(Drawc::draw);\n''',
-    "Renderer drawOver/entity phases",
-)
-renderer = replace_once(
-    renderer,
-    '''        Draw.reset();\n        Draw.flush();\n        Draw.sort(false);\n\n        Events.fire(Trigger.postDraw);\n''',
-    '''        Draw.reset();\n        webPhase("renderer-draw-flush");\n        Draw.flush();\n        webPhase("renderer-draw-flush-ready");\n        Draw.sort(false);\n\n        webPhase("renderer-draw-post");\n        Events.fire(Trigger.postDraw);\n        webPhase("renderer-draw-post-ready");\n''',
-    "Renderer flush/postDraw phases",
-)
-renderer_path.write_text(renderer, encoding="utf-8")
-
 # Map preview generation is user-triggered editor work. The desktop implementation
 # submits it to mainExecutor and keeps a Future solely to wait during Apply. In the
 # browser there is one event loop, so execute the exact filter algorithm synchronously.
@@ -209,6 +152,6 @@ if "StringCharacterIterator" in strings:
 strings_path.write_text(strings, encoding="utf-8")
 
 print(
-    "Applied Web-safe local UI runtime: editor preview sync, playing overlay guards, renderer diagnostics, planet mesh sync, "
+    "Applied Web-safe local UI runtime: editor preview sync, playing overlay guards, planet mesh sync, "
     f"anonymous reflection compatibility ({anonymous_replacements}), byte formatter, and single-player settings"
 )
