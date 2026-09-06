@@ -9,7 +9,7 @@ import mindustry.core.*;
 import mindustry.entities.*;
 import mindustry.game.*;
 import mindustry.logic.*;
-import mindustry.maps.Map;
+import mindustry.maps.*;
 import mindustry.world.*;
 import org.teavm.jso.JSBody;
 
@@ -29,13 +29,14 @@ import static mindustry.Vars.*;
  * code reachable merely to prove the production client update order.
  *
  * Normal production startup remains in the real menu loop and never mutates the live
- * world merely to satisfy CI. A temporary isolated GameState clock probe is retained as
- * a startup invariant, but the deterministic 8x8 world + multi-frame playing gate is
- * enabled only by the explicit ?mindustrySmoke=1 query parameter used by browser tests.
+ * world merely to satisfy CI. The deterministic 8x8 gate is enabled only by
+ * ?mindustrySmoke=1, while ?mindustryMapSmoke=1 exercises a packaged vanilla .msav
+ * through MapIO/World.loadMap and several real playing frames.
  */
 public final class BrowserGameplayRuntime{
     private static boolean initialized;
     private static boolean smokeMode;
+    private static boolean mapSmokeMode;
     private static int menuUpdateFrames;
     private static int moduleLoopFrames;
     private static boolean worldLoadSmokeComplete;
@@ -74,9 +75,16 @@ public final class BrowserGameplayRuntime{
         if(controlPath == null) controlPath = new ControlPathfinder();
         if(fogControl == null) fogControl = new FogControl();
 
+        // Map.filters() is part of the real .msav load path. Stock ClientLauncher
+        // installs a CustomLoader<ContentLoader> before constructing Maps; Web creates
+        // content directly, so restore only that loader identity and then construct the
+        // stock Maps registry without invoking its desktop load/workshop/mod scans.
+        BrowserContentLoaderBridge.install();
+        if(maps == null) maps = new Maps();
+
         if(world == null || waves == null || collisions == null || universe == null
         || spawner == null || indexer == null || logicVars == null || logic == null
-        || fogControl == null || pathfinder == null || controlPath == null
+        || fogControl == null || pathfinder == null || controlPath == null || maps == null
         || emptyMap == null || emptyTile == null || state.map == null){
             throw new IllegalStateException("Mindustry single-thread gameplay substrate is incomplete on Web");
         }
@@ -95,7 +103,11 @@ public final class BrowserGameplayRuntime{
         markClientInitReady();
 
         smokeMode = smokeRequested();
-        markSmokeMode(smokeMode ? "ci" : "production");
+        mapSmokeMode = mapSmokeRequested();
+        if(smokeMode && mapSmokeMode){
+            throw new IllegalStateException("Only one Mindustry browser gameplay smoke mode may be active");
+        }
+        markSmokeMode(mapSmokeMode ? "map-ci" : smokeMode ? "ci" : "production");
 
         initialized = true;
         markReady(copperLogicId);
@@ -112,11 +124,15 @@ public final class BrowserGameplayRuntime{
         if(!initialized || logic == null || state == null) return;
 
         if(state.isPlaying()){
-            if(!smokeMode || !BrowserPlayingRuntime.active()){
-                throw new IllegalStateException("Web entered playing state outside the explicit CI gameplay smoke");
+            if(mapSmokeMode && BrowserBuiltinMapRuntime.active()){
+                BrowserBuiltinMapRuntime.updateFrame();
+                return;
             }
-            BrowserPlayingRuntime.updateFrame();
-            return;
+            if(smokeMode && BrowserPlayingRuntime.active()){
+                BrowserPlayingRuntime.updateFrame();
+                return;
+            }
+            throw new IllegalStateException("Web entered playing state outside an explicit browser gameplay gate");
         }
 
         if(!state.isMenu()) return;
@@ -129,14 +145,16 @@ public final class BrowserGameplayRuntime{
         }else if(menuUpdateFrames == 3){
             markMenuLoopStable(menuUpdateFrames, moduleLoopFrames);
 
-            // Keep this tiny state-clock invariant in both production and CI. It swaps in
-            // a temporary GameState and restores the real menu in finally; unlike the
-            // gated world/play smoke below it never mutates the live map or enters play.
+            // Keep this tiny state-clock invariant in production and both CI modes. It
+            // swaps in a temporary GameState and restores the real menu in finally; it
+            // never mutates the live map or enters play.
             long smokeUpdateId = logic.updateWebGameStateSmoke();
             if(smokeUpdateId != 1L || !state.isMenu()){
                 throw new IllegalStateException("Browser GameState tick smoke did not restore the real menu state");
             }
             markGameStateTickReady(smokeUpdateId);
+        }else if(mapSmokeMode && menuUpdateFrames == 4){
+            BrowserBuiltinMapRuntime.begin();
         }else if(smokeMode && menuUpdateFrames == 4){
             runWorldLoadSmoke();
         }else if(smokeMode && menuUpdateFrames == 5){
@@ -167,7 +185,7 @@ public final class BrowserGameplayRuntime{
         }
     }
 
-    /** CI-only real WorldLoadEvent gate; normal production startup never calls this. */
+    /** CI-only generated WorldLoadEvent gate; normal production startup never calls this. */
     private static void runWorldLoadSmoke(){
         if(worldLoadSmokeComplete) return;
         if(!smokeMode || !state.isMenu()){
@@ -207,6 +225,9 @@ public final class BrowserGameplayRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustrySmoke') === '1';")
     private static native boolean smokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryMapSmoke') === '1';")
+    private static native boolean mapSmokeRequested();
 
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-smoke-mode', mode);")
     private static native void markSmokeMode(String mode);
