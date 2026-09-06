@@ -51,6 +51,27 @@ settings = replace_once(
 )
 settings_path.write_text(settings, encoding="utf-8")
 
+# The first real playing renderer frame is proven before full UI.init(). OverlayRenderer
+# normally assumes HudFragment already exists because desktop ApplicationCore initializes
+# all UI modules first. During the browser transition an absent HUD simply means that HUD
+# indicators/hover overlays are not drawable yet; once UI.init() creates it, stock logic
+# resumes unchanged.
+overlay_path = MINDUSTRY / "graphics" / "OverlayRenderer.java"
+overlay = read(overlay_path)
+overlay = replace_once(
+    overlay,
+    "        if(!player.dead() && ui.hudfrag.shown){\n",
+    "        if(!player.dead() && ui.hudfrag != null && ui.hudfrag.shown){\n",
+    "OverlayRenderer HUD visibility before UI.init",
+)
+overlay = replace_once(
+    overlay,
+    "        if(ui.hudfrag.blockfrag.hover() instanceof Unit unit && unit.controller() instanceof LogicAI ai && ai.controller != null && ai.controller.isValid() && (state.isEditor() || !ai.controller.block.privileged)){\n",
+    "        if(ui.hudfrag != null && ui.hudfrag.blockfrag.hover() instanceof Unit unit && unit.controller() instanceof LogicAI ai && ai.controller != null && ai.controller.isValid() && (state.isEditor() || !ai.controller.block.privileged)){\n",
+    "OverlayRenderer HUD block hover before UI.init",
+)
+overlay_path.write_text(overlay, encoding="utf-8")
+
 # Map preview generation is user-triggered editor work. The desktop implementation
 # submits it to mainExecutor and keeps a Future solely to wait during Apply. In the
 # browser there is one event loop, so execute the exact filter algorithm synchronously.
@@ -131,6 +152,6 @@ if "StringCharacterIterator" in strings:
 strings_path.write_text(strings, encoding="utf-8")
 
 print(
-    "Applied Web-safe local UI runtime: editor preview sync, planet mesh sync, "
+    "Applied Web-safe local UI runtime: editor preview sync, playing overlay guards, planet mesh sync, "
     f"anonymous reflection compatibility ({anonymous_replacements}), byte formatter, and single-player settings"
 )

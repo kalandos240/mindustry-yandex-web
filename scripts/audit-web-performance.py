@@ -8,17 +8,19 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Measured after activating the production client module update graph in stock order:
-# Logic(menu extraction) -> Control.update() -> Renderer.update() -> UI.update().
-# Calling production Control.update() intentionally makes the real input/gameplay/client
-# branch reachable in TeaVM even while this milestone executes in menu state; that graph
-# is required by the later playing-world milestone. The desktop whole-map screenshot
-# hotkey is explicitly pruned on Web/Yandex and forbidden desktop/network markers remain
-# audited below. Keep ~3% raw/compressed headroom from this measured module-loop point.
-JS_BASELINE = 18_645_294
-JS_LIMIT = 19_200_000
-JS_GZIP_BASELINE = 2_235_158
-JS_GZIP_LIMIT = 2_300_000
+# Measured after activating the first real browser playing graph:
+# stock Logic.play()/PlayEvent -> real alpha/player binding -> bounded production Logic
+# playing core -> Control.update() -> Renderer.update() -> UI.update(). The playing core
+# advances GameState/team stats/GlobalVars/Time/objectives/entity physics and update events;
+# only fog/waves/weather/campaign/team-AI branches are asserted off and kept unreachable.
+# A comparison against the complete Logic.update() build showed only ~226 KiB difference,
+# so the remaining ~2.9 MiB increase over the old menu-module baseline is the genuine
+# player/unit/entity/render gameplay graph, not accidental optional desktop/service code.
+# Keep ~3% raw/compressed headroom from this measured playing-core point.
+JS_BASELINE = 21_559_158
+JS_LIMIT = 22_200_000
+JS_GZIP_BASELINE = 2_469_737
+JS_GZIP_LIMIT = 2_545_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
@@ -96,14 +98,14 @@ print(REPORT.read_text(encoding="utf-8"), end="")
 failed = False
 if js_bytes > JS_LIMIT:
     print(
-        f"ERROR: TeaVM JavaScript grew beyond stock-module-loop performance budget: {js_bytes} > {JS_LIMIT}. "
+        f"ERROR: TeaVM JavaScript grew beyond real-playing performance budget: {js_bytes} > {JS_LIMIT}. "
         "Check for accidental desktop/service reachability or unexpected gameplay graph growth.",
         file=sys.stderr,
     )
     failed = True
 if gzip_bytes > JS_GZIP_LIMIT:
     print(
-        f"ERROR: TeaVM gzip size grew beyond stock-module-loop budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
+        f"ERROR: TeaVM gzip size grew beyond real-playing budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
         file=sys.stderr,
     )
     failed = True

@@ -42,12 +42,10 @@ for old, new, label in replacements:
         raise SystemExit(f"Logic Web patch no longer matches pinned upstream ({label})")
     text = text.replace(old, new, 1)
 
-# Calling the complete update() while Web is still menu-only makes TeaVM retain the
-# entire future gameplay branch (AI, waves, fog, entities, etc.) even though none of
-# it can execute yet. Expose the exact menu-relevant prefix/suffix of stock update()
-# as a Web transition method. Also expose a one-shot GameState clock smoke. GlobalVars
-# update is intentionally NOT part of this smoke: its client variables reach player,
-# unit and music/control state and belong to the later real-world gameplay milestone.
+# Do not call the complete update() until every optional gameplay subsystem is enabled
+# on Web. TeaVM performs whole-program reachability: even rules that are deterministically
+# false at runtime retain weather/wave/campaign/BaseBuilderAI/RtsAI/prebuild code when the
+# stock method is called. Expose exact stock slices with explicit invariants instead.
 marker = '''    @Override
     public void update(){
 '''
@@ -107,6 +105,70 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
         }
     }
 
+    /**
+     * Real single-player playing tick for the first Web gameplay gate.
+     *
+     * This is copied in-order from the production Logic.update() playing branch, but
+     * omits only optional branches that are asserted impossible for this deterministic
+     * browser world. The method still advances the real GameState clock, team stats,
+     * GlobalVars, Time, objectives, environment attributes, entity physics/updates and
+     * before/after update events. Keeping impossible AI/weather/wave/campaign branches
+     * out of this entry point prevents TeaVM from retaining several MiB of code that
+     * cannot execute in this milestone.
+     */
+    public void updateWebPlayingCore(){
+        if(!state.isPlaying()){
+            throw new IllegalStateException("updateWebPlayingCore requires real playing state");
+        }
+        if(state.isCampaign() || state.rules.fog || state.rules.waves || state.rules.attackMode
+        || state.rules.pvp || state.rules.canGameOver || state.rules.weather.size != 0
+        || Groups.weather.size() != 0){
+            throw new IllegalStateException("Web playing core received an optional gameplay subsystem that is not enabled yet");
+        }
+        for(TeamData data : state.teams.getActive()){
+            var rules = data.team.rules();
+            if(rules.fillItems || rules.buildAi || rules.rtsAi || rules.prebuildAi){
+                throw new IllegalStateException("Web playing core received team AI/fill rules before that milestone is enabled");
+            }
+        }
+
+        PerfCounter.frame.end();
+        PerfCounter.frame.begin();
+
+        PerfCounter.stateUpdate.begin();
+
+        Events.fire(Trigger.update);
+        universe.updateGlobal();
+
+        // Permanent Web/Yandex local single-player is the authoritative simulation.
+        state.enemies = Groups.unit.count(u -> u.team() == state.rules.waveTeam && u.isEnemy());
+
+        Events.fire(Trigger.beforeGameUpdate);
+
+        float delta = Core.graphics.getDeltaTime();
+        state.tick += Float.isNaN(delta) || Float.isInfinite(delta) ? 0f : delta * 60f;
+        state.updateId ++;
+        state.teams.updateTeamStats();
+        MapPreviewLoader.checkPreviews();
+
+        Time.update();
+        logicVars.update();
+
+        if(!state.isEditor()){
+            state.rules.objectives.update();
+        }
+
+        // Weather is asserted absent above; retain the stock base rule attributes.
+        state.envAttrs.clear();
+        state.envAttrs.add(state.rules.attributes);
+
+        updateEntities();
+
+        Events.fire(Trigger.afterGameUpdate);
+
+        PerfCounter.stateUpdate.end(PerfCounter.entityUpdate.latestValueNs());
+    }
+
     @Override
     public void update(){
 '''
@@ -115,4 +177,4 @@ if marker not in text:
 text = text.replace(marker, web_methods, 1)
 
 PATH.write_text(text, encoding="utf-8")
-print("Applied Web-safe Logic menu path and isolated GameState tick smoke")
+print("Applied Web-safe Logic menu, GameState smoke and real playing-core tick paths")

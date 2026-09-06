@@ -10,6 +10,7 @@ import arc.util.*;
 import mindustry.*;
 import mindustry.core.*;
 import mindustry.gen.*;
+import mindustry.graphics.*;
 import mindustry.input.*;
 import mindustry.net.*;
 import mindustry.net.Net.*;
@@ -91,6 +92,23 @@ public final class WebClientLauncher extends ClientLauncher{
 
         state = new GameState();
 
+        // Stock ClientLauncher constructs Renderer (which initializes Shaders) before the
+        // queued Vars/content loaders execute. Vars.init() then creates CacheLayer objects,
+        // and only afterward does contentcreate instantiate Block/Floor objects that retain
+        // those CacheLayer references. Reproduce exactly that dependency order without
+        // constructing Renderer yet: its WorldLoadEvent listeners must remain absent while
+        // BrowserSaveRuntime proves save loading against the pre-atlas substrate.
+        if(Shaders.blockbuild == null){
+            Shaders.init();
+        }
+        if(CacheLayer.all.length == 0){
+            CacheLayer.init();
+        }
+        if(CacheLayer.walls == null || CacheLayer.normal == null || CacheLayer.water == null
+        || CacheLayer.all.length == 0 || ((CacheLayer.ShaderLayer)CacheLayer.water).shader != Shaders.water){
+            throw new IllegalStateException("Stock Mindustry shader/CacheLayer lifecycle failed Web initialization");
+        }
+
         content = new ContentLoader();
         content.createBaseContent();
         content.init();
@@ -106,8 +124,10 @@ public final class WebClientLauncher extends ClientLauncher{
         BrowserSaveRuntime.init();
 
         // Activate the real Mindustry renderer substrate after the save substrate is
-        // proven. Renderer.init() is deferred until the post-bootstrap UI callback, when
-        // Bootstrap has loaded the real atlas and completed the content load lifecycle.
+        // proven. The Web Renderer overlay sees the already initialized Shaders and does
+        // not replace them, preserving the exact instances retained by CacheLayer.
+        // Renderer.init() is deferred until the post-bootstrap UI callback, when Bootstrap
+        // has loaded the real atlas and completed the content load lifecycle.
         renderer = new Renderer();
         if(Core.camera == null || renderer.getScale() <= 0f){
             throw new IllegalStateException("Stock Mindustry Renderer failed Web camera initialization");
