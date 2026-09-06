@@ -19,13 +19,13 @@ import static mindustry.Vars.*;
  * First browser-safe gameplay substrate.
  *
  * This deliberately constructs only Mindustry systems whose setup is synchronous on
- * the browser event loop. Pathfinder and ControlPathfinder still retain desktop worker
- * threads upstream and are therefore introduced by later Web-specific phases. FogControl
- * is constructed here after its Web overlay removes worker threads while preserving the
- * stock fog algorithms, event registrations and save chunk. Its update path remains idle
- * until a real world is entered. The stock-equivalent Logic menu path is live on browser
- * frames. A one-shot isolated GameState clock tick is also verified without entering a
- * real world; full gameplay remains gated until the remaining dependencies are browser-safe.
+ * the browser event loop. FogControl and Pathfinder are constructed after their Web
+ * overlays remove JVM worker schedulers while preserving the stock fog/flow-field
+ * algorithms and event registrations. Their gameplay update paths remain idle until a
+ * real world is entered. ControlPathfinder is still a later browser-scheduler phase.
+ * The stock-equivalent Logic menu path is live on browser frames. A one-shot isolated
+ * GameState clock tick is also verified without entering a real world; full gameplay
+ * remains gated until the remaining dependencies are browser-safe.
  */
 public final class BrowserGameplayRuntime{
     private static boolean initialized;
@@ -71,15 +71,20 @@ public final class BrowserGameplayRuntime{
         // update() here: real fog processing begins only with a real playing world.
         if(fogControl == null) fogControl = new FogControl();
 
+        // Pathfinder's constructor registers the stock WorldLoad/Reset/TileChange refresh
+        // graph and flow-field preload path. Its Web overlay changes only the daemon-thread
+        // scheduler into updateWeb(); no pathfinding step runs while the game is in menu.
+        if(pathfinder == null) pathfinder = new Pathfinder();
+
         if(world == null || waves == null || collisions == null || universe == null
         || spawner == null || indexer == null || logicVars == null || logic == null
-        || fogControl == null || emptyMap == null || emptyTile == null){
+        || fogControl == null || pathfinder == null || emptyMap == null || emptyTile == null){
             throw new IllegalStateException("Mindustry single-thread gameplay substrate is incomplete on Web");
         }
 
-        // Guard the remaining worker boundary explicitly. NetServer/NetClient are also
-        // forbidden: this Web/Yandex build is permanently single-player.
-        if(pathfinder != null || controlPath != null || netServer != null || netClient != null){
+        // ControlPathfinder is the remaining path worker boundary. NetServer/NetClient are
+        // forbidden permanently: this Web/Yandex build is single-player only.
+        if(controlPath != null || netServer != null || netClient != null){
             throw new IllegalStateException("Threaded/server gameplay modules entered the single-player Web substrate too early");
         }
 
@@ -122,7 +127,7 @@ public final class BrowserGameplayRuntime{
         return initialized;
     }
 
-    @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-fog-control', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame');")
+    @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-fog-control', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame');")
     private static native void markReady(int logicId);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-live'); document.documentElement.setAttribute('data-mindustry-logic-menu-update', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-menu-update-frames', '1');")
