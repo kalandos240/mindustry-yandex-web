@@ -77,8 +77,8 @@ run_locale(){
     --require 'data-mindustry-logic="constructed"' \
     --require 'data-mindustry-logicvars="ready"' \
     --require 'data-mindustry-gameplay-loop="menu-stable"' \
-    --require 'data-mindustry-logic-update="ready"' \
-    --require 'data-mindustry-logic-update-frames="3"' \
+    --require 'data-mindustry-logic-menu-update="ready"' \
+    --require 'data-mindustry-logic-menu-update-frames="3"' \
     --require 'data-mindustry-saveio-load="ready"' \
     --require 'data-mindustry-links="none"' \
     --require "data-mindustry-locale=\"$expected\"" \
@@ -87,7 +87,7 @@ run_locale(){
     --require 'data-mindustry-navigation="blocked"' > "$dom"
 
   grep -Eq 'data-mindustry-logic-copper-id="[0-9]+"' "$dom"
-  echo "Browser locale $expected: renderer + input + BrowserSaves Control + World/Logic substrate + live stock Logic menu loop + logic IDs + persistence boundary ready"
+  echo "Browser locale $expected: renderer + input + BrowserSaves Control + World/Logic substrate + isolated stock-equivalent Logic menu loop + logic IDs + persistence boundary ready"
 }
 
 run_locale en
