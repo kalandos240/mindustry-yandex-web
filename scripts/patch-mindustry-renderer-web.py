@@ -29,7 +29,7 @@ new = '''            // Web: TeaVM has no ExecutorService. The framebuffer readb
                 }
                 Pixmap fullPixmap = new Pixmap(w, h);
                 // Pixmap.pixels is a ByteBuffer. Use the Java NIO path directly so
-                // screenshot reachability does not pull Arc Buffers.copyJni into TeaVM.
+                // screenshot reachability does not pull Arc's native array-copy path into TeaVM.
                 fullPixmap.pixels.position(0);
                 fullPixmap.pixels.put(lines, 0, lines.length);
                 fullPixmap.pixels.position(0);
@@ -51,8 +51,8 @@ text = text.replace(old, new, 1)
 screenshot = text[text.index("public void takeMapScreenshot()") :]
 if "mainExecutor.submit" in screenshot:
     raise SystemExit("Renderer Web screenshot patch retained ExecutorService dispatch")
-if "Buffers.copy(lines" in screenshot or "copyJni" in screenshot:
-    raise SystemExit("Renderer Web screenshot patch retained JNI pixel copy")
+if "Buffers.copy(lines, 0, fullPixmap.pixels, lines.length);" in screenshot:
+    raise SystemExit("Renderer Web screenshot patch retained native pixel copy")
 for marker in (
     "ScreenUtils.getFrameBufferPixels",
     "fullPixmap.pixels.put(lines, 0, lines.length);",
@@ -63,4 +63,4 @@ for marker in (
         raise SystemExit(f"Renderer Web screenshot patch lost required functionality marker: {marker}")
 
 PATH.write_text(text, encoding="utf-8")
-print("Applied Web event-loop whole-map screenshot processing without ExecutorService/JNI copy")
+print("Applied Web event-loop whole-map screenshot processing without ExecutorService/native array copy")
