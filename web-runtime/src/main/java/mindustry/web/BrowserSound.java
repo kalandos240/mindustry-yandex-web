@@ -25,6 +25,8 @@ public final class BrowserSound extends Sound{
 
     @Override
     public void load(byte[] data, boolean stream){
+        // Browser sounds are intentionally URL-backed so the packaged OGG is decoded by
+        // the browser's native codec. Byte-array SoLoud loading is not available on Web.
         this.url = "";
     }
 
@@ -53,19 +55,29 @@ public final class BrowserSound extends Sound{
     }
 
     @Override
-    public float getLength(){ return url.isEmpty() ? 0f : BrowserAudio.soundLength(url); }
+    public float getLength(){
+        return url.isEmpty() ? 0f : BrowserAudio.soundLength(url);
+    }
 
     @Override
-    public void setMinInterval(long interval){ browserMinInterval = Math.max(0L, interval); }
+    public void setMinInterval(long interval){
+        browserMinInterval = Math.max(0L, interval);
+    }
 
     @Override
-    public boolean valid(){ return !url.isEmpty(); }
+    public boolean valid(){
+        return !url.isEmpty();
+    }
 
     @Override
-    public int countPlaying(){ return url.isEmpty() ? 0 : BrowserAudio.countSound(url); }
+    public int countPlaying(){
+        return url.isEmpty() ? 0 : BrowserAudio.countSound(url);
+    }
 
     @Override
-    public void stop(){ if(!url.isEmpty()) BrowserAudio.stopSound(url); }
+    public void stop(){
+        if(!url.isEmpty()) BrowserAudio.stopSound(url);
+    }
 
     @Override
     public void dispose(){
@@ -74,5 +86,7 @@ public final class BrowserSound extends Sound{
         url = "";
     }
 
-    String browserUrl(){ return url; }
+    String browserUrl(){
+        return url;
+    }
 }
