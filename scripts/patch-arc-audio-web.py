@@ -2,161 +2,458 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOUND = ROOT / "work" / "Arc" / "arc-core" / "src" / "arc" / "audio" / "Sound.java"
-BUFFERS = ROOT / "work" / "Arc" / "arc-core" / "src" / "arc" / "util" / "Buffers.java"
-BROWSER_GL = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserGL20.java"
+ARC = ROOT / "work" / "Arc" / "arc-core" / "src" / "arc" / "audio"
+AUDIO = ARC / "Audio.java"
+SOURCE = ARC / "AudioSource.java"
+BUS = ARC / "AudioBus.java"
+SOUND = ARC / "Sound.java"
+MUSIC = ARC / "Music.java"
 
-if not SOUND.is_file():
-    raise SystemExit(f"Missing pinned Arc Sound source: {SOUND}")
-if not BUFFERS.is_file():
-    raise SystemExit(f"Missing pinned Arc Buffers source: {BUFFERS}")
-if not BROWSER_GL.is_file():
-    raise SystemExit(f"Missing BrowserGL20 source: {BROWSER_GL}")
-
-text = SOUND.read_text(encoding="utf-8")
+for path in (AUDIO, SOURCE, BUS, SOUND, MUSIC):
+    if not path.is_file():
+        raise SystemExit(f"Missing pinned Arc audio source: {path}")
 
 
-def replace_once(old, new, label):
-    global text
+def replace_once(text: str, old: str, new: str, label: str) -> str:
     if text.count(old) != 1:
         raise SystemExit(f"Arc Web audio patch expected exactly one pinned match ({label})")
-    text = text.replace(old, new, 1)
+    return text.replace(old, new, 1)
 
 
-def replace_method(start_marker, end_marker, replacement, label):
-    global text
+def replace_method(text: str, start_marker: str, end_marker: str, replacement: str, label: str) -> str:
     if text.count(start_marker) != 1 or text.count(end_marker) != 1:
         raise SystemExit(f"Arc Web audio method boundary no longer matches pinned upstream ({label})")
     start = text.index(start_marker)
     end = text.index(end_marker, start)
     if end <= start:
         raise SystemExit(f"Arc Web audio method boundaries are invalid ({label})")
-    text = text[:start] + replacement + "\n\n" + text[end:]
+    return text[:start] + replacement.rstrip() + "\n\n" + text[end:]
 
 
-# Arc's desktop Sound path lazy-loads through Core.executor and ultimately calls the
-# JNI SoLoud backend. Neither JVM ExecutorService nor JNI exists in TeaVM JavaScript.
-# Keep Sound call sites safe and allocation-free until the dedicated browser audio
-# backend is wired; gameplay code may call sounds, but Web currently treats them as
-# no-op instead of pulling desktop audio infrastructure into the JS graph.
-replace_method(
-    '    public int play(float volume, float pitch, float pan, boolean loop, boolean checkFrame, AudioBus bus){',
-    '    public int play(float volume, float pitch, float pan, boolean loop, boolean checkFrame){',
-    '''    public int play(float volume, float pitch, float pan, boolean loop, boolean checkFrame, AudioBus bus){\n        return -1;\n    }''',
-    'Sound primary play'
+# ---------------------------------------------------------------------------
+# Audio: BrowserAudio subclasses Audio(false). The desktop Audio class must be
+# a JNI-free fallback in TeaVM; BrowserAudio overrides all real playback paths.
+# ---------------------------------------------------------------------------
+audio = AUDIO.read_text(encoding="utf-8")
+audio = replace_once(audio, "    boolean initialized;", "    protected boolean initialized;", "Audio initialized visibility")
+audio = replace_method(
+    audio,
+    "    protected void initialize(){",
+    "    /** Loads a sound, logging an error and returning a dummy track upon failure. */",
+    '''    protected void initialize(){
+        // Web: SoLoud/JNI is unavailable. BrowserAudio installs Web Audio explicitly.
+        initialized = false;
+    }''',
+    "Audio.initialize"
 )
-
-replace_once(
-    '''    public float calcVolume(float x, float y){\n        return calcFalloff(x, y) * Core.audio.sfxVolume;\n    }''',
-    '''    public float calcVolume(float x, float y){\n        return 0f;\n    }''',
-    'Sound calcVolume'
+audio = replace_once(
+    audio,
+    '''    @Override
+    public void dispose(){
+        if(!initialized) return;
+        stopAll();
+        deinit();
+        initialized = false;
+    }''',
+    '''    @Override
+    public void dispose(){
+        initialized = false;
+    }''',
+    "Audio.dispose"
 )
+AUDIO.write_text(audio, encoding="utf-8")
 
-replace_once(
-    '''    public int play(){\n        return play(Core.audio.sfxVolume);\n    }''',
-    '''    public int play(){\n        return -1;\n    }''',
-    'Sound no-arg play'
+
+# ---------------------------------------------------------------------------
+# AudioSource: keep configuration state, but eliminate all direct native source
+# calls. BrowserSound/BrowserMusic override the operations that need execution.
+# ---------------------------------------------------------------------------
+source = SOURCE.read_text(encoding="utf-8")
+source = replace_once(
+    source,
+    '''    public void setFilter(int index, @Nullable AudioFilter filter){
+        if(handle == 0) return;
+        sourceFilter(handle, index, filter == null ? 0 : filter.handle);
+    }''',
+    '''    public void setFilter(int index, @Nullable AudioFilter filter){
+        // Web fallback: BrowserAudio has no SoLoud filter graph.
+    }''',
+    "AudioSource.setFilter"
 )
-
-replace_once(
-    '''    public int play(AudioBus bus){\n        return play(Core.audio.sfxVolume, 1f, 0f, false, true, bus);\n    }''',
-    '''    public int play(AudioBus bus){\n        return -1;\n    }''',
-    'Sound bus play'
+source = replace_once(
+    source,
+    '''    public void setPriority(float priority){
+        this.priority = priority;
+        if(handle == 0) return;
+        sourcePriority(handle, priority);
+    }''',
+    '''    public void setPriority(float priority){
+        this.priority = priority;
+    }''',
+    "AudioSource.setPriority"
 )
-
-replace_once(
-    '''    public float getLength(){\n        if(handle == 0 || !Core.audio.initialized) return 0f;\n        return stream ? (float)Soloud.streamLength(handle) : (float)Soloud.wavLength(handle);\n    }''',
-    '''    public float getLength(){\n        return 0f;\n    }''',
-    'Sound getLength'
+source = replace_once(
+    source,
+    '''    public void setMaxConcurrent(int max){
+        this.maxConcurrent = max;
+        if(handle == 0) return;
+        sourceMaxConcurrent(handle, max);
+    }''',
+    '''    public void setMaxConcurrent(int max){
+        this.maxConcurrent = max;
+    }''',
+    "AudioSource.setMaxConcurrent"
 )
+source = replace_once(
+    source,
+    '''    public void setConcurrentGroup(int group){
+        this.concurrentGroup = group;
+        if(handle == 0) return;
+        sourceConcurrentGroup(handle, group);
+    }''',
+    '''    public void setConcurrentGroup(int group){
+        this.concurrentGroup = group;
+    }''',
+    "AudioSource.setConcurrentGroup"
+)
+source = replace_once(
+    source,
+    '''    public void setMinConcurrentInterrupt(float seconds){
+        minInterruptAbsolute = seconds;
+        minInterruptFraction = 0f;
+        if(handle == 0) return;
+        sourceMinConcurrentInterrupt(handle, seconds);
+    }''',
+    '''    public void setMinConcurrentInterrupt(float seconds){
+        minInterruptAbsolute = seconds;
+        minInterruptFraction = 0f;
+    }''',
+    "AudioSource.setMinConcurrentInterrupt"
+)
+source = replace_once(
+    source,
+    '''    public void setMinConcurrentInterruptFraction(float min, float fraction){
+        minInterruptFraction = fraction;
+        minInterruptAbsolute = min;
+        if(handle == 0) return;
+        sourceMinConcurrentInterrupt(handle, Math.min(min, getLength() * fraction));
+    }''',
+    '''    public void setMinConcurrentInterruptFraction(float min, float fraction){
+        minInterruptFraction = fraction;
+        minInterruptAbsolute = min;
+    }''',
+    "AudioSource.setMinConcurrentInterruptFraction"
+)
+source = replace_once(
+    source,
+    '''    public void setSingleInstance(boolean singleInstance){
+        if(handle == 0 || !Core.audio.initialized) return;
+        sourceSingleInstance(handle, singleInstance);
+    }''',
+    '''    public void setSingleInstance(boolean singleInstance){
+        // Web fallback: concurrency is owned by BrowserAudio.
+    }''',
+    "AudioSource.setSingleInstance"
+)
+source = replace_once(
+    source,
+    '''    public void stop(){
+        if(handle == 0) return;
+        sourceStop(handle);
+    }''',
+    '''    public void stop(){
+        // BrowserSound/BrowserMusic override this. Plain fallback sources are silent.
+    }''',
+    "AudioSource.stop"
+)
+source = replace_once(
+    source,
+    '''    @Override
+    public void dispose(){
+        if(handle != 0) sourceDestroy(handle);
+        handle = 0;
+    }''',
+    '''    @Override
+    public void dispose(){
+        handle = 0;
+    }''',
+    "AudioSource.dispose"
+)
+SOURCE.write_text(source, encoding="utf-8")
 
-SOUND.write_text(text, encoding="utf-8")
 
-# Arc's VBO and VertexArray implementations both copy float vertex arrays through
-# desktop JNI memcpy helpers. TeaVM supports NIO buffers directly, so keep the same
-# byte-level contract with duplicate/slice views and never make native memcpy reachable.
-# Arc core targets Java 8, so use classic instanceof + cast syntax here.
-buffers = BUFFERS.read_text(encoding="utf-8")
-old_simple = '''    private native static void copyJni(float[] src, Buffer dst, int numFloats, int offset); /*\n\t\tmemcpy(dst, src + offset, numFloats << 2 );\n\t*/'''
-new_simple = '''    private static void copyJni(float[] src, Buffer dst, int numFloats, int offset){\n        copyFloatArray(src, offset, dst, 0, numFloats);\n    } /* Web: TeaVM-safe NIO copy; no JNI. */'''
-old_offset = '''    private native static void copyJni(float[] src, int srcOffset, Buffer dst, int dstOffset, int numBytes); /*\n\t\tmemcpy(dst + dstOffset, src + srcOffset, numBytes);\n\t*/'''
-new_offset = '''    private static void copyJni(float[] src, int srcOffset, Buffer dst, int dstOffset, int numBytes){\n        copyFloatArray(src, srcOffset, dst, dstOffset, numBytes >>> 2);\n    } /* Web: TeaVM-safe NIO copy; no JNI. */\n\n    private static void copyFloatArray(float[] src, int srcOffset, Buffer dst, int dstOffsetBytes, int count){\n        if(dst instanceof ByteBuffer){\n            ByteBuffer bytes = (ByteBuffer)dst;\n            ByteBuffer target = bytes.duplicate().order(bytes.order());\n            target.position(dstOffsetBytes);\n            target.slice().order(bytes.order()).asFloatBuffer().put(src, srcOffset, count);\n        }else if(dst instanceof FloatBuffer){\n            FloatBuffer floats = (FloatBuffer)dst;\n            FloatBuffer target = floats.duplicate();\n            target.position(dstOffsetBytes >>> 2);\n            target.put(src, srcOffset, count);\n        }else{\n            throw new ArcRuntimeException(\"Unsupported Web float buffer copy target: \" + dst.getClass().getName());\n        }\n    }'''
-for old, new, label in [
-    (old_simple, new_simple, "Buffers simple float copyJni"),
-    (old_offset, new_offset, "Buffers offset float copyJni"),
-]:
-    if buffers.count(old) != 1:
-        raise SystemExit(f"Arc Web buffer patch expected exactly one pinned match ({label})")
-    buffers = buffers.replace(old, new, 1)
-BUFFERS.write_text(buffers, encoding="utf-8")
+# ---------------------------------------------------------------------------
+# AudioBus: buses remain logical API objects on Web. No native bus allocation,
+# sourcePlay or idValid calls may enter the TeaVM graph.
+# ---------------------------------------------------------------------------
+bus = BUS.read_text(encoding="utf-8")
+bus = replace_once(
+    bus,
+    '''    public AudioBus(){
+        if(Core.audio != null && Core.audio.initialized){
+            init();
+        }
+    }''',
+    '''    public AudioBus(){
+        // Web: BrowserAudio owns the mixer graph; no SoLoud/JNI bus allocation.
+    }''',
+    "AudioBus constructor"
+)
+bus = replace_once(
+    bus,
+    '''    @Override
+    public void setFilter(int index, @Nullable AudioFilter filter){
+        if(handle == 0) return;
+        sourceFilter(handle, index, filter == null ? 0 : filter.handle);
+    }''',
+    '''    @Override
+    public void setFilter(int index, @Nullable AudioFilter filter){
+        // Web: no native bus filters.
+    }''',
+    "AudioBus.setFilter"
+)
+bus = replace_once(
+    bus,
+    '''    AudioBus init(){
+        if(handle != 0) return this;
+        this.handle = busNew();
+        this.id = sourcePlay(handle);
+        return this;
+    }''',
+    '''    AudioBus init(){
+        return this;
+    }''',
+    "AudioBus.init"
+)
+bus = replace_once(
+    bus,
+    '''    public void play(){
+        if(handle == 0 || idValid(id)) return;
+        id = sourcePlay(handle);
+    }''',
+    '''    public void play(){
+        // Logical Web bus has no independently playing native source.
+    }''',
+    "AudioBus.play"
+)
+BUS.write_text(bus, encoding="utf-8")
 
-# TeaVM 0.15 only exposes a Java NIO Buffer directly to JSO when that buffer is backed
-# by TeaVM linear/native JS memory. Arc's browser-safe VBO/IBO storage intentionally uses
-# ordinary Java ByteBuffers, so crossing directly into WebGL throws at runtime. Preserve
-# the exact upload bytes and cross the JSO boundary as explicit typed-array copies.
-gl = BROWSER_GL.read_text(encoding="utf-8")
-old_buffer_data = '''    @Override\n    public void glBufferData(int target, int size, Buffer data, int usage){\n        if(data == null) gl.bufferData(target, size, usage);\n        else gl.bufferData(target, data, usage);\n    }\n\n    @Override\n    public void glBufferSubData(int target, int offset, int size, Buffer data){ gl.bufferSubData(target, offset, data); }'''
-new_buffer_data = '''    @Override\n    public void glBufferData(int target, int size, Buffer data, int usage){\n        if(data == null) gl.bufferData(target, size, usage);\n        else gl.bufferData(target, copyBufferUpload(data, size), usage);\n    }\n\n    @Override\n    public void glBufferSubData(int target, int offset, int size, Buffer data){\n        gl.bufferSubData(target, offset, copyBufferUpload(data, size));\n    }'''
-if gl.count(old_buffer_data) != 1:
-    raise SystemExit("BrowserGL20 buffer upload patch no longer matches current Web backend")
-gl = gl.replace(old_buffer_data, new_buffer_data, 1)
 
-for old, new, label in [
-    ('public void glCompressedTexImage2D(int target, int level, int internalformat, int width, int height, int border, int imageSize, Buffer data){\n        gl.compressedTexImage2D(target, level, internalformat, width, height, border, data);\n    }',
-     'public void glCompressedTexImage2D(int target, int level, int internalformat, int width, int height, int border, int imageSize, Buffer data){\n        gl.compressedTexImage2D(target, level, internalformat, width, height, border, copyBufferUpload(data, imageSize));\n    }', 'compressedTexImage2D'),
-    ('public void glCompressedTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int imageSize, Buffer data){\n        gl.compressedTexSubImage2D(target, level, format, xoffset, yoffset, width, height, data);\n    }',
-     'public void glCompressedTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int imageSize, Buffer data){\n        gl.compressedTexSubImage2D(target, level, format, xoffset, yoffset, width, height, copyBufferUpload(data, imageSize));\n    }', 'compressedTexSubImage2D'),
-]:
-    # The exact compressed-sub-image signature differs across TeaVM revisions; patch only
-    # the forms that actually exist in this pinned BrowserGL20 source.
-    if old in gl:
-        gl = gl.replace(old, new, 1)
+# ---------------------------------------------------------------------------
+# Sound: BrowserSound is URL-backed. Plain Sound is retained only as a silent
+# compatibility object, so byte/file loading must not reach wav/stream JNI.
+# ---------------------------------------------------------------------------
+sound = SOUND.read_text(encoding="utf-8")
+sound = replace_once(
+    sound,
+    '''    public static Sound createStream(Fi file){
+        Sound sound = new Sound();
+        try{
+            sound.file = file;
+            sound.stream = true;
+            sound.handle = streamLoadFile(file.path());
+        }catch(Throwable e){
+            Log.err("Failed loading sound from " + file, e);
+        }
+        return sound;
+    }''',
+    '''    public static Sound createStream(Fi file){
+        return Core.audio == null ? new Sound() : Core.audio.newSound(file);
+    }''',
+    "Sound.createStream"
+)
+sound = replace_once(
+    sound,
+    '''    public void load(byte[] data, boolean stream){
+        this.stream = stream;
+        handle = stream ? streamLoadBytes(data, data.length) : wavLoadBytes(data, data.length);
 
-uniform_replacements = [
-    ('public void glUniform1fv(int location, int count, FloatBuffer v){ if(validUniform(location)) gl.uniform1fv(uniforms.get(location), v); }',
-     'public void glUniform1fv(int location, int count, FloatBuffer v){ if(validUniform(location)) gl.uniform1fv(uniforms.get(location), copyFloatUpload(v, count)); }'),
-    ('public void glUniform1iv(int location, int count, IntBuffer v){ if(validUniform(location)) gl.uniform1iv(uniforms.get(location), v); }',
-     'public void glUniform1iv(int location, int count, IntBuffer v){ if(validUniform(location)) gl.uniform1iv(uniforms.get(location), copyIntUpload(v, count)); }'),
-    ('public void glUniform2fv(int location, int count, FloatBuffer v){ if(validUniform(location)) gl.uniform2fv(uniforms.get(location), v); }',
-     'public void glUniform2fv(int location, int count, FloatBuffer v){ if(validUniform(location)) gl.uniform2fv(uniforms.get(location), copyFloatUpload(v, count * 2)); }'),
-    ('public void glUniform2iv(int location, int count, IntBuffer v){ if(validUniform(location)) gl.uniform2iv(uniforms.get(location), v); }',
-     'public void glUniform2iv(int location, int count, IntBuffer v){ if(validUniform(location)) gl.uniform2iv(uniforms.get(location), copyIntUpload(v, count * 2)); }'),
-    ('public void glUniform3fv(int location, int count, FloatBuffer v){ if(validUniform(location)) gl.uniform3fv(uniforms.get(location), v); }',
-     'public void glUniform3fv(int location, int count, FloatBuffer v){ if(validUniform(location)) gl.uniform3fv(uniforms.get(location), copyFloatUpload(v, count * 3)); }'),
-    ('public void glUniform3iv(int location, int count, IntBuffer v){ if(validUniform(location)) gl.uniform3iv(uniforms.get(location), v); }',
-     'public void glUniform3iv(int location, int count, IntBuffer v){ if(validUniform(location)) gl.uniform3iv(uniforms.get(location), copyIntUpload(v, count * 3)); }'),
-    ('public void glUniform4fv(int location, int count, FloatBuffer v){ if(validUniform(location)) gl.uniform4fv(uniforms.get(location), v); }',
-     'public void glUniform4fv(int location, int count, FloatBuffer v){ if(validUniform(location)) gl.uniform4fv(uniforms.get(location), copyFloatUpload(v, count * 4)); }'),
-    ('public void glUniform4iv(int location, int count, IntBuffer v){ if(validUniform(location)) gl.uniform4iv(uniforms.get(location), v); }',
-     'public void glUniform4iv(int location, int count, IntBuffer v){ if(validUniform(location)) gl.uniform4iv(uniforms.get(location), copyIntUpload(v, count * 4)); }'),
-    ('public void glUniformMatrix2fv(int location, int count, boolean transpose, FloatBuffer value){ if(validUniform(location)) gl.uniformMatrix2fv(uniforms.get(location), transpose, value); }',
-     'public void glUniformMatrix2fv(int location, int count, boolean transpose, FloatBuffer value){ if(validUniform(location)) gl.uniformMatrix2fv(uniforms.get(location), transpose, copyFloatUpload(value, count * 4)); }'),
-    ('public void glUniformMatrix3fv(int location, int count, boolean transpose, FloatBuffer value){ if(validUniform(location)) gl.uniformMatrix3fv(uniforms.get(location), transpose, value); }',
-     'public void glUniformMatrix3fv(int location, int count, boolean transpose, FloatBuffer value){ if(validUniform(location)) gl.uniformMatrix3fv(uniforms.get(location), transpose, copyFloatUpload(value, count * 9)); }'),
-    ('public void glUniformMatrix4fv(int location, int count, boolean transpose, FloatBuffer value){ if(validUniform(location)) gl.uniformMatrix4fv(uniforms.get(location), transpose, value); }',
-     'public void glUniformMatrix4fv(int location, int count, boolean transpose, FloatBuffer value){ if(validUniform(location)) gl.uniformMatrix4fv(uniforms.get(location), transpose, copyFloatUpload(value, count * 16)); }'),
-    ('public void glVertexAttrib1fv(int indx, FloatBuffer values){ gl.vertexAttrib1fv(indx, values); }',
-     'public void glVertexAttrib1fv(int indx, FloatBuffer values){ gl.vertexAttrib1fv(indx, copyFloatUpload(values, 1)); }'),
-    ('public void glVertexAttrib2fv(int indx, FloatBuffer values){ gl.vertexAttrib2fv(indx, values); }',
-     'public void glVertexAttrib2fv(int indx, FloatBuffer values){ gl.vertexAttrib2fv(indx, copyFloatUpload(values, 2)); }'),
-    ('public void glVertexAttrib3fv(int indx, FloatBuffer values){ gl.vertexAttrib3fv(indx, values); }',
-     'public void glVertexAttrib3fv(int indx, FloatBuffer values){ gl.vertexAttrib3fv(indx, copyFloatUpload(values, 3)); }'),
-    ('public void glVertexAttrib4fv(int indx, FloatBuffer values){ gl.vertexAttrib4fv(indx, values); }',
-     'public void glVertexAttrib4fv(int indx, FloatBuffer values){ gl.vertexAttrib4fv(indx, copyFloatUpload(values, 4)); }'),
-]
-for old, new in uniform_replacements:
-    if gl.count(old) != 1:
-        raise SystemExit(f"BrowserGL20 NIO uniform/attribute patch expected one match: {old[:80]}")
-    gl = gl.replace(old, new, 1)
+        if(Core.audio != null && Core.audio.defaultSoundMaxConcurrent > 0){
+            setMaxConcurrent(Core.audio.defaultSoundMaxConcurrent);
+        }
+    }''',
+    '''    public void load(byte[] data, boolean stream){
+        this.stream = stream;
+        handle = 0;
+    }''',
+    "Sound.load bytes"
+)
+sound = replace_once(
+    sound,
+    '''    public void load(Fi file){
+        this.file = file;
+        load(file.readBytes(), false);
+    }''',
+    '''    public void load(Fi file){
+        this.file = file;
+        handle = 0;
+    }''',
+    "Sound.load file"
+)
+start = '    public int play(float volume, float pitch, float pan, boolean loop, boolean checkFrame, AudioBus bus){'
+end = '    public int play(float volume, float pitch, float pan, boolean loop, boolean checkFrame){'
+if sound.count(start) != 1 or sound.count(end) != 1:
+    raise SystemExit("Arc Web audio patch could not find pinned Sound primary play boundaries")
+si = sound.index(start)
+ei = sound.index(end, si)
+sound = sound[:si] + '''    public int play(float volume, float pitch, float pan, boolean loop, boolean checkFrame, AudioBus bus){
+        if(Core.audio == null || !Core.audio.initialized()) return -1;
+        return Core.audio.play(this, volume, pitch, pan, loop);
+    }
 
-old_anchor = '''    private boolean validUniform(int location){ return location >= 0 && uniforms.get(location) != null; }'''
-new_anchor = '''    /**\n     * WebGL bufferData/bufferSubData consume raw bytes. Arc VBO/IBO upload ByteBuffers,\n     * but TeaVM cannot pass these ordinary Java buffers directly through JSO. Copy only\n     * the requested byte range into a real JavaScript Int8Array; signedness is irrelevant\n     * for raw GL buffer storage and every packed float/color/index bit is preserved.\n     */\n    private static ArrayBufferView copyBufferUpload(Buffer data, int size){\n        if(data == null) return null;\n        if(!(data instanceof ByteBuffer)){\n            throw new ArcRuntimeException(\"Unsupported WebGL upload buffer: \" + data.getClass().getName());\n        }\n        ByteBuffer source = ((ByteBuffer)data).duplicate();\n        if(size < 0 || source.remaining() < size){\n            throw new ArcRuntimeException(\"Invalid WebGL upload byte range: requested=\" + size + \", remaining=\" + source.remaining());\n        }\n        byte[] bytes = new byte[size];\n        source.get(bytes);\n        return Int8Array.copyFromJavaArray(bytes);\n    }\n\n    private static Float32Array copyFloatUpload(FloatBuffer data, int count){\n        FloatBuffer source = data.duplicate();\n        if(count < 0 || source.remaining() < count){\n            throw new ArcRuntimeException(\"Invalid WebGL float upload range: requested=\" + count + \", remaining=\" + source.remaining());\n        }\n        float[] values = new float[count];\n        source.get(values);\n        return Float32Array.copyFromJavaArray(values);\n    }\n\n    private static Int32Array copyIntUpload(IntBuffer data, int count){\n        IntBuffer source = data.duplicate();\n        if(count < 0 || source.remaining() < count){\n            throw new ArcRuntimeException(\"Invalid WebGL int upload range: requested=\" + count + \", remaining=\" + source.remaining());\n        }\n        int[] values = new int[count];\n        source.get(values);\n        return Int32Array.copyFromJavaArray(values);\n    }\n\n    private boolean validUniform(int location){ return location >= 0 && uniforms.get(location) != null; }'''
-if gl.count(old_anchor) != 1:
-    raise SystemExit("BrowserGL20 upload helper anchor no longer matches current Web backend")
-gl = gl.replace(old_anchor, new_anchor, 1)
-BROWSER_GL.write_text(gl, encoding="utf-8")
+''' + sound[ei:]
+sound = replace_once(
+    sound,
+    '''    public float calcVolume(float x, float y){
+        return calcFalloff(x, y) * Core.audio.sfxVolume;
+    }''',
+    '''    public float calcVolume(float x, float y){
+        return calcFalloff(x, y) * (Core.audio == null ? 0f : Core.audio.sfxVolume);
+    }''',
+    "Sound.calcVolume"
+)
+sound = replace_once(
+    sound,
+    '''    public float getLength(){
+        if(handle == 0 || !Core.audio.initialized) return 0f;
+        return stream ? (float)Soloud.streamLength(handle) : (float)Soloud.wavLength(handle);
+    }''',
+    '''    public float getLength(){
+        return 0f;
+    }''',
+    "Sound.getLength"
+)
+SOUND.write_text(sound, encoding="utf-8")
 
-print("Applied TeaVM-safe no-op Arc Sound execution path")
-print("Applied TeaVM-safe Arc float vertex-buffer copies without JNI")
-print("Applied TeaVM-safe Arc VBO/IBO typed-array WebGL upload bridge")
-print("Applied TeaVM-safe WebGL uniform/attribute typed-array bridges")
+
+# ---------------------------------------------------------------------------
+# Music: BrowserMusic owns real HTMLAudio playback. The base class becomes a
+# state-preserving silent fallback so no stream/id native methods are reachable.
+# ---------------------------------------------------------------------------
+music = MUSIC.read_text(encoding="utf-8")
+music = replace_once(
+    music,
+    '''    public static Music create(Fi file){
+        Music music = new Music();
+        try{
+            music.file = file;
+            music.handle = streamLoadFile(file.path());
+        }catch(Throwable e){
+            Log.err("Failed loading music from " + file, e);
+        }
+        return music;
+    }''',
+    '''    public static Music create(Fi file){
+        return Core.audio == null ? new Music() : Core.audio.newMusic(file);
+    }''',
+    "Music.create"
+)
+music = replace_once(
+    music,
+    '''    public void load(byte[] bytes) throws Exception{
+        handle = streamLoadBytes(bytes, bytes.length);
+    }''',
+    '''    public void load(byte[] bytes) throws Exception{
+        handle = 0;
+    }''',
+    "Music.load bytes"
+)
+music = replace_method(
+    music,
+    "    public void load(Fi file) throws Exception{",
+    "    public void play(){",
+    '''    public void load(Fi file) throws Exception{
+        this.file = file;
+        handle = 0;
+    }''',
+    "Music.load file"
+)
+music = replace_method(
+    music,
+    "    public void play(){",
+    "    public void pause(boolean pause){",
+    '''    public void play(){
+        // BrowserMusic overrides real playback.
+    }''',
+    "Music.play"
+)
+music = replace_method(
+    music,
+    "    public void pause(boolean pause){",
+    "    @Override\n    public void stop(){",
+    '''    public void pause(boolean pause){
+        // BrowserMusic overrides real playback.
+    }''',
+    "Music.pause"
+)
+music = replace_method(
+    music,
+    "    public boolean isPlaying(){",
+    "    public boolean isLooping(){",
+    '''    public boolean isPlaying(){
+        return false;
+    }''',
+    "Music.isPlaying"
+)
+music = replace_method(
+    music,
+    "    public void setLooping(boolean isLooping){",
+    "    public float getVolume(){",
+    '''    public void setLooping(boolean isLooping){
+        this.looping = isLooping;
+    }''',
+    "Music.setLooping"
+)
+music = replace_method(
+    music,
+    "    public void setVolume(float volume){",
+    "    public void set(float pan, float volume){",
+    '''    public void setVolume(float volume){
+        this.volume = volume;
+    }''',
+    "Music.setVolume"
+)
+music = replace_method(
+    music,
+    "    public void set(float pan, float volume){",
+    "    public float getPosition(){",
+    '''    public void set(float pan, float volume){
+        this.volume = volume;
+        this.pan = pan;
+    }''',
+    "Music.set"
+)
+music = replace_method(
+    music,
+    "    public float getPosition(){",
+    "    public void setPosition(float position){",
+    '''    public float getPosition(){
+        return 0f;
+    }''',
+    "Music.getPosition"
+)
+music = replace_method(
+    music,
+    "    public void setPosition(float position){",
+    "    /** @return length in seconds */",
+    '''    public void setPosition(float position){
+        // BrowserMusic overrides real playback position.
+    }''',
+    "Music.setPosition"
+)
+music = replace_once(
+    music,
+    '''    @Override
+    public float getLength(){
+        if(handle == 0 || !Core.audio.initialized) return 0f;
+        return (float)Soloud.streamLength(handle);
+    }''',
+    '''    @Override
+    public float getLength(){
+        return 0f;
+    }''',
+    "Music.getLength"
+)
+MUSIC.write_text(music, encoding="utf-8")
+
+print("Applied JNI-free Arc Web audio fallbacks; BrowserAudio owns all real browser playback")
