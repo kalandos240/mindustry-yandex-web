@@ -2,7 +2,6 @@ package mindustry.web;
 
 import arc.*;
 import arc.assets.*;
-import arc.audio.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
 import arc.input.*;
@@ -67,6 +66,14 @@ public final class WebClientLauncher extends ClientLauncher{
 
         Core.batch = new SpriteBatch();
         Core.assets = new AssetManager();
+
+        // BrowserAudio is the permanent Web mixer. Install it before vanilla content is
+        // created so every stock Sound/Music object is URL-backed from the beginning.
+        Core.audio = new BrowserAudio();
+        if(!Core.audio.initialized()){
+            throw new IllegalStateException("Mindustry Web audio backend failed initialization");
+        }
+
         tree = new FileTree();
 
         if(Core.app.openURI("external-navigation-probe")){
@@ -250,22 +257,18 @@ public final class WebClientLauncher extends ClientLauncher{
     /**
      * Construct the stock client Control graph without invoking its desktop loader phase.
      * The browser already has a verified Player and stock InputHandler, so Control.loadSync()
-     * would incorrectly replace both. Audio(false) supplies the normal Arc buses while
-     * keeping SoLoud/JNI disabled. The browser save index was already hydrated and verified
-     * before renderer startup, so bind that exact BrowserSaves instance instead of calling
-     * stock Saves.load(), whose desktop implementation depends on Future/mainExecutor.
+     * would incorrectly replace both. BrowserAudio is installed before content creation and
+     * remains the permanent Core.audio backend. The browser save index was already hydrated
+     * and verified before renderer startup, so bind that exact BrowserSaves instance instead
+     * of calling stock Saves.load(), whose desktop implementation depends on Future/mainExecutor.
      */
     private void initializeControlRuntime(){
         if(controlRuntimeLoaded) return;
         if(!rendererRuntimeLoaded || gameplayInput == null || player == null){
             throw new IllegalStateException("Mindustry Control runtime requires renderer, player and stock input initialization");
         }
-
-        if(Core.audio == null){
-            Core.audio = new Audio(false);
-        }
-        if(Core.audio.initialized()){
-            throw new IllegalStateException("Browser Control runtime unexpectedly initialized native SoLoud audio");
+        if(!(Core.audio instanceof BrowserAudio) || !Core.audio.initialized()){
+            throw new IllegalStateException("Mindustry Control runtime lost the BrowserAudio backend");
         }
 
         control = new Control();
@@ -314,7 +317,7 @@ public final class WebClientLauncher extends ClientLauncher{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer-init', 'ready');")
     private static native void markRendererInitialized();
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-control', 'ready'); document.documentElement.setAttribute('data-mindustry-control-saves', 'browser'); document.documentElement.setAttribute('data-mindustry-control-load', 'ready'); document.documentElement.setAttribute('data-mindustry-audio', 'disabled-local');")
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-control', 'ready'); document.documentElement.setAttribute('data-mindustry-control-saves', 'browser'); document.documentElement.setAttribute('data-mindustry-control-load', 'ready');")
     private static native void markControlReady();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-shell', 'ready');")
