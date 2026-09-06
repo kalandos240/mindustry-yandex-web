@@ -126,6 +126,10 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-control="ready"' \
   --require 'data-mindustry-gameplay-runtime="ready"' \
   --require 'data-mindustry-playing-frame="ready"' \
+  --require 'data-mindustry-playing-loop="stable"' \
+  --require 'data-mindustry-playing-target-frames="3"' \
+  --require 'data-mindustry-playing-frames="3"' \
+  --require 'data-mindustry-playing-frame-index="3"' \
   --require 'data-mindustry-playing-unit="alpha"' \
   --require 'data-mindustry-playing-module-order="logic-control-renderer-ui"' \
   --require 'data-mindustry-playing-state="restored-menu"' \
@@ -142,4 +146,4 @@ fi
 grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$DOM"
-echo 'Yandex SDK browser smoke: init + SDK locale + storage + real playing frame + Game Ready + pause/resume + BrowserAudio pause/resume + SDK transport PASS'
+echo 'Yandex SDK browser smoke: init + SDK locale + storage + 3-frame continuous play + Game Ready + pause/resume + BrowserAudio pause/resume + SDK transport PASS'

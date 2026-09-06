@@ -28,10 +28,10 @@ import static mindustry.Vars.*;
  * remains a separate Web milestone so it cannot make tens of MiB of unrelated dialog
  * code reachable merely to prove the production client update order.
  *
- * In menu state the client modules execute in Mindustry's stock order:
- * Logic -> Control -> Renderer -> UI. Logic uses the exact browser menu-only extraction
- * until the playing branch is enabled; Control/Renderer/UI execute their real update()
- * methods. This proves the client module loop before a playing-world transition.
+ * Menu and deterministic playing states both execute the client modules in Mindustry's
+ * production order: Logic -> Control -> Renderer -> UI. BrowserPlayingRuntime owns the
+ * short multi-requestAnimationFrame playing session used by CI until user-controlled HUD
+ * navigation is enabled in the next staged milestone.
  */
 public final class BrowserGameplayRuntime{
     private static boolean initialized;
@@ -125,12 +125,15 @@ public final class BrowserGameplayRuntime{
     private static void updateFrame(){
         if(!initialized || logic == null || state == null) return;
 
-        // Once a real world is entered, browser-safe pathfinding workers advance on the
-        // browser frame instead of JVM daemon threads. Full continuous playing updates
-        // remain gated until the one-shot production playing frame below is proven.
+        // The deterministic continuous-playing gate is intentionally advanced from this
+        // listener so every call is a distinct BrowserApplication/requestAnimationFrame
+        // turn. BrowserPlayingRuntime itself owns the production module order and restores
+        // menu only after the target number of real playing frames has completed.
         if(state.isPlaying()){
-            pathfinder.updateWeb();
-            controlPath.updateWeb();
+            if(!BrowserPlayingRuntime.active()){
+                throw new IllegalStateException("Web entered playing state outside the active continuous-playing gate");
+            }
+            BrowserPlayingRuntime.updateFrame();
             return;
         }
 
@@ -152,16 +155,11 @@ public final class BrowserGameplayRuntime{
         }else if(menuUpdateFrames == 4){
             runWorldLoadSmoke();
         }else if(menuUpdateFrames == 5){
-            BrowserPlayingRuntime.runOneFrame();
+            BrowserPlayingRuntime.begin();
         }
     }
 
-    /**
-     * Execute the client-side module order used by ApplicationCore on desktop, excluding
-     * the permanently forbidden NetServer/NetClient modules. The phase marker is set
-     * before and after every production module call so a browser-frame failure identifies
-     * the exact boundary even when TeaVM only surfaces a bare NullPointerException.
-     */
+    /** Execute the client-side module order used by ApplicationCore in menu state. */
     private static void runMenuModuleFrame(){
         markModulePhase("logic");
         logic.updateWebMenu();
@@ -189,7 +187,7 @@ public final class BrowserGameplayRuntime{
      * Cross the real Mindustry world-loading event graph with a small deterministic
      * vanilla map. No fake event is fired: World.loadGenerator performs beginMapLoad(),
      * tile installation, endMapLoad() and WorldLoadEvent exactly as production loads do.
-     * The game remains in menu so the larger Logic.update playing branch stays gated.
+     * The game remains in menu so optional gameplay systems remain gated.
      */
     private static void runWorldLoadSmoke(){
         if(worldLoadSmokeComplete) return;
