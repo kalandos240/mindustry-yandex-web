@@ -12,6 +12,7 @@ command -v google-chrome >/dev/null
 [ -s "$WEB_DIR/browser-storage.js" ]
 [ -s "$WEB_DIR/browser-audio.js" ]
 [ -s "$WEB_DIR/index.html" ]
+[ -s "$WEB_DIR/assets/maps/default/maze.msav" ]
 
 cleanup(){
   if [ -n "${server_pid:-}" ]; then kill "$server_pid" 2>/dev/null || true; fi
@@ -29,8 +30,7 @@ done
 
 # First full game process: Java BrowserFi writes the binary probe. The marker is
 # emitted only after browser-storage.js confirms the IndexedDB transaction flushed.
-# Explicit CI smoke also executes three consecutive production playing frames,
-# binds the local stock input-owned UI, and crosses the real WorldLoadEvent graph.
+# The deterministic generated smoke remains as a small regression gate here.
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --url "http://127.0.0.1:$PORT/index.html?lang=en&persistenceSeed=1&mindustrySmoke=1" \
   --profile "$PROFILE" \
@@ -66,18 +66,18 @@ grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$SEED_DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$SEED_DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$SEED_DOM"
 
-# Second completely new Chrome process, same origin + profile: storage hydrates
-# before TeaVM main(), then BrowserFi's Java byte[] static probe must recover the
-# exact persisted values (including -1/0xFF). Explicit CI smoke must recover again
-# so restart recovery proves both storage and the multi-frame gameplay path.
+# Second completely new Chrome process, same origin + profile: storage hydrates before
+# TeaVM main(), BrowserFi recovers the persisted Java byte[] probe, then the separate
+# map-ci gate reads the packaged maze.msav through MapIO/SaveIO/World.loadMap and runs
+# three production client frames on that real vanilla world.
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustrySmoke=1" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryMapSmoke=1" \
   --profile "$PROFILE" \
   --port 9229 \
-  --timeout 40 \
+  --timeout 50 \
   --require 'data-mindustry-storage="ready"' \
   --require 'data-mindustry-file-persistence="recovered"' \
-  --require 'data-mindustry-smoke-mode="ci"' \
+  --require 'data-mindustry-smoke-mode="map-ci"' \
   --require 'data-mindustry-audio="ready"' \
   --require 'data-mindustry-renderer-init="ready"' \
   --require 'data-mindustry-control="ready"' \
@@ -88,22 +88,20 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-module-loop="menu-stable"' \
   --require 'data-mindustry-module-order="logic-control-renderer-ui"' \
   --require 'data-mindustry-game-state-tick-smoke="ready"' \
-  --require 'data-mindustry-world-load-smoke="ready"' \
-  --require 'data-mindustry-world-size="8x8"' \
-  --require 'data-mindustry-control-pathfinder="world-active-web-single-thread"' \
-  --require 'data-mindustry-playing-frame="ready"' \
-  --require 'data-mindustry-playing-loop="stable"' \
-  --require 'data-mindustry-playing-target-frames="3"' \
-  --require 'data-mindustry-playing-frames="3"' \
-  --require 'data-mindustry-playing-frame-index="3"' \
-  --require 'data-mindustry-playing-unit="alpha"' \
-  --require 'data-mindustry-playing-module-order="logic-control-renderer-ui"' \
-  --require 'data-mindustry-playing-state="restored-menu"' \
+  --require 'data-mindustry-builtin-map="ready"' \
+  --require 'data-mindustry-builtin-map-path="maps/default/maze.msav"' \
+  --require 'data-mindustry-builtin-map-loop="stable"' \
+  --require 'data-mindustry-builtin-map-target-frames="3"' \
+  --require 'data-mindustry-builtin-map-frames="3"' \
+  --require 'data-mindustry-builtin-map-frame-index="3"' \
+  --require 'data-mindustry-builtin-map-module-order="logic-control-renderer-ui"' \
+  --require 'data-mindustry-builtin-map-state="restored-menu"' \
   --require 'data-mindustry-ui-sync="ready"' \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-network="local-only"' > "$GAME_DOM"
 
 grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$GAME_DOM"
-grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$GAME_DOM"
-grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$GAME_DOM"
-echo 'Browser persistence smoke: explicit CI mode + Java BrowserFi write -> IndexedDB flush -> Chrome restart -> Java byte[] recovery + stock local UI + 3-frame continuous play + BrowserAudio + real WorldLoadEvent recovery PASS'
+grep -Eq 'data-mindustry-builtin-map-size="[1-9][0-9]*x[1-9][0-9]*"' "$GAME_DOM"
+grep -Eq 'data-mindustry-builtin-map-update-id="[1-9][0-9]*"' "$GAME_DOM"
+grep -Eq 'data-mindustry-builtin-map-unit-id="[0-9]+"' "$GAME_DOM"
+echo 'Browser persistence smoke: IndexedDB restart recovery + packaged maze.msav MapIO/SaveIO/World.loadMap + 3 real map frames PASS'
