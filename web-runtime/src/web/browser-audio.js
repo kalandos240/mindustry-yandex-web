@@ -114,6 +114,7 @@
         });
 
         root.setAttribute('data-mindustry-audio', 'installed');
+        root.setAttribute('data-mindustry-audio-platform', 'running');
         return true;
     }
 
@@ -222,6 +223,8 @@
     function platformPause(paused){
         if(!state.ctx) return;
         state.platformPaused = paused;
+        root.setAttribute('data-mindustry-audio-platform', paused ? 'paused' : 'running');
+        root.setAttribute(paused ? 'data-mindustry-audio-pause-observed' : 'data-mindustry-audio-resume-observed', 'yes');
 
         if(paused){
             state.ctx.suspend().catch(function(){});
