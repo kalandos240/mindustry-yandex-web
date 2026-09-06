@@ -86,7 +86,30 @@ public final class BrowserPlayingRuntime{
         pathfinder.updateWeb();
         controlPath.updateWeb();
 
-        markPhase("control");
+        // Diagnostic preflight: execute the ordinary playing-only Control components
+        // individually so a TeaVM NPE reports an exact stock subphase. This is temporary
+        // instrumentation; the authoritative production call remains control.update().
+        markPhase("control-input-state");
+        control.input.updateState();
+        markPhase("control-input-state-ready");
+
+        markPhase("control-sound");
+        control.sound.update();
+        markPhase("control-sound-ready");
+
+        markPhase("control-input");
+        control.input.update();
+        markPhase("control-input-ready");
+
+        markPhase("control-quadtree");
+        control.input.updateSelectQuadtree();
+        markPhase("control-quadtree-ready");
+
+        markPhase("control-indicators");
+        control.indicators.update();
+        markPhase("control-indicators-ready");
+
+        markPhase("control-stock");
         control.update();
         markPhase("control-ready");
 
