@@ -29,15 +29,16 @@ done
 
 # First full game process: Java BrowserFi writes the binary probe. The marker is
 # emitted only after browser-storage.js confirms the IndexedDB transaction flushed.
-# The same process must also execute three consecutive production playing frames,
-# bind the local stock input-owned UI, and cross the real WorldLoadEvent graph.
+# Explicit CI smoke also executes three consecutive production playing frames,
+# binds the local stock input-owned UI, and crosses the real WorldLoadEvent graph.
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-  --url "http://127.0.0.1:$PORT/index.html?lang=en&persistenceSeed=1" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&persistenceSeed=1&mindustrySmoke=1" \
   --profile "$PROFILE" \
   --port 9228 \
   --timeout 40 \
   --require 'data-mindustry-storage="ready"' \
   --require 'data-mindustry-java-persistence-seed="ready"' \
+  --require 'data-mindustry-smoke-mode="ci"' \
   --require 'data-mindustry-audio="ready"' \
   --require 'data-mindustry-renderer-init="ready"' \
   --require 'data-mindustry-control="ready"' \
@@ -67,15 +68,16 @@ grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$SEED_DOM"
 
 # Second completely new Chrome process, same origin + profile: storage hydrates
 # before TeaVM main(), then BrowserFi's Java byte[] static probe must recover the
-# exact persisted values (including -1/0xFF). The continuous client loop must recover
-# again so restart recovery is not storage-only.
+# exact persisted values (including -1/0xFF). Explicit CI smoke must recover again
+# so restart recovery proves both storage and the multi-frame gameplay path.
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-  --url "http://127.0.0.1:$PORT/index.html?lang=en" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustrySmoke=1" \
   --profile "$PROFILE" \
   --port 9229 \
   --timeout 40 \
   --require 'data-mindustry-storage="ready"' \
   --require 'data-mindustry-file-persistence="recovered"' \
+  --require 'data-mindustry-smoke-mode="ci"' \
   --require 'data-mindustry-audio="ready"' \
   --require 'data-mindustry-renderer-init="ready"' \
   --require 'data-mindustry-control="ready"' \
@@ -104,4 +106,4 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
 grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$GAME_DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$GAME_DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$GAME_DOM"
-echo 'Browser persistence smoke: Java BrowserFi write -> IndexedDB flush -> Chrome restart -> Java byte[] recovery + stock local UI + 3-frame continuous play + BrowserAudio + real WorldLoadEvent recovery PASS'
+echo 'Browser persistence smoke: explicit CI mode + Java BrowserFi write -> IndexedDB flush -> Chrome restart -> Java byte[] recovery + stock local UI + 3-frame continuous play + BrowserAudio + real WorldLoadEvent recovery PASS'
