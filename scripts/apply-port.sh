@@ -215,6 +215,11 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-input-web.py" \
 # Serpulo visual mesh refresh uses ExecutorService, which is unavailable in TeaVM.
 python3 "$ROOT_DIR/scripts/patch-mindustry-planet-events-web.py"
 
+# The browser reaches stock Logic.update before the optional local server facade is
+# installed. Keep server administration bookkeeping null-safe while preserving the
+# same behavior automatically once a NetServer exists.
+python3 "$ROOT_DIR/scripts/patch-mindustry-logic-web.py"
+
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
 echo "Applied Web single-thread asset and allocation-stable SpriteBatch VBO patches"
