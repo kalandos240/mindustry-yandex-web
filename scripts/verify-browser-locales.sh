@@ -94,6 +94,10 @@ run_locale(){
     --require 'data-mindustry-game-state-tick-smoke="ready"' \
     --require 'data-mindustry-game-state-tick-update-id="1"' \
     --require 'data-mindustry-playing-frame="ready"' \
+    --require 'data-mindustry-playing-loop="stable"' \
+    --require 'data-mindustry-playing-target-frames="3"' \
+    --require 'data-mindustry-playing-frames="3"' \
+    --require 'data-mindustry-playing-frame-index="3"' \
     --require 'data-mindustry-playing-unit="alpha"' \
     --require 'data-mindustry-playing-module-order="logic-control-renderer-ui"' \
     --require 'data-mindustry-playing-state="restored-menu"' \
@@ -109,7 +113,7 @@ run_locale(){
   grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$dom"
-  echo "Browser locale $expected: stock input-owned local UI + real Logic->Control->Renderer->UI playing frame + BrowserAudio + real 8x8 WorldLoadEvent + browser-single-thread pathfinding + persistence boundary ready"
+  echo "Browser locale $expected: stock input-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + BrowserAudio + real 8x8 WorldLoadEvent + browser-single-thread pathfinding + persistence boundary ready"
 }
 
 run_mobile(){
@@ -149,6 +153,10 @@ run_mobile(){
     --require 'data-mindustry-game-state-tick-smoke="ready"' \
     --require 'data-mindustry-game-state-tick-update-id="1"' \
     --require 'data-mindustry-playing-frame="ready"' \
+    --require 'data-mindustry-playing-loop="stable"' \
+    --require 'data-mindustry-playing-target-frames="3"' \
+    --require 'data-mindustry-playing-frames="3"' \
+    --require 'data-mindustry-playing-frame-index="3"' \
     --require 'data-mindustry-playing-unit="alpha"' \
     --require 'data-mindustry-playing-module-order="logic-control-renderer-ui"' \
     --require 'data-mindustry-playing-state="restored-menu"' \
@@ -163,7 +171,7 @@ run_mobile(){
   grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$dom"
-  echo "Browser mobile: stock MobileInput-owned local UI + real Logic->Control->Renderer->UI playing frame + real 8x8 WorldLoadEvent ready"
+  echo "Browser mobile: stock MobileInput-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + real 8x8 WorldLoadEvent ready"
 }
 
 run_locale en
