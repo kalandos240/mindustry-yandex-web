@@ -9,10 +9,10 @@ if not SAVEIO.is_file():
 
 text = SAVEIO.read_text(encoding="utf-8")
 old = 'public static final Seq<SaveVersion> versionArray = Seq.with(new Save4(), new Save13()); // Web: pinned built-in v4 maps + current v13 saves.'
-new = 'public static final Seq<SaveVersion> versionArray = Seq.with(new Save4(), new Save5(), new Save13()); // Web: pinned built-in v4/v5 maps + current v13 saves.'
+new = 'public static final Seq<SaveVersion> versionArray = Seq.with(new Save4(), new Save5(), new Save6(), new Save7(), new Save8(), new Save9(), new Save10(), new Save13()); // Web: lightweight pinned built-in v4-v10 readers + current v13 saves.'
 
 if text.count(old) != 1:
-    raise SystemExit("Built-in map Save5 overlay expected exactly one Save4+Save13 Web version registry")
+    raise SystemExit("Built-in map version overlay expected exactly one Save4+Save13 Web version registry")
 
 SAVEIO.write_text(text.replace(old, new, 1), encoding="utf-8")
-print("Extended Web save reader registry with pinned built-in map format v5")
+print("Extended Web save reader registry with lightweight pinned built-in map formats v4-v10")
