@@ -14,14 +14,14 @@ import static mindustry.Vars.*;
  *
  * This does not fake gameplay by assigning GameState directly. It enters the already
  * loaded deterministic world through stock Logic.play(), which fires PlayEvent and the
- * normal Control player-registration path. A real vanilla alpha unit is attached to the
- * local Player through the generated entity/controller API, then the production playing
- * core and stock Control -> Renderer -> UI order run for one frame.
+ * normal Control player-registration path. A real vanilla core-spawned alpha unit is
+ * attached to the local Player, then the production Logic -> Control -> Renderer -> UI
+ * client order runs for one frame.
  *
  * The Logic entry point is a Web-specific extraction of the stock playing branch with
- * runtime assertions that fog/waves/weather/campaign/team AI are disabled. This keeps
- * those impossible optional branches out of TeaVM reachability while preserving the real
- * state clock, team stats, GlobalVars, entity physics/update and gameplay events.
+ * runtime assertions that fog/waves/weather/campaign/team AI are disabled. JVM worker
+ * pathfinders are stepped on the browser event loop between Logic and Control while their
+ * stock algorithms remain unchanged.
  *
  * The smoke deliberately restores menu state afterward. Continuous playing remains the
  * next milestone; keeping this one-shot makes failures attributable while the remaining
@@ -94,46 +94,13 @@ public final class BrowserPlayingRuntime{
         controlPath.updateWeb();
         assertOwnership("pathfinding", unit);
 
-        // Diagnostic preflight: execute the ordinary playing-only Control components
-        // individually so a TeaVM NPE reports an exact stock subphase. This is temporary
-        // instrumentation; the authoritative production call remains control.update().
-        markPhase("control-input-state");
-        control.input.updateState();
-        markPhase("control-input-state-ready");
-        assertOwnership("control-input-state", unit);
-
-        markPhase("control-sound");
-        control.sound.update();
-        markPhase("control-sound-ready");
-        assertOwnership("control-sound", unit);
-
-        markPhase("control-input");
-        control.input.update();
-        markPhase("control-input-ready");
-        assertOwnership("control-input", unit);
-
-        markPhase("control-quadtree");
-        control.input.updateSelectQuadtree();
-        markPhase("control-quadtree-ready");
-        assertOwnership("control-quadtree", unit);
-
-        markPhase("control-indicators");
-        control.indicators.update();
-        markPhase("control-indicators-ready");
-        assertOwnership("control-indicators", unit);
-
-        markPhase("control-stock");
+        markPhase("control");
         control.update();
         markPhase("control-ready");
         assertOwnership("control", unit);
 
-        // Temporary renderer phase hook narrows the first world-render failure without
-        // duplicating Renderer.update(). The hook is removed with the Control preflight
-        // once this one-shot playing gate is fully green.
-        renderer.webPhaseHook = BrowserPlayingRuntime::markPhase;
         markPhase("renderer");
         renderer.update();
-        renderer.webPhaseHook = null;
         markPhase("renderer-ready");
         assertOwnership("renderer", unit);
 
