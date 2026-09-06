@@ -26,7 +26,9 @@ public final class BrowserMusic extends Music{
     }
 
     @Override
-    public void load(Fi file){ assign(file); }
+    public void load(Fi file){
+        assign(file);
+    }
 
     @Override
     public void load(byte[] bytes){
@@ -40,16 +42,24 @@ public final class BrowserMusic extends Music{
     }
 
     @Override
-    public void pause(boolean pause){ BrowserAudio.musicPause(browserId, pause); }
+    public void pause(boolean pause){
+        BrowserAudio.musicPause(browserId, pause);
+    }
 
     @Override
-    public void stop(){ BrowserAudio.musicStop(browserId); }
+    public void stop(){
+        BrowserAudio.musicStop(browserId);
+    }
 
     @Override
-    public boolean isPlaying(){ return BrowserAudio.musicPlaying(browserId); }
+    public boolean isPlaying(){
+        return BrowserAudio.musicPlaying(browserId);
+    }
 
     @Override
-    public boolean isLooping(){ return browserLooping; }
+    public boolean isLooping(){
+        return browserLooping;
+    }
 
     @Override
     public void setLooping(boolean looping){
@@ -58,7 +68,9 @@ public final class BrowserMusic extends Music{
     }
 
     @Override
-    public float getVolume(){ return browserVolume; }
+    public float getVolume(){
+        return browserVolume;
+    }
 
     @Override
     public void setVolume(float volume){
@@ -73,16 +85,24 @@ public final class BrowserMusic extends Music{
     }
 
     @Override
-    public float getPosition(){ return BrowserAudio.musicPosition(browserId); }
+    public float getPosition(){
+        return BrowserAudio.musicPosition(browserId);
+    }
 
     @Override
-    public void setPosition(float position){ BrowserAudio.musicPosition(browserId, position); }
+    public void setPosition(float position){
+        BrowserAudio.musicPosition(browserId, position);
+    }
 
     @Override
-    public float getLength(){ return BrowserAudio.musicLength(browserId); }
+    public float getLength(){
+        return BrowserAudio.musicLength(browserId);
+    }
 
     @Override
-    public boolean valid(){ return !url.isEmpty(); }
+    public boolean valid(){
+        return !url.isEmpty();
+    }
 
     @Override
     public void dispose(){
@@ -92,5 +112,7 @@ public final class BrowserMusic extends Music{
     }
 
     @Override
-    public String toString(){ return "BrowserMusic: " + file; }
+    public String toString(){
+        return "BrowserMusic: " + file;
+    }
 }
