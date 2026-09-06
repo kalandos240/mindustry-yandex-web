@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
 import sys
 
 if len(sys.argv) != 2:
@@ -28,3 +29,12 @@ new = '''            // TeaVM's Class implementation does not expose isAnonymous
 if old not in text:
     raise SystemExit("Mindustry Block.initBuilding anonymous-class patch no longer matches pinned upstream.")
 path.write_text(text.replace(old, new, 1))
+
+# Temporary module-loop diagnosis: the current browser NPE is inside Scene.root.act().
+# Instrument Group.act after the normal Arc/Mindustry overlays so Chrome reports the
+# exact root child/index that fails. Remove this hook together with the diagnostics
+# once the underlying lifecycle dependency is fixed.
+subprocess.run([
+    sys.executable,
+    str(Path(__file__).with_name("patch-arc-group-act-diagnostics.py")),
+], check=True)
