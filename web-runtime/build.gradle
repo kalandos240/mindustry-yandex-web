@@ -58,6 +58,12 @@ tasks.register("stageWeb", Copy) {
         include "webfonts/*.png"
         include "sprites/sprites.aatls"
         include "sprites/sprites*.png"
+
+        // Audio stays inside the Yandex ZIP, but index.html deliberately excludes these
+        // paths from the eager byte[] preload. SFX are decoded lazily through Web Audio;
+        // music is streamed from these same-origin packaged OGG files.
+        include "sounds/**/*.ogg"
+        include "music/*.ogg"
         into "assets"
     }
     into "$buildDir/web"

@@ -140,7 +140,9 @@ jobs:
           test -s web-runtime/build/web/mindustry.js
           test -s web-runtime/build/web/yandex-platform.js
           test -s web-runtime/build/web/browser-storage.js
+          test -s web-runtime/build/web/browser-audio.js
           test -s web-runtime/build/web/assets-manifest.js
+          test -s web-runtime/build/web/assets/sounds/ui/uiButton.ogg
           test -s web-runtime/build/web/assets/sprites/error.png
           test -s web-runtime/build/web/assets/sprites/block_colors.png
           test -s web-runtime/build/web/assets/sprites/sprites.aatls
@@ -168,7 +170,9 @@ jobs:
           grep -q 'data-mindustry-network' web-runtime/build/web/index.html
           grep -q 'data-mindustry-storage' web-runtime/build/web/index.html
           grep -q 'browser-storage.js' web-runtime/build/web/index.html
+          grep -q 'browser-audio.js' web-runtime/build/web/index.html
           grep -q 'assets-manifest.js' web-runtime/build/web/index.html
+          grep -q 'sounds/ui/uiButton.ogg' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/error.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.aatls' web-runtime/build/web/assets-manifest.js
@@ -215,11 +219,14 @@ jobs:
             --timeout 35 \
             --require 'data-mindustry-web="ready"' \
             --require 'data-mindustry-storage="ready"' \
+            --require 'data-mindustry-audio="ready"' \
             --require 'data-mindustry-ui-sync="ready"' \
             --require 'data-mindustry-network="local-only"' > /tmp/mindustry-web-dom.html
           cat /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-gl="webgl(1|2)"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-audio="ready"' /tmp/mindustry-web-dom.html
+          grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-navigation="blocked"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-links="none"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-font="ready"' /tmp/mindustry-web-dom.html
