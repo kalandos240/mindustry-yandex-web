@@ -191,3 +191,11 @@ subprocess.run([
     sys.executable,
     str(Path(__file__).with_name("patch-mindustry-control-pathfinder-web.py")),
 ], check=True)
+
+# Stock client startup constructs Renderer (and therefore Shaders) before the queued
+# Vars/content loaders execute. The Web launcher initializes those pieces explicitly;
+# guard Renderer against replacing shader instances after CacheLayer captured them.
+subprocess.run([
+    sys.executable,
+    str(Path(__file__).with_name("patch-mindustry-renderer-lifecycle-web.py")),
+], check=True)
