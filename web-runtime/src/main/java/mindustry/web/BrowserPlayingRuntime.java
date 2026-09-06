@@ -10,39 +10,43 @@ import org.teavm.jso.JSBody;
 import static mindustry.Vars.*;
 
 /**
- * One-shot browser gate for the first real Mindustry playing client frame.
+ * Browser gate for a short continuous real Mindustry playing session.
  *
- * This does not fake gameplay by assigning GameState directly. It enters the already
- * loaded deterministic world through stock Logic.play(), which fires PlayEvent and the
- * normal Control player-registration path. A real vanilla core-spawned alpha unit is
- * attached to the local Player, then the production Logic -> Control -> Renderer -> UI
- * client order runs for one frame.
+ * begin() performs the stock Logic.play()/PlayEvent transition and leaves the real game
+ * in State.playing. updateFrame() is then called by BrowserGameplayRuntime on separate
+ * browser application frames, executing the production Logic -> Control -> Renderer -> UI
+ * order exactly once per frame. This proves that gameplay state, player ownership and the
+ * entity graph remain valid across requestAnimationFrame boundaries instead of only for a
+ * one-shot call stack.
  *
- * The Logic entry point is a Web-specific extraction of the stock playing branch with
- * runtime assertions that fog/waves/weather/campaign/team AI are disabled. JVM worker
- * pathfinders are stepped on the browser event loop between Logic and Control while their
- * stock algorithms remain unchanged.
- *
- * The smoke deliberately restores menu state afterward. Continuous playing remains the
- * next milestone; keeping this one-shot makes failures attributable while the remaining
- * pause/chat/minimap dialog controls are still intentionally deferred on Web/Yandex.
+ * The deterministic CI session runs three consecutive playing frames and then restores
+ * menu state. Full user-controlled continuous play/HUD navigation remains the next UI
+ * milestone; this gate deliberately keeps the same optional gameplay subsystems disabled
+ * as updateWebPlayingCore().
  */
 public final class BrowserPlayingRuntime{
+    private static final int targetFrames = 3;
+
+    private static boolean active;
     private static boolean complete;
+    private static Unit unit;
+    private static int frames;
+    private static long startUpdateId;
 
     private BrowserPlayingRuntime(){}
 
-    public static void runOneFrame(){
-        if(complete) return;
+    /** Enter real playing state and keep it active for subsequent browser frames. */
+    public static void begin(){
+        if(active || complete) return;
         if(state == null || logic == null || control == null || renderer == null || ui == null
         || world == null || player == null || pathfinder == null || controlPath == null){
-            throw new IllegalStateException("Browser playing smoke requires the complete local client substrate");
+            throw new IllegalStateException("Browser continuous playing smoke requires the complete local client substrate");
         }
         if(!state.isMenu() || world.width() != 8 || world.height() != 8){
-            throw new IllegalStateException("Browser playing smoke requires the real loaded 8x8 menu world");
+            throw new IllegalStateException("Browser continuous playing smoke requires the real loaded 8x8 menu world");
         }
         if(netServer != null || netClient != null || net.active()){
-            throw new IllegalStateException("Browser playing smoke must remain permanent local single-player");
+            throw new IllegalStateException("Browser continuous playing smoke must remain permanent local single-player");
         }
 
         state.rules.defaultTeam = Team.sharded;
@@ -56,16 +60,16 @@ public final class BrowserPlayingRuntime{
         state.rules.attackMode = false;
         state.rules.weather.clear();
 
-        Unit unit = UnitTypes.alpha.create(Team.sharded);
+        unit = UnitTypes.alpha.create(Team.sharded);
         float x = world.unitWidth() / 2f;
         float y = world.unitHeight() / 2f;
         unit.set(x, y);
         player.team(Team.sharded);
         player.set(x, y);
         player.unit(unit);
-        // CoreBlock player spawning marks the controlled unit as core-spawned before
-        // adding it. This is semantically important: player core units are exempt from
-        // the normal unit cap, while this deterministic smoke world intentionally has no
+
+        // Match stock CoreBlock player spawning. Core-spawned player units are exempt
+        // from the normal unit cap; the deterministic smoke world intentionally has no
         // core and therefore keeps Rules.unitCap at its stock zero value.
         unit.spawnedByCore(true);
         unit.add();
@@ -73,15 +77,31 @@ public final class BrowserPlayingRuntime{
 
         if(player.unit() != unit || unit.type != UnitTypes.alpha || unit.team() != Team.sharded
         || !unit.spawnedByCore() || !unit.isAdded() || !unit.isValid() || unit.controller() != player){
-            throw new IllegalStateException("Vanilla core-spawned alpha/player controller binding failed before Web playing frame");
+            throw new IllegalStateException("Vanilla core-spawned alpha/player binding failed before continuous Web play");
         }
 
-        long beforeUpdateId = state.updateId;
+        frames = 0;
+        startUpdateId = state.updateId;
         markPhase("play-event");
         logic.play();
         if(!state.isPlaying() || !player.isAdded() || player.unit() != unit){
-            throw new IllegalStateException("Stock Logic.play/PlayEvent failed Web playing transition");
+            throw new IllegalStateException("Stock Logic.play/PlayEvent failed continuous Web playing transition");
         }
+
+        active = true;
+        markStarted(startUpdateId, unit.id, unit.type.name, targetFrames);
+    }
+
+    /** Execute exactly one production client frame while the smoke remains in playing. */
+    public static void updateFrame(){
+        if(!active || unit == null){
+            throw new IllegalStateException("Continuous Web playing frame ran without an active session");
+        }
+        if(!state.isPlaying()){
+            throw new IllegalStateException("Continuous Web playing session unexpectedly left playing state before its frame");
+        }
+
+        long beforeUpdateId = state.updateId;
 
         markPhase("logic");
         logic.updateWebPlayingCore();
@@ -110,23 +130,47 @@ public final class BrowserPlayingRuntime{
         assertOwnership("ui", unit);
 
         if(!state.isPlaying()){
-            throw new IllegalStateException("Real Web playing client frame unexpectedly left playing state");
+            throw new IllegalStateException("Continuous Web playing client frame unexpectedly left playing state");
         }
-        if(state.updateId <= beforeUpdateId){
-            throw new IllegalStateException("Real Web playing client frame did not advance GameState updateId: before=" + beforeUpdateId + ", after=" + state.updateId);
+        if(state.updateId != beforeUpdateId + 1L){
+            throw new IllegalStateException(
+                "Continuous Web playing frame advanced GameState updateId incorrectly: before="
+                + beforeUpdateId + ", after=" + state.updateId
+            );
         }
 
-        markReady(state.updateId, unit.id, unit.type.name);
+        frames++;
+        if(state.updateId != startUpdateId + frames){
+            throw new IllegalStateException(
+                "Continuous Web playing update clock drifted across frames: start=" + startUpdateId
+                + ", frames=" + frames + ", current=" + state.updateId
+            );
+        }
 
+        markFrame(state.updateId, unit.id, unit.type.name, frames);
+        if(frames == 1){
+            markLive(frames);
+        }
+
+        if(frames >= targetFrames){
+            long finalUpdateId = state.updateId;
+            markStable(frames, finalUpdateId);
+            restoreMenu(finalUpdateId);
+        }
+    }
+
+    private static void restoreMenu(long finalUpdateId){
         unit.remove();
         player.clearUnit();
         state.set(State.menu);
         if(!state.isMenu() || player.unit() != null){
-            throw new IllegalStateException("Browser playing smoke failed to restore stable menu state");
+            throw new IllegalStateException("Continuous Web playing smoke failed to restore stable menu state");
         }
 
+        active = false;
         complete = true;
-        markRestored();
+        unit = null;
+        markRestored(frames, finalUpdateId);
     }
 
     private static void assertOwnership(String phase, Unit expected){
@@ -152,6 +196,10 @@ public final class BrowserPlayingRuntime{
         }
     }
 
+    public static boolean active(){
+        return active;
+    }
+
     public static boolean complete(){
         return complete;
     }
@@ -159,9 +207,18 @@ public final class BrowserPlayingRuntime{
     @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-playing-phase', phase);")
     private static native void markPhase(String phase);
 
-    @JSBody(params = {"updateId", "unitId", "unitType"}, script = "document.documentElement.setAttribute('data-mindustry-playing-frame', 'ready'); document.documentElement.setAttribute('data-mindustry-playing-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-playing-unit-id', String(unitId)); document.documentElement.setAttribute('data-mindustry-playing-unit', unitType); document.documentElement.setAttribute('data-mindustry-playing-module-order', 'logic-control-renderer-ui');")
-    private static native void markReady(long updateId, int unitId, String unitType);
+    @JSBody(params = {"updateId", "unitId", "unitType", "target"}, script = "document.documentElement.setAttribute('data-mindustry-playing-loop', 'starting'); document.documentElement.setAttribute('data-mindustry-playing-frame', 'waiting'); document.documentElement.setAttribute('data-mindustry-playing-start-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-playing-unit-id', String(unitId)); document.documentElement.setAttribute('data-mindustry-playing-unit', unitType); document.documentElement.setAttribute('data-mindustry-playing-target-frames', String(target)); document.documentElement.setAttribute('data-mindustry-playing-module-order', 'logic-control-renderer-ui'); document.documentElement.setAttribute('data-mindustry-playing-state', 'playing');")
+    private static native void markStarted(long updateId, int unitId, String unitType, int target);
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-playing-state', 'restored-menu');")
-    private static native void markRestored();
+    @JSBody(params = {"updateId", "unitId", "unitType", "frame"}, script = "document.documentElement.setAttribute('data-mindustry-playing-frame', 'ready'); document.documentElement.setAttribute('data-mindustry-playing-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-playing-unit-id', String(unitId)); document.documentElement.setAttribute('data-mindustry-playing-unit', unitType); document.documentElement.setAttribute('data-mindustry-playing-frame-index', String(frame)); document.documentElement.setAttribute('data-mindustry-playing-module-order', 'logic-control-renderer-ui');")
+    private static native void markFrame(long updateId, int unitId, String unitType, int frame);
+
+    @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-playing-loop', 'live'); document.documentElement.setAttribute('data-mindustry-playing-frames', String(frames));")
+    private static native void markLive(int frames);
+
+    @JSBody(params = {"frames", "updateId"}, script = "document.documentElement.setAttribute('data-mindustry-playing-loop', 'stable'); document.documentElement.setAttribute('data-mindustry-playing-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-playing-update-id', String(updateId));")
+    private static native void markStable(int frames, long updateId);
+
+    @JSBody(params = {"frames", "updateId"}, script = "document.documentElement.setAttribute('data-mindustry-playing-state', 'restored-menu'); document.documentElement.setAttribute('data-mindustry-playing-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-playing-update-id', String(updateId));")
+    private static native void markRestored(int frames, long updateId);
 }
