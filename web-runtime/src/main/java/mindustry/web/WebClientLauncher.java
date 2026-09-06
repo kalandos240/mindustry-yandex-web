@@ -39,9 +39,9 @@ public final class WebClientLauncher extends ClientLauncher{
         android = Core.app.isAndroid();
         markMindustryDeviceMode(mobile ? "mobile" : "desktop");
 
-        // Stock Renderer is initialized below after the content substrate exists. Keep a
-        // temporary camera available during the earlier bootstrap steps; Renderer replaces
-        // Core.camera with its production camera in its constructor.
+        // Stock Renderer is initialized below after the content/save substrate exists.
+        // Keep a temporary camera available during the earlier bootstrap steps; Renderer
+        // replaces Core.camera with its production camera in its constructor.
         if(Core.camera == null){
             Core.camera = new Camera();
             Core.camera.width = Math.max(1f, Core.graphics.getWidth() / 4f);
@@ -88,16 +88,20 @@ public final class WebClientLauncher extends ClientLauncher{
         // Install browser-only factories while preserving the stock JsonIO format.
         BrowserJsonCompatibility.install();
 
-        // Activate the real Mindustry renderer substrate now that its shaders are packaged
-        // locally. Do not run Renderer.init/update yet; this milestone proves constructor,
+        // Prove persistent stock v13 save/write/load before renderer listeners exist.
+        // SaveIO.load() fires WorldLoadEvent from World.context.end(); constructing a
+        // Renderer before the atlas is ready registers FloorRenderer/BlockRenderer
+        // listeners whose reload paths require Core.atlas and are not part of save IO.
+        BrowserSaveRuntime.init();
+
+        // Activate the real Mindustry renderer substrate after the save substrate is
+        // proven. Do not run Renderer.init/update yet; this milestone proves constructor,
         // shader compilation, framebuffers and production camera reachability first.
         renderer = new Renderer();
         if(Core.camera == null || renderer.getScale() <= 0f){
             throw new IllegalStateException("Stock Mindustry Renderer failed Web camera initialization");
         }
         markRendererReady();
-
-        BrowserSaveRuntime.init();
 
         Vars.ui = uiShell = new UI();
         if(Fonts.def == null || Fonts.outline == null || Fonts.icon == null || Fonts.logic == null){
