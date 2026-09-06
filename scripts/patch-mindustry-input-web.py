@@ -121,14 +121,21 @@ if old_zoom not in mobile_text:
 mobile_text = mobile_text.replace(old_zoom, new_zoom, 1)
 mobile_path.write_text(mobile_text, encoding="utf-8")
 
-# Stock InputHandler makes more gameplay code reachable than the earlier shell. Apply
-# the browser-only executor/reflection fixes discovered by TeaVM from that graph too.
+# Stock InputHandler and Control make more gameplay code reachable than the earlier
+# shell. Apply browser-only executor/reflection and disabled-audio fixes discovered by
+# TeaVM from that graph while preserving stock gameplay/input semantics.
 mindustry_root = input_path.parent.parent
 unit_group = mindustry_root / "ai" / "UnitGroup.java"
 building_comp = mindustry_root / "entities" / "comp" / "BuildingComp.java"
+sound_control = mindustry_root / "audio" / "SoundControl.java"
 subprocess.run([
     sys.executable,
     str(Path(__file__).with_name("patch-mindustry-gameplay-web.py")),
     str(unit_group),
     str(building_comp),
+], check=True)
+subprocess.run([
+    sys.executable,
+    str(Path(__file__).with_name("patch-mindustry-sound-web.py")),
+    str(sound_control),
 ], check=True)
