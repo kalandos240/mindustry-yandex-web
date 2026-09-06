@@ -77,6 +77,7 @@ run_locale(){
     --require 'data-mindustry-logic="constructed"' \
     --require 'data-mindustry-logicvars="ready"' \
     --require 'data-mindustry-fog-control="constructed-web-single-thread"' \
+    --require 'data-mindustry-pathfinder="constructed-web-single-thread"' \
     --require 'data-mindustry-gameplay-loop="menu-stable"' \
     --require 'data-mindustry-logic-menu-update="ready"' \
     --require 'data-mindustry-logic-menu-update-frames="3"' \
@@ -91,7 +92,7 @@ run_locale(){
     --require 'data-mindustry-navigation="blocked"' > "$dom"
 
   grep -Eq 'data-mindustry-logic-copper-id="[0-9]+"' "$dom"
-  echo "Browser locale $expected: renderer + input + BrowserSaves Control + World/Logic/FogControl substrate + isolated single-player GameState tick + logic IDs + persistence boundary ready"
+  echo "Browser locale $expected: renderer + input + BrowserSaves Control + World/Logic/FogControl/Pathfinder substrate + isolated single-player GameState tick + logic IDs + persistence boundary ready"
 }
 
 run_locale en
