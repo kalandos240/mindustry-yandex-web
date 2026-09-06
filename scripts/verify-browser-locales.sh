@@ -49,6 +49,32 @@ for i in {1..20}; do
   sleep 0.25
 done
 
+run_production_menu(){
+  local profile="/tmp/mindustry-web-profile-production-menu"
+  local dom="/tmp/mindustry-web-production-menu.html"
+  rm -rf "$profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:8081/index.html?lang=en" \
+    --profile "$profile" \
+    --port 9230 \
+    --timeout 30 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="production"' \
+    --require 'data-mindustry-gameplay-runtime="ready"' \
+    --require 'data-mindustry-gameplay-loop="menu-stable"' \
+    --require 'data-mindustry-module-loop="menu-stable"' \
+    --require 'data-mindustry-game-state-tick-smoke="ready"' \
+    --require 'data-mindustry-network="local-only"' > "$dom"
+
+  if grep -Eq 'data-mindustry-world-load-smoke=|data-mindustry-world-size=|data-mindustry-playing-frame=|data-mindustry-playing-loop=|data-mindustry-playing-state=' "$dom"; then
+    echo 'Normal production startup unexpectedly executed deterministic world/playing smoke.' >&2
+    grep -o '<html[^>]*>' "$dom" >&2 || true
+    exit 1
+  fi
+  echo 'Browser production startup: stable menu only; deterministic world/playing smoke absent'
+}
+
 run_locale(){
   local expected="$1"
   local profile="/tmp/mindustry-web-profile-$expected"
@@ -176,6 +202,7 @@ run_mobile(){
   echo "Browser mobile: explicit CI smoke + stock MobileInput-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + real 8x8 WorldLoadEvent ready"
 }
 
+run_production_menu
 run_locale en
 run_locale ru
 run_mobile
