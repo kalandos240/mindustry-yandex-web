@@ -18,6 +18,21 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
     return text.replace(old, new, 1)
 
 
+# The browser module-loop milestone executes production UI.update() against the Scene
+# already created by UI.loadSync(), without eagerly constructing the enormous UI.init()
+# dialog graph. TeaVM currently reports a bare NPE inside that call, so wrap each stock
+# stage with a precise temporary label. BrowserApplication preserves the exception message
+# in data-mindustry-error, allowing Chrome CI to identify the exact failing operation.
+ui_path = MINDUSTRY / "core" / "UI.java"
+ui_text = read(ui_path)
+ui_text = replace_once(
+    ui_text,
+    '''    @Override\n    public void update(){\n        if(disableUI || Core.scene == null) return;\n\n        PerfCounter.ui.begin();\n\n        Events.fire(Trigger.uiDrawBegin);\n\n        Core.scene.act();\n        Core.scene.draw();\n\n        if(Core.input.keyTap(KeyCode.mouseLeft) && Core.scene.hasField()){\n            Element e = Core.scene.getHoverElement();\n            if(!(e instanceof TextField)){\n                Core.scene.setKeyboardFocus(null);\n            }\n        }\n\n        Events.fire(Trigger.uiDrawEnd);\n\n        PerfCounter.ui.end();\n    }\n''',
+    '''    @Override\n    public void update(){\n        if(disableUI || Core.scene == null) return;\n\n        try{\n            PerfCounter.ui.begin();\n        }catch(Throwable error){\n            throw new RuntimeException("web-ui-perf-begin", error);\n        }\n\n        try{\n            Events.fire(Trigger.uiDrawBegin);\n        }catch(Throwable error){\n            throw new RuntimeException("web-ui-event-begin", error);\n        }\n\n        try{\n            Core.scene.act();\n        }catch(Throwable error){\n            throw new RuntimeException("web-ui-scene-act", error);\n        }\n\n        try{\n            Core.scene.draw();\n        }catch(Throwable error){\n            throw new RuntimeException("web-ui-scene-draw", error);\n        }\n\n        try{\n            if(Core.input.keyTap(KeyCode.mouseLeft) && Core.scene.hasField()){\n                Element e = Core.scene.getHoverElement();\n                if(!(e instanceof TextField)){\n                    Core.scene.setKeyboardFocus(null);\n                }\n            }\n        }catch(Throwable error){\n            throw new RuntimeException("web-ui-focus", error);\n        }\n\n        try{\n            Events.fire(Trigger.uiDrawEnd);\n        }catch(Throwable error){\n            throw new RuntimeException("web-ui-event-end", error);\n        }\n\n        try{\n            PerfCounter.ui.end();\n        }catch(Throwable error){\n            throw new RuntimeException("web-ui-perf-end", error);\n        }\n    }\n''',
+    "UI.update diagnostic stages",
+)
+ui_path.write_text(ui_text, encoding="utf-8")
+
 # The advanced embedded map asset/mod-content editor pulls hashing, dynamic content
 # patching and image-packing worker executors into every UI.init() through MapInfoDialog.
 # It is not needed to play, create ordinary maps, edit rules/waves/objectives/locales,
@@ -131,6 +146,6 @@ if "StringCharacterIterator" in strings:
 strings_path.write_text(strings, encoding="utf-8")
 
 print(
-    "Applied Web-safe local UI runtime: editor preview sync, planet mesh sync, "
+    "Applied Web-safe local UI runtime: exact UI.update diagnostics, editor preview sync, planet mesh sync, "
     f"anonymous reflection compatibility ({anonymous_replacements}), byte formatter, and single-player settings"
 )
