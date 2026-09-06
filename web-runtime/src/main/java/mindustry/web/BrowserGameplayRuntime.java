@@ -22,7 +22,7 @@ import static mindustry.Vars.*;
  * the browser event loop. Pathfinder, ControlPathfinder and FogControl retain desktop
  * worker threads upstream and are therefore introduced by later Web-specific phases.
  * The stock-equivalent Logic menu path is live on browser frames. A one-shot isolated
- * core game-state tick is also verified without entering a real world; full gameplay
+ * GameState clock tick is also verified without entering a real world; full gameplay
  * remains gated until the remaining dependencies are browser-safe.
  */
 public final class BrowserGameplayRuntime{
@@ -71,8 +71,9 @@ public final class BrowserGameplayRuntime{
 
         // Guard the boundary explicitly: these upstream systems start JVM worker threads
         // and must not be accidentally introduced before their Web overlays are ready.
+        // NetServer/NetClient are also forbidden: this Web/Yandex build is single-player.
         if(pathfinder != null || controlPath != null || fogControl != null || netServer != null || netClient != null){
-            throw new IllegalStateException("Threaded/server gameplay modules entered the Web substrate too early");
+            throw new IllegalStateException("Threaded/server gameplay modules entered the single-player Web substrate too early");
         }
 
         initialized = true;
@@ -102,11 +103,11 @@ public final class BrowserGameplayRuntime{
         }else if(menuUpdateFrames == 3){
             markMenuLoopStable(menuUpdateFrames);
 
-            long smokeUpdateId = logic.updateWebGameCoreSmoke();
+            long smokeUpdateId = logic.updateWebGameStateSmoke();
             if(smokeUpdateId != 1L || !state.isMenu()){
-                throw new IllegalStateException("Browser core game tick smoke did not restore the real menu state");
+                throw new IllegalStateException("Browser GameState tick smoke did not restore the real menu state");
             }
-            markGameCoreTickReady(smokeUpdateId);
+            markGameStateTickReady(smokeUpdateId);
         }
     }
 
@@ -123,6 +124,6 @@ public final class BrowserGameplayRuntime{
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-stable'); document.documentElement.setAttribute('data-mindustry-logic-menu-update-frames', String(frames));")
     private static native void markMenuLoopStable(int frames);
 
-    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-game-core-tick-smoke', 'ready'); document.documentElement.setAttribute('data-mindustry-game-core-tick-update-id', String(updateId));")
-    private static native void markGameCoreTickReady(long updateId);
+    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-game-state-tick-smoke', 'ready'); document.documentElement.setAttribute('data-mindustry-game-state-tick-update-id', String(updateId));")
+    private static native void markGameStateTickReady(long updateId);
 }
