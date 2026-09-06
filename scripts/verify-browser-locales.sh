@@ -76,6 +76,7 @@ run_locale(){
     --require 'data-mindustry-world="ready"' \
     --require 'data-mindustry-logic="constructed"' \
     --require 'data-mindustry-logicvars="ready"' \
+    --require 'data-mindustry-fog-control="constructed-web-single-thread"' \
     --require 'data-mindustry-gameplay-loop="menu-stable"' \
     --require 'data-mindustry-logic-menu-update="ready"' \
     --require 'data-mindustry-logic-menu-update-frames="3"' \
@@ -90,8 +91,8 @@ run_locale(){
     --require 'data-mindustry-navigation="blocked"' > "$dom"
 
   grep -Eq 'data-mindustry-logic-copper-id="[0-9]+"' "$dom"
-  echo "Browser locale $expected: renderer + input + BrowserSaves Control + World/Logic substrate + isolated single-player GameState tick + logic IDs + persistence boundary ready"
-}
+  echo "Browser locale $expected: renderer + input + BrowserSaves Control + World/Logic/FogControl substrate + isolated single-player GameState tick + logic IDs + persistence boundary ready"
+done
 
 run_locale en
 run_locale ru
