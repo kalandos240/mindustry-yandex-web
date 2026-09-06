@@ -60,8 +60,12 @@ for forbidden in ("LinkedBlockingQueue", "Thread.sleep", "new AudioThread", ".in
     if forbidden in text:
         raise SystemExit(f"SoundControl Web patch left forbidden threading marker: {forbidden}")
 
-if "ui.planet.isShown()" in text or "ui.editor.isShown()" in text:
-    raise SystemExit("SoundControl Web patch left menu dialog dereference before full UI init")
+for unguarded in (
+    "            if(ui.planet.isShown()){",
+    "            }else if(ui.editor.isShown()){",
+):
+    if unguarded in text:
+        raise SystemExit("SoundControl Web patch left menu dialog dereference before full UI init")
 
 path.write_text(text, encoding="utf-8")
 print("Applied TeaVM-safe no-thread Mindustry audio path with pre-UI-init menu safety")
