@@ -22,9 +22,11 @@ import static mindustry.Vars.*;
  * on the browser event loop. Worker schedulers are replaced by explicit frame steps,
  * while the underlying fog, flow-field, cluster and A* algorithms remain stock.
  *
- * Before the production module loop starts, Control.init() and UI.init() execute in
- * stock dependency order. This avoids testing UI.update() against a lifecycle state that
- * desktop Mindustry never enters and moves the browser port onto the real menu scene.
+ * Before the production module loop starts, Control.init() executes after the browser
+ * launcher has already completed UI.loadSync(). UI.loadSync() owns the Scene/Tex/Icon/
+ * Styles lifecycle required by UI.update(); the much larger UI.init() dialog/menu graph
+ * remains a separate Web milestone so it cannot make tens of MiB of unrelated dialog
+ * code reachable merely to prove the production client update order.
  *
  * In menu state the client modules execute in Mindustry's stock order:
  * Logic -> Control -> Renderer -> UI. Logic uses the exact browser menu-only extraction
@@ -94,21 +96,15 @@ public final class BrowserGameplayRuntime{
             throw new IllegalStateException("Server gameplay modules entered the single-player Web substrate");
         }
 
-        // Stock asset loading initializes Control before UI because UI declares Control
-        // as a dependency. The browser launcher has already built both graphs explicitly;
-        // now enter the same init lifecycle before any update() call is allowed.
+        // Control is the dependency immediately before UI in the stock client lifecycle.
+        // UI.loadSync() already established Core.scene and the complete render styles in
+        // WebClientLauncher; do not eagerly instantiate the enormous dialog/menu graph here.
         markClientInitPhase("control-init");
         control.init();
         markClientInitPhase("control-init-ready");
 
-        markClientInitPhase("ui-init");
-        ui.init();
-        markClientInitPhase("ui-init-ready");
-
-        if(ui.menuGroup == null || ui.hudGroup == null || ui.menufrag == null
-        || ui.hudfrag == null || ui.loadfrag == null || ui.restart == null
-        || ui.paused == null || ui.settings == null){
-            throw new IllegalStateException("Stock Mindustry UI.init graph is incomplete on Web");
+        if(Core.scene == null || Core.scene.root == null){
+            throw new IllegalStateException("Mindustry UI.loadSync Scene is incomplete before production UI.update");
         }
         markClientInitReady();
 
@@ -236,7 +232,7 @@ public final class BrowserGameplayRuntime{
     @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-client-init-phase', phase);")
     private static native void markClientInitPhase(String phase);
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-client-init', 'ready'); document.documentElement.setAttribute('data-mindustry-control-init', 'ready'); document.documentElement.setAttribute('data-mindustry-ui-init', 'ready');")
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-client-init', 'ready'); document.documentElement.setAttribute('data-mindustry-control-init', 'ready'); document.documentElement.setAttribute('data-mindustry-ui-frame-scene', 'ready');")
     private static native void markClientInitReady();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-live'); document.documentElement.setAttribute('data-mindustry-logic-menu-update', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-menu-update-frames', '1');")
