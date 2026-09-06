@@ -49,13 +49,19 @@ tasks.register("stageWeb", Copy) {
         include "sprites/error.png"
         include "sprites/block_colors.png"
 
-        // Renderer/Shaders are the next stock gameplay milestone. Keep every shader and
-        // the textures queued directly by Shaders.init() inside the release package so
-        // this step never creates a network dependency.
+        // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
+        // shaders/** and its noise/caustics/space textures. Renderer.init() additionally
+        // creates PlanetRenderer/Bloom, EnvRenderers and the cloud texture, so package
+        // every asset that those constructors/loaders resolve before any gameplay starts.
         include "shaders/**"
+        include "bloomshaders/**"
         include "sprites/noise.png"
         include "sprites/caustics.png"
         include "sprites/space.png"
+        include "sprites/clouds.png"
+        include "sprites/rays.png"
+        include "sprites/distortAlpha.png"
+        include "cubemaps/stars/**"
 
         // Stock UI.loadSync() registers content glyphs from this local index.
         // Cursor PNGs are deliberately not staged: WebGraphics makes cursor creation
