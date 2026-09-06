@@ -74,6 +74,9 @@ run_locale(){
     --require 'data-mindustry-control-load="ready"' \
     --require 'data-mindustry-audio="ready"' \
     --require 'data-mindustry-gameplay-runtime="ready"' \
+    --require 'data-mindustry-module-loop="menu-stable"' \
+    --require 'data-mindustry-module-order="logic-control-renderer-ui"' \
+    --require 'data-mindustry-module-loop-frames="3"' \
     --require 'data-mindustry-world="ready"' \
     --require 'data-mindustry-world-load-smoke="ready"' \
     --require 'data-mindustry-world-size="8x8"' \
@@ -97,7 +100,7 @@ run_locale(){
 
   grep -Eq 'data-mindustry-logic-copper-id="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
-  echo "Browser locale $expected: renderer + input + BrowserAudio + BrowserSaves Control + real 8x8 WorldLoadEvent + World/Logic/FogControl/Pathfinder/ControlPathfinder substrate + isolated GameState tick + logic IDs + persistence boundary ready"
+  echo "Browser locale $expected: stock Logic->Control->Renderer->UI menu module loop + BrowserAudio + real 8x8 WorldLoadEvent + browser-single-thread pathfinding + persistence boundary ready"
 }
 
 run_locale en
