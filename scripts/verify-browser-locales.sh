@@ -58,11 +58,12 @@ run_locale(){
   rm -rf "$profile"
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:8081/index.html?lang=$expected" \
+    --url "http://127.0.0.1:8081/index.html?lang=$expected&mindustrySmoke=1" \
     --profile "$profile" \
     --port "$cdp_port" \
     --timeout 30 \
     --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="ci"' \
     --require 'data-mindustry-ui-shell="ready"' \
     --require 'data-mindustry-ui-sync="ready"' \
     --require 'data-mindustry-renderer="constructed"' \
@@ -113,7 +114,7 @@ run_locale(){
   grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$dom"
-  echo "Browser locale $expected: stock input-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + BrowserAudio + real 8x8 WorldLoadEvent + browser-single-thread pathfinding + persistence boundary ready"
+  echo "Browser locale $expected: explicit CI smoke + stock input-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + BrowserAudio + real 8x8 WorldLoadEvent + browser-single-thread pathfinding + persistence boundary ready"
 }
 
 run_mobile(){
@@ -122,11 +123,12 @@ run_mobile(){
   rm -rf "$profile"
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=en" \
+    --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=en&mindustrySmoke=1" \
     --profile "$profile" \
     --port 9228 \
     --timeout 30 \
     --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="ci"' \
     --require 'data-mindustry-ui-shell="ready"' \
     --require 'data-mindustry-ui-sync="ready"' \
     --require 'data-mindustry-renderer-init="ready"' \
@@ -171,7 +173,7 @@ run_mobile(){
   grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$dom"
-  echo "Browser mobile: stock MobileInput-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + real 8x8 WorldLoadEvent ready"
+  echo "Browser mobile: explicit CI smoke + stock MobileInput-owned local UI + 3 consecutive Logic->Control->Renderer->UI playing frames + real 8x8 WorldLoadEvent ready"
 }
 
 run_locale en
