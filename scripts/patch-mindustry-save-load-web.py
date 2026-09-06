@@ -4,9 +4,10 @@ import runpy
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Keep the already proven v13 SaveIO.load overlay intact, then add the one Web-only
-# construction fix required by Arc Json under TeaVM.
+# Keep the proven browser-safe save/load boundary, then retain only the legacy map
+# format versions actually required by the pinned built-in catalog.
 runpy.run_path(str(ROOT / "scripts" / "patch-mindustry-save-load-base-web.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "patch-mindustry-map-save-versions-web.py"), run_name="__main__")
 
 path = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "game" / "MapMarkers.java"
 if not path.is_file():
