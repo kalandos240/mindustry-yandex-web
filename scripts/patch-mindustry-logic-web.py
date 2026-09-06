@@ -46,12 +46,13 @@ for old, new, label in replacements:
 # Calling the complete update() while Web is still menu-only makes TeaVM retain the
 # entire future gameplay branch (AI, waves, fog, entities, etc.) even though none of
 # it can execute yet. Expose the exact menu-relevant prefix/suffix of stock update()
-# as a Web transition method. This is not a replacement for gameplay update(); it is
-# removed from the browser launcher once the remaining gameplay systems are Web-safe.
+# as a Web transition method. Also expose a one-shot core game-state smoke that uses
+# a temporary GameState and only the synchronous stock tick primitives already safe
+# on Web. Neither method replaces the eventual full gameplay update path.
 marker = '''    @Override
     public void update(){
 '''
-menu_method = '''    /** Web transition path: exact stock Logic.update semantics while state is menu. */
+web_methods = '''    /** Web transition path: exact stock Logic.update semantics while state is menu. */
     public void updateWebMenu(){
         if(!state.isMenu()){
             throw new IllegalStateException("updateWebMenu may only run in menu state");
@@ -73,12 +74,50 @@ menu_method = '''    /** Web transition path: exact stock Logic.update semantics
         PerfCounter.stateUpdate.end(PerfCounter.entityUpdate.latestValueNs());
     }
 
+    /**
+     * Web transition smoke for the synchronous core of an unpaused game tick.
+     * Uses a temporary isolated GameState so no menu/game transition events fire and
+     * no test state leaks into the real browser session. Fog, waves, AI and entity
+     * updates are intentionally separate milestones.
+     * @return the temporary state's updateId after exactly one core tick.
+     */
+    public long updateWebGameCoreSmoke(){
+        if(!state.isMenu()){
+            throw new IllegalStateException("updateWebGameCoreSmoke requires the real browser state to remain menu");
+        }
+
+        GameState previous = state;
+        GameState smoke = new GameState();
+        smoke.rules.fog = false;
+        smoke.rules.waves = false;
+        smoke.rules.canGameOver = false;
+        smoke.rules.editor = false;
+
+        state = smoke;
+        try{
+            float delta = Core.graphics.getDeltaTime();
+            state.tick += Float.isNaN(delta) || Float.isInfinite(delta) ? 0f : delta * 60f;
+            state.updateId ++;
+            state.teams.updateTeamStats();
+            Time.update();
+            logicVars.update();
+
+            if(state.updateId != 1L || state.tick < 0d){
+                throw new IllegalStateException("Web core game tick smoke produced invalid state");
+            }
+            return state.updateId;
+        }finally{
+            state = previous;
+            logicVars.update();
+        }
+    }
+
     @Override
     public void update(){
 '''
 if marker not in text:
-    raise SystemExit("Logic Web menu-path insertion no longer matches pinned upstream")
-text = text.replace(marker, menu_method, 1)
+    raise SystemExit("Logic Web transition-path insertion no longer matches pinned upstream")
+text = text.replace(marker, web_methods, 1)
 
 PATH.write_text(text, encoding="utf-8")
-print("Applied Web-safe null server boundary and isolated stock Logic menu update path")
+print("Applied Web-safe Logic menu path and controlled core game tick smoke")
