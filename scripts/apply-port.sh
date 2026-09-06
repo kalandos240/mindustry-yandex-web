@@ -56,6 +56,10 @@ PY
 # sound call sites safe/no-op until the dedicated browser audio backend is wired;
 # this prevents unit/entity loading from pulling desktop threading/JNI into TeaVM.
 python3 "$ROOT_DIR/scripts/patch-arc-audio-web.py"
+# TeaVM performs reachability before runtime constructor arguments can prune every
+# disabled-audio branch. Replace the JNI boundary itself with inert Java stubs so
+# Control/SoundControl/Music may remain reachable without any native SoLoud method.
+python3 "$ROOT_DIR/scripts/patch-arc-soloud-web.py"
 python3 "$ROOT_DIR/scripts/patch-browser-gl-buffer-diagnostics.py"
 
 # Arc's desktop unsafe buffers allocate/free native memory through JNI. TeaVM owns
