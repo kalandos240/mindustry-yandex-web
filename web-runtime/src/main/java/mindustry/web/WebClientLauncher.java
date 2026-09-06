@@ -96,8 +96,8 @@ public final class WebClientLauncher extends ClientLauncher{
         BrowserSaveRuntime.init();
 
         // Activate the real Mindustry renderer substrate after the save substrate is
-        // proven. Renderer.init() is deferred until Bootstrap has loaded the real atlas
-        // and completed the content load lifecycle.
+        // proven. Renderer.init() is deferred until the post-bootstrap UI callback, when
+        // Bootstrap has loaded the real atlas and completed the content load lifecycle.
         renderer = new Renderer();
         if(Core.camera == null || renderer.getScale() <= 0f){
             throw new IllegalStateException("Stock Mindustry Renderer failed Web camera initialization");
@@ -168,6 +168,10 @@ public final class WebClientLauncher extends ClientLauncher{
         if(uiShell == null || Core.atlas == null){
             throw new IllegalStateException("Mindustry UI sync requested before UI shell/atlas initialization");
         }
+
+        markUiSyncPhase("renderer-init");
+        initRendererRuntime();
+        markUiSyncPhase("renderer-init-ready");
 
         markUiSyncPhase("ui-load-sync");
         uiShell.loadSync();
