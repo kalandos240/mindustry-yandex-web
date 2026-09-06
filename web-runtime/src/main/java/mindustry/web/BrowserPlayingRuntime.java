@@ -113,8 +113,13 @@ public final class BrowserPlayingRuntime{
         control.update();
         markPhase("control-ready");
 
+        // Temporary renderer phase hook narrows the first world-render failure without
+        // duplicating Renderer.update(). The hook is removed with the Control preflight
+        // once this one-shot playing gate is fully green.
+        renderer.webPhaseHook = BrowserPlayingRuntime::markPhase;
         markPhase("renderer");
         renderer.update();
+        renderer.webPhaseHook = null;
         markPhase("renderer-ready");
 
         markPhase("ui");
