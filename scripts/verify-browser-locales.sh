@@ -85,11 +85,12 @@ run_locale(){
     --require 'data-mindustry-links="none"' \
     --require "data-mindustry-locale=\"$expected\"" \
     --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-network-mode="singleplayer-only"' \
     --require 'data-mindustry-storage="ready"' \
     --require 'data-mindustry-navigation="blocked"' > "$dom"
 
   grep -Eq 'data-mindustry-logic-copper-id="[0-9]+"' "$dom"
-  echo "Browser locale $expected: renderer + input + BrowserSaves Control + World/Logic substrate + isolated Logic menu loop + one core game tick smoke + logic IDs + persistence boundary ready"
+  echo "Browser locale $expected: renderer + input + BrowserSaves Control + World/Logic substrate + single-player core tick + logic IDs + persistence boundary ready"
 }
 
 run_locale en
