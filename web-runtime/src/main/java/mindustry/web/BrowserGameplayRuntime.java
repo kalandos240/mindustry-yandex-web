@@ -138,17 +138,28 @@ public final class BrowserGameplayRuntime{
 
     /**
      * Execute the client-side module order used by ApplicationCore on desktop, excluding
-     * the permanently forbidden NetServer/NetClient modules. The Logic menu method is an
-     * exact extraction of stock Logic.update()'s menu-relevant path; the remaining three
-     * modules execute their production update() implementations directly.
+     * the permanently forbidden NetServer/NetClient modules. The phase marker is set
+     * before and after every production module call so a browser-frame failure identifies
+     * the exact boundary even when TeaVM only surfaces a bare NullPointerException.
      */
     private static void runMenuModuleFrame(){
+        markModulePhase("logic");
         logic.updateWebMenu();
-        control.update();
-        renderer.update();
-        ui.update();
-        moduleLoopFrames++;
+        markModulePhase("logic-ready");
 
+        markModulePhase("control");
+        control.update();
+        markModulePhase("control-ready");
+
+        markModulePhase("renderer");
+        renderer.update();
+        markModulePhase("renderer-ready");
+
+        markModulePhase("ui");
+        ui.update();
+        markModulePhase("ui-ready");
+
+        moduleLoopFrames++;
         if(moduleLoopFrames == 1){
             markModuleLoopLive();
         }
@@ -197,7 +208,7 @@ public final class BrowserGameplayRuntime{
         return initialized;
     }
 
-    @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-fog-control', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-control-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame'); document.documentElement.setAttribute('data-mindustry-module-loop', 'waiting');")
+    @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-fog-control', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-control-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame'); document.documentElement.setAttribute('data-mindustry-module-loop', 'waiting'); document.documentElement.setAttribute('data-mindustry-module-phase', 'waiting');")
     private static native void markReady(int logicId);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-live'); document.documentElement.setAttribute('data-mindustry-logic-menu-update', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-menu-update-frames', '1');")
@@ -208,6 +219,9 @@ public final class BrowserGameplayRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-module-loop', 'menu-live'); document.documentElement.setAttribute('data-mindustry-module-order', 'logic-control-renderer-ui');")
     private static native void markModuleLoopLive();
+
+    @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-module-phase', phase);")
+    private static native void markModulePhase(String phase);
 
     @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-game-state-tick-smoke', 'ready'); document.documentElement.setAttribute('data-mindustry-game-state-tick-update-id', String(updateId));")
     private static native void markGameStateTickReady(long updateId);
