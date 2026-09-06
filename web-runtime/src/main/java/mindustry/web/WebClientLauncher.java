@@ -113,7 +113,7 @@ public final class WebClientLauncher extends ClientLauncher{
             try{
                 loadUiSync();
             }catch(Throwable error){
-                BrowserCanvas.setStatus("error", "Mindustry Web UI/input sync failed: " + error.getClass().getName() + ": " + String.valueOf(error.getMessage()));
+                BrowserCanvas.setStatus("error", "Mindustry Web UI/input sync failed at " + uiSyncPhase() + ": " + error.getClass().getName() + ": " + String.valueOf(error.getMessage()));
                 throw error;
             }
         });
@@ -125,7 +125,9 @@ public final class WebClientLauncher extends ClientLauncher{
             throw new IllegalStateException("Mindustry UI sync requested before UI shell/atlas initialization");
         }
 
+        markUiSyncPhase("ui-load-sync");
         uiShell.loadSync();
+        markUiSyncPhase("ui-load-sync-ready");
 
         if(Core.scene == null
         || Tex.whiteui == null
@@ -136,10 +138,13 @@ public final class WebClientLauncher extends ClientLauncher{
             throw new IllegalStateException("Mindustry Scene/Tex/Icon/Styles/content-icon initialization is incomplete on Web");
         }
 
+        markUiSyncPhase("stock-input");
         initializeStockInputRuntime();
+        markUiSyncPhase("stock-input-ready");
 
         uiSyncLoaded = true;
         markUiSyncReady();
+        markUiSyncPhase("ready");
     }
 
     /**
@@ -151,10 +156,12 @@ public final class WebClientLauncher extends ClientLauncher{
         if(inputRuntimeLoaded) return;
         if(Core.scene == null) throw new IllegalStateException("Mindustry input runtime requires Scene initialization");
 
+        markUiSyncPhase("stock-input-groups");
         if(Groups.all == null){
             Groups.init();
         }
 
+        markUiSyncPhase("stock-input-player");
         if(player == null){
             player = Player.create();
             player.name = Core.settings.getString("name", "");
@@ -162,7 +169,9 @@ public final class WebClientLauncher extends ClientLauncher{
             player.color.set(Core.settings.getInt("color-0", playerColors[8].rgba()));
         }
 
+        markUiSyncPhase("stock-input-construct");
         gameplayInput = mobile ? new MobileInput() : new DesktopInput();
+        markUiSyncPhase("stock-input-add");
         gameplayInput.add();
 
         if(mobile && !(gameplayInput instanceof MobileInput)){
@@ -198,6 +207,12 @@ public final class WebClientLauncher extends ClientLauncher{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-ui-sync', 'ready');")
     private static native void markUiSyncReady();
+
+    @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-ui-sync-phase', phase);")
+    private static native void markUiSyncPhase(String phase);
+
+    @JSBody(script = "return document.documentElement.getAttribute('data-mindustry-ui-sync-phase') || 'unknown';")
+    private static native String uiSyncPhase();
 
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-device-mode', mode);")
     private static native void markMindustryDeviceMode(String mode);
