@@ -133,6 +133,15 @@ public final class BrowserApplication extends WebApplicationBase{
         if(paused == lastPlatformPaused) return;
         lastPlatformPaused = paused;
         BrowserYandex.markPauseState(paused ? "paused" : "running");
+
+        // Yandex game_api_pause/resume is an application lifecycle boundary, not only a
+        // scheduler gate. Propagate it through Arc so BrowserAudio and every other
+        // ApplicationListener can suspend/resume their platform resources correctly.
+        if(paused){
+            pause();
+        }else{
+            resume();
+        }
     }
 
     private void syncGameplayMarker(){
