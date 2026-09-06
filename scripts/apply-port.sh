@@ -56,6 +56,11 @@ PY
 # sound call sites safe/no-op until the dedicated browser audio backend is wired;
 # this prevents unit/entity loading from pulling desktop threading/JNI into TeaVM.
 python3 "$ROOT_DIR/scripts/patch-arc-audio-web.py"
+# TeaVM performs reachability before runtime constructor arguments can prune every
+# disabled-audio branch. Replace the JNI boundary itself with inert Java stubs so
+# Control/SoundControl/Music may remain reachable without any native SoLoud method.
+python3 "$ROOT_DIR/scripts/patch-arc-soloud-web.py"
+python3 "$ROOT_DIR/scripts/patch-browser-gl-buffer-diagnostics.py"
 
 # Arc's desktop unsafe buffers allocate/free native memory through JNI. TeaVM owns
 # JavaScript memory itself, so direct buffers can use the class-library allocator
@@ -154,7 +159,8 @@ path.write_text(text)
 PY
 
 # Browser builds must never instantiate ArcNetProvider: raw TCP/UDP/NIO sockets are
-# impossible in browser JavaScript. WebClientLauncher supplies WebNetProvider.
+# impossible in browser JavaScript. WebClientLauncher supplies the permanent
+# single-player WebNetProvider instead.
 python3 - "$MINDUSTRY_DIR/core/src/mindustry/core/Platform.java" <<'PY'
 from pathlib import Path
 import sys
@@ -168,9 +174,9 @@ if old not in text:
 path.write_text(text.replace(old, new, 1))
 PY
 
-# Net's ping helper is also desktop-threaded. The Web provider owns the asynchronous
-# browser transport boundary, so call it directly and remove the JVM executor/LZ4
-# error-type reachability from the common Net class.
+# Net's ping helper is desktop-threaded. The Web provider is intentionally
+# single-player, so call the provider directly and keep JVM executor/LZ4 error-type
+# reachability out of the common Net facade.
 python3 - "$MINDUSTRY_DIR/core/src/mindustry/net/Net.java" <<'PY'
 from pathlib import Path
 import sys
@@ -195,12 +201,43 @@ PY
 mkdir -p "$MINDUSTRY_DIR/core/src/mindustry/net"
 cp "$MINDUSTRY_CORE_WEB_SOURCE_DIR/mindustry/net/Streamable.java" "$MINDUSTRY_DIR/core/src/mindustry/net/Streamable.java"
 
-# The next save milestone reads stock v13 saves back through SaveIO.load(). Keep
-# browser-specific load compatibility isolated from the writer overlay so each PR
-# remains independently reviewable.
+# The current main branch reads stock v13 saves back through SaveIO.load(). Keep
+# browser-specific load compatibility isolated from the writer overlay.
 python3 "$ROOT_DIR/scripts/patch-mindustry-save-load-web.py"
+
+# SaveSlot itself remains stock, including save metadata and current-v13 SaveIO.
+# Its preview PNG is deferred through the browser event loop instead of the JVM
+# main ExecutorService, preserving previews without pulling unsupported threads.
+python3 "$ROOT_DIR/scripts/patch-mindustry-save-preview-web.py"
+
+# Stock mobile/desktop input is part of the Web reachability graph now. Patch only
+# the browser-incompatible lock/zoom, formation executor and anonymous config-class
+# reflection paths while preserving stock gameplay semantics.
+python3 "$ROOT_DIR/scripts/patch-mindustry-input-web.py" \
+  "$MINDUSTRY_DIR/core/src/mindustry/input/InputHandler.java" \
+  "$MINDUSTRY_DIR/core/src/mindustry/input/MobileInput.java"
+
+# Logic's sector captured/lost events only need to update campaign state. The stock
+# Serpulo visual mesh refresh uses ExecutorService, which is unavailable in TeaVM.
+python3 "$ROOT_DIR/scripts/patch-mindustry-planet-events-web.py"
+
+# The browser has no NetServer/NetClient gameplay role. Keep stock Logic server
+# bookkeeping null-safe and expose the incremental single-thread Web transition paths.
+python3 "$ROOT_DIR/scripts/patch-mindustry-logic-web.py"
+
+# Fog visibility/exploration keeps its stock data, save chunk, rasterizer and
+# double-buffer logic, but executes on the browser frame instead of JVM daemon threads.
+python3 "$ROOT_DIR/scripts/patch-mindustry-fog-web.py"
+
+# Pathfinder keeps its stock packed-tile, flow-field, refresh and preload algorithms.
+# Only its daemon thread/sleep scheduler is replaced with an explicit browser-frame step.
+python3 "$ROOT_DIR/scripts/patch-mindustry-pathfinder-web.py"
+
+# The Web/Yandex build is intentionally single-player. Remove Join from both menu
+# layouts, assign local PlayEvent players to rules.defaultTeam, and disable PvP auto-host.
+python3 "$ROOT_DIR/scripts/patch-mindustry-singleplayer-web.py"
 
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
-echo "Applied Web single-thread asset and allocation-stable SpriteBatch VBO patches"
-echo "Applied Web-only Mindustry startup/network/stream patches"
+echo "Applied Web single-thread asset, SpriteBatch, FogControl and Pathfinder scheduler patches"
+echo "Applied Web-only Mindustry startup/single-player/save/input/gameplay patches"

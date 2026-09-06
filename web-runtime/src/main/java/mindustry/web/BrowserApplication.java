@@ -23,6 +23,7 @@ public final class BrowserApplication extends WebApplicationBase{
     private final WebGraphics graphics;
     private final WebInput input;
     private final BrowserGL20 gl20;
+    private final boolean mobileBrowser;
     private String clipboard = "";
     private boolean platformPaused;
     private boolean lastPlatformPaused;
@@ -31,6 +32,9 @@ public final class BrowserApplication extends WebApplicationBase{
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
         super(listener, config);
+
+        mobileBrowser = detectMobileBrowser();
+        markBrowserInputMode(mobileBrowser ? "mobile" : "desktop");
 
         if(!BrowserCanvas.initialize(config.canvasId, config.alpha, config.stencil, config.antialiasing,
         config.premultipliedAlpha, config.preserveDrawingBuffer)){
@@ -49,11 +53,6 @@ public final class BrowserApplication extends WebApplicationBase{
         Core.input = input;
         BrowserInputBridge.install(config.canvasId, input);
 
-        // Portal pause/resume events are external to requestAnimationFrame. Observe them
-        // directly so a resume can be accepted even while a browser throttles animation
-        // frames for an ad, background tab or other platform interruption. A sampled
-        // fallback remains in onAnimationFrame in case an event was emitted before this
-        // application object was installed.
         platformPaused = BrowserYandex.paused();
         lastPlatformPaused = platformPaused;
         if(platformPaused) BrowserYandex.markPauseState("paused");
@@ -63,14 +62,15 @@ public final class BrowserApplication extends WebApplicationBase{
         requestAnimationFrame(frameCallback);
     }
 
+    @Override
+    public boolean isMobile(){
+        return mobileBrowser;
+    }
+
     private void onAnimationFrame(double timestamp){
         if(!isRunning()) return;
 
         int callbackIndex = ++browserFrameCallbacks;
-        // Frame-stage DOM attributes were added as startup diagnostics. Updating two
-        // attributes six times at 60 FPS caused hundreds of DOM mutations per second.
-        // Keep the same diagnostics for the first three startup frames only; errors are
-        // still reported through BrowserCanvas.setStatus below.
         boolean traceStartup = callbackIndex <= 3;
         String phase = "entry";
         try{
@@ -90,9 +90,6 @@ public final class BrowserApplication extends WebApplicationBase{
             if(sampledPause != platformPaused) setPlatformPaused(sampledPause);
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
-            // game_api_pause is sent for ads, tab/background changes and other portal
-            // interruptions. Keep the scheduler alive, but do not advance Mindustry
-            // simulation/render callbacks while the platform is paused.
             phase = "application-frame";
             if(!platformPaused){
                 frame();
@@ -108,10 +105,27 @@ public final class BrowserApplication extends WebApplicationBase{
             requestAnimationFrame(frameCallback);
             if(traceStartup) markFrameStage("scheduled", callbackIndex);
         }catch(Throwable error){
-            BrowserCanvas.setStatus("error", "Mindustry Web frame loop failed at " + phase + " #" + callbackIndex + ": "
-                + error.getClass().getName() + ": " + String.valueOf(error.getMessage()));
+            BrowserCanvas.setStatus("error", "Mindustry Web frame loop failed at " + phase + " #" + callbackIndex + ": " + describe(error));
             throw error;
         }
+    }
+
+    private static String describe(Throwable error){
+        StringBuilder out = new StringBuilder();
+        Throwable current = error;
+        int depth = 0;
+        while(current != null && depth++ < 4){
+            if(out.length() > 0) out.append(" <- ");
+            out.append(current.getClass().getName()).append(": ").append(String.valueOf(current.getMessage()));
+            StackTraceElement[] stack = current.getStackTrace();
+            int frames = Math.min(stack == null ? 0 : stack.length, 10);
+            for(int i = 0; i < frames; i++){
+                out.append(" @ ").append(stack[i].getClassName()).append('.').append(stack[i].getMethodName())
+                    .append(':').append(stack[i].getLineNumber());
+            }
+            current = current.getCause();
+        }
+        return out.toString();
     }
 
     private void setPlatformPaused(boolean paused){
@@ -156,9 +170,6 @@ public final class BrowserApplication extends WebApplicationBase{
 
     @Override
     public boolean openURI(String uri){
-        // Yandex Games must not expose navigation to the upstream project's website,
-        // GitHub, Discord, stores or any other external resource. Keep this blocked at
-        // the platform boundary so future upstream UI additions cannot re-enable it.
         markExternalNavigationBlocked();
         return false;
     }
@@ -169,6 +180,20 @@ public final class BrowserApplication extends WebApplicationBase{
         BrowserYandex.gameplayStop();
         BrowserCanvas.setStatus("stopped", "Mindustry Web runtime stopped");
     }
+
+    @JSBody(script = """
+        const forced = new URLSearchParams(location.search).get('mindustryMobile');
+        if(forced === '1') return true;
+        if(forced === '0') return false;
+        const points = Number(navigator.maxTouchPoints || 0);
+        const coarse = !!(globalThis.matchMedia && matchMedia('(pointer: coarse)').matches);
+        const noHover = !!(globalThis.matchMedia && matchMedia('(hover: none)').matches);
+        return points > 0 && (coarse || noHover);
+        """)
+    private static native boolean detectMobileBrowser();
+
+    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-input-mode', mode);")
+    private static native void markBrowserInputMode(String mode);
 
     @JSBody(params = {"callback"}, script = "window.requestAnimationFrame(callback);")
     private static native void requestAnimationFrame(FrameCallback callback);

@@ -68,6 +68,20 @@ public class WebInput extends Input{
         }
     }
 
+    /**
+     * Release every pointer still considered pressed by Arc. Browsers normally emit
+     * pointercancel when a system gesture takes ownership, but focus loss/navigation can
+     * happen without a matching pointerup. Leaving pressed[] set would make isTouched()
+     * remain true forever after returning to the game.
+     */
+    public void releaseAllPointers(){
+        for(int pointer = 0; pointer < maxPointers; pointer++){
+            if(pressed[pointer] <= 0) continue;
+            pressed[pointer] = 0;
+            queue.touchUp(x[pointer], y[pointer], pointer, KeyCode.mouseLeft);
+        }
+    }
+
     public void scroll(float amountX, float amountY){
         queue.scrolled(amountX, amountY);
     }

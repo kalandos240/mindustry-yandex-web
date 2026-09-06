@@ -1,0 +1,141 @@
+package mindustry.web;
+
+import arc.*;
+import arc.struct.*;
+import mindustry.*;
+import mindustry.ai.*;
+import mindustry.content.*;
+import mindustry.core.*;
+import mindustry.entities.*;
+import mindustry.game.*;
+import mindustry.logic.*;
+import mindustry.maps.Map;
+import mindustry.world.*;
+import org.teavm.jso.JSBody;
+
+import static mindustry.Vars.*;
+
+/**
+ * First browser-safe gameplay substrate.
+ *
+ * This deliberately constructs only Mindustry systems whose setup is synchronous on
+ * the browser event loop. FogControl and Pathfinder are constructed after their Web
+ * overlays remove JVM worker schedulers while preserving the stock fog/flow-field
+ * algorithms and event registrations. Their gameplay update paths remain idle until a
+ * real world is entered. ControlPathfinder is still a later browser-scheduler phase.
+ * The stock-equivalent Logic menu path is live on browser frames. A one-shot isolated
+ * GameState clock tick is also verified without entering a real world; full gameplay
+ * remains gated until the remaining dependencies are browser-safe.
+ */
+public final class BrowserGameplayRuntime{
+    private static boolean initialized;
+    private static int menuUpdateFrames;
+
+    private BrowserGameplayRuntime(){}
+
+    public static void init(){
+        if(initialized) return;
+        if(content == null || state == null || control == null || renderer == null || ui == null){
+            throw new IllegalStateException("Browser gameplay runtime requires content/state/control/renderer/UI");
+        }
+
+        if(world == null) world = new World();
+        if(waves == null) waves = new Waves();
+        if(collisions == null) collisions = new EntityCollisions();
+        if(universe == null) universe = new Universe();
+        if(spawner == null) spawner = new WaveSpawner();
+        if(indexer == null) indexer = new BlockIndexer();
+
+        // Vars.init() normally supplies these two sentinels. The browser launcher uses
+        // a narrower initialization path, so establish the same stock values explicitly.
+        if(emptyMap == null) emptyMap = new Map(new StringMap());
+        if(emptyTile == null) emptyTile = new Tile(Short.MAX_VALUE - 20, Short.MAX_VALUE - 20);
+
+        if(logicVars == null){
+            logicVars = new GlobalVars();
+            logicVars.init();
+        }
+
+        // This proves logicids.dat is packaged and parsed instead of silently running
+        // with empty processor lookup tables.
+        int copperLogicId = logicVars.lookupLogicId(Items.copper);
+        if(copperLogicId < 0 || logicVars.lookupContent(mindustry.ctype.ContentType.item, copperLogicId) != Items.copper){
+            throw new IllegalStateException("Mindustry logicids.dat mapping failed browser initialization");
+        }
+
+        if(logic == null) logic = new Logic();
+
+        // FogControl's stock constructor registers Reset/WorldLoad/tile/unit events and
+        // the static-fog-data SaveVersion chunk. The Web source overlay removes only its
+        // JVM worker scheduler, so construction is safe before a world exists. Do not call
+        // update() here: real fog processing begins only with a real playing world.
+        if(fogControl == null) fogControl = new FogControl();
+
+        // Pathfinder's constructor registers the stock WorldLoad/Reset/TileChange refresh
+        // graph and flow-field preload path. Its Web overlay changes only the daemon-thread
+        // scheduler into updateWeb(); no pathfinding step runs while the game is in menu.
+        if(pathfinder == null) pathfinder = new Pathfinder();
+
+        if(world == null || waves == null || collisions == null || universe == null
+        || spawner == null || indexer == null || logicVars == null || logic == null
+        || fogControl == null || pathfinder == null || emptyMap == null || emptyTile == null){
+            throw new IllegalStateException("Mindustry single-thread gameplay substrate is incomplete on Web");
+        }
+
+        // ControlPathfinder is the remaining path worker boundary. NetServer/NetClient are
+        // forbidden permanently: this Web/Yandex build is single-player only.
+        if(controlPath != null || netServer != null || netClient != null){
+            throw new IllegalStateException("Threaded/server gameplay modules entered the single-player Web substrate too early");
+        }
+
+        initialized = true;
+        markReady(copperLogicId);
+
+        // BrowserApplication runs posted tasks after the current listener pass, so this
+        // listener starts on the next requestAnimationFrame without modifying the active
+        // listener iteration. It executes the exact menu-relevant stock Logic path while
+        // the full gameplay branch remains intentionally unreachable until its dependencies
+        // have browser-safe implementations.
+        Core.app.addListener(new ApplicationListener(){
+            @Override
+            public void update(){
+                updateFrame();
+            }
+        });
+    }
+
+    private static void updateFrame(){
+        if(!initialized || logic == null || state == null || !state.isMenu()) return;
+
+        logic.updateWebMenu();
+        menuUpdateFrames++;
+
+        if(menuUpdateFrames == 1){
+            markMenuLoopReady();
+        }else if(menuUpdateFrames == 3){
+            markMenuLoopStable(menuUpdateFrames);
+
+            long smokeUpdateId = logic.updateWebGameStateSmoke();
+            if(smokeUpdateId != 1L || !state.isMenu()){
+                throw new IllegalStateException("Browser GameState tick smoke did not restore the real menu state");
+            }
+            markGameStateTickReady(smokeUpdateId);
+        }
+    }
+
+    public static boolean initialized(){
+        return initialized;
+    }
+
+    @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-fog-control', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame');")
+    private static native void markReady(int logicId);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-live'); document.documentElement.setAttribute('data-mindustry-logic-menu-update', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-menu-update-frames', '1');")
+    private static native void markMenuLoopReady();
+
+    @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'menu-stable'); document.documentElement.setAttribute('data-mindustry-logic-menu-update-frames', String(frames));")
+    private static native void markMenuLoopStable(int frames);
+
+    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-game-state-tick-smoke', 'ready'); document.documentElement.setAttribute('data-mindustry-game-state-tick-update-id', String(updateId));")
+    private static native void markGameStateTickReady(long updateId);
+}

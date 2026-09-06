@@ -199,7 +199,7 @@ jobs:
       - name: Execute Mindustry core, content, UI, storage, local-only network, input and settings in headless Chrome
         run: |
           command -v google-chrome
-          rm -rf /tmp/mindustry-web-main-profile
+          rm -rf /tmp/mindustry-web-main-profile /tmp/mindustry-web-mobile-profile
           cd web-runtime/build/web
           python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/mindustry-web-http.log 2>&1 &
           server_pid=$!
@@ -220,6 +220,7 @@ jobs:
           cat /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-gl="webgl(1|2)"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-input-mode="desktop"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-navigation="blocked"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-links="none"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-font="ready"' /tmp/mindustry-web-dom.html
@@ -235,6 +236,20 @@ jobs:
           grep -q 'sprite-frame@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'framebuffer-readback@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'settings@localStorage' /tmp/mindustry-web-dom.html
+
+          # Arc reports ApplicationType.web in every browser. This deterministic override
+          # verifies that BrowserApplication.isMobile() can still put Mindustry into its
+          # native mobile/touch UI path without pretending to be Android or iOS.
+          python3 "$GITHUB_WORKSPACE/scripts/chrome-wait-dom.py" \
+            --url 'http://127.0.0.1:8080/index.html?mindustryMobile=1' \
+            --profile /tmp/mindustry-web-mobile-profile \
+            --port 9225 \
+            --timeout 35 \
+            --require 'data-mindustry-web="ready"' \
+            --require 'data-mindustry-input-mode="mobile"' \
+            --require 'data-mindustry-network="local-only"' > /tmp/mindustry-web-mobile-dom.html
+          grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-mobile-dom.html
+          grep -q 'data-mindustry-input-mode="mobile"' /tmp/mindustry-web-mobile-dom.html
 
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh

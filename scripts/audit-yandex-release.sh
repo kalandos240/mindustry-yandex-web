@@ -17,6 +17,27 @@ fail(){
 [ -s "$PLATFORM" ] || fail "yandex-platform.js is missing"
 [ -s "$WEB_DIR/mindustry.js" ] || fail "mindustry.js is missing"
 [ -s "$WEB_DIR/assets-manifest.js" ] || fail "assets-manifest.js is missing"
+[ -s "$WEB_DIR/assets/logicids.dat" ] || fail "processor logic ID mapping is missing"
+
+# Stock Renderer must remain completely local. Shaders.init(), Content.load(),
+# Renderer.init(), PlanetRenderer/Bloom and EnvRenderers all execute in the browser
+# gameplay path and may queue textures before the second AssetManager drain.
+[ -s "$WEB_DIR/assets/shaders/default.vert" ] || fail "renderer shader default.vert missing"
+[ -s "$WEB_DIR/assets/shaders/screenspace.vert" ] || fail "renderer shader screenspace.vert missing"
+[ -s "$WEB_DIR/assets/shaders/blockbuild.frag" ] || fail "renderer shader blockbuild.frag missing"
+[ -s "$WEB_DIR/assets/bloomshaders/screenspace.vert" ] || fail "renderer bloom screenspace shader missing"
+[ -s "$WEB_DIR/assets/bloomshaders/bloom.frag" ] || fail "renderer bloom fragment shader missing"
+[ -s "$WEB_DIR/assets/sprites/noise.png" ] || fail "renderer noise texture missing"
+[ -s "$WEB_DIR/assets/sprites/noiseAlpha.png" ] || fail "weather noiseAlpha texture missing"
+[ -s "$WEB_DIR/assets/sprites/fog.png" ] || fail "weather fog texture missing"
+[ -s "$WEB_DIR/assets/sprites/caustics.png" ] || fail "renderer caustics texture missing"
+[ -s "$WEB_DIR/assets/sprites/space.png" ] || fail "renderer space texture missing"
+[ -s "$WEB_DIR/assets/sprites/clouds.png" ] || fail "renderer clouds texture missing"
+[ -s "$WEB_DIR/assets/sprites/rays.png" ] || fail "renderer rays texture missing"
+[ -s "$WEB_DIR/assets/sprites/distortAlpha.png" ] || fail "renderer distortAlpha texture missing"
+for face in right left top bottom front back; do
+  [ -s "$WEB_DIR/assets/cubemaps/stars/$face.png" ] || fail "renderer star cubemap face missing: $face.png"
+done
 
 bytes="$(du -sb "$WEB_DIR" | awk '{print $1}')"
 [ "$bytes" -le "$MAX_BYTES" ] || fail "unpacked package is $bytes bytes; limit is $MAX_BYTES"
