@@ -94,7 +94,7 @@ new_helper = '''    /** Freeze the real local simulation while keeping the canva
         if(!active || current == null || !state.isPlaying() || state.gameOver || state.rules.pauseDisabled) return;
         pauseUpdateId = state.updateId;
         pausedFrames = 0;
-        state.set(GameState.State.paused);
+        state.set(mindustry.core.GameState.State.paused);
         markPaused(pauseUpdateId);
     }
 
@@ -105,7 +105,7 @@ new_helper = '''    /** Freeze the real local simulation while keeping the canva
         if(pauseUpdateId != 0L && frozenUpdateId != pauseUpdateId){
             throw new IllegalStateException("Browser local pause advanced the gameplay update clock");
         }
-        state.set(GameState.State.playing);
+        state.set(mindustry.core.GameState.State.playing);
         markResumed(frozenUpdateId);
     }
 
