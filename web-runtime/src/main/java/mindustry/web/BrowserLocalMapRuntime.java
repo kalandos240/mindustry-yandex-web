@@ -135,11 +135,29 @@ public final class BrowserLocalMapRuntime{
         Rules rules = map.applyRules(Gamemode.survival);
         stageCoreRules(rules);
 
+        // World.loadMap() intentionally converts any SaveIO failure into the single
+        // invalidMap flag for desktop UI. That is too opaque for the browser port: a
+        // legacy .msav deserialization failure and a genuine no-core map otherwise look
+        // identical in CI. Run the same stock FilterContext/SaveIO boundary directly,
+        // preserve filters and SaveLoadEvent semantics, then apply the equivalent
+        // single-player core validation with an explicit diagnostic marker.
         markPhase("world-load");
-        world.loadMap(map, rules);
-        if(world.isInvalidMap()){
-            markFailed(slug, "invalid-map");
-            return;
+        try{
+            SaveIO.load(map.file, world.new FilterContext(map));
+        }catch(Throwable error){
+            String reason = failureReason(error);
+            markLoadDiagnostic(slug, "save-exception", reason, world.width(), world.height(), 0);
+            markFailed(slug, reason);
+            throw new IllegalStateException("Failed to load packaged browser map " + slug + ": " + reason, error);
+        }
+        state.map = map;
+
+        int defaultCores = state.teams.cores(rules.defaultTeam).size;
+        markLoadDiagnostic(slug, "save-loaded", rules.defaultTeam.name, world.width(), world.height(), defaultCores);
+        if(defaultCores == 0){
+            String reason = "no-default-core:" + rules.defaultTeam.name;
+            markFailed(slug, reason);
+            throw new IllegalStateException("Packaged browser map has no core for default team after SaveIO.load: " + slug + " / " + rules.defaultTeam.name);
         }
 
         // Match Control.playMap(): retain content fields decoded from the real map file,
@@ -257,6 +275,16 @@ public final class BrowserLocalMapRuntime{
         return map.file.nameWithoutExtension();
     }
 
+    private static String failureReason(Throwable error){
+        Throwable root = error;
+        int depth = 0;
+        while(root.getCause() != null && root.getCause() != root && depth++ < 8){
+            root = root.getCause();
+        }
+        String message = root.getMessage();
+        return root.getClass().getName() + (message == null || message.isEmpty() ? "" : ":" + message);
+    }
+
     /**
      * Keep only gameplay branches already proven on TeaVM. This is an explicit staged
      * porting gate, not a replacement rule set; waves/AI/weather are enabled in later
@@ -291,6 +319,9 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-phase', phase);")
     private static native void markPhase(String phase);
+
+    @JSBody(params = {"slug", "status", "detail", "width", "height", "cores"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-load-status', status); document.documentElement.setAttribute('data-mindustry-local-map-load-detail', detail); document.documentElement.setAttribute('data-mindustry-local-map-load-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-load-cores', String(cores)); document.documentElement.setAttribute('data-mindustry-local-map-slug', slug);")
+    private static native void markLoadDiagnostic(String slug, String status, String detail, int width, int height, int cores);
 
     @JSBody(params = {"slug", "name", "width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-state', 'playing'); document.documentElement.setAttribute('data-mindustry-local-map-slug', slug); document.documentElement.setAttribute('data-mindustry-local-map-name', name); document.documentElement.setAttribute('data-mindustry-local-map-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-player', 'added'); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'starting');")
     private static native void markStarted(String slug, String name, int width, int height);
