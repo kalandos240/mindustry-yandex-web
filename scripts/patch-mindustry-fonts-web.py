@@ -55,3 +55,4 @@ subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-map-
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-gameover-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-gameover.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-gameover-verifier.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-pause.py")], check=True)
