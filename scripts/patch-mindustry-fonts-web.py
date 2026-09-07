@@ -49,3 +49,4 @@ print(f"Patched Web font lifecycle in {path}")
 # assembly. Keep the local map registry's constructor browser-safe at the same point.
 root = Path(__file__).resolve().parents[1]
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-maps-web.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-ui-frame-diagnostics-web.py")], check=True)
