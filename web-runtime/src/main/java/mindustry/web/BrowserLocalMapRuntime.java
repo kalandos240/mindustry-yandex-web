@@ -1,11 +1,8 @@
 package mindustry.web;
 
 import arc.*;
-import arc.assets.*;
-import arc.assets.loaders.*;
 import arc.files.*;
 import arc.struct.*;
-import mindustry.core.ContentLoader;
 import mindustry.game.*;
 import mindustry.game.EventType.*;
 import mindustry.io.*;
@@ -24,10 +21,10 @@ import static mindustry.Vars.*;
  * Maps.defaultMapNames. The extra canyon.msav present in the asset directory is not part
  * of that stock list and therefore remains packaged-but-hidden, matching upstream.
  *
- * The first production-map milestone keeps optional gameplay branches (waves, fog,
- * weather, game-over and AI builders) disabled because Logic.updateWebPlayingCore() has
- * not enabled those reachability branches yet. Map loading, stock entities/buildings,
- * player input, rendering, pathfinding and browser persistence all remain real.
+ * Browser build overlays expand this base runtime with the already-proven stock survival
+ * wave lifecycle and local core-loss Game Over handling. Fog, weather, campaign/PvP and
+ * builder/RTS AI remain explicit later milestones. Map loading, stock entities/buildings,
+ * player input, rendering, pathfinding and browser persistence are real and local-only.
  */
 public final class BrowserLocalMapRuntime{
     private static final String[] builtinSlugs = {
@@ -48,25 +45,15 @@ public final class BrowserLocalMapRuntime{
     /** Load metadata for the exact stock built-in map catalog; no custom/workshop/mod scan. */
     public static void init(){
         if(initialized) return;
-        if(Core.files == null || Core.assets == null || content == null || waves == null){
+        if(Core.files == null || content == null || waves == null){
             throw new IllegalStateException("Browser local maps require packaged files, content and Waves");
         }
 
-        // The desktop bootstrap normally registers ContentLoader through AssetManager.loadRun
-        // before Maps is constructed. This lean launcher bypasses that queue, but the stock
-        // Maps constructor still expects the loader object. Register an inert browser loader;
-        // it is never queued or executed, so no external/custom map scan is introduced.
-        if(Core.assets.getLoader(ContentLoader.class) == null){
-            Core.assets.setLoader(ContentLoader.class, new CustomLoader(){
-                @Override
-                public void loadAsync(AssetManager manager, String fileName, Fi file, AssetLoaderParameters parameter){
-                    // Browser content was already created synchronously by WebClientLauncher.
-                }
-            });
-        }
-
-        // Maps is retained only for Map.filters()/readFilters semantics. Do not call load():
-        // that stock method scans custom/workshop/mod sources that are intentionally absent.
+        // Maps is retained only for Map.filters()/readFilters semantics. Its constructor
+        // is patched for Web and no longer registers the desktop preview ContentLoader
+        // callback, so the lean browser launcher does not need an inert AssetManager shim.
+        // Do not call load(): that stock method scans custom/workshop/mod sources that are
+        // intentionally absent from the self-contained Yandex package.
         if(maps == null) maps = new Maps();
         if(!maps.all().isEmpty()){
             throw new IllegalStateException("Browser local map catalog must start from an empty Maps registry");
