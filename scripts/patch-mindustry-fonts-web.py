@@ -46,7 +46,8 @@ path.write_text(text)
 print(f"Patched Web font lifecycle in {path}")
 
 # This post-overlay source-fix stage already runs after apply-port.sh in CI/build
-# assembly. Keep the local map registry's constructor browser-safe at the same point.
+# assembly. Keep browser-only source fixes at the same deterministic point.
 root = Path(__file__).resolve().parents[1]
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-maps-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-ui-frame-diagnostics-web.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-arc-scene-act-diagnostics-web.py")], check=True)
