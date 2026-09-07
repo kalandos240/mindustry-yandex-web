@@ -100,6 +100,9 @@ new_logic = '''        logic.updateWebPlayingCore();
         if(state.gameOver){
             gameOverFreeze = true;
             markGameOver(state.rules.waveTeam.name, state.wave);
+            markPhase("logic-gameover");
+            updateGameOverFrame();
+            return;
         }
         markPhase("logic-ready");
 '''
@@ -118,8 +121,8 @@ new_live = '''            if(testWaveExpected && state.enemies <= 0){
             }
 
             // Test-only staged loss: after proving a real first wave, clear only the
-            // authoritative default-team core registry. The next real Logic frame must
-            // detect the stock survival loss condition and enter local game-over.
+            // authoritative default-team core registry. The next Logic frame's preflight
+            // must detect the already-lost survival state before team/entity updates run.
             if(gameOverSmokeRequested() && !gameOverSmokeArmed){
                 if(!state.rules.canGameOver || state.rules.defaultTeam.cores().isEmpty()){
                     throw new IllegalStateException("Game-over smoke requires canGameOver and an existing default-team core");
@@ -258,4 +261,4 @@ if ui.count(old_marker_ui) != 1:
 ui = ui.replace(old_marker_ui, new_marker_ui, 1)
 
 UI.write_text(ui, encoding="utf-8")
-print("Enabled lean local Game Over overlay and deterministic core-loss browser smoke")
+print("Enabled lean local Game Over overlay with preflight-safe core-loss browser smoke")
