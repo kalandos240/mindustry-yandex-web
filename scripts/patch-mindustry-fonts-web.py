@@ -52,3 +52,6 @@ subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-maps-web
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-coreblock-ui-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-waves-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-map-waves.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-gameover-web.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-gameover.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-gameover-verifier.py")], check=True)
