@@ -59,3 +59,4 @@ subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-paus
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-save-runtime.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-save-resume.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-save-verifier.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-teamrules.py")], check=True)
