@@ -64,3 +64,4 @@ subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-auto
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-autosave-verifier.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-periodic-autosave.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-periodic-autosave-verifier.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-legacy-map-verifier.py")], check=True)
