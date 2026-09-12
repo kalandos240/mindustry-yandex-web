@@ -14,8 +14,8 @@ old_fields = '''    private static boolean saveSmokeArmed;
     private static int frames;
 '''
 new_fields = '''    private static boolean saveSmokeArmed;
-    private static final float periodicSaveIntervalTicks = 180f * 60f;
-    private static float periodicSaveTick;
+    private static final double periodicSaveIntervalTicks = 180.0 * 60.0;
+    private static double periodicSaveTick;
     private static boolean periodicSaveSmokeDone;
     private static Map current;
     private static int frames;
@@ -104,7 +104,7 @@ new_helper = '''    /**
         }
 
         int savedWave = state.wave;
-        float savedTick = state.tick;
+        double savedTick = state.tick;
         long savedUpdateId = state.updateId;
         saveLocalSession();
         periodicSaveSmokeDone = smoke;
@@ -123,7 +123,7 @@ old_reset = '''        pausedFrames = 0;
 '''
 new_reset = '''        pausedFrames = 0;
         saveSmokeArmed = false;
-        periodicSaveTick = 0f;
+        periodicSaveTick = 0.0;
         periodicSaveSmokeDone = false;
         logic.reset();
 '''
@@ -148,7 +148,7 @@ old_marker = '''    @JSBody(script = "document.documentElement.setAttribute('dat
     private static native void markAutoSaveExitSmokeArmed();
 '''
 new_marker = '''    @JSBody(params = {"slug", "wave", "tick", "updateId", "reason"}, script = "document.documentElement.setAttribute('data-mindustry-local-periodic-save', 'ready'); document.documentElement.setAttribute('data-mindustry-local-periodic-save-slug', slug); document.documentElement.setAttribute('data-mindustry-local-periodic-save-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-periodic-save-tick', String(tick)); document.documentElement.setAttribute('data-mindustry-local-periodic-save-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-periodic-save-reason', reason);")
-    private static native void markPeriodicSaved(String slug, int wave, float tick, long updateId, String reason);
+    private static native void markPeriodicSaved(String slug, int wave, double tick, long updateId, String reason);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-autosave-smoke', 'armed');")
     private static native void markAutoSaveExitSmokeArmed();
