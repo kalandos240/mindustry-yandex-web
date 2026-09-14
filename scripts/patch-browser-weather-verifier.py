@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY = ROOT / "scripts" / "verify-browser-locales.sh"
@@ -83,3 +85,7 @@ text = text.replace(call_anchor, call_replacement, 1)
 
 VERIFY.write_text(text, encoding="utf-8")
 print("Extended browser gate with stock local rain weather scheduling, attributes and rendering verification")
+
+# Weather persistence builds on the exact staged weather runtime above. Apply its
+# CI-only runtime probes here so the main post-overlay chain stays deterministic.
+subprocess.run([sys.executable, str(ROOT / "scripts" / "patch-browser-weather-persistence.py")], check=True)

@@ -9,10 +9,10 @@ if not PERSIST.is_file():
 
 text = PERSIST.read_text(encoding="utf-8")
 anchor = 'bash "$ROOT_DIR/scripts/verify-browser-local-periodic-autosave.sh"\n'
-replacement = anchor + 'bash "$ROOT_DIR/scripts/verify-browser-fog-persistence.sh"\n'
+replacement = anchor + 'bash "$ROOT_DIR/scripts/verify-browser-fog-persistence.sh"\n' + 'bash "$ROOT_DIR/scripts/verify-browser-weather-persistence.sh"\n'
 
 if text.count(anchor) != 1:
-    raise SystemExit("Browser fog persistence verifier anchor no longer matches periodic autosave gate")
+    raise SystemExit("Browser fog/weather persistence verifier anchor no longer matches periodic autosave gate")
 
 PERSIST.write_text(text.replace(anchor, replacement, 1), encoding="utf-8")
-print("Extended persistence gate with static-fog-data save -> IndexedDB -> restart -> Continue proof")
+print("Extended persistence gate with static-fog-data and active WeatherState save/restart proofs")
