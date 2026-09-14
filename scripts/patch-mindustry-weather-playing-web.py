@@ -112,7 +112,7 @@ old_frame = '''        updateFogPersistenceSmoke();
 '''
 new_frame = '''        updateFogPersistenceSmoke();
         if(weatherSmokeRequested()){
-            int weatherCount = Groups.weather.size();
+            int weatherCount = mindustry.gen.Groups.weather.size();
             boolean rainActive = mindustry.content.Weathers.rain.isActive();
             float baseWater = state.rules.attributes.get(mindustry.world.meta.Attribute.water);
             float baseLight = state.rules.attributes.get(mindustry.world.meta.Attribute.light);
