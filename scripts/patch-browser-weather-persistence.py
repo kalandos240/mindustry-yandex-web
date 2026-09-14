@@ -59,7 +59,7 @@ new_weather_rules = '''        if(weatherSmokeRequested() || weatherPersistSeedR
             // duration so the saved WeatherState contains ordinary finite timing data.
             rules.weather.clear();
             var entry = new mindustry.type.Weather.WeatherEntry(mindustry.content.Weathers.rain);
-            entry.always = weatherSmokeRequested();
+            entry.always = weatherSmokeRequested() || weatherPersistSeedRequested();
             entry.intensity = 1f;
             entry.cooldown = -1f;
             if(weatherPersistSeedRequested()){
