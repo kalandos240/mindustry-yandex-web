@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 PATH = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "ai" / "Pathfinder.java"
@@ -163,3 +165,9 @@ for marker in required:
 
 PATH.write_text(text, encoding="utf-8")
 print("Applied Web single-thread Pathfinder scheduler with stock flow-field algorithms")
+
+# Pathfinder's stuck-unit avoidance path depends on Vars.avoidance, which stock
+# ClientLauncher initializes through AsyncCore. The lean Web launcher bypasses that
+# desktop launcher, so install the thread-free AsyncCore at the same gameplay-overlay
+# stage and retain the stock PhysicsProcess/AvoidanceProcess lifecycle.
+subprocess.run([sys.executable, str(ROOT / "scripts" / "patch-mindustry-async-core-web.py")], check=True)
