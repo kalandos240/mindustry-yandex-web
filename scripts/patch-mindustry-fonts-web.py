@@ -71,3 +71,4 @@ subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-legacy-map
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-fog-verifier.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-weather-verifier.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-fog-persistence-verifier.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-player-input-smoke.py")], check=True)
