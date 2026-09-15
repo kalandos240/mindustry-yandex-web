@@ -114,7 +114,10 @@ public final class BrowserApplication extends WebApplicationBase{
         StringBuilder out = new StringBuilder();
         Throwable current = error;
         int depth = 0;
-        while(current != null && depth++ < 4){
+        // Gameplay overlays deliberately add narrow stage wrappers. Keep enough causes
+        // to expose the actual TeaVM/runtime failure instead of stopping at a coarse
+        // entity/AI boundary, while still bounding DOM/status-string growth.
+        while(current != null && depth++ < 8){
             if(out.length() > 0) out.append(" <- ");
             out.append(current.getClass().getName()).append(": ").append(String.valueOf(current.getMessage()));
             StackTraceElement[] stack = current.getStackTrace();
