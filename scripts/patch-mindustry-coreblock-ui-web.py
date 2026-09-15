@@ -28,5 +28,21 @@ if text.count(old_spawn) != 1:
     raise SystemExit(f"CoreBlock Web local-spawn patch expected one Call.playerSpawn site, found {text.count(old_spawn)}")
 text = text.replace(old_spawn, new_spawn, 1)
 
+# The stock spawn RPC emits Fx.spawn before the Unit exists. In the lean Web renderer
+# this cosmetic effect reaches desktop-only effect state and can fail before unit creation,
+# leaving the local Player permanently dead. Skip only that optional pre-spawn visual on
+# Web; the authoritative unit creation/controller/add path immediately below is unchanged.
+old_fx = '''        if(core.wasVisible){
+            Fx.spawn.at(core);
+        }
+'''
+new_fx = '''        if(core.wasVisible && (Core.app == null || !Core.app.isWeb())){
+            Fx.spawn.at(core);
+        }
+'''
+if text.count(old_fx) != 1:
+    raise SystemExit(f"CoreBlock Web spawn-VFX patch expected one stock Fx.spawn block, found {text.count(old_fx)}")
+text = text.replace(old_fx, new_fx, 1)
+
 CORE_BLOCK.write_text(text, encoding="utf-8")
-print("Applied Web-safe core landing UI and direct local player spawn without Call transport")
+print("Applied Web-safe core landing UI, direct local player spawn, and pre-unit spawn-VFX guard")
