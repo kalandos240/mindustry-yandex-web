@@ -3,9 +3,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE_BLOCK = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "world" / "blocks" / "storage" / "CoreBlock.java"
+CONTROL = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "core" / "Control.java"
 
-if not CORE_BLOCK.is_file():
-    raise SystemExit(f"Missing pinned Mindustry CoreBlock source: {CORE_BLOCK}")
+for path in (CORE_BLOCK, CONTROL):
+    if not path.is_file():
+        raise SystemExit(f"Missing pinned Mindustry source: {path}")
 
 text = CORE_BLOCK.read_text(encoding="utf-8")
 old = "                        ui.loadfrag.toFront();"
@@ -109,4 +111,21 @@ if text.count(old_body) != 1:
 text = text.replace(old_body, new_body, 1)
 
 CORE_BLOCK.write_text(text, encoding="utf-8")
-print("Applied Web-safe core landing UI, direct local player spawn, VFX guard, and spawn phase diagnostics")
+
+# Stock Trigger.newGame delays the first player respawn by CoreBlock.landDuration (160
+# ticks) while Renderer.showLanding() owns a desktop-style core landing sequence. The lean
+# browser renderer deliberately does not provide that lifecycle; its delayed completion
+# VFX was reached at exactly the same point as the opaque Web NPE, before playerSpawn().
+# Skip only this cosmetic intro on Web. The player still starts at the core and respawns
+# through the normal Player.deathDelay -> CoreBuild.requestSpawn -> playerSpawn path.
+control = CONTROL.read_text(encoding="utf-8")
+old_landing = '''            if(!settings.getBool("skipcoreanimation") && !state.rules.pvp){
+'''
+new_landing = '''            if((Core.app == null || !Core.app.isWeb()) && !settings.getBool("skipcoreanimation") && !state.rules.pvp){
+'''
+if control.count(old_landing) != 1:
+    raise SystemExit(f"Control Web landing bypass expected one stock core-animation condition, found {control.count(old_landing)}")
+control = control.replace(old_landing, new_landing, 1)
+CONTROL.write_text(control, encoding="utf-8")
+
+print("Applied Web-safe core UI/spawn diagnostics and bypassed unsupported browser core landing intro")
