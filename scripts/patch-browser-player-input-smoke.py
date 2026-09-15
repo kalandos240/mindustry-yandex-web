@@ -60,6 +60,94 @@ new_entities = '''        // Stock weather attributes: active WeatherState opaci
 if logic.count(old_entities) != 1:
     raise SystemExit("Player-input logic entity diagnostic anchor no longer matches final staged playing core")
 logic = logic.replace(old_entities, new_entities, 1)
+
+# The outer diagnostic proved the failure is inside updateEntities(). Split the exact
+# stock group order without changing update semantics. This distinguishes generic entity
+# bookkeeping/physics, unit AI, power graphs, buildings and bullet/collision processing.
+old_update_entities = '''    protected void updateEntities(){
+        PerfCounter.entityUpdate.begin();
+
+        PerfCounter.entityMisc.begin();
+        Groups.updatePooling();
+        Groups.bullet.updatePhysics();
+        Groups.unit.updatePhysics();
+        Groups.all.update();
+        PerfCounter.entityMisc.end();
+
+        PerfCounter.unitUpdate.begin();
+        Groups.unit.update();
+        PerfCounter.unitUpdate.end();
+
+        PerfCounter.powerUpdate.begin();
+        if(!state.isEditor()) Groups.powerGraph.update();
+        PerfCounter.powerUpdate.end();
+
+        PerfCounter.buildingUpdate.begin();
+        if(!state.isEditor()) Groups.build.update();
+        PerfCounter.buildingUpdate.end();
+
+        PerfCounter.bulletUpdate.begin();
+        Groups.bullet.update();
+
+        Groups.bullet.collide();
+        PerfCounter.bulletUpdate.end();
+
+        PerfCounter.entityUpdate.end();
+    }
+'''
+new_update_entities = '''    protected void updateEntities(){
+        PerfCounter.entityUpdate.begin();
+
+        PerfCounter.entityMisc.begin();
+        try{
+            Groups.updatePooling();
+            Groups.bullet.updatePhysics();
+            Groups.unit.updatePhysics();
+            Groups.all.update();
+        }catch(Throwable error){
+            throw new IllegalStateException("Web entity update failed at misc-all-physics", error);
+        }
+        PerfCounter.entityMisc.end();
+
+        PerfCounter.unitUpdate.begin();
+        try{
+            Groups.unit.update();
+        }catch(Throwable error){
+            throw new IllegalStateException("Web entity update failed at unit-group", error);
+        }
+        PerfCounter.unitUpdate.end();
+
+        PerfCounter.powerUpdate.begin();
+        try{
+            if(!state.isEditor()) Groups.powerGraph.update();
+        }catch(Throwable error){
+            throw new IllegalStateException("Web entity update failed at power-group", error);
+        }
+        PerfCounter.powerUpdate.end();
+
+        PerfCounter.buildingUpdate.begin();
+        try{
+            if(!state.isEditor()) Groups.build.update();
+        }catch(Throwable error){
+            throw new IllegalStateException("Web entity update failed at building-group", error);
+        }
+        PerfCounter.buildingUpdate.end();
+
+        PerfCounter.bulletUpdate.begin();
+        try{
+            Groups.bullet.update();
+            Groups.bullet.collide();
+        }catch(Throwable error){
+            throw new IllegalStateException("Web entity update failed at bullet-group", error);
+        }
+        PerfCounter.bulletUpdate.end();
+
+        PerfCounter.entityUpdate.end();
+    }
+'''
+if logic.count(old_update_entities) != 1:
+    raise SystemExit("Player-input entity-group diagnostic anchor no longer matches pinned Logic.updateEntities")
+logic = logic.replace(old_update_entities, new_update_entities, 1)
 LOGIC.write_text(logic, encoding="utf-8")
 
 # The failure timing lines up with the first normal Player deathDelay expiry. The stock
@@ -168,4 +256,4 @@ if text.count(call_anchor) != 1:
 text = text.replace(call_anchor, call_replacement, 1)
 
 VERIFY.write_text(text, encoding="utf-8")
-print("Extended browser gate with real DOM keyboard movement plus final entity/pre-spawn diagnostics")
+print("Extended browser gate with real DOM keyboard movement plus entity-group/pre-spawn diagnostics")
