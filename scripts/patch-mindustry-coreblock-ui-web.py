@@ -44,5 +44,69 @@ if text.count(old_fx) != 1:
     raise SystemExit(f"CoreBlock Web spawn-VFX patch expected one stock Fx.spawn block, found {text.count(old_fx)}")
 text = text.replace(old_fx, new_fx, 1)
 
+# Keep the stock local spawn semantics but attach phase information to any Web-only
+# failure. BrowserApplication already exposes the outer exception message in DOM, so this
+# turns an otherwise opaque TeaVM NPE into a precise create/mount/controller/add failure.
+old_body = '''        player.set(core);
+
+        if(!net.client()){
+            Unit unit = spawnType.create(tile.team());
+            //reset reload so that the player can't shoot immediately
+            for(var mount : unit.mounts){
+                mount.reload = mount.weapon.reload;
+            }
+            unit.set(core);
+            unit.rotation(90f);
+            unit.impulse(0f, 3f);
+            unit.spawnedByCore(true);
+            unit.controller(player);
+            unit.add();
+        }
+'''
+new_body = '''        try{
+            player.set(core);
+        }catch(Throwable error){
+            throw new IllegalStateException("Web local player spawn failed at player-set", error);
+        }
+
+        if(!net.client()){
+            Unit unit;
+            try{
+                unit = spawnType.create(tile.team());
+            }catch(Throwable error){
+                throw new IllegalStateException("Web local player spawn failed at unit-create", error);
+            }
+            try{
+                //reset reload so that the player can't shoot immediately
+                for(var mount : unit.mounts){
+                    mount.reload = mount.weapon.reload;
+                }
+            }catch(Throwable error){
+                throw new IllegalStateException("Web local player spawn failed at mount-reload", error);
+            }
+            try{
+                unit.set(core);
+                unit.rotation(90f);
+                unit.impulse(0f, 3f);
+                unit.spawnedByCore(true);
+            }catch(Throwable error){
+                throw new IllegalStateException("Web local player spawn failed at unit-init", error);
+            }
+            try{
+                unit.controller(player);
+            }catch(Throwable error){
+                throw new IllegalStateException("Web local player spawn failed at controller-bind", error);
+            }
+            try{
+                unit.add();
+            }catch(Throwable error){
+                throw new IllegalStateException("Web local player spawn failed at entity-add", error);
+            }
+        }
+'''
+if text.count(old_body) != 1:
+    raise SystemExit(f"CoreBlock Web spawn diagnostics expected one stock spawn body, found {text.count(old_body)}")
+text = text.replace(old_body, new_body, 1)
+
 CORE_BLOCK.write_text(text, encoding="utf-8")
-print("Applied Web-safe core landing UI, direct local player spawn, and pre-unit spawn-VFX guard")
+print("Applied Web-safe core landing UI, direct local player spawn, VFX guard, and spawn phase diagnostics")
