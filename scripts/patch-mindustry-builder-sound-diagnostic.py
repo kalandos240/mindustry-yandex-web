@@ -2,26 +2,40 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PATH = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "entities" / "comp" / "BuilderComp.java"
+PATH = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserBuildPlacementSmoke.java"
 
 if not PATH.is_file():
-    raise SystemExit(f"Missing pinned BuilderComp source: {PATH}")
+    raise SystemExit(f"Missing browser build-placement smoke source: {PATH}")
 
 text = PATH.read_text(encoding="utf-8")
-old = '''            if(!headless){
-                Vars.control.sound.loop(Sounds.loopBuild, tile, 1.3f);
+old = '''            if(!findTarget(unit)){
+                throw new IllegalStateException("Build-placement smoke found no visible valid conveyor tile within local builder range");
             }
 '''
-new = '''            if(!headless){
-                try{
-                    Vars.control.sound.loop(Sounds.loopBuild, tile, 1.3f);
-                }catch(Throwable t){
-                    throw new IllegalStateException("Web builder failed at sound-loop; loopBuild=" + (Sounds.loopBuild == null ? "null" : "ready"), t);
-                }
+new = '''            markBuildAudioState(
+                Sounds.loopBuild != null,
+                Sounds.loopBuild != null && Sounds.loopBuild.file != null,
+                Sounds.loopBuild instanceof BrowserSound
+            );
+
+            if(!findTarget(unit)){
+                throw new IllegalStateException("Build-placement smoke found no visible valid conveyor tile within local builder range");
             }
 '''
 if text.count(old) != 1:
-    raise SystemExit("Builder sound diagnostic anchor no longer matches patched source")
+    raise SystemExit("Build-placement audio preflight anchor no longer matches browser smoke source")
 text = text.replace(old, new, 1)
+
+marker = '''    @JSBody(params = {"x", "y", "sx", "sy"}, script = "document.documentElement.setAttribute('data-mindustry-build-placement-smoke', 'targeted'); document.documentElement.setAttribute('data-mindustry-build-placement-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-placement-tile-y', String(y)); document.documentElement.setAttribute('data-mindustry-build-placement-pointer-x', String(sx)); document.documentElement.setAttribute('data-mindustry-build-placement-pointer-y', String(sy));")
+    private static native void markTarget(int x, int y, float sx, float sy);
+'''
+replacement = marker + '''
+    @JSBody(params = {"present", "hasFile", "browserSound"}, script = "document.documentElement.setAttribute('data-mindustry-build-loop-sound-present', String(present)); document.documentElement.setAttribute('data-mindustry-build-loop-sound-file', String(hasFile)); document.documentElement.setAttribute('data-mindustry-build-loop-sound-browser', String(browserSound));")
+    private static native void markBuildAudioState(boolean present, boolean hasFile, boolean browserSound);
+'''
+if text.count(marker) != 1:
+    raise SystemExit("Build-placement audio marker anchor no longer matches browser smoke source")
+text = text.replace(marker, replacement, 1)
+
 PATH.write_text(text, encoding="utf-8")
-print("Bracketed only BuilderComp build-loop sound stage for Web diagnosis")
+print("Added zero-catch BuilderComp audio preflight to browser placement smoke")
