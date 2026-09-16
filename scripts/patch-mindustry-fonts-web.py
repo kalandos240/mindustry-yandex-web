@@ -75,5 +75,6 @@ subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-player-inp
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-player-combat-smoke.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-build-palette.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-build-placement-smoke.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-building-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-builder-diagnostics.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-unit-update-diagnostics.py")], check=True)
