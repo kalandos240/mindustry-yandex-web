@@ -67,9 +67,6 @@ public final class BrowserPlayerCombatSmoke{
             startAimY = unit.aimY();
             startOwnedBullets = ownedBullets(unit);
 
-            // Aim well away from the centered player while staying off the usual bottom
-            // HUD controls. This enters the exact canvas pointermove listener a physical
-            // mouse uses; no WebInput or unit fields are written here.
             dispatchPointer("pointermove", 0.78f, 0.42f, -1);
             stage = 1;
             markAiming(unitId, unit.type.name, startAimX, startAimY, startOwnedBullets);
@@ -168,8 +165,8 @@ public final class BrowserPlayerCombatSmoke{
             pointerId: 1,
             pointerType: 'mouse',
             isPrimary: true,
-            clientX,
-            clientY,
+            clientX: clientX,
+            clientY: clientY,
             button: button < 0 ? -1 : button,
             buttons: down ? 1 : 0,
             bubbles: true,
