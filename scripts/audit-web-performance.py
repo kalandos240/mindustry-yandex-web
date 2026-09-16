@@ -8,18 +8,17 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Measured after activating the first real browser playing graph:
-# stock Logic.play()/PlayEvent -> real alpha/player binding -> bounded production Logic
-# playing core -> Control.update() -> Renderer.update() -> UI.update(). The playing core
-# advances GameState/team stats/GlobalVars/Time/objectives/entity physics and update events;
-# only fog/waves/weather/campaign/team-AI branches are asserted off and kept unreachable.
-# A comparison against the complete Logic.update() build showed only ~226 KiB difference,
-# so the remaining ~2.9 MiB increase over the old menu-module baseline is the genuine
-# player/unit/entity/render gameplay graph, not accidental optional desktop/service code.
-# Keep ~3% raw/compressed headroom from this measured playing-core point.
-JS_BASELINE = 21_559_158
-JS_LIMIT = 22_200_000
-JS_GZIP_BASELINE = 2_469_737
+# Measured after the real browser construction graph became reachable:
+# DOM palette/world pointer events -> stock DesktopInput -> real BuildPlan -> player
+# BuilderComp -> local-authoritative stock Build.beginPlace/ConstructBlock finish path.
+# The measured point below still contained narrow builder stage diagnostics; production
+# assembly now omits those wrappers, so it is a conservative upper baseline for the
+# required gameplay graph rather than permission for optional desktop/service code.
+# Keep raw headroom deliberately below 1%; keep the existing compressed ceiling even
+# tighter. FORBIDDEN_JS_MARKERS independently prevents desktop/network reachability.
+JS_BASELINE = 22_306_047
+JS_LIMIT = 22_450_000
+JS_GZIP_BASELINE = 2_538_077
 JS_GZIP_LIMIT = 2_545_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
