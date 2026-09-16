@@ -26,10 +26,10 @@ replacements = [
         "sound-loop",
     ),
     (
-'''                            Call.beginPlace(self(), current.block, team, current.x, current.y, current.rotation, current.block.instantBuild ? current.config : null);
+'''                            Build.beginPlace(self(), current.block, team, current.x, current.y, current.rotation, current.block.instantBuild ? current.config : null);
 ''',
 '''                            try{
-                                Call.beginPlace(self(), current.block, team, current.x, current.y, current.rotation, current.block.instantBuild ? current.config : null);
+                                Build.beginPlace(self(), current.block, team, current.x, current.y, current.rotation, current.block.instantBuild ? current.config : null);
                             }catch(Throwable t){
                                 throw new IllegalStateException("Web builder failed at begin-place", t);
                             }
@@ -51,8 +51,8 @@ replacements = [
 
 for old, new, label in replacements:
     if text.count(old) != 1:
-        raise SystemExit(f"Builder Web diagnostic anchor no longer matches pinned upstream ({label})")
+        raise SystemExit(f"Builder Web diagnostic anchor no longer matches patched source ({label})")
     text = text.replace(old, new, 1)
 
 PATH.write_text(text, encoding="utf-8")
-print("Bracketed stock BuilderComp sound/begin-place/construct stages without changing gameplay semantics")
+print("Bracketed local BuilderComp sound/begin-place/construct stages without changing gameplay semantics")
