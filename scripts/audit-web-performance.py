@@ -8,17 +8,15 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Measured after the real browser construction graph became reachable:
-# DOM palette/world pointer events -> stock DesktopInput -> real BuildPlan -> player
-# BuilderComp -> local-authoritative stock Build.beginPlace/ConstructBlock finish path.
-# The measured point below still contained narrow builder stage diagnostics; production
-# assembly now omits those wrappers, so it is a conservative upper baseline for the
-# required gameplay graph rather than permission for optional desktop/service code.
-# Keep raw headroom deliberately below 1%; keep the existing compressed ceiling even
-# tighter. FORBIDDEN_JS_MARKERS independently prevents desktop/network reachability.
-JS_BASELINE = 22_306_047
-JS_LIMIT = 22_450_000
-JS_GZIP_BASELINE = 2_538_077
+# Clean production measurement after the real browser construction graph became
+# reachable: DOM palette/world pointer events -> stock DesktopInput -> real BuildPlan
+# -> player BuilderComp -> local-authoritative stock begin/finish construction path.
+# Wide unit/AI and temporary builder stage diagnostics are not part of this baseline.
+# Keep the raw ceiling below +0.4% and the gzip ceiling below +0.5%; the independent
+# forbidden-marker audit still rejects accidental desktop/network implementation reachability.
+JS_BASELINE = 22_117_620
+JS_LIMIT = 22_200_000
+JS_GZIP_BASELINE = 2_532_499
 JS_GZIP_LIMIT = 2_545_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
