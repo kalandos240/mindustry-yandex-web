@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 PATH = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserBuildPlacementSmoke.java"
@@ -39,3 +41,8 @@ text = text.replace(marker, replacement, 1)
 
 PATH.write_text(text, encoding="utf-8")
 print("Added zero-catch BuilderComp audio preflight to browser placement smoke")
+
+# Keep the next diagnostic equally cheap: integer stage writes only, no Throwable
+# wrappers or gameplay branching. The existing post-overlay orchestrator invokes this
+# script, so chain the stage probe here without expanding the top-level patch list.
+subprocess.run([sys.executable, str(ROOT / "scripts" / "patch-mindustry-builder-stage-diagnostic.py")], check=True)
