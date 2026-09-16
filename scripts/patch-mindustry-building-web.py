@@ -2,12 +2,15 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILDER = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "entities" / "comp" / "BuilderComp.java"
+CORE = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry"
+BUILDER = CORE / "entities" / "comp" / "BuilderComp.java"
+CONSTRUCT = CORE / "world" / "blocks" / "ConstructBlock.java"
 
-if not BUILDER.is_file():
-    raise SystemExit(f"Missing pinned Mindustry builder source: {BUILDER}")
+for path in (BUILDER, CONSTRUCT):
+    if not path.is_file():
+        raise SystemExit(f"Missing pinned Mindustry building source: {path}")
 
-text = BUILDER.read_text(encoding="utf-8")
+builder = BUILDER.read_text(encoding="utf-8")
 replacements = [
     (
         "                            Call.beginPlace(self(), current.block, team, current.x, current.y, current.rotation, current.block.instantBuild ? current.config : null);",
@@ -25,14 +28,36 @@ replacements = [
         "beginBreak",
     ),
 ]
-
 for old, new, label in replacements:
-    if text.count(old) != 1:
+    if builder.count(old) != 1:
         raise SystemExit(f"Builder Web patch no longer matches pinned upstream ({label})")
-    text = text.replace(old, new, 1)
-
-if "Call.beginPlace(" in text or "Call.beginBreak(" in text:
+    builder = builder.replace(old, new, 1)
+if "Call.beginPlace(" in builder or "Call.beginBreak(" in builder:
     raise SystemExit("Builder Web source still reaches generated begin-place/break network transport")
+BUILDER.write_text(builder, encoding="utf-8")
 
-BUILDER.write_text(text, encoding="utf-8")
-print("Enabled local-authoritative Web building without NetServer/NetClient Call transport")
+construct = CONSTRUCT.read_text(encoding="utf-8")
+finish_replacements = [
+    (
+        "        Call.constructFinish(tile, block, builder, rotation, team, config);",
+        "        // Web/Yandex local play owns the authoritative world. Run the stock finish body\n"
+        "        // directly; generated RPC transport has no server/client endpoint here.\n"
+        "        constructFinish(tile, block, builder, rotation, team, config);",
+        "constructFinish",
+    ),
+    (
+        "                Call.deconstructFinish(tile, this.current, lastBuilder);",
+        "                // Local-authoritative Web deconstruction uses the same stock finish body directly.\n"
+        "                deconstructFinish(tile, this.current, lastBuilder);",
+        "deconstructFinish",
+    ),
+]
+for old, new, label in finish_replacements:
+    if construct.count(old) != 1:
+        raise SystemExit(f"ConstructBlock Web patch no longer matches pinned upstream ({label})")
+    construct = construct.replace(old, new, 1)
+if "Call.constructFinish(" in construct or "Call.deconstructFinish(" in construct:
+    raise SystemExit("ConstructBlock Web source still reaches generated construction-finish transport")
+CONSTRUCT.write_text(construct, encoding="utf-8")
+
+print("Enabled local-authoritative Web begin/finish building without NetServer/NetClient Call transport")
