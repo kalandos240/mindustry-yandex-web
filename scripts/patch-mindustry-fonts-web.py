@@ -73,4 +73,5 @@ subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-weather-ve
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-fog-persistence-verifier.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-player-input-smoke.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-player-combat-smoke.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-build-palette.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-unit-update-diagnostics.py")], check=True)
