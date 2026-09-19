@@ -50,6 +50,7 @@ print(f"Patched Web font lifecycle in {path}")
 root = Path(__file__).resolve().parents[1]
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-maps-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-coreblock-ui-web.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-minimap-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-waves-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-local-map-waves.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-gameover-web.py")], check=True)
