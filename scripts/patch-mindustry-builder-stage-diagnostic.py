@@ -153,7 +153,7 @@ build_replacements = [
         if(!validPlace(result, team, x, y, rotation)){
 ''',
         '''    public static void beginPlace(@Nullable Unit unit, Block result, Team team, int x, int y, int rotation, @Nullable Object placeConfig){
-        Vars.webBuildStage = 41;
+        webBuildStage = 41;
         if(!validPlace(result, team, x, y, rotation)){
 ''',
         "beginPlace-entry",
@@ -164,12 +164,12 @@ build_replacements = [
         //just in case
         if(tile == null) return;
 ''',
-        '''        Vars.webBuildStage = 42;
+        '''        webBuildStage = 42;
         Tile tile = world.tile(x, y);
 
         //just in case
         if(tile == null) return;
-        Vars.webBuildStage = 43;
+        webBuildStage = 43;
 ''',
         "beginPlace-tile",
     ),
@@ -177,9 +177,9 @@ build_replacements = [
         '''        result.beforePlaceBegan(tile, previous);
         tmp.clear();
 ''',
-        '''        Vars.webBuildStage = 44;
+        '''        webBuildStage = 44;
         result.beforePlaceBegan(tile, previous);
-        Vars.webBuildStage = 45;
+        webBuildStage = 45;
         tmp.clear();
 ''',
         "beforePlaceBegan",
@@ -191,15 +191,15 @@ build_replacements = [
 
         build.setConstruct(previous.size == sub.size ? previous : Blocks.air, result);
 ''',
-        '''        Vars.webBuildStage = 46;
+        '''        webBuildStage = 46;
         tile.setBlock(sub, team, rotation);
-        Vars.webBuildStage = 47;
+        webBuildStage = 47;
 
         var build = (ConstructBuild)tile.build;
-        Vars.webBuildStage = 48;
+        webBuildStage = 48;
 
         build.setConstruct(previous.size == sub.size ? previous : Blocks.air, result);
-        Vars.webBuildStage = 49;
+        webBuildStage = 49;
 ''',
         "setBlock-setConstruct",
     ),
