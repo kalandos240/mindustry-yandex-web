@@ -4,9 +4,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 VARS = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "Vars.java"
 BUILDER = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "entities" / "comp" / "BuilderComp.java"
+BUILD = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "world" / "Build.java"
 APPLICATION = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserApplication.java"
 
-for path in (VARS, BUILDER, APPLICATION):
+for path in (VARS, BUILDER, BUILD, APPLICATION):
     if not path.is_file():
         raise SystemExit(f"Missing builder-stage diagnostic source: {path}")
 
@@ -144,6 +145,70 @@ for old, new, label in replacements:
         raise SystemExit(f"Builder stage diagnostic anchor no longer matches patched source ({label})")
     builder = builder.replace(old, new, 1)
 BUILDER.write_text(builder, encoding="utf-8")
+
+build_text = BUILD.read_text(encoding="utf-8")
+build_replacements = [
+    (
+        '''    public static void beginPlace(@Nullable Unit unit, Block result, Team team, int x, int y, int rotation, @Nullable Object placeConfig){
+        if(!validPlace(result, team, x, y, rotation)){
+''',
+        '''    public static void beginPlace(@Nullable Unit unit, Block result, Team team, int x, int y, int rotation, @Nullable Object placeConfig){
+        Vars.webBuildStage = 41;
+        if(!validPlace(result, team, x, y, rotation)){
+''',
+        "beginPlace-entry",
+    ),
+    (
+        '''        Tile tile = world.tile(x, y);
+
+        //just in case
+        if(tile == null) return;
+''',
+        '''        Vars.webBuildStage = 42;
+        Tile tile = world.tile(x, y);
+
+        //just in case
+        if(tile == null) return;
+        Vars.webBuildStage = 43;
+''',
+        "beginPlace-tile",
+    ),
+    (
+        '''        result.beforePlaceBegan(tile, previous);
+        tmp.clear();
+''',
+        '''        Vars.webBuildStage = 44;
+        result.beforePlaceBegan(tile, previous);
+        Vars.webBuildStage = 45;
+        tmp.clear();
+''',
+        "beforePlaceBegan",
+    ),
+    (
+        '''        tile.setBlock(sub, team, rotation);
+
+        var build = (ConstructBuild)tile.build;
+
+        build.setConstruct(previous.size == sub.size ? previous : Blocks.air, result);
+''',
+        '''        Vars.webBuildStage = 46;
+        tile.setBlock(sub, team, rotation);
+        Vars.webBuildStage = 47;
+
+        var build = (ConstructBuild)tile.build;
+        Vars.webBuildStage = 48;
+
+        build.setConstruct(previous.size == sub.size ? previous : Blocks.air, result);
+        Vars.webBuildStage = 49;
+''',
+        "setBlock-setConstruct",
+    ),
+]
+for old_build, new_build, label in build_replacements:
+    if build_text.count(old_build) != 1:
+        raise SystemExit(f"Build.beginPlace stage diagnostic anchor no longer matches pinned source ({label})")
+    build_text = build_text.replace(old_build, new_build, 1)
+BUILD.write_text(build_text, encoding="utf-8")
 
 application = APPLICATION.read_text(encoding="utf-8")
 app_old = '''            BrowserCanvas.setStatus("error", "Mindustry Web frame loop failed at " + phase + " #" + callbackIndex + ": " + describe(error));
