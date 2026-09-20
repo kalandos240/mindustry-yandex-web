@@ -282,10 +282,10 @@ run_mobile(){
 
 run_production_menu
 run_production_map
-run_enemy_path
 run_locale en
 run_locale ru
 run_mobile
+run_enemy_path
 
 cleanup_locale
 trap - EXIT
