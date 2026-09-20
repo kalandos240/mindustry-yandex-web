@@ -61,7 +61,6 @@ public final class BrowserPlayerMiningSmoke{
             if(++spawnFrames >= maxSpawnFrames){
                 throw new IllegalStateException("Player-mining smoke never received a real local unit");
             }
-            markWaiting("unit", spawnFrames);
             return;
         }
         if(!unit.canMine()){
@@ -82,7 +81,7 @@ public final class BrowserPlayerMiningSmoke{
 
             coreStartItems = core.items.get(targetItem);
             stage = 1;
-            markTarget(targetX, targetY, targetItem.name, targetScreenX, targetScreenY, coreStartItems);
+            markTarget(targetX, targetY);
             return;
         }
 
@@ -101,7 +100,6 @@ public final class BrowserPlayerMiningSmoke{
                         unit.x + "," + unit.y + " target=" + target.worldx() + "," + target.worldy()
                     );
                 }
-                markApproach("ore", approachFrames, unit.x, unit.y);
                 return;
             }
 
@@ -117,14 +115,12 @@ public final class BrowserPlayerMiningSmoke{
                         Core.camera.position.x + "," + Core.camera.position.y
                     );
                 }
-                markCameraWait("ore", cameraSettleFrames, targetScreenX, targetScreenY);
                 return;
             }
 
             cameraSettleFrames = 0;
             dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
             stage = 2;
-            markApproach("ore-reached", approachFrames, unit.x, unit.y);
             return;
         }
 
@@ -133,7 +129,6 @@ public final class BrowserPlayerMiningSmoke{
             dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
             pointerDown = true;
             stage = 3;
-            markStage("mine-down");
             return;
         }
 
@@ -141,14 +136,12 @@ public final class BrowserPlayerMiningSmoke{
             dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
             pointerDown = false;
             stage = 4;
-            markStage("mine-up");
             return;
         }
 
         if(stage == 4){
             if(unit.mineTile == world.tile(targetX, targetY)){
                 stage = 6;
-                markMiningStarted(false);
                 return;
             }
 
@@ -158,7 +151,6 @@ public final class BrowserPlayerMiningSmoke{
             dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
             pointerDown = true;
             stage = 5;
-            markStage("mine-second-down");
             return;
         }
 
@@ -166,7 +158,6 @@ public final class BrowserPlayerMiningSmoke{
             dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
             pointerDown = false;
             stage = 6;
-            markMiningStarted(true);
             return;
         }
 
@@ -177,7 +168,6 @@ public final class BrowserPlayerMiningSmoke{
                 if(++mineFrames >= 30){
                     throw new IllegalStateException("DOM ore click did not start stock unit mining");
                 }
-                markMiningProgress(mineFrames, unit.stack.amount, core.items.get(targetItem));
                 return;
             }
 
@@ -192,12 +182,10 @@ public final class BrowserPlayerMiningSmoke{
                 minedStack = unit.stack.amount;
                 approachFrames = 0;
                 stage = 7;
-                markMined(targetItem.name, minedStack);
                 return;
             }
 
             mineFrames++;
-            markMiningProgress(mineFrames, unit.stack.amount, coreNow);
             if(mineFrames >= maxMineFrames){
                 throw new IllegalStateException(
                     "Stock mining produced no local item: item=" + targetItem.name +
@@ -216,7 +204,6 @@ public final class BrowserPlayerMiningSmoke{
                         "DOM WASD could not return mined player to core itemTransferRange"
                     );
                 }
-                markApproach("core", approachFrames, unit.x, unit.y);
                 return;
             }
 
@@ -234,14 +221,12 @@ public final class BrowserPlayerMiningSmoke{
                         playerScreenX + "," + playerScreenY + " coreScreen=" + coreScreenX + "," + coreScreenY
                     );
                 }
-                markCameraWait("core", cameraSettleFrames, coreScreenX, coreScreenY);
                 return;
             }
 
             cameraSettleFrames = 0;
             dispatchPointer("pointermove", playerScreenX, playerScreenY, -1, false);
             stage = 8;
-            markApproach("core-reached", approachFrames, unit.x, unit.y);
             return;
         }
 
@@ -250,7 +235,6 @@ public final class BrowserPlayerMiningSmoke{
             dispatchPointer("pointerdown", playerScreenX, playerScreenY, 0, true);
             pointerDown = true;
             stage = 9;
-            markStage("deposit-player-down");
             return;
         }
 
@@ -260,13 +244,11 @@ public final class BrowserPlayerMiningSmoke{
                     releasePointer();
                     throw new IllegalStateException("DOM player press did not enter stock droppingItem mode");
                 }
-                markDepositProgress("waiting-drag", depositFrames, unit.stack.amount, core.items.get(targetItem));
                 return;
             }
 
             dispatchPointer("pointermove", coreScreenX, coreScreenY, 0, true);
             stage = 10;
-            markStage("deposit-core-hover");
             return;
         }
 
@@ -275,22 +257,17 @@ public final class BrowserPlayerMiningSmoke{
             dispatchPointer("pointerup", coreScreenX, coreScreenY, 0, false);
             pointerDown = false;
             stage = 11;
-            markStage("deposit-core-up");
             return;
         }
 
         int coreNow = core.items.get(targetItem);
         if(coreNow > coreStartItems && unit.stack.amount < minedStack){
             completed = true;
-            markDeposited(
-                targetItem.name, minedStack, unit.stack.amount,
-                coreStartItems, coreNow, targetX, targetY
-            );
+            markDeposited(targetItem.name, coreStartItems, coreNow, targetX, targetY);
             return;
         }
 
         depositFrames++;
-        markDepositProgress("waiting-transfer", depositFrames, unit.stack.amount, coreNow);
         if(depositFrames >= maxDepositFrames){
             throw new IllegalStateException(
                 "Stock DOM player->core deposit did not transfer mined item: item=" + targetItem.name +
@@ -425,36 +402,12 @@ public final class BrowserPlayerMiningSmoke{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'requested'); document.documentElement.setAttribute('data-mindustry-player-mining-source', 'dom-pointer-event');")
     private static native void markRequested();
 
-    @JSBody(params = {"what", "frames"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'waiting-' + what); document.documentElement.setAttribute('data-mindustry-player-mining-wait-frames', String(frames));")
-    private static native void markWaiting(String what, int frames);
-
-    @JSBody(params = {"phase", "frames", "x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'approaching-' + phase); document.documentElement.setAttribute('data-mindustry-player-mining-approach-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-player-mining-player-x', String(x)); document.documentElement.setAttribute('data-mindustry-player-mining-player-y', String(y));")
-    private static native void markApproach(String phase, int frames, float x, float y);
-
-    @JSBody(params = {"phase", "frames", "sx", "sy"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'camera-wait-' + phase); document.documentElement.setAttribute('data-mindustry-player-mining-camera-wait-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-player-mining-pointer-x', String(sx)); document.documentElement.setAttribute('data-mindustry-player-mining-pointer-y', String(sy));")
-    private static native void markCameraWait(String phase, int frames, float sx, float sy);
-
-    @JSBody(params = {"x", "y", "item", "sx", "sy", "coreItems"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'targeted'); document.documentElement.setAttribute('data-mindustry-player-mining-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-player-mining-tile-y', String(y)); document.documentElement.setAttribute('data-mindustry-player-mining-item', item); document.documentElement.setAttribute('data-mindustry-player-mining-pointer-x', String(sx)); document.documentElement.setAttribute('data-mindustry-player-mining-pointer-y', String(sy)); document.documentElement.setAttribute('data-mindustry-player-mining-core-start', String(coreItems));")
-    private static native void markTarget(int x, int y, String item, float sx, float sy, int coreItems);
-
-    @JSBody(params = {"stage"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', stage);")
-    private static native void markStage(String stage);
-
-    @JSBody(params = {"doubleTap"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'mining'); document.documentElement.setAttribute('data-mindustry-player-mining-doubletap', String(doubleTap));")
-    private static native void markMiningStarted(boolean doubleTap);
-
-    @JSBody(params = {"frames", "stack", "coreItems"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-mine-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-player-mining-stack', String(stack)); document.documentElement.setAttribute('data-mindustry-player-mining-core-now', String(coreItems));")
-    private static native void markMiningProgress(int frames, int stack, int coreItems);
-
-    @JSBody(params = {"item", "stack"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'mined'); document.documentElement.setAttribute('data-mindustry-player-mining-item', item); document.documentElement.setAttribute('data-mindustry-player-mining-mined-stack', String(stack));")
-    private static native void markMined(String item, int stack);
-
-    @JSBody(params = {"phase", "frames", "stack", "coreItems"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', phase); document.documentElement.setAttribute('data-mindustry-player-mining-deposit-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-player-mining-stack', String(stack)); document.documentElement.setAttribute('data-mindustry-player-mining-core-now', String(coreItems));")
-    private static native void markDepositProgress(String phase, int frames, int stack, int coreItems);
+    @JSBody(params = {"x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-player-mining-tile-y', String(y));")
+    private static native void markTarget(int x, int y);
 
     @JSBody(params = {"item", "delta"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'deposited'); document.documentElement.setAttribute('data-mindustry-player-mining-transfer', 'miner-auto'); document.documentElement.setAttribute('data-mindustry-player-mining-item', item); document.documentElement.setAttribute('data-mindustry-player-mining-core-delta', String(delta));")
     private static native void markAutoDeposited(String item, int delta);
 
-    @JSBody(params = {"item", "mined", "remaining", "before", "after", "x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'deposited'); document.documentElement.setAttribute('data-mindustry-player-mining-transfer', 'player-drag-core'); document.documentElement.setAttribute('data-mindustry-player-mining-item', item); document.documentElement.setAttribute('data-mindustry-player-mining-mined-stack', String(mined)); document.documentElement.setAttribute('data-mindustry-player-mining-final-stack', String(remaining)); document.documentElement.setAttribute('data-mindustry-player-mining-core-start', String(before)); document.documentElement.setAttribute('data-mindustry-player-mining-core-now', String(after)); document.documentElement.setAttribute('data-mindustry-player-mining-core-delta', String(after - before)); document.documentElement.setAttribute('data-mindustry-player-mining-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-player-mining-tile-y', String(y));")
-    private static native void markDeposited(String item, int mined, int remaining, int before, int after, int x, int y);
+    @JSBody(params = {"item", "before", "after", "x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke','deposited'); document.documentElement.setAttribute('data-mindustry-player-mining-transfer','player-drag-core'); document.documentElement.setAttribute('data-mindustry-player-mining-item',item); document.documentElement.setAttribute('data-mindustry-player-mining-core-delta',String(after-before)); document.documentElement.setAttribute('data-mindustry-player-mining-tile-x',String(x)); document.documentElement.setAttribute('data-mindustry-player-mining-tile-y',String(y));")
+    private static native void markDeposited(String item, int before, int after, int x, int y);
 }
