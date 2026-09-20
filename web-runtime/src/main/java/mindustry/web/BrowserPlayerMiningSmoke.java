@@ -90,9 +90,8 @@ public final class BrowserPlayerMiningSmoke{
             Tile target = world.tile(targetX, targetY);
             if(target == null) throw new IllegalStateException("Mine target disappeared before approach");
 
-            // Approach well inside mineRange so the ore projects near the player/camera
-            // center instead of landing under the bottom HUD/build palette.
-            float safeRange = Math.min(unit.type.mineRange * 0.25f, tilesize * 1.25f);
+            // Approach to one tile so the ore projects near the free camera center.
+            float safeRange = tilesize;
             if(!unit.within(target.worldx(), target.worldy(), safeRange)){
                 moveToward(unit.x, unit.y, target.worldx(), target.worldy());
                 if(++approachFrames >= maxApproachFrames){
