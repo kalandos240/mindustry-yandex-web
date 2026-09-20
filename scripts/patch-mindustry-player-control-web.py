@@ -6,9 +6,8 @@ CORE = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry"
 DESKTOP = CORE / "input" / "DesktopInput.java"
 INPUT = CORE / "input" / "InputHandler.java"
 HUD = CORE / "ui" / "fragments" / "HudFragment.java"
-COREBLOCK = CORE / "world" / "blocks" / "storage" / "CoreBlock.java"
 
-for path in (DESKTOP, INPUT, HUD, COREBLOCK):
+for path in (DESKTOP, INPUT, HUD):
     if not path.is_file():
         raise SystemExit(f"Missing pinned Mindustry player-control source: {path}")
 
@@ -85,18 +84,4 @@ if "Call.unitClear(player)" in hud:
     raise SystemExit("HudFragment still reaches generated unitClear transport")
 HUD.write_text(hud, encoding="utf-8")
 
-coreblock = COREBLOCK.read_text(encoding="utf-8")
-spawn_old = "            Call.playerSpawn(tile, player);"
-spawn_new = (
-    "            // Web/Yandex local core respawn remains authoritative in this process.\n"
-    "            // Execute the stock CoreBlock.playerSpawn handler directly.\n"
-    "            CoreBlock.playerSpawn(tile, player);"
-)
-if coreblock.count(spawn_old) != 1:
-    raise SystemExit("CoreBlock Web playerSpawn patch no longer matches pinned upstream")
-coreblock = coreblock.replace(spawn_old, spawn_new, 1)
-if "Call.playerSpawn(tile, player)" in coreblock:
-    raise SystemExit("CoreBlock requestSpawn still reaches generated playerSpawn transport")
-COREBLOCK.write_text(coreblock, encoding="utf-8")
-
-print("Enabled local-authoritative desktop/mobile player possession, core spawn and respawn without generated RPC transport")
+print("Enabled local-authoritative desktop/mobile player possession and respawn without generated RPC transport")
