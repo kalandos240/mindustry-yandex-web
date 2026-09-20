@@ -21,6 +21,7 @@ import static mindustry.Vars.*;
 public final class BrowserPlayerMiningSmoke{
     private static final int maxSpawnFrames = 900;
     private static final int maxMineFrames = 900;
+    private static final int maxApproachFrames = 1800;
     private static final int maxDepositFrames = 180;
 
     private static boolean queryChecked;
@@ -30,6 +31,7 @@ public final class BrowserPlayerMiningSmoke{
     private static int stage;
     private static int spawnFrames;
     private static int mineFrames;
+    private static int approachFrames;
     private static int depositFrames;
     private static int targetX = -1, targetY = -1;
     private static int coreStartItems;
@@ -37,6 +39,7 @@ public final class BrowserPlayerMiningSmoke{
     private static float targetScreenX, targetScreenY;
     private static float playerScreenX, playerScreenY;
     private static float coreScreenX, coreScreenY;
+    private static String movementKey;
     private static Item targetItem;
     private static Building core;
 
@@ -72,36 +75,63 @@ public final class BrowserPlayerMiningSmoke{
                 throw new IllegalStateException("Player-mining smoke requires a real local core item inventory");
             }
             if(!findTarget(unit)){
-                throw new IllegalStateException("No real mineable visible tile exists inside local unit mineRange");
+                throw new IllegalStateException("No real mineable tile exists within the mining smoke search radius");
             }
 
             coreStartItems = core.items.get(targetItem);
-            dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
             stage = 1;
             markTarget(targetX, targetY, targetItem.name, targetScreenX, targetScreenY, coreStartItems);
             return;
         }
 
         if(stage == 1){
-            verifyWorldPointer(targetScreenX, targetScreenY, "mine target");
-            dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
-            pointerDown = true;
+            Tile target = world.tile(targetX, targetY);
+            if(target == null) throw new IllegalStateException("Mine target disappeared before approach");
+
+            float safeRange = Math.max(tilesize, unit.type.mineRange - tilesize * 0.75f);
+            if(!unit.within(target.worldx(), target.worldy(), safeRange)){
+                moveToward(unit.x, unit.y, target.worldx(), target.worldy());
+                if(++approachFrames >= maxApproachFrames){
+                    stopMovement();
+                    throw new IllegalStateException(
+                        "DOM WASD could not move local player into mineRange: unit=" +
+                        unit.x + "," + unit.y + " target=" + target.worldx() + "," + target.worldy()
+                    );
+                }
+                markApproach("ore", approachFrames, unit.x, unit.y);
+                return;
+            }
+
+            stopMovement();
+            Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
+            targetScreenX = projected.x;
+            targetScreenY = projected.y;
+            dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
             stage = 2;
-            markStage("mine-down");
+            markApproach("ore-reached", approachFrames, unit.x, unit.y);
             return;
         }
 
         if(stage == 2){
-            dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
-            pointerDown = false;
+            verifyWorldPointer(targetScreenX, targetScreenY, "mine target");
+            dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
+            pointerDown = true;
             stage = 3;
-            markStage("mine-up");
+            markStage("mine-down");
             return;
         }
 
         if(stage == 3){
+            dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
+            pointerDown = false;
+            stage = 4;
+            markStage("mine-up");
+            return;
+        }
+
+        if(stage == 4){
             if(unit.mineTile == world.tile(targetX, targetY)){
-                stage = 5;
+                stage = 6;
                 markMiningStarted(false);
                 return;
             }
@@ -111,20 +141,20 @@ public final class BrowserPlayerMiningSmoke{
             // not start mining; never toggle an already-active mineTile back off.
             dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
             pointerDown = true;
-            stage = 4;
+            stage = 5;
             markStage("mine-second-down");
             return;
         }
 
-        if(stage == 4){
+        if(stage == 5){
             dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
             pointerDown = false;
-            stage = 5;
+            stage = 6;
             markMiningStarted(true);
             return;
         }
 
-        if(stage == 5){
+        if(stage == 6){
             Tile target = world.tile(targetX, targetY);
             if(target == null) throw new IllegalStateException("Mine target disappeared");
             if(unit.mineTile != target && unit.stack.amount == 0 && core.items.get(targetItem) == coreStartItems){
@@ -144,21 +174,8 @@ public final class BrowserPlayerMiningSmoke{
 
             if(unit.item() == targetItem && unit.stack.amount > 0){
                 minedStack = unit.stack.amount;
-                Vec2 up = Core.camera.project(new Vec2(unit.x, unit.y));
-                Vec2 cp = Core.camera.project(new Vec2(core.x, core.y));
-                playerScreenX = up.x;
-                playerScreenY = up.y;
-                coreScreenX = cp.x;
-                coreScreenY = cp.y;
-
-                if(!player.within(core, itemTransferRange)){
-                    throw new IllegalStateException(
-                        "Mined item cannot exercise stock manual deposit because player is outside core itemTransferRange"
-                    );
-                }
-
-                dispatchPointer("pointermove", playerScreenX, playerScreenY, -1, false);
-                stage = 6;
+                approachFrames = 0;
+                stage = 7;
                 markMined(targetItem.name, minedStack);
                 return;
             }
@@ -174,16 +191,42 @@ public final class BrowserPlayerMiningSmoke{
             return;
         }
 
-        if(stage == 6){
+        if(stage == 7){
+            if(!player.within(core, itemTransferRange * 0.8f)){
+                moveToward(unit.x, unit.y, core.x, core.y);
+                if(++approachFrames >= maxApproachFrames){
+                    stopMovement();
+                    throw new IllegalStateException(
+                        "DOM WASD could not return mined player to core itemTransferRange"
+                    );
+                }
+                markApproach("core", approachFrames, unit.x, unit.y);
+                return;
+            }
+
+            stopMovement();
+            Vec2 up = Core.camera.project(new Vec2(unit.x, unit.y));
+            Vec2 cp = Core.camera.project(new Vec2(core.x, core.y));
+            playerScreenX = up.x;
+            playerScreenY = up.y;
+            coreScreenX = cp.x;
+            coreScreenY = cp.y;
+            dispatchPointer("pointermove", playerScreenX, playerScreenY, -1, false);
+            stage = 8;
+            markApproach("core-reached", approachFrames, unit.x, unit.y);
+            return;
+        }
+
+        if(stage == 8){
             verifyWorldPointer(playerScreenX, playerScreenY, "player item drag source");
             dispatchPointer("pointerdown", playerScreenX, playerScreenY, 0, true);
             pointerDown = true;
-            stage = 7;
+            stage = 9;
             markStage("deposit-player-down");
             return;
         }
 
-        if(stage == 7){
+        if(stage == 9){
             if(!control.input.isDroppingItem()){
                 if(++depositFrames >= maxDepositFrames){
                     releasePointer();
@@ -194,16 +237,16 @@ public final class BrowserPlayerMiningSmoke{
             }
 
             dispatchPointer("pointermove", coreScreenX, coreScreenY, 0, true);
-            stage = 8;
+            stage = 10;
             markStage("deposit-core-hover");
             return;
         }
 
-        if(stage == 8){
+        if(stage == 10){
             verifyWorldPointer(coreScreenX, coreScreenY, "core deposit target");
             dispatchPointer("pointerup", coreScreenX, coreScreenY, 0, false);
             pointerDown = false;
-            stage = 9;
+            stage = 11;
             markStage("deposit-core-up");
             return;
         }
@@ -233,29 +276,25 @@ public final class BrowserPlayerMiningSmoke{
         if(Core.camera == null) return false;
 
         int ux = World.toTile(unit.x), uy = World.toTile(unit.y);
-        int radius = Math.max(1, (int)Math.ceil(unit.type.mineRange / tilesize));
-        int width = Core.graphics.getWidth(), height = Core.graphics.getHeight();
+        int maxRadius = 96;
         boolean doubleTap = Core.settings.getBool("doubletapmine");
 
-        for(int r = 1; r <= radius; r++){
+        for(int r = 1; r <= maxRadius; r++){
             for(int dx = -r; dx <= r; dx++){
                 for(int dy = -r; dy <= r; dy++){
                     if(Math.abs(dx) != r && Math.abs(dy) != r) continue;
                     Tile tile = world.tile(ux + dx, uy + dy);
-                    if(tile == null || !unit.validMine(tile)) continue;
+                    if(tile == null) continue;
 
                     Item item = unit.getMineResult(tile);
                     if(item == null || !unit.acceptsItem(item)) continue;
                     if(!doubleTap && tile.floor().playerUnmineable && tile.overlay().itemDrop == null) continue;
                     if(!doubleTap && tile.overlay().playerUnmineable && tile.overlay().itemDrop != null) continue;
 
-                    Vec2 projected = Core.camera.project(new Vec2(tile.worldx(), tile.worldy()));
-                    if(projected.x < width * 0.12f || projected.x > width * 0.78f) continue;
-                    if(projected.y < height * 0.16f || projected.y > height * 0.84f) continue;
-
                     targetX = tile.x;
                     targetY = tile.y;
                     targetItem = item;
+                    Vec2 projected = Core.camera.project(new Vec2(tile.worldx(), tile.worldy()));
                     targetScreenX = projected.x;
                     targetScreenY = projected.y;
                     return true;
@@ -263,6 +302,28 @@ public final class BrowserPlayerMiningSmoke{
             }
         }
         return false;
+    }
+
+    private static void moveToward(float fromX, float fromY, float toX, float toY){
+        float dx = toX - fromX, dy = toY - fromY;
+        String key;
+        if(Math.abs(dx) > Math.abs(dy)){
+            key = dx >= 0f ? "KeyD" : "KeyA";
+        }else{
+            key = dy >= 0f ? "KeyW" : "KeyS";
+        }
+
+        if(key.equals(movementKey)) return;
+        stopMovement();
+        movementKey = key;
+        dispatchKey("keydown", key, key.equals("KeyD") ? "d" : key.equals("KeyA") ? "a" : key.equals("KeyW") ? "w" : "s");
+    }
+
+    private static void stopMovement(){
+        if(movementKey == null) return;
+        String key = movementKey;
+        movementKey = null;
+        dispatchKey("keyup", key, key.equals("KeyD") ? "d" : key.equals("KeyA") ? "a" : key.equals("KeyW") ? "w" : "s");
     }
 
     private static void verifyWorldPointer(float x, float y, String label){
@@ -287,6 +348,7 @@ public final class BrowserPlayerMiningSmoke{
     }
 
     private static void releasePointer(){
+        stopMovement();
         if(!pointerDown) return;
         dispatchPointer("pointerup", Core.input.mouseX(), Core.input.mouseY(), 0, false);
         pointerDown = false;
@@ -315,11 +377,24 @@ public final class BrowserPlayerMiningSmoke{
         """)
     private static native void dispatchPointer(String type, float sx, float sy, int button, boolean down);
 
+    @JSBody(params = {"type", "code", "key"}, script = """
+        window.dispatchEvent(new KeyboardEvent(type, {
+            code: code,
+            key: key,
+            bubbles: true,
+            cancelable: true
+        }));
+        """)
+    private static native void dispatchKey(String type, String code, String key);
+
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'requested'); document.documentElement.setAttribute('data-mindustry-player-mining-source', 'dom-pointer-event');")
     private static native void markRequested();
 
     @JSBody(params = {"what", "frames"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'waiting-' + what); document.documentElement.setAttribute('data-mindustry-player-mining-wait-frames', String(frames));")
     private static native void markWaiting(String what, int frames);
+
+    @JSBody(params = {"phase", "frames", "x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'approaching-' + phase); document.documentElement.setAttribute('data-mindustry-player-mining-approach-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-player-mining-player-x', String(x)); document.documentElement.setAttribute('data-mindustry-player-mining-player-y', String(y));")
+    private static native void markApproach(String phase, int frames, float x, float y);
 
     @JSBody(params = {"x", "y", "item", "sx", "sy", "coreItems"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'targeted'); document.documentElement.setAttribute('data-mindustry-player-mining-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-player-mining-tile-y', String(y)); document.documentElement.setAttribute('data-mindustry-player-mining-item', item); document.documentElement.setAttribute('data-mindustry-player-mining-pointer-x', String(sx)); document.documentElement.setAttribute('data-mindustry-player-mining-pointer-y', String(sy)); document.documentElement.setAttribute('data-mindustry-player-mining-core-start', String(coreItems));")
     private static native void markTarget(int x, int y, String item, float sx, float sy, int coreItems);
