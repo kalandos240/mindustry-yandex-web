@@ -158,6 +158,20 @@ public final class BrowserPlayerInputSmoke{
         }
 
         if(mobileStage == 3){
+            MobileInput mobile = (MobileInput)control.input;
+            float immediateCameraDx = Math.abs(Core.camera.position.x - mobileCameraX);
+            if(immediateCameraDx <= 2f){
+                throw new IllegalStateException(
+                    "DOM touch drag reached verification frame without MobileInput pan: down=" + mobile.down +
+                    ", panning=" + mobile.detector.isPanning() +
+                    ", manualShooting=" + mobile.manualShooting +
+                    ", locked=" + mobile.locked() +
+                    ", commandRect=" + mobile.commandRect +
+                    ", dialog=" + (Core.scene != null && Core.scene.hasDialog()) +
+                    ", touched=" + Core.input.isTouched(0) +
+                    ", mouse=" + Core.input.mouseX() + "," + Core.input.mouseY()
+                );
+            }
             releaseMobileInput();
             mobileStage = 4;
             return;
