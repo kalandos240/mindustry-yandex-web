@@ -68,15 +68,31 @@ if "Call.tileConfig(" in building:
 
 destroy_replacements = [
     (
-        "        Call.buildDestroyed(self());",
-        "        // Web/Yandex is authoritative single-player: execute the stock remote body\n"
-        "        // locally so Building.killed()/CoreChangeEvent/team core bookkeeping stay intact.\n"
-        "        Tile.buildDestroyed(self());",
+'''    @Replace
+    @Override
+    public void kill(){
+        Call.buildDestroyed(self());
+    }
+''',
+'''    @Replace
+    @Override
+    public void kill(){
+        // Web/Yandex is authoritative single-player: execute the stock remote body
+        // locally so Building.killed()/CoreChangeEvent/team core bookkeeping stay intact.
+        Tile.buildDestroyed(self());
+    }
+''',
         "kill",
     ),
     (
-        "            Call.buildDestroyed(self());",
-        "            Tile.buildDestroyed(self());",
+'''        if(health <= 0){
+            Call.buildDestroyed(self());
+        }
+''',
+'''        if(health <= 0){
+            Tile.buildDestroyed(self());
+        }
+''',
         "damage",
     ),
 ]
