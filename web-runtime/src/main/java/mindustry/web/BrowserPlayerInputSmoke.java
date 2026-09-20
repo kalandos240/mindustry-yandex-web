@@ -3,6 +3,7 @@ package mindustry.web;
 import arc.*;
 import arc.math.geom.*;
 import mindustry.gen.*;
+import mindustry.input.*;
 import org.teavm.jso.JSBody;
 
 import static mindustry.Vars.*;
@@ -26,10 +27,14 @@ public final class BrowserPlayerInputSmoke{
     private static boolean completed;
     private static boolean keyDown;
     private static boolean possessionMode;
+    private static boolean mobileMode;
     private static boolean controlDown;
     private static boolean pointerDown;
+    private static boolean mobilePointerDown;
     private static int possessionStage;
     private static int possessionFrames;
+    private static int mobileStage;
+    private static int mobileFrames;
     private static int spawnFrames;
     private static int heldFrames;
     private static int unitId = -1;
@@ -37,6 +42,8 @@ public final class BrowserPlayerInputSmoke{
     private static float startY;
     private static float controlScreenX;
     private static float controlScreenY;
+    private static float mobileCameraX;
+    private static float mobileCameraY;
 
     private BrowserPlayerInputSmoke(){}
 
@@ -47,6 +54,7 @@ public final class BrowserPlayerInputSmoke{
         if(state == null || player == null || !BrowserLocalMapRuntime.active() || !state.isPlaying()){
             releaseKey();
             releasePossessionInput();
+            releaseMobileInput();
             return;
         }
 
@@ -57,6 +65,11 @@ public final class BrowserPlayerInputSmoke{
             if(spawnFrames >= maxSpawnFrames){
                 throw new IllegalStateException("Player-input smoke never received a real local player unit");
             }
+            return;
+        }
+
+        if(mobileMode){
+            updateMobile(unit);
             return;
         }
 
@@ -111,11 +124,69 @@ public final class BrowserPlayerInputSmoke{
         if(!queryChecked){
             queryChecked = true;
             possessionMode = possessionRequested();
-            enabled = requested() || possessionMode;
+            mobileMode = mobileRequested();
+            enabled = requested() || possessionMode || mobileMode;
             if(enabled) markRequested();
             if(possessionMode) markPossessionRequested();
         }
         return enabled;
+    }
+
+    private static void updateMobile(Unit unit){
+        if(!Core.app.isMobile() || !(control.input instanceof MobileInput) || Core.settings.getBool("keyboard")){
+            throw new IllegalStateException("Mobile-input smoke requires stock touch MobileInput");
+        }
+
+        if(mobileStage == 0){
+            unitId = unit.id;
+            startX = unit.x;
+            startY = unit.y;
+            mobileCameraX = Core.camera.position.x;
+            mobileCameraY = Core.camera.position.y;
+            dispatchTouch("pointerdown", 0.62f, 0.52f);
+            mobilePointerDown = true;
+            mobileStage = 1;
+            return;
+        }
+
+        if(unit.id != unitId || player.unit() != unit){
+            releaseMobileInput();
+            throw new IllegalStateException("Mobile-input smoke changed controlled unit during touch drag");
+        }
+
+        if(mobileStage == 1){
+            dispatchTouch("pointermove", 0.50f, 0.52f);
+            mobileStage = 2;
+            return;
+        }
+        if(mobileStage == 2){
+            dispatchTouch("pointermove", 0.36f, 0.52f);
+            mobileStage = 3;
+            return;
+        }
+        if(mobileStage == 3){
+            releaseMobileInput();
+            mobileStage = 4;
+            return;
+        }
+
+        mobileFrames++;
+        float cameraDx = Math.abs(Core.camera.position.x - mobileCameraX);
+        float cameraDy = Math.abs(Core.camera.position.y - mobileCameraY);
+        float unitDx = Math.abs(unit.x - startX);
+        float unitDy = Math.abs(unit.y - startY);
+        if(cameraDx > 2f && (unitDx > 0.5f || unitDy > 0.5f)){
+            completed = true;
+            markMobileMoved(unitId, unit.type.name, mobileFrames, cameraDx, cameraDy, unitDx, unitDy);
+            return;
+        }
+
+        if(mobileFrames >= maxHeldFrames){
+            throw new IllegalStateException(
+                "DOM touch pan did not drive stock MobileInput movement: cameraDelta=" +
+                cameraDx + "," + cameraDy + " unitDelta=" + unitDx + "," + unitDy
+            );
+        }
     }
 
     private static void updatePossession(Unit unit){
@@ -211,11 +282,20 @@ public final class BrowserPlayerInputSmoke{
         markKeyState("up");
     }
 
+    private static void releaseMobileInput(){
+        if(!mobilePointerDown) return;
+        dispatchTouch("pointerup", 0.36f, 0.52f);
+        mobilePointerDown = false;
+    }
+
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPlayerInputSmoke') === '1';")
     private static native boolean requested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPlayerPossessionSmoke') === '1';")
     private static native boolean possessionRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryMobileInputSmoke') === '1';")
+    private static native boolean mobileRequested();
 
     @JSBody(params = {"down"}, script = """
         const type = down ? 'keydown' : 'keyup';
@@ -245,8 +325,20 @@ public final class BrowserPlayerInputSmoke{
         """)
     private static native void dispatchPointer(String type, float sx, float sy, int button, boolean down);
 
+    @JSBody(params = {"type", "nx", "ny"}, script = """
+        const c = document.getElementById('mindustry-canvas'), r = c.getBoundingClientRect();
+        const active = type !== 'pointerup';
+        c.dispatchEvent(new PointerEvent(type, {pointerId:51, pointerType:'touch', isPrimary:true,
+            clientX:r.left+r.width*nx, clientY:r.top+r.height*ny, button:type === 'pointermove' ? -1 : 0,
+            buttons:active ? 1 : 0, bubbles:true, cancelable:true}));
+        """)
+    private static native void dispatchTouch(String type, float nx, float ny);
+
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-player-possession-smoke', 'requested'); document.documentElement.setAttribute('data-mindustry-player-possession-source', 'dom-control-click');")
     private static native void markPossessionRequested();
+
+    @JSBody(params = {"id", "type", "frames", "cdx", "cdy", "udx", "udy"}, script = "document.documentElement.setAttribute('data-mindustry-mobile-input-smoke','moved'); document.documentElement.setAttribute('data-mindustry-mobile-input-source','dom-touch-pan'); document.documentElement.setAttribute('data-mindustry-mobile-input-pointer-state','up'); document.documentElement.setAttribute('data-mindustry-mobile-input-unit-id',String(id)); document.documentElement.setAttribute('data-mindustry-mobile-input-unit',type); document.documentElement.setAttribute('data-mindustry-mobile-input-move-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-mobile-input-camera-dx',String(cdx)); document.documentElement.setAttribute('data-mindustry-mobile-input-camera-dy',String(cdy)); document.documentElement.setAttribute('data-mindustry-mobile-input-unit-dx',String(udx)); document.documentElement.setAttribute('data-mindustry-mobile-input-unit-dy',String(udy));")
+    private static native void markMobileMoved(int id, String type, int frames, float cdx, float cdy, float udx, float udy);
 
     @JSBody(params = {"stage", "oldId"}, script = "document.documentElement.setAttribute('data-mindustry-player-possession-smoke', stage); document.documentElement.setAttribute('data-mindustry-player-possession-old-id', String(oldId));")
     private static native void markPossessionStage(String stage, int oldId);
