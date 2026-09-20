@@ -77,7 +77,7 @@ new_methods = '''    private static void startAttackSmoke(){
             for(int y = 2; y < world.height() - 2; y++){
                 mindustry.world.Tile tile = world.tile(x, y);
                 if(tile != null && tile.block() == mindustry.content.Blocks.air &&
-                !tile.floor().isDeep() && tile.dst(playerCore.tile) >= minDistance / tilesize){
+                !tile.floor().isDeep() && tile.dst(playerCore.tile) >= minDistance){
                     spawn = tile;
                     break;
                 }
