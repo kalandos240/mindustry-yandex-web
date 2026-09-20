@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.assets.*;
+import arc.audio.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
 import arc.input.*;
@@ -76,6 +77,20 @@ public final class WebClientLauncher extends ClientLauncher{
         }
 
         tree = new FileTree();
+
+        // Match stock ClientLauncher ordering, but generated Web audio bindings create
+        // same-origin BrowserSound/BrowserMusic objects synchronously instead of queuing
+        // desktop SoundLoader/MusicLoader tasks.
+        Musics.load();
+        Sounds.load();
+        if(!(Sounds.loopBuild instanceof BrowserSound)
+        || !(Musics.menu instanceof BrowserMusic)
+        || Core.assets.getOrNull("sounds/loops/loopBuild.ogg", Sound.class) != Sounds.loopBuild
+        || Core.assets.getOrNull("music/menu.ogg", Music.class) != Musics.menu
+        || Sounds.getSoundId(Sounds.loopBuild) < 0){
+            throw new IllegalStateException("Stock Mindustry audio assets failed BrowserAudio binding");
+        }
+        markStockAudioAssetsReady();
 
         if(Core.app.openURI("external-navigation-probe")){
             throw new IllegalStateException("Browser platform unexpectedly allowed URI navigation");
@@ -312,6 +327,12 @@ public final class WebClientLauncher extends ClientLauncher{
             "lastBuild", 0
         );
 
+        // Desktop fires ClientLoadEvent after its full loader/mod/UI graph completes.
+        // The lean Web client intentionally does not fire that broad event; register the
+        // same stock music lists/UI-sound metadata directly on the existing SoundControl.
+        control.sound.reloadWeb();
+        markStockAudioControlReady();
+
         if(control.saves == null || !(control.saves instanceof BrowserSaves)
         || control.saves != BrowserSaveRuntime.saves()
         || control.sound == null || control.indicators == null || control.input != gameplayInput
@@ -337,6 +358,12 @@ public final class WebClientLauncher extends ClientLauncher{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-links', 'none');")
     private static native void markNoLinksReady();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-stock-audio', 'ready'); document.documentElement.setAttribute('data-mindustry-stock-sfx', 'browser-sound'); document.documentElement.setAttribute('data-mindustry-stock-music', 'browser-music');")
+    private static native void markStockAudioAssetsReady();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-stock-audio-control', 'registered');")
+    private static native void markStockAudioControlReady();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer', 'constructed');")
     private static native void markRendererReady();
