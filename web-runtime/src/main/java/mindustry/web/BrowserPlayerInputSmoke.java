@@ -1,5 +1,7 @@
 package mindustry.web;
 
+import arc.*;
+import arc.math.geom.*;
 import mindustry.gen.*;
 import org.teavm.jso.JSBody;
 
@@ -23,11 +25,18 @@ public final class BrowserPlayerInputSmoke{
     private static boolean armed;
     private static boolean completed;
     private static boolean keyDown;
+    private static boolean possessionMode;
+    private static boolean controlDown;
+    private static boolean pointerDown;
+    private static int possessionStage;
+    private static int possessionFrames;
     private static int spawnFrames;
     private static int heldFrames;
     private static int unitId = -1;
     private static float startX;
     private static float startY;
+    private static float controlScreenX;
+    private static float controlScreenY;
 
     private BrowserPlayerInputSmoke(){}
 
@@ -37,6 +46,7 @@ public final class BrowserPlayerInputSmoke{
 
         if(state == null || player == null || !BrowserLocalMapRuntime.active() || !state.isPlaying()){
             releaseKey();
+            releasePossessionInput();
             return;
         }
 
@@ -47,6 +57,11 @@ public final class BrowserPlayerInputSmoke{
             if(spawnFrames >= maxSpawnFrames){
                 throw new IllegalStateException("Player-input smoke never received a real local player unit");
             }
+            return;
+        }
+
+        if(possessionMode){
+            updatePossession(unit);
             return;
         }
 
@@ -95,10 +110,98 @@ public final class BrowserPlayerInputSmoke{
     private static boolean enabled(){
         if(!queryChecked){
             queryChecked = true;
-            enabled = requested();
+            possessionMode = possessionRequested();
+            enabled = requested() || possessionMode;
             if(enabled) markRequested();
+            if(possessionMode) markPossessionRequested();
         }
         return enabled;
+    }
+
+    private static void updatePossession(Unit unit){
+        if(!state.rules.possessionAllowed){
+            throw new IllegalStateException("Player-possession smoke requires possessionAllowed rules");
+        }
+
+        if(possessionStage == 0){
+            Building core = unit.closestCore();
+            if(core == null || !core.canControlSelect(unit)){
+                throw new IllegalStateException("Player-possession smoke requires a controllable local core");
+            }
+            unitId = unit.id;
+            Vec2 point = Core.camera.project(new Vec2(core.x, core.y));
+            controlScreenX = point.x;
+            controlScreenY = point.y;
+            dispatchPointer("pointermove", controlScreenX, controlScreenY, -1, false);
+            possessionStage = 1;
+            markPossessionStage("core-hover", unitId);
+            return;
+        }
+
+        if(possessionStage == 1){
+            if(Core.scene.hasMouse()){
+                throw new IllegalStateException("Core possession target is covered by an Arc Scene actor");
+            }
+            if(Math.abs(Core.input.mouseX() - controlScreenX) > 4f || Math.abs(Core.input.mouseY() - controlScreenY) > 4f){
+                throw new IllegalStateException("DOM pointermove did not reach the core possession target");
+            }
+            dispatchControlKey(true);
+            controlDown = true;
+            possessionStage = 2;
+            markPossessionStage("control-down", unitId);
+            return;
+        }
+
+        if(possessionStage == 2){
+            dispatchPointer("pointerdown", controlScreenX, controlScreenY, 0, true);
+            pointerDown = true;
+            possessionStage = 3;
+            markPossessionStage("select-down", unitId);
+            return;
+        }
+
+        if(possessionStage == 3){
+            dispatchPointer("pointerup", controlScreenX, controlScreenY, 0, false);
+            pointerDown = false;
+            possessionStage = 4;
+            markPossessionStage("select-up", unitId);
+            return;
+        }
+
+        if(possessionStage == 4){
+            dispatchControlKey(false);
+            controlDown = false;
+            possessionStage = 5;
+            markPossessionStage("control-up", unitId);
+            return;
+        }
+
+        Unit current = player.unit();
+        if(current != null && current.isAdded() && current.isValid() && current.id != unitId && current.spawnedByCore && current.isPlayer()){
+            completed = true;
+            markPossessed(unitId, current.id, current.type.name);
+            return;
+        }
+
+        if(++possessionFrames >= maxHeldFrames){
+            releasePossessionInput();
+            throw new IllegalStateException(
+                "DOM ControlLeft + core click did not complete stock local core possession: old=" +
+                unitId + ", current=" + (current == null ? -1 : current.id)
+            );
+        }
+        markPossessionWait(possessionFrames, current == null ? -1 : current.id);
+    }
+
+    private static void releasePossessionInput(){
+        if(pointerDown){
+            dispatchPointer("pointerup", controlScreenX, controlScreenY, 0, false);
+            pointerDown = false;
+        }
+        if(controlDown){
+            dispatchControlKey(false);
+            controlDown = false;
+        }
     }
 
     private static void releaseKey(){
@@ -110,6 +213,9 @@ public final class BrowserPlayerInputSmoke{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPlayerInputSmoke') === '1';")
     private static native boolean requested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPlayerPossessionSmoke') === '1';")
+    private static native boolean possessionRequested();
 
     @JSBody(params = {"down"}, script = """
         const type = down ? 'keydown' : 'keyup';
@@ -123,6 +229,33 @@ public final class BrowserPlayerInputSmoke{
         window.dispatchEvent(event);
         """)
     private static native void dispatchMovementKey(boolean down);
+
+    @JSBody(params = {"down"}, script = "window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', {code:'ControlLeft', key:'Control', bubbles:true, cancelable:true, repeat:false}));")
+    private static native void dispatchControlKey(boolean down);
+
+    @JSBody(params = {"type", "sx", "sy", "button", "down"}, script = """
+        const canvas = document.getElementById('mindustry-canvas');
+        const rect = canvas.getBoundingClientRect();
+        canvas.dispatchEvent(new PointerEvent(type, {
+            pointerId: 1, pointerType: 'mouse', isPrimary: true,
+            clientX: rect.left + sx, clientY: rect.top + rect.height - sy,
+            button: button < 0 ? -1 : button, buttons: down ? 1 : 0,
+            bubbles: true, cancelable: true
+        }));
+        """)
+    private static native void dispatchPointer(String type, float sx, float sy, int button, boolean down);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-player-possession-smoke', 'requested'); document.documentElement.setAttribute('data-mindustry-player-possession-source', 'dom-control-click');")
+    private static native void markPossessionRequested();
+
+    @JSBody(params = {"stage", "oldId"}, script = "document.documentElement.setAttribute('data-mindustry-player-possession-smoke', stage); document.documentElement.setAttribute('data-mindustry-player-possession-old-id', String(oldId));")
+    private static native void markPossessionStage(String stage, int oldId);
+
+    @JSBody(params = {"frames", "currentId"}, script = "document.documentElement.setAttribute('data-mindustry-player-possession-wait-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-player-possession-current-id', String(currentId));")
+    private static native void markPossessionWait(int frames, int currentId);
+
+    @JSBody(params = {"oldId", "newId", "type"}, script = "document.documentElement.setAttribute('data-mindustry-player-possession-smoke', 'possessed'); document.documentElement.setAttribute('data-mindustry-player-possession-source', 'dom-control-click'); document.documentElement.setAttribute('data-mindustry-player-possession-old-id', String(oldId)); document.documentElement.setAttribute('data-mindustry-player-possession-new-id', String(newId)); document.documentElement.setAttribute('data-mindustry-player-possession-unit', type); document.documentElement.setAttribute('data-mindustry-player-possession-spawned-by-core', 'true');")
+    private static native void markPossessed(int oldId, int newId, String type);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-player-input-smoke', 'requested'); document.documentElement.setAttribute('data-mindustry-player-input-source', 'dom-keyboard-event'); document.documentElement.setAttribute('data-mindustry-player-input-key', 'KeyD');")
     private static native void markRequested();
