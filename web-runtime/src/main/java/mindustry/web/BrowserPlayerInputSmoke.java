@@ -141,9 +141,14 @@ public final class BrowserPlayerInputSmoke{
             startX = unit.x;
             startY = unit.y;
             mobileCameraX = Core.camera.position.x;
+            // Queue a real fast swipe as one browser-input burst. Delaying the first
+            // move by a whole heavy TeaVM frame can legitimately trigger long-press
+            // manual shooting before GestureDetector sees a pan.
             dispatchTouch("pointerdown", 0.62f, 0.52f);
             mobilePointerDown = true;
-            mobileStage = 1;
+            dispatchTouch("pointermove", 0.50f, 0.52f);
+            dispatchTouch("pointermove", 0.36f, 0.52f);
+            mobileStage = 3;
             return;
         }
 
@@ -152,16 +157,6 @@ public final class BrowserPlayerInputSmoke{
             throw new IllegalStateException("Mobile-input smoke changed controlled unit during touch drag");
         }
 
-        if(mobileStage == 1){
-            dispatchTouch("pointermove", 0.50f, 0.52f);
-            mobileStage = 2;
-            return;
-        }
-        if(mobileStage == 2){
-            dispatchTouch("pointermove", 0.36f, 0.52f);
-            mobileStage = 3;
-            return;
-        }
         if(mobileStage == 3){
             releaseMobileInput();
             mobileStage = 4;
