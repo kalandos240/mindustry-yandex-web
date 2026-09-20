@@ -119,6 +119,34 @@ run_production_map(){
   echo 'Browser packaged map: maze.msav entered continuous local production play for 3+ real frames'
 }
 
+run_enemy_path(){
+  local profile="/tmp/mindustry-web-profile-enemy-path"
+  local dom="/tmp/mindustry-web-enemy-path.html"
+  rm -rf "$profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:8081/index.html?lang=en&mindustryMapSmoke=maze&mindustryEnemyPathSmoke=1" \
+    --profile "$profile" \
+    --port 9232 \
+    --timeout 45 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="production"' \
+    --require 'data-mindustry-local-map-test="maze"' \
+    --require 'data-mindustry-local-map-state="playing"' \
+    --require 'data-mindustry-local-map-loop="live"' \
+    --require 'data-mindustry-enemy-path-smoke="moved"' \
+    --require 'data-mindustry-enemy-path-source="stock-ground-ai-flow-field"' \
+    --require 'data-mindustry-enemy-path-unit="dagger"' \
+    --require 'data-mindustry-enemy-path-controller="GroundAI"' \
+    --require 'data-mindustry-enemy-path-field="core"' \
+    --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
+
+  grep -Eq 'data-mindustry-enemy-path-unit-id="[0-9]+"' "$dom"
+  grep -Eq 'data-mindustry-enemy-path-frames="[1-9][0-9]*"' "$dom"
+  echo 'Browser enemy pathfinding: stock Crux dagger GroundAI moved toward the local core through the stock core flow-field'
+}
+
 run_locale(){
   local expected="$1"
   local profile="/tmp/mindustry-web-profile-$expected"
@@ -254,6 +282,7 @@ run_mobile(){
 
 run_production_menu
 run_production_map
+run_enemy_path
 run_locale en
 run_locale ru
 run_mobile
