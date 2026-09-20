@@ -30,7 +30,6 @@ new_fields = '''    private static boolean testWaveExpected;
     private static int testWaveStart;
     private static boolean gameOverFreeze;
     private static boolean gameOverSmokeArmed;
-    private static boolean gameOverSmokeEnemyMoved;
     private static int gameOverSmokeEnemyId = -1;
     private static float gameOverSmokeEnemyX, gameOverSmokeEnemyY;
     private static Map current;
@@ -65,7 +64,6 @@ new_active = '''        testWaveExpected = false;
         testWaveStart = state.wave;
         gameOverFreeze = false;
         gameOverSmokeArmed = false;
-        gameOverSmokeEnemyMoved = false;
         gameOverSmokeEnemyId = -1;
 
         try{
@@ -149,7 +147,6 @@ new_live = '''            if(testWaveExpected && state.enemies <= 0){
                         gameOverSmokeEnemyX = enemy.x;
                         gameOverSmokeEnemyY = enemy.y;
                     }else if(Math.abs(enemy.x - gameOverSmokeEnemyX) + Math.abs(enemy.y - gameOverSmokeEnemyY) > 0.5f){
-                        gameOverSmokeEnemyMoved = true;
                         markEnemyAiMoved(enemy.id, enemy.type.name);
                         state.rules.defaultTeam.cores().clear();
                         gameOverSmokeArmed = true;
