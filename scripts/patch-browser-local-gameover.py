@@ -172,7 +172,6 @@ new_return = '''        testWaveExpected = false;
         testWaveStart = 0;
         gameOverFreeze = false;
         gameOverSmokeArmed = false;
-        gameOverSmokeEnemyMoved = false;
         gameOverSmokeEnemyId = -1;
         logic.reset();
 '''
