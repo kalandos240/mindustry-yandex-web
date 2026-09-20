@@ -11,7 +11,7 @@ for path in (APPLICATION, VERIFY, COMBAT):
         raise SystemExit(f"Missing player-combat smoke source: {path}")
 
 application = APPLICATION.read_text(encoding="utf-8")
-old_hook = '''                // CI-only observer; inert unless mindustryPlayerInputSmoke=1.
+old_hook = '''                // CI-only observer; inert unless a player-input/possession smoke is requested.
                 BrowserPlayerInputSmoke.update();
 '''
 new_hook = '''                // CI-only observers; inert unless their explicit query is present.
@@ -66,10 +66,12 @@ if text.count(function_anchor) != 1:
 text = text.replace(function_anchor, combat_function, 1)
 
 call_anchor = '''run_weather_map
+run_player_possession_map
 run_player_input_map
 run_locale en
 '''
 call_replacement = '''run_weather_map
+run_player_possession_map
 run_player_input_map
 run_player_combat_map
 run_locale en
