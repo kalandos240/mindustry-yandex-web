@@ -22,6 +22,7 @@ public final class BrowserPlayerMiningSmoke{
     private static final int maxSpawnFrames = 900;
     private static final int maxMineFrames = 900;
     private static final int maxApproachFrames = 1800;
+    private static final int maxCameraSettleFrames = 360;
     private static final int maxDepositFrames = 180;
 
     private static boolean queryChecked;
@@ -32,6 +33,7 @@ public final class BrowserPlayerMiningSmoke{
     private static int spawnFrames;
     private static int mineFrames;
     private static int approachFrames;
+    private static int cameraSettleFrames;
     private static int depositFrames;
     private static int targetX = -1, targetY = -1;
     private static int coreStartItems;
@@ -106,6 +108,19 @@ public final class BrowserPlayerMiningSmoke{
             Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
             targetScreenX = projected.x;
             targetScreenY = projected.y;
+            if(!worldPointerUsable(targetScreenX, targetScreenY)){
+                if(++cameraSettleFrames >= maxCameraSettleFrames){
+                    throw new IllegalStateException(
+                        "Mine target never became a visible world pointer after approach: screen=" +
+                        targetScreenX + "," + targetScreenY + " camera=" +
+                        Core.camera.position.x + "," + Core.camera.position.y
+                    );
+                }
+                markCameraWait("ore", cameraSettleFrames, targetScreenX, targetScreenY);
+                return;
+            }
+
+            cameraSettleFrames = 0;
             dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
             stage = 2;
             markApproach("ore-reached", approachFrames, unit.x, unit.y);
@@ -211,6 +226,18 @@ public final class BrowserPlayerMiningSmoke{
             playerScreenY = up.y;
             coreScreenX = cp.x;
             coreScreenY = cp.y;
+            if(!worldPointerUsable(playerScreenX, playerScreenY) || !worldPointerUsable(coreScreenX, coreScreenY)){
+                if(++cameraSettleFrames >= maxCameraSettleFrames){
+                    throw new IllegalStateException(
+                        "Player/core deposit points never became visible after return: playerScreen=" +
+                        playerScreenX + "," + playerScreenY + " coreScreen=" + coreScreenX + "," + coreScreenY
+                    );
+                }
+                markCameraWait("core", cameraSettleFrames, coreScreenX, coreScreenY);
+                return;
+            }
+
+            cameraSettleFrames = 0;
             dispatchPointer("pointermove", playerScreenX, playerScreenY, -1, false);
             stage = 8;
             markApproach("core-reached", approachFrames, unit.x, unit.y);
@@ -326,8 +353,15 @@ public final class BrowserPlayerMiningSmoke{
         dispatchKey("keyup", key, key.equals("KeyD") ? "d" : key.equals("KeyA") ? "a" : key.equals("KeyW") ? "w" : "s");
     }
 
+    private static boolean worldPointerUsable(float x, float y){
+        float margin = 8f;
+        return x >= margin && x <= Core.graphics.getWidth() - margin &&
+            y >= margin && y <= Core.graphics.getHeight() - margin &&
+            !Core.scene.hasMouse(x, y);
+    }
+
     private static void verifyWorldPointer(float x, float y, String label){
-        if(Core.scene.hasMouse()){
+        if(Core.scene.hasMouse(x, y)){
             throw new IllegalStateException(label + " is covered by an Arc Scene actor");
         }
         if(Math.abs(Core.input.mouseX() - x) > 4f || Math.abs(Core.input.mouseY() - y) > 4f){
@@ -395,6 +429,9 @@ public final class BrowserPlayerMiningSmoke{
 
     @JSBody(params = {"phase", "frames", "x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'approaching-' + phase); document.documentElement.setAttribute('data-mindustry-player-mining-approach-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-player-mining-player-x', String(x)); document.documentElement.setAttribute('data-mindustry-player-mining-player-y', String(y));")
     private static native void markApproach(String phase, int frames, float x, float y);
+
+    @JSBody(params = {"phase", "frames", "sx", "sy"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'camera-wait-' + phase); document.documentElement.setAttribute('data-mindustry-player-mining-camera-wait-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-player-mining-pointer-x', String(sx)); document.documentElement.setAttribute('data-mindustry-player-mining-pointer-y', String(sy));")
+    private static native void markCameraWait(String phase, int frames, float sx, float sy);
 
     @JSBody(params = {"x", "y", "item", "sx", "sy", "coreItems"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'targeted'); document.documentElement.setAttribute('data-mindustry-player-mining-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-player-mining-tile-y', String(y)); document.documentElement.setAttribute('data-mindustry-player-mining-item', item); document.documentElement.setAttribute('data-mindustry-player-mining-pointer-x', String(sx)); document.documentElement.setAttribute('data-mindustry-player-mining-pointer-y', String(sy)); document.documentElement.setAttribute('data-mindustry-player-mining-core-start', String(coreItems));")
     private static native void markTarget(int x, int y, String item, float sx, float sy, int coreItems);
