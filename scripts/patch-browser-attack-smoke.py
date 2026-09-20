@@ -47,7 +47,7 @@ text = text.replace(old_step, new_step, 1)
 
 old_gameover = '''            markGameOver(state.rules.waveTeam.name, state.wave);
 '''
-new_gameover = '''            markGameOver(state.rules.attackMode ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
+new_gameover = '''            markGameOver(state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
 '''
 if text.count(old_gameover) != 1:
     raise SystemExit("Attack smoke game-over winner marker anchor no longer matches local game-over runtime")
