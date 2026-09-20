@@ -3,6 +3,7 @@ package mindustry.web;
 import arc.*;
 import arc.math.geom.*;
 import mindustry.game.*;
+import mindustry.core.World;
 import mindustry.gen.*;
 import mindustry.type.*;
 import mindustry.world.*;
