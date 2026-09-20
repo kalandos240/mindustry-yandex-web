@@ -129,16 +129,14 @@ if text.count(old_mark_call) != 1:
     raise SystemExit("BrowserLocalMapRuntime wave frame marker call no longer matches")
 text = text.replace(old_mark_call, new_mark_call, 1)
 
-old_return = '''        current = null;
-        frames = 0;
-        logic.reset();
+old_return = '''        logic.reset();
+        markReturned(previous);
 '''
-new_return = '''        current = null;
-        frames = 0;
-        testWaveExpected = false;
+new_return = '''        testWaveExpected = false;
         testWaveFired = false;
         testWaveStart = 0;
         logic.reset();
+        markReturned(previous);
 '''
 if text.count(old_return) != 1:
     raise SystemExit("BrowserLocalMapRuntime wave return reset anchor no longer matches")
