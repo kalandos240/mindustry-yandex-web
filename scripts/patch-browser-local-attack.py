@@ -157,7 +157,7 @@ new_methods = '''    private static void startAttackSmoke(){
         }
 
         int enemyCores = 0;
-        for(TeamData data : state.teams.getActive()){
+        for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
             if(data.team != state.rules.defaultTeam && data.team != Team.derelict && data.isAlive()){
                 enemyCores += data.cores.size;
             }
@@ -172,7 +172,7 @@ new_methods = '''    private static void startAttackSmoke(){
         if(!attackSmokeRequested() || attackSmokeArmed || !state.rules.attackMode || frames < 3) return;
 
         int removed = 0;
-        for(TeamData data : state.teams.getActive()){
+        for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
             if(data.team != state.rules.defaultTeam && data.team != Team.derelict && data.isAlive()){
                 removed += data.cores.size;
                 data.cores.clear();
@@ -187,7 +187,7 @@ new_methods = '''    private static void startAttackSmoke(){
     }
 
     private static String attackWinnerName(){
-        TeamData left = state.teams.getActive().find(t -> t.isAlive() && t.team != Team.derelict);
+        mindustry.game.Teams.TeamData left = state.teams.getActive().find(t -> t.isAlive() && t.team != Team.derelict);
         return left == null ? Team.derelict.name : left.team.name;
     }
 
