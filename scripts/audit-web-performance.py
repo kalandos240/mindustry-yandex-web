@@ -8,16 +8,15 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Clean production measurement after the real browser construction graph became
-# reachable: DOM palette/world pointer events -> stock DesktopInput -> real BuildPlan
-# -> player BuilderComp -> local-authoritative stock begin/finish construction path.
-# Wide unit/AI and temporary builder stage diagnostics are not part of this baseline.
-# Keep the raw ceiling below +0.4% and the gzip ceiling below +0.5%; the independent
-# forbidden-marker audit still rejects accidental desktop/network implementation reachability.
-JS_BASELINE = 22_117_620
+# AI-enabled production measurement after the stock enemy GroundAI/core flow-field
+# gate became reachable in the same local-only Web bundle. Relative to the preceding
+# build this intentional gameplay milestone added only 3,320 raw / 2,593 gzip bytes.
+# Keep the previous strict raw cap and less than +0.5% gzip headroom from this baseline;
+# forbidden desktop/network markers remain an independent hard failure.
+JS_BASELINE = 22_188_609
 JS_LIMIT = 22_200_000
-JS_GZIP_BASELINE = 2_532_499
-JS_GZIP_LIMIT = 2_545_000
+JS_GZIP_BASELINE = 2_547_083
+JS_GZIP_LIMIT = 2_559_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
