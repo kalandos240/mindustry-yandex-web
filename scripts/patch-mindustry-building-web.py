@@ -4,9 +4,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CORE = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry"
 BUILDER = CORE / "entities" / "comp" / "BuilderComp.java"
+BUILDING = CORE / "entities" / "comp" / "BuildingComp.java"
 CONSTRUCT = CORE / "world" / "blocks" / "ConstructBlock.java"
 
-for path in (BUILDER, CONSTRUCT):
+for path in (BUILDER, BUILDING, CONSTRUCT):
     if not path.is_file():
         raise SystemExit(f"Missing pinned Mindustry building source: {path}")
 
@@ -36,6 +37,35 @@ if "Call.beginPlace(" in builder or "Call.beginBreak(" in builder:
     raise SystemExit("Builder Web source still reaches generated begin-place/break network transport")
 BUILDER.write_text(builder, encoding="utf-8")
 
+building = BUILDING.read_text(encoding="utf-8")
+if "import mindustry.input.*;" not in building:
+    import_anchor = "import mindustry.graphics.*;\n"
+    if building.count(import_anchor) != 1:
+        raise SystemExit("BuildingComp Web config patch import anchor no longer matches pinned upstream")
+    building = building.replace(import_anchor, import_anchor + "import mindustry.input.*;\n", 1)
+
+config_replacements = [
+    (
+        "        Call.tileConfig(player, self(), value);",
+        "        // Web/Yandex is authoritative single-player: execute the stock tileConfig\n"
+        "        // handler locally instead of entering generated multiplayer transport.\n"
+        "        InputHandler.tileConfig(player, self(), value);",
+        "configure",
+    ),
+    (
+        "        Call.tileConfig(null, self(), value);",
+        "        InputHandler.tileConfig(null, self(), value);",
+        "configureAny",
+    ),
+]
+for old, new, label in config_replacements:
+    if building.count(old) != 1:
+        raise SystemExit(f"BuildingComp Web config patch no longer matches pinned upstream ({label})")
+    building = building.replace(old, new, 1)
+if "Call.tileConfig(" in building:
+    raise SystemExit("BuildingComp Web source still reaches generated tileConfig transport")
+BUILDING.write_text(building, encoding="utf-8")
+
 construct = CONSTRUCT.read_text(encoding="utf-8")
 finish_replacements = [
     (
@@ -60,4 +90,4 @@ if "Call.constructFinish(" in construct or "Call.deconstructFinish(" in construc
     raise SystemExit("ConstructBlock Web source still reaches generated construction-finish transport")
 CONSTRUCT.write_text(construct, encoding="utf-8")
 
-print("Enabled local-authoritative Web begin/finish building without NetServer/NetClient Call transport")
+print("Enabled local-authoritative Web build/configure begin/finish paths without NetServer/NetClient Call transport")
