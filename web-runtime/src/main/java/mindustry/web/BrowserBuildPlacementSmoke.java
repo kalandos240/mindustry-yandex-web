@@ -31,10 +31,14 @@ public final class BrowserBuildPlacementSmoke{
     private static boolean pointerDown;
     private static boolean planObserved;
     private static boolean buildSoundObserved;
+    private static boolean removeAfterBuild;
+    private static boolean breakPlanObserved;
+    private static int pointerButton;
     private static int stage;
     private static int spawnFrames;
     private static int uiFrames;
     private static int buildFrames;
+    private static int breakFrames;
     private static int targetX = -1, targetY = -1;
     private static float targetScreenX, targetScreenY;
 
@@ -148,6 +152,11 @@ public final class BrowserBuildPlacementSmoke{
         Tile tile = world.tile(targetX, targetY);
         if(tile == null) throw new IllegalStateException("Build target tile disappeared from loaded world");
 
+        if(removeAfterBuild && stage >= 7){
+            updateRemoval(unit, tile);
+            return;
+        }
+
         for(BuildPlan plan : unit.plans()){
             if(!plan.breaking && plan.block == Blocks.conveyor && plan.x == targetX && plan.y == targetY){
                 planObserved = true;
@@ -171,9 +180,14 @@ public final class BrowserBuildPlacementSmoke{
             if(!buildSoundObserved){
                 throw new IllegalStateException("Conveyor completed without an observed stock loopBuild BrowserAudio voice");
             }
-            completed = true;
-            control.input.block = null; // cleanup only after stock construction has completed.
-            markBuilt(targetX, targetY, buildFrames, unit.id, unit.type.name);
+            if(removeAfterBuild){
+                stage = 7;
+                markRemovalStage("built-before-removal", targetX, targetY);
+            }else{
+                completed = true;
+                control.input.block = null; // cleanup only after stock construction has completed.
+                markBuilt(targetX, targetY, buildFrames, unit.id, unit.type.name);
+            }
             return;
         }
 
@@ -183,6 +197,93 @@ public final class BrowserBuildPlacementSmoke{
             throw new IllegalStateException(
                 "Stock builder did not complete DOM-placed conveyor: tile=" + tile.block().name +
                 ", plans=" + unit.plans().size + ", planObserved=" + planObserved
+            );
+        }
+    }
+
+    private static void updateRemoval(Unit unit, Tile tile){
+        if(stage == 7){
+            Vec2 projected = Core.camera.project(new Vec2(targetX * tilesize + tilesize / 2f, targetY * tilesize + tilesize / 2f));
+            targetScreenX = projected.x;
+            targetScreenY = projected.y;
+            dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+            stage = 8;
+            markRemovalStage("deselect-hover", targetX, targetY);
+            return;
+        }
+
+        if(stage == 8){
+            if(Core.scene.hasMouse()) throw new IllegalStateException("Removal target is covered by an Arc Scene actor");
+            dispatchPointer("pointerdown", targetScreenX, targetScreenY, 2, true);
+            pointerDown = true;
+            pointerButton = 2;
+            stage = 9;
+            markRemovalStage("deselect-down", targetX, targetY);
+            return;
+        }
+
+        if(stage == 9){
+            dispatchPointer("pointerup", targetScreenX, targetScreenY, 2, false);
+            pointerDown = false;
+            stage = 10;
+            markRemovalStage("deselect-up", targetX, targetY);
+            return;
+        }
+
+        if(stage == 10){
+            if(control.input.block != null){
+                if(++uiFrames >= maxUiFrames){
+                    throw new IllegalStateException("First stock right-click did not deselect the conveyor palette block");
+                }
+                return;
+            }
+            dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+            stage = 11;
+            markRemovalStage("break-hover", targetX, targetY);
+            return;
+        }
+
+        if(stage == 11){
+            if(Core.scene.hasMouse()) throw new IllegalStateException("Break target is covered by an Arc Scene actor");
+            dispatchPointer("pointerdown", targetScreenX, targetScreenY, 2, true);
+            pointerDown = true;
+            pointerButton = 2;
+            stage = 12;
+            markRemovalStage("break-down", targetX, targetY);
+            return;
+        }
+
+        if(stage == 12){
+            dispatchPointer("pointerup", targetScreenX, targetScreenY, 2, false);
+            pointerDown = false;
+            stage = 13;
+            markRemovalStage("break-up", targetX, targetY);
+            return;
+        }
+
+        for(BuildPlan plan : unit.plans()){
+            if(plan.breaking && plan.x == targetX && plan.y == targetY){
+                breakPlanObserved = true;
+                break;
+            }
+        }
+        if(breakPlanObserved) markBreakPlanObserved(targetX, targetY, unit.plans().size);
+
+        if(tile.block() == Blocks.air && tile.build == null){
+            if(!breakPlanObserved){
+                throw new IllegalStateException("Conveyor disappeared without smoke observing a stock breaking BuildPlan");
+            }
+            completed = true;
+            markRemoved(targetX, targetY, breakFrames, unit.id, unit.type.name);
+            return;
+        }
+
+        breakFrames++;
+        markBreakProgress(breakFrames, unit.plans().size, tile.block().name, breakPlanObserved);
+        if(breakFrames >= maxBuildFrames){
+            throw new IllegalStateException(
+                "Stock builder did not remove DOM-selected conveyor: tile=" + tile.block().name +
+                ", plans=" + unit.plans().size + ", breakPlanObserved=" + breakPlanObserved
             );
         }
     }
@@ -224,6 +325,7 @@ public final class BrowserBuildPlacementSmoke{
         if(!queryChecked){
             queryChecked = true;
             enabled = requested();
+            removeAfterBuild = removalRequested();
             if(enabled) markRequested();
         }
         return enabled;
@@ -231,12 +333,15 @@ public final class BrowserBuildPlacementSmoke{
 
     private static void releasePointer(){
         if(!pointerDown) return;
-        dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
+        dispatchPointer("pointerup", targetScreenX, targetScreenY, pointerButton, false);
         pointerDown = false;
     }
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryBuildPlacementSmoke') === '1';")
     private static native boolean requested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryBuildRemovalSmoke') === '1';")
+    private static native boolean removalRequested();
 
     /** Stage coordinates use bottom-left origin, while DOM clientY uses top-left. */
     @JSBody(params = {"type", "sx", "sy", "button", "down"}, script = """
@@ -252,7 +357,7 @@ public final class BrowserBuildPlacementSmoke{
             clientX: clientX,
             clientY: clientY,
             button: button < 0 ? -1 : button,
-            buttons: down ? 1 : 0,
+            buttons: down ? (button === 2 ? 2 : (button === 1 ? 4 : 1)) : 0,
             bubbles: true,
             cancelable: true
         });
@@ -283,4 +388,16 @@ public final class BrowserBuildPlacementSmoke{
 
     @JSBody(params = {"x", "y", "frames", "id", "type"}, script = "document.documentElement.setAttribute('data-mindustry-build-placement-smoke', 'built'); document.documentElement.setAttribute('data-mindustry-build-placement-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-placement-block', 'conveyor'); document.documentElement.setAttribute('data-mindustry-build-placement-plan-observed', 'true'); document.documentElement.setAttribute('data-mindustry-build-placement-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-placement-tile-y', String(y)); document.documentElement.setAttribute('data-mindustry-build-placement-build-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-build-placement-unit-id', String(id)); document.documentElement.setAttribute('data-mindustry-build-placement-unit', type);")
     private static native void markBuilt(int x, int y, int frames, int id, String type);
+
+    @JSBody(params = {"stage", "x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-build-removal-smoke', stage); document.documentElement.setAttribute('data-mindustry-build-removal-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-removal-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-removal-tile-y', String(y));")
+    private static native void markRemovalStage(String stage, int x, int y);
+
+    @JSBody(params = {"x", "y", "plans"}, script = "document.documentElement.setAttribute('data-mindustry-build-removal-plan-observed', 'true'); document.documentElement.setAttribute('data-mindustry-build-removal-plan-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-removal-plan-y', String(y)); document.documentElement.setAttribute('data-mindustry-build-removal-plans', String(plans));")
+    private static native void markBreakPlanObserved(int x, int y, int plans);
+
+    @JSBody(params = {"frames", "plans", "tile", "observed"}, script = "document.documentElement.setAttribute('data-mindustry-build-removal-smoke', 'breaking'); document.documentElement.setAttribute('data-mindustry-build-removal-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-build-removal-plans', String(plans)); document.documentElement.setAttribute('data-mindustry-build-removal-current-tile', tile); document.documentElement.setAttribute('data-mindustry-build-removal-plan-observed', String(observed));")
+    private static native void markBreakProgress(int frames, int plans, String tile, boolean observed);
+
+    @JSBody(params = {"x", "y", "frames", "id", "type"}, script = "document.documentElement.setAttribute('data-mindustry-build-removal-smoke', 'removed'); document.documentElement.setAttribute('data-mindustry-build-removal-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-removal-plan-observed', 'true'); document.documentElement.setAttribute('data-mindustry-build-removal-final-tile', 'air'); document.documentElement.setAttribute('data-mindustry-build-removal-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-removal-tile-y', String(y)); document.documentElement.setAttribute('data-mindustry-build-removal-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-build-removal-unit-id', String(id)); document.documentElement.setAttribute('data-mindustry-build-removal-unit', type);")
+    private static native void markRemoved(int x, int y, int frames, int id, String type);
 }
