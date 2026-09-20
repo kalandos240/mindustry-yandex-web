@@ -2,17 +2,12 @@ package mindustry.web;
 
 import arc.*;
 import arc.files.*;
-import arc.math.*;
 import arc.struct.*;
-import mindustry.ai.types.*;
-import mindustry.content.*;
 import mindustry.game.*;
-import mindustry.gen.*;
 import mindustry.game.EventType.*;
 import mindustry.io.*;
 import mindustry.maps.Map;
 import mindustry.maps.Maps;
-import mindustry.world.*;
 import org.teavm.jso.JSBody;
 
 import java.io.*;
@@ -44,10 +39,6 @@ public final class BrowserLocalMapRuntime{
     private static boolean testStartChecked;
     private static Map current;
     private static int frames;
-    private static Unit enemyPathUnit;
-    private static float enemyPathStartX, enemyPathStartY, enemyPathStartDistance;
-    private static int enemyPathFrames;
-    private static boolean enemyPathComplete;
 
     private BrowserLocalMapRuntime(){}
 
@@ -190,7 +181,6 @@ public final class BrowserLocalMapRuntime{
 
         Core.camera.position.set(state.rules.defaultTeam.core());
         markStarted(slug, map.plainName(), world.width(), world.height());
-        startEnemyPathSmoke();
     }
 
     /** One production browser frame. Unlike BrowserPlayingRuntime this never auto-restores. */
@@ -207,7 +197,6 @@ public final class BrowserLocalMapRuntime{
 
         pathfinder.updateWeb();
         controlPath.updateWeb();
-        updateEnemyPathSmoke();
 
         markPhase("control");
         control.update();
@@ -242,9 +231,6 @@ public final class BrowserLocalMapRuntime{
         active = false;
         current = null;
         frames = 0;
-        enemyPathUnit = null;
-        enemyPathFrames = 0;
-        enemyPathComplete = false;
         logic.reset();
         markReturned(previous);
     }
@@ -263,84 +249,6 @@ public final class BrowserLocalMapRuntime{
         }
         markTestRequested(requested);
         start(map);
-    }
-
-    private static void startEnemyPathSmoke(){
-        if(!enemyPathSmokeRequested()) return;
-
-        Building core = state.rules.defaultTeam.core();
-        Team enemyTeam = state.rules.waveTeam;
-        if(core == null || enemyTeam == state.rules.defaultTeam){
-            throw new IllegalStateException("Enemy path smoke requires distinct local default/wave teams and a core");
-        }
-
-        Unit enemy = UnitTypes.dagger.create(enemyTeam);
-        if(!(enemy.controller() instanceof GroundAI)){
-            throw new IllegalStateException("Web enemy path smoke did not receive stock GroundAI");
-        }
-
-        float minimumDistance = tilesize * 24f;
-        float bestDistance = Float.MAX_VALUE;
-        Tile spawn = null;
-        for(int x = 0; x < world.width(); x++){
-            for(int y = 0; y < world.height(); y++){
-                Tile tile = world.tile(x, y);
-                if(tile == null || !enemy.canPass(x, y)) continue;
-                float distance = Mathf.dst(core.x, core.y, tile.worldx(), tile.worldy());
-                if(distance >= minimumDistance && distance < bestDistance){
-                    bestDistance = distance;
-                    spawn = tile;
-                }
-            }
-        }
-
-        if(spawn == null){
-            throw new IllegalStateException("Enemy path smoke found no passable tile far enough from the local core");
-        }
-
-        enemy.set(spawn.worldx(), spawn.worldy());
-        enemy.add();
-        if(!enemy.isAdded() || !enemy.isValid()){
-            throw new IllegalStateException("Enemy path smoke could not add the stock dagger entity");
-        }
-
-        enemyPathUnit = enemy;
-        enemyPathStartX = enemy.x;
-        enemyPathStartY = enemy.y;
-        enemyPathStartDistance = bestDistance;
-        enemyPathFrames = 0;
-        enemyPathComplete = false;
-        markEnemyPathStarted(enemy.id, enemyTeam.name);
-    }
-
-    private static void updateEnemyPathSmoke(){
-        Unit enemy = enemyPathUnit;
-        if(enemy == null || enemyPathComplete) return;
-        if(!enemy.isAdded() || !enemy.isValid() || !(enemy.controller() instanceof GroundAI)){
-            throw new IllegalStateException("Stock GroundAI enemy became invalid during Web path smoke");
-        }
-
-        Building core = state.rules.defaultTeam.core();
-        if(core == null){
-            throw new IllegalStateException("Local core disappeared during Web enemy path smoke");
-        }
-
-        enemyPathFrames++;
-        float moved = Mathf.dst(enemyPathStartX, enemyPathStartY, enemy.x, enemy.y);
-        float distance = Mathf.dst(core.x, core.y, enemy.x, enemy.y);
-
-        if(moved > tilesize * 1.5f && distance < enemyPathStartDistance - tilesize){
-            enemyPathComplete = true;
-            markEnemyPathMoved(enemyPathFrames);
-            return;
-        }
-
-        if(enemyPathFrames >= 360){
-            throw new IllegalStateException(
-                "Stock GroundAI/Pathfinder did not move the local enemy toward core: moved=" + moved +
-                ", startDistance=" + enemyPathStartDistance + ", distance=" + distance
-            );
-        }
     }
 
     private static Map bySlug(String requested){
@@ -389,15 +297,6 @@ public final class BrowserLocalMapRuntime{
             teamRules.prebuildAi = false;
         }
     }
-
-    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryEnemyPathSmoke') === '1';")
-    private static native boolean enemyPathSmokeRequested();
-
-    @JSBody(params = {"id", "team"}, script = "document.documentElement.setAttribute('data-mindustry-enemy-path-smoke','spawned'); document.documentElement.setAttribute('data-mindustry-enemy-path-source','stock-ground-ai-flow-field'); document.documentElement.setAttribute('data-mindustry-enemy-path-unit','dagger'); document.documentElement.setAttribute('data-mindustry-enemy-path-controller','GroundAI'); document.documentElement.setAttribute('data-mindustry-enemy-path-field','core'); document.documentElement.setAttribute('data-mindustry-enemy-path-unit-id',String(id)); document.documentElement.setAttribute('data-mindustry-enemy-path-team',team);")
-    private static native void markEnemyPathStarted(int id, String team);
-
-    @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-enemy-path-smoke','moved'); document.documentElement.setAttribute('data-mindustry-enemy-path-frames',String(frames));")
-    private static native void markEnemyPathMoved(int frames);
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryMapSmoke') || ''; ")
     private static native String requestedTestMap();
