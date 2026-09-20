@@ -167,8 +167,13 @@ public final class BrowserPlayerInputSmoke{
                     ", manualShooting=" + mobile.manualShooting +
                     ", locked=" + mobile.locked() +
                     ", commandRect=" + mobile.commandRect +
+                    ", lineMode=" + mobile.lineMode +
+                    ", schematicMode=" + mobile.schematicMode +
+                    ", selecting=" + mobile.selecting +
+                    ", droppingItem=" + mobile.droppingItem +
                     ", dialog=" + (Core.scene != null && Core.scene.hasDialog()) +
                     ", touched=" + Core.input.isTouched(0) +
+                    ", cameraWidth=" + Core.camera.width +
                     ", mouse=" + Core.input.mouseX() + "," + Core.input.mouseY()
                 );
             }
