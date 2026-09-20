@@ -50,6 +50,7 @@ placement_function = '''run_build_placement_map(){
     --require 'data-mindustry-build-placement-source="dom-pointer-event"' \\
     --require 'data-mindustry-build-placement-block="conveyor"' \\
     --require 'data-mindustry-build-placement-plan-observed="true"' \\
+    --require 'data-mindustry-build-placement-audio="loopBuild-browser-voice"' \\
     --require 'data-mindustry-network="local-only"' \\
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
@@ -58,7 +59,8 @@ placement_function = '''run_build_placement_map(){
   grep -Eq 'data-mindustry-build-placement-unit-id="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-build-placement-unit="[A-Za-z0-9_-]+"' "$dom"
   grep -Eq 'data-mindustry-build-placement-build-frames="[0-9]+"' "$dom"
-  echo 'Browser construction: real palette DOM click -> conveyor selection -> world DOM click -> stock DesktopInput BuildPlan -> local builder -> completed team conveyor PASS'
+  grep -Eq 'data-mindustry-build-placement-audio-voices="[1-9][0-9]*"' "$dom"
+  echo 'Browser construction: real palette DOM click -> conveyor selection -> world DOM click -> stock DesktopInput BuildPlan -> local builder + stock loopBuild BrowserAudio voice -> completed team conveyor PASS'
 }
 
 run_locale(){
