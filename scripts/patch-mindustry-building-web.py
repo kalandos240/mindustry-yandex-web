@@ -65,6 +65,28 @@ for old, new, label in config_replacements:
     building = building.replace(old, new, 1)
 if "Call.tileConfig(" in building:
     raise SystemExit("BuildingComp Web source still reaches generated tileConfig transport")
+
+destroy_replacements = [
+    (
+        "        Call.buildDestroyed(self());",
+        "        // Web/Yandex is authoritative single-player: execute the stock remote body\n"
+        "        // locally so Building.killed()/CoreChangeEvent/team core bookkeeping stay intact.\n"
+        "        Tile.buildDestroyed(self());",
+        "kill",
+    ),
+    (
+        "            Call.buildDestroyed(self());",
+        "            Tile.buildDestroyed(self());",
+        "damage",
+    ),
+]
+for old, new, label in destroy_replacements:
+    if building.count(old) != 1:
+        raise SystemExit(f"BuildingComp Web destruction patch no longer matches pinned upstream ({label})")
+    building = building.replace(old, new, 1)
+if "Call.buildDestroyed(" in building:
+    raise SystemExit("BuildingComp Web source still reaches generated buildDestroyed transport")
+
 BUILDING.write_text(building, encoding="utf-8")
 
 desktop = DESKTOP.read_text(encoding="utf-8")
