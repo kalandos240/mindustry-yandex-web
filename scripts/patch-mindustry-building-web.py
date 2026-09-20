@@ -95,6 +95,17 @@ destroy_replacements = [
 ''',
         "damage",
     ),
+    (
+'''                if(health <= 0f && !dead()){
+                    Call.buildDestroyed(self());
+                }else{
+''',
+'''                if(health <= 0f && !dead()){
+                    Tile.buildDestroyed(self());
+                }else{
+''',
+        "logic-health-property",
+    ),
 ]
 for old, new, label in destroy_replacements:
     if building.count(old) != 1:
