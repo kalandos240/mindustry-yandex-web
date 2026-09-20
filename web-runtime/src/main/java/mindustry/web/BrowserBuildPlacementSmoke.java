@@ -32,6 +32,8 @@ public final class BrowserBuildPlacementSmoke{
     private static boolean planObserved;
     private static boolean buildSoundObserved;
     private static boolean removeAfterBuild;
+    private static boolean rotateAfterBuild;
+    private static int originalRotation;
     private static boolean breakPlanObserved;
     private static int pointerButton;
     private static int stage;
@@ -156,6 +158,10 @@ public final class BrowserBuildPlacementSmoke{
             updateRemoval(unit, tile);
             return;
         }
+        if(rotateAfterBuild && stage >= 20){
+            updateRotate(tile);
+            return;
+        }
 
         for(BuildPlan plan : unit.plans()){
             if(!plan.breaking && plan.block == Blocks.conveyor && plan.x == targetX && plan.y == targetY){
@@ -187,6 +193,11 @@ public final class BrowserBuildPlacementSmoke{
                 uiFrames = 0;
                 stage = 7;
                 markRemovalStage("built-before-removal", targetX, targetY);
+            }else if(rotateAfterBuild){
+                control.input.block = null;
+                originalRotation = tile.build.rotation;
+                stage = 20;
+                markRotateStage("built-before-rotate", originalRotation);
             }else{
                 completed = true;
                 control.input.block = null; // cleanup only after stock construction has completed.
@@ -202,6 +213,47 @@ public final class BrowserBuildPlacementSmoke{
                 "Stock builder did not complete DOM-placed conveyor: tile=" + tile.block().name +
                 ", plans=" + unit.plans().size + ", planObserved=" + planObserved
             );
+        }
+    }
+
+    private static void updateRotate(Tile tile){
+        if(tile.build == null || tile.block() != Blocks.conveyor){
+            throw new IllegalStateException("Rotate smoke lost the completed conveyor");
+        }
+
+        if(stage == 20){
+            Vec2 projected = Core.camera.project(new Vec2(targetX * tilesize + tilesize / 2f, targetY * tilesize + tilesize / 2f));
+            targetScreenX = projected.x;
+            targetScreenY = projected.y;
+            dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+            stage = 21;
+            markRotateStage("hover", tile.build.rotation);
+            return;
+        }
+
+        if(stage == 21){
+            if(Core.scene.hasMouse()) throw new IllegalStateException("Rotate target is covered by an Arc Scene actor");
+            dispatchKey("keydown", "KeyR", "r");
+            stage = 22;
+            markRotateStage("r-down", tile.build.rotation);
+            return;
+        }
+
+        if(stage == 22){
+            dispatchWheel(0f, 100f);
+            stage = 23;
+            markRotateStage("wheel", tile.build.rotation);
+            return;
+        }
+
+        if(stage == 23){
+            int rotation = tile.build.rotation;
+            dispatchKey("keyup", "KeyR", "r");
+            if(rotation == originalRotation){
+                throw new IllegalStateException("Stock R + wheel rotate input did not change conveyor rotation");
+            }
+            completed = true;
+            markRotated(originalRotation, rotation, targetX, targetY);
         }
     }
 
@@ -328,8 +380,9 @@ public final class BrowserBuildPlacementSmoke{
     private static boolean enabled(){
         if(!queryChecked){
             queryChecked = true;
-            enabled = requested();
             removeAfterBuild = removalRequested();
+            rotateAfterBuild = rotateRequested();
+            enabled = requested() || removeAfterBuild || rotateAfterBuild;
             if(enabled) markRequested();
         }
         return enabled;
@@ -346,6 +399,9 @@ public final class BrowserBuildPlacementSmoke{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryBuildRemovalSmoke') === '1';")
     private static native boolean removalRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryBuildRotateSmoke') === '1';")
+    private static native boolean rotateRequested();
 
     /** Stage coordinates use bottom-left origin, while DOM clientY uses top-left. */
     @JSBody(params = {"type", "sx", "sy", "button", "down"}, script = """
@@ -368,6 +424,29 @@ public final class BrowserBuildPlacementSmoke{
         canvas.dispatchEvent(event);
         """)
     private static native void dispatchPointer(String type, float sx, float sy, int button, boolean down);
+
+    @JSBody(params = {"type", "code", "key"}, script = """
+        window.dispatchEvent(new KeyboardEvent(type, {
+            code: code,
+            key: key,
+            bubbles: true,
+            cancelable: true
+        }));
+        """)
+    private static native void dispatchKey(String type, String code, String key);
+
+    @JSBody(params = {"dx", "dy"}, script = """
+        const canvas = document.getElementById('mindustry-canvas');
+        if(!canvas) throw new Error('Mindustry canvas missing for rotate smoke');
+        canvas.dispatchEvent(new WheelEvent('wheel', {
+            deltaX: dx,
+            deltaY: dy,
+            deltaMode: 0,
+            bubbles: true,
+            cancelable: true
+        }));
+        """)
+    private static native void dispatchWheel(float dx, float dy);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-build-placement-smoke', 'requested'); document.documentElement.setAttribute('data-mindustry-build-placement-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-placement-block', 'conveyor');")
     private static native void markRequested();
@@ -392,6 +471,12 @@ public final class BrowserBuildPlacementSmoke{
 
     @JSBody(params = {"x", "y", "frames", "id", "type"}, script = "document.documentElement.setAttribute('data-mindustry-build-placement-smoke', 'built'); document.documentElement.setAttribute('data-mindustry-build-placement-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-placement-block', 'conveyor'); document.documentElement.setAttribute('data-mindustry-build-placement-plan-observed', 'true'); document.documentElement.setAttribute('data-mindustry-build-placement-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-placement-tile-y', String(y)); document.documentElement.setAttribute('data-mindustry-build-placement-build-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-build-placement-unit-id', String(id)); document.documentElement.setAttribute('data-mindustry-build-placement-unit', type);")
     private static native void markBuilt(int x, int y, int frames, int id, String type);
+
+    @JSBody(params = {"stage", "rotation"}, script = "document.documentElement.setAttribute('data-mindustry-build-rotate-smoke', stage); document.documentElement.setAttribute('data-mindustry-build-rotate-current', String(rotation)); document.documentElement.setAttribute('data-mindustry-build-rotate-source', 'dom-key-wheel');")
+    private static native void markRotateStage(String stage, int rotation);
+
+    @JSBody(params = {"before", "after", "x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-build-rotate-smoke', 'rotated'); document.documentElement.setAttribute('data-mindustry-build-rotate-source', 'dom-key-wheel'); document.documentElement.setAttribute('data-mindustry-build-rotate-before', String(before)); document.documentElement.setAttribute('data-mindustry-build-rotate-after', String(after)); document.documentElement.setAttribute('data-mindustry-build-rotate-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-rotate-tile-y', String(y));")
+    private static native void markRotated(int before, int after, int x, int y);
 
     @JSBody(params = {"stage", "x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-build-removal-smoke', stage); document.documentElement.setAttribute('data-mindustry-build-removal-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-removal-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-removal-tile-y', String(y));")
     private static native void markRemovalStage(String stage, int x, int y);
