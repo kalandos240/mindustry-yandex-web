@@ -81,9 +81,7 @@ new_methods = '''    private static void startAttackSmoke(){
         for(int x = 2; x < world.width() - 2 && spawn == null; x++){
             for(int y = 2; y < world.height() - 2; y++){
                 mindustry.world.Tile tile = world.tile(x, y);
-                if(tile != null && tile.block() == mindustry.content.Blocks.air &&
-                !tile.floor().isDeep() && tile.dst(playerCore.tile) >= minDistance &&
-                mindustry.world.Build.validPlace(mindustry.content.Blocks.coreShard, state.rules.waveTeam, x, y, 0, false, false)){
+                if(tile != null && tile.dst(playerCore.tile) >= minDistance && attackCoreFootprintClear(x, y)){
                     spawn = tile;
                     break;
                 }
@@ -102,6 +100,21 @@ new_methods = '''    private static void startAttackSmoke(){
 
         attackSmokeDestroyed = false;
         markAttackSmokeArmed(attackSmokeCore.id, state.rules.waveTeam.name);
+    }
+
+    private static boolean attackCoreFootprintClear(int x, int y){
+        // CoreShard is 3x3. This test setup only needs a collision-safe empty footprint;
+        // Tile.setBlock then exercises the real CoreBuild creation/team bookkeeping.
+        for(int dx = -1; dx <= 1; dx++){
+            for(int dy = -1; dy <= 1; dy++){
+                mindustry.world.Tile tile = world.tile(x + dx, y + dy);
+                if(tile == null || tile.block() != mindustry.content.Blocks.air ||
+                tile.floor().isDeep() || !tile.floor().placeableOn){
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static void updateAttackSmoke(){
