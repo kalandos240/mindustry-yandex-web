@@ -293,6 +293,7 @@ public final class BrowserBuildPlacementSmoke{
                 }
                 return;
             }
+            uiFrames = 0;
             dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
             stage = 11;
             markRemovalStage("break-hover", targetX, targetY);
@@ -310,6 +311,17 @@ public final class BrowserBuildPlacementSmoke{
         }
 
         if(stage == 12){
+            // Keep the physical right button held until stock DesktopInput has consumed
+            // Binding.breakBlock and entered breaking mode. On heavy TeaVM frames, a
+            // fixed one-frame press can otherwise release before gameplay input sees it.
+            if(!control.input.isBreaking()){
+                if(++uiFrames >= maxUiFrames){
+                    releasePointer();
+                    throw new IllegalStateException("Second stock right-click never entered DesktopInput breaking mode");
+                }
+                return;
+            }
+
             dispatchPointer("pointerup", targetScreenX, targetScreenY, 2, false);
             pointerDown = false;
             stage = 13;
