@@ -46,6 +46,25 @@ for old, new, label in replacements:
         raise SystemExit(f"SoundControl Web patch no longer matches pinned upstream ({label})")
     text = text.replace(old, new, 1)
 
+reload_anchor = """        Events.fire(new MusicRegisterEvent());
+    }
+
+    public void stop(){
+"""
+reload_replacement = """        Events.fire(new MusicRegisterEvent());
+    }
+
+    /** Web launcher substitute for the desktop ClientLoadEvent audio registration. */
+    public void reloadWeb(){
+        reload();
+    }
+
+    public void stop(){
+"""
+if text.count(reload_anchor) != 1:
+    raise SystemExit("SoundControl Web reload hook no longer matches pinned upstream")
+text = text.replace(reload_anchor, reload_replacement, 1)
+
 start = text.find("    static class AudioThread extends Thread{")
 if start < 0:
     raise SystemExit("SoundControl Web patch no longer matches pinned AudioThread class")
