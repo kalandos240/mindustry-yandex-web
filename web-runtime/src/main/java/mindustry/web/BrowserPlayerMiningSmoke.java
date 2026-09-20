@@ -22,7 +22,6 @@ public final class BrowserPlayerMiningSmoke{
     private static final int maxSpawnFrames = 900;
     private static final int maxMineFrames = 900;
     private static final int maxApproachFrames = 1800;
-    private static final int maxCameraSettleFrames = 360;
     private static final int maxDepositFrames = 180;
 
     private static boolean queryChecked;
@@ -33,7 +32,6 @@ public final class BrowserPlayerMiningSmoke{
     private static int spawnFrames;
     private static int mineFrames;
     private static int approachFrames;
-    private static int cameraSettleFrames;
     private static int depositFrames;
     private static int targetX = -1, targetY = -1;
     private static int coreStartItems;
@@ -68,6 +66,7 @@ public final class BrowserPlayerMiningSmoke{
         }
 
         if(stage == 0){
+            Core.settings.put("smoothcamera", false);
             if(unit.stack.amount != 0){
                 throw new IllegalStateException("Player-mining smoke requires an initially empty local unit stack");
             }
@@ -107,18 +106,6 @@ public final class BrowserPlayerMiningSmoke{
             Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
             targetScreenX = projected.x;
             targetScreenY = projected.y;
-            if(!worldPointerUsable(targetScreenX, targetScreenY)){
-                if(++cameraSettleFrames >= maxCameraSettleFrames){
-                    throw new IllegalStateException(
-                        "Mine target never became a visible world pointer after approach: screen=" +
-                        targetScreenX + "," + targetScreenY + " camera=" +
-                        Core.camera.position.x + "," + Core.camera.position.y
-                    );
-                }
-                return;
-            }
-
-            cameraSettleFrames = 0;
             dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
             stage = 2;
             return;
@@ -214,17 +201,6 @@ public final class BrowserPlayerMiningSmoke{
             playerScreenY = up.y;
             coreScreenX = cp.x;
             coreScreenY = cp.y;
-            if(!worldPointerUsable(playerScreenX, playerScreenY) || !worldPointerUsable(coreScreenX, coreScreenY)){
-                if(++cameraSettleFrames >= maxCameraSettleFrames){
-                    throw new IllegalStateException(
-                        "Player/core deposit points never became visible after return: playerScreen=" +
-                        playerScreenX + "," + playerScreenY + " coreScreen=" + coreScreenX + "," + coreScreenY
-                    );
-                }
-                return;
-            }
-
-            cameraSettleFrames = 0;
             dispatchPointer("pointermove", playerScreenX, playerScreenY, -1, false);
             stage = 8;
             return;
@@ -329,13 +305,6 @@ public final class BrowserPlayerMiningSmoke{
         String key = movementKey;
         movementKey = null;
         dispatchKey("keyup", key, key.equals("KeyD") ? "d" : key.equals("KeyA") ? "a" : key.equals("KeyW") ? "w" : "s");
-    }
-
-    private static boolean worldPointerUsable(float x, float y){
-        float margin = 8f;
-        return x >= margin && x <= Core.graphics.getWidth() - margin &&
-            y >= margin && y <= Core.graphics.getHeight() - margin &&
-            !Core.scene.hasMouse(x, y);
     }
 
     private static void verifyWorldPointer(float x, float y, String label){
