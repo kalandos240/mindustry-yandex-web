@@ -44,12 +44,14 @@ if text.count(function_anchor) != 1:
     raise SystemExit("Attack verifier function anchor no longer matches final verifier")
 text = text.replace(function_anchor, function, 1)
 
-call_anchor = '''run_locale en
+call_anchor = '''run_production_menu
+run_production_map
 '''
 if text.count(call_anchor) != 1:
     raise SystemExit("Attack verifier call anchor no longer matches final verifier")
-text = text.replace(call_anchor, '''run_attack_map
-run_locale en
+text = text.replace(call_anchor, '''run_production_menu
+run_production_map
+run_attack_map
 ''', 1)
 
 VERIFY.write_text(text, encoding="utf-8")
