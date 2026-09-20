@@ -90,9 +90,9 @@ new_team_stage = '''        stageTeamRules(rules, rules.defaultTeam);
         if(rules.waveTeam != rules.defaultTeam) stageTeamRules(rules, rules.waveTeam);
 
         // Until team builder/RTS AI is ported, disable it only for teams that are
-        // actually active in the loaded Attack world. This avoids materializing all
-        // 256 TeamRule entries while keeping arbitrary valid multi-team maps safe.
-        if(startModeOverride == Gamemode.attack && state != null && state.teams != null){
+        // actually active in an Attack world, including Continue-from-save. This avoids
+        // materializing all 256 TeamRule entries while keeping arbitrary valid maps safe.
+        if(rules.attackMode && state != null && state.teams != null){
             for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
                 if(data.team != rules.defaultTeam && data.team != rules.waveTeam){
                     stageTeamRules(rules, data.team);
