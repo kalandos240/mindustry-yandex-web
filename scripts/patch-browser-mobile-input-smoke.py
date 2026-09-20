@@ -52,10 +52,12 @@ if text.count(function_anchor) != 1:
     raise SystemExit("Mobile-input verifier function anchor no longer matches post-combat locale gate")
 text = text.replace(function_anchor, mobile_function, 1)
 
-call_anchor = '''run_locale en
+call_anchor = '''run_production_map
+run_legacy_domain_map
 '''
-call_replacement = '''run_mobile_input_map
-run_locale en
+call_replacement = '''run_production_map
+run_mobile_input_map
+run_legacy_domain_map
 '''
 if text.count(call_anchor) != 1:
     raise SystemExit("Mobile-input verifier call anchor no longer matches final production ordering")
