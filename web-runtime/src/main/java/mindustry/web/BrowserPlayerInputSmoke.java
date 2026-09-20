@@ -144,10 +144,13 @@ public final class BrowserPlayerInputSmoke{
             // Queue a real fast swipe as one browser-input burst. Delaying the first
             // move by a whole heavy TeaVM frame can legitimately trigger long-press
             // manual shooting before GestureDetector sees a pan.
-            dispatchTouch("pointerdown", 0.62f, 0.52f);
+            // Keep the gesture in the free world strip above the mobile build palette.
+            // The previous mid-height probe landed inside the bottom-right palette,
+            // where Scene correctly consumes touch before the gameplay GestureDetector.
+            dispatchTouch("pointerdown", 0.62f, 0.20f);
             mobilePointerDown = true;
-            dispatchTouch("pointermove", 0.50f, 0.52f);
-            dispatchTouch("pointermove", 0.36f, 0.52f);
+            dispatchTouch("pointermove", 0.50f, 0.20f);
+            dispatchTouch("pointermove", 0.36f, 0.20f);
             mobileStage = 3;
             return;
         }
@@ -294,7 +297,7 @@ public final class BrowserPlayerInputSmoke{
 
     private static void releaseMobileInput(){
         if(!mobilePointerDown) return;
-        dispatchTouch("pointerup", 0.36f, 0.52f);
+        dispatchTouch("pointerup", 0.36f, 0.20f);
         mobilePointerDown = false;
     }
 
