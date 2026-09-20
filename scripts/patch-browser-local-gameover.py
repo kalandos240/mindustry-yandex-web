@@ -11,6 +11,15 @@ for path in (RUNTIME, UI):
 
 text = RUNTIME.read_text(encoding="utf-8")
 
+old_import = '''import mindustry.game.EventType.*;
+'''
+new_import = '''import mindustry.game.EventType.*;
+import mindustry.gen.*;
+'''
+if text.count(old_import) != 1:
+    raise SystemExit("Browser local game-over AI import anchor no longer matches")
+text = text.replace(old_import, new_import, 1)
+
 old_fields = '''    private static boolean testWaveExpected;
     private static boolean testWaveFired;
     private static int testWaveStart;
@@ -21,6 +30,9 @@ new_fields = '''    private static boolean testWaveExpected;
     private static int testWaveStart;
     private static boolean gameOverFreeze;
     private static boolean gameOverSmokeArmed;
+    private static boolean gameOverSmokeEnemyMoved;
+    private static int gameOverSmokeEnemyId = -1;
+    private static float gameOverSmokeEnemyX, gameOverSmokeEnemyY;
     private static Map current;
 '''
 if text.count(old_fields) != 1:
@@ -53,6 +65,8 @@ new_active = '''        testWaveExpected = false;
         testWaveStart = state.wave;
         gameOverFreeze = false;
         gameOverSmokeArmed = false;
+        gameOverSmokeEnemyMoved = false;
+        gameOverSmokeEnemyId = -1;
 
         try{
 '''
@@ -120,16 +134,28 @@ new_live = '''            if(testWaveExpected && state.enemies <= 0){
                 throw new IllegalStateException("Packaged-map smoke wave produced no live enemy units");
             }
 
-            // Test-only staged loss: after proving a real first wave, clear only the
-            // authoritative default-team core registry. The next Logic frame's preflight
-            // must detect the already-lost survival state before team/entity updates run.
+            // Test-only staged loss: first prove that a real wave unit is being
+            // advanced by its stock AI/pathfinding controller. Only then clear the
+            // authoritative default-team core registry for the existing Game Over gate.
             if(gameOverSmokeRequested() && !gameOverSmokeArmed){
                 if(!state.rules.canGameOver || state.rules.defaultTeam.cores().isEmpty()){
                     throw new IllegalStateException("Game-over smoke requires canGameOver and an existing default-team core");
                 }
-                state.rules.defaultTeam.cores().clear();
-                gameOverSmokeArmed = true;
-                markGameOverSmokeArmed();
+
+                Unit enemy = Groups.unit.find(u -> u.team == state.rules.waveTeam && u.isAdded() && u.isValid());
+                if(enemy != null){
+                    if(gameOverSmokeEnemyId != enemy.id){
+                        gameOverSmokeEnemyId = enemy.id;
+                        gameOverSmokeEnemyX = enemy.x;
+                        gameOverSmokeEnemyY = enemy.y;
+                    }else if(Math.abs(enemy.x - gameOverSmokeEnemyX) + Math.abs(enemy.y - gameOverSmokeEnemyY) > 0.5f){
+                        gameOverSmokeEnemyMoved = true;
+                        markEnemyAiMoved(enemy.id, enemy.type.name);
+                        state.rules.defaultTeam.cores().clear();
+                        gameOverSmokeArmed = true;
+                        markGameOverSmokeArmed();
+                    }
+                }
             }
 
             if(!gameOverFreeze) markLive(frames);
@@ -149,6 +175,8 @@ new_return = '''        testWaveExpected = false;
         testWaveStart = 0;
         gameOverFreeze = false;
         gameOverSmokeArmed = false;
+        gameOverSmokeEnemyMoved = false;
+        gameOverSmokeEnemyId = -1;
         logic.reset();
 '''
 if text.count(old_return) != 1:
@@ -176,6 +204,9 @@ new_marker = '''    @JSBody(params = {"wave"}, script = "document.documentElemen
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-gameover-smoke', 'armed');")
     private static native void markGameOverSmokeArmed();
+
+    @JSBody(params = {"id", "type"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-wave-ai','moved'); document.documentElement.setAttribute('data-mindustry-local-map-wave-ai-unit-id',String(id)); document.documentElement.setAttribute('data-mindustry-local-map-wave-ai-unit',type);")
+    private static native void markEnemyAiMoved(int id, String type);
 
     @JSBody(params = {"winner", "wave"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-gameover', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-gameover-winner', winner); document.documentElement.setAttribute('data-mindustry-local-map-gameover-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'game-over');")
     private static native void markGameOver(String winner, int wave);
