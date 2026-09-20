@@ -43,7 +43,6 @@ public final class BrowserPlayerInputSmoke{
     private static float controlScreenX;
     private static float controlScreenY;
     private static float mobileCameraX;
-    private static float mobileCameraY;
 
     private BrowserPlayerInputSmoke(){}
 
@@ -142,7 +141,6 @@ public final class BrowserPlayerInputSmoke{
             startX = unit.x;
             startY = unit.y;
             mobileCameraX = Core.camera.position.x;
-            mobileCameraY = Core.camera.position.y;
             dispatchTouch("pointerdown", 0.62f, 0.52f);
             mobilePointerDown = true;
             mobileStage = 1;
@@ -172,19 +170,17 @@ public final class BrowserPlayerInputSmoke{
 
         mobileFrames++;
         float cameraDx = Math.abs(Core.camera.position.x - mobileCameraX);
-        float cameraDy = Math.abs(Core.camera.position.y - mobileCameraY);
         float unitDx = Math.abs(unit.x - startX);
-        float unitDy = Math.abs(unit.y - startY);
-        if(cameraDx > 2f && (unitDx > 0.5f || unitDy > 0.5f)){
+        if(cameraDx > 2f && unitDx > 0.5f){
             completed = true;
-            markMobileMoved(unitId, unit.type.name, mobileFrames, cameraDx, cameraDy, unitDx, unitDy);
+            markMobileMoved(unitId, unit.type.name, mobileFrames, cameraDx, unitDx);
             return;
         }
 
         if(mobileFrames >= maxHeldFrames){
             throw new IllegalStateException(
-                "DOM touch pan did not drive stock MobileInput movement: cameraDelta=" +
-                cameraDx + "," + cameraDy + " unitDelta=" + unitDx + "," + unitDy
+                "DOM touch pan did not drive stock MobileInput movement: cameraDx=" +
+                cameraDx + ", unitDx=" + unitDx
             );
         }
     }
@@ -337,8 +333,8 @@ public final class BrowserPlayerInputSmoke{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-player-possession-smoke', 'requested'); document.documentElement.setAttribute('data-mindustry-player-possession-source', 'dom-control-click');")
     private static native void markPossessionRequested();
 
-    @JSBody(params = {"id", "type", "frames", "cdx", "cdy", "udx", "udy"}, script = "document.documentElement.setAttribute('data-mindustry-mobile-input-smoke','moved'); document.documentElement.setAttribute('data-mindustry-mobile-input-source','dom-touch-pan'); document.documentElement.setAttribute('data-mindustry-mobile-input-pointer-state','up'); document.documentElement.setAttribute('data-mindustry-mobile-input-unit-id',String(id)); document.documentElement.setAttribute('data-mindustry-mobile-input-unit',type); document.documentElement.setAttribute('data-mindustry-mobile-input-move-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-mobile-input-camera-dx',String(cdx)); document.documentElement.setAttribute('data-mindustry-mobile-input-camera-dy',String(cdy)); document.documentElement.setAttribute('data-mindustry-mobile-input-unit-dx',String(udx)); document.documentElement.setAttribute('data-mindustry-mobile-input-unit-dy',String(udy));")
-    private static native void markMobileMoved(int id, String type, int frames, float cdx, float cdy, float udx, float udy);
+    @JSBody(params = {"id", "type", "frames", "cdx", "udx"}, script = "document.documentElement.setAttribute('data-mindustry-mobile-input-smoke','moved'); document.documentElement.setAttribute('data-mindustry-mobile-input-source','dom-touch-pan'); document.documentElement.setAttribute('data-mindustry-mobile-input-pointer-state','up'); document.documentElement.setAttribute('data-mindustry-mobile-input-unit-id',String(id)); document.documentElement.setAttribute('data-mindustry-mobile-input-unit',type); document.documentElement.setAttribute('data-mindustry-mobile-input-move-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-mobile-input-camera-dx',String(cdx)); document.documentElement.setAttribute('data-mindustry-mobile-input-unit-dx',String(udx));")
+    private static native void markMobileMoved(int id, String type, int frames, float cdx, float udx);
 
     @JSBody(params = {"stage", "oldId"}, script = "document.documentElement.setAttribute('data-mindustry-player-possession-smoke', stage); document.documentElement.setAttribute('data-mindustry-player-possession-old-id', String(oldId));")
     private static native void markPossessionStage(String stage, int oldId);
