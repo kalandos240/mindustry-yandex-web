@@ -63,6 +63,11 @@ new_methods = '''    private static void startAttackSmoke(){
         state.rules.waveTimer = false;
         state.rules.canGameOver = true;
 
+        // mindustryMapSmoke normally proves one survival wave. This dedicated attack
+        // gate intentionally disables waves, so clear only that CI expectation.
+        testWaveExpected = false;
+        testWaveFired = false;
+
         if(state.rules.defaultTeam.core() == null){
             throw new IllegalStateException("Attack smoke requires the real local player core");
         }
