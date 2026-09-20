@@ -209,6 +209,17 @@ jobs:
           grep -q "data-mindustry-network', 'local-only'" web-runtime/build/web/index.html
           echo 'Deployable package contains no external URL literals in staged HTML/CSS/BMFont/bundles/JavaScript.'
 
+      - name: Audit browser performance budget
+        run: python3 scripts/audit-web-performance.py
+
+      - name: Upload performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-performance-report
+          path: work/web-performance-report.txt
+          if-no-files-found: warn
+
       - name: Execute integrated desktop and mobile runtime in headless Chrome
         run: |
           command -v google-chrome
