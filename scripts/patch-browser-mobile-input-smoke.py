@@ -11,17 +11,13 @@ for path in (APPLICATION, VERIFY, MOBILE):
         raise SystemExit(f"Missing mobile-input smoke source: {path}")
 
 application = APPLICATION.read_text(encoding="utf-8")
-old_hook = '''                // CI-only observers; inert unless their explicit query is present.
-                BrowserPlayerInputSmoke.update();
-                BrowserPlayerCombatSmoke.update();
+old_hook = '''                BrowserPlayerCombatSmoke.update();
 '''
-new_hook = '''                // CI-only observers; inert unless their explicit query is present.
-                BrowserPlayerInputSmoke.update();
-                BrowserPlayerCombatSmoke.update();
+new_hook = '''                BrowserPlayerCombatSmoke.update();
                 BrowserMobileInputSmoke.update();
 '''
 if application.count(old_hook) != 1:
-    raise SystemExit("BrowserApplication mobile-input observer anchor no longer matches post-combat overlay")
+    raise SystemExit("BrowserApplication mobile-input observer anchor no longer matches final combat observer")
 APPLICATION.write_text(application.replace(old_hook, new_hook, 1), encoding="utf-8")
 
 text = VERIFY.read_text(encoding="utf-8")
@@ -35,7 +31,7 @@ mobile_function = '''run_mobile_input_map(){
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \\
     --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=en&mindustryMapSmoke=maze&mindustryMobileInputSmoke=1" \\
     --profile "$profile" \\
-    --port 9242 \\
+    --port 9246 \\
     --timeout 60 \\
     --require 'data-mindustry-web="ready"' \\
     --require 'data-mindustry-smoke-mode="production"' \\
@@ -67,21 +63,13 @@ if text.count(function_anchor) != 1:
     raise SystemExit("Mobile-input verifier function anchor no longer matches post-combat locale gate")
 text = text.replace(function_anchor, mobile_function, 1)
 
-call_anchor = '''run_weather_map
-run_player_possession_map
-run_player_input_map
-run_player_combat_map
-run_locale en
+call_anchor = '''run_locale en
 '''
-call_replacement = '''run_weather_map
-run_player_possession_map
-run_player_input_map
-run_player_combat_map
-run_mobile_input_map
+call_replacement = '''run_mobile_input_map
 run_locale en
 '''
 if text.count(call_anchor) != 1:
-    raise SystemExit("Mobile-input verifier call anchor no longer matches post-combat production ordering")
+    raise SystemExit("Mobile-input verifier call anchor no longer matches final production ordering")
 text = text.replace(call_anchor, call_replacement, 1)
 
 VERIFY.write_text(text, encoding="utf-8")
