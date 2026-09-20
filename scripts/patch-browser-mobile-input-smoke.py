@@ -2,23 +2,12 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-APPLICATION = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserApplication.java"
 VERIFY = ROOT / "scripts" / "verify-browser-locales.sh"
-MOBILE = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserMobileInputSmoke.java"
+MOBILE = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserPlayerInputSmoke.java"
 
-for path in (APPLICATION, VERIFY, MOBILE):
+for path in (VERIFY, MOBILE):
     if not path.is_file():
         raise SystemExit(f"Missing mobile-input smoke source: {path}")
-
-application = APPLICATION.read_text(encoding="utf-8")
-old_hook = '''                BrowserPlayerCombatSmoke.update();
-'''
-new_hook = '''                BrowserPlayerCombatSmoke.update();
-                BrowserMobileInputSmoke.update();
-'''
-if application.count(old_hook) != 1:
-    raise SystemExit("BrowserApplication mobile-input observer anchor no longer matches final combat observer")
-APPLICATION.write_text(application.replace(old_hook, new_hook, 1), encoding="utf-8")
 
 text = VERIFY.read_text(encoding="utf-8")
 function_anchor = '''run_locale(){
@@ -73,4 +62,4 @@ if text.count(call_anchor) != 1:
 text = text.replace(call_anchor, call_replacement, 1)
 
 VERIFY.write_text(text, encoding="utf-8")
-print("Extended browser gate with real DOM touch panning through stock MobileInput and local player movement")
+print("Extended shared player-input gate with real DOM touch panning through stock MobileInput")
