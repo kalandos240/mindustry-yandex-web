@@ -165,7 +165,7 @@ new_methods = '''    private static void startAttackSmoke(){
         if(enemyCores <= 0){
             throw new IllegalStateException("Attack smoke map loaded no enemy cores");
         }
-        markAttackStarted(slug(current), enemyCores);
+        markAttackStarted(slug(current), enemyCores, state.rules.defaultTeam.name);
     }
 
     private static void updateAttackSmoke(){
@@ -222,8 +222,8 @@ new_markers = '''    @JSBody(script = "document.documentElement.setAttribute('da
     @JSBody(params = {"slug"}, script = "document.documentElement.setAttribute('data-mindustry-local-attack-smoke','requested'); document.documentElement.setAttribute('data-mindustry-local-attack-map',slug);")
     private static native void markAttackSmokeRequested(String slug);
 
-    @JSBody(params = {"slug", "cores"}, script = "document.documentElement.setAttribute('data-mindustry-local-attack-smoke','started'); document.documentElement.setAttribute('data-mindustry-local-attack-map',slug); document.documentElement.setAttribute('data-mindustry-local-attack-enemy-cores',String(cores));")
-    private static native void markAttackStarted(String slug, int cores);
+    @JSBody(params = {"slug", "cores", "team"}, script = "document.documentElement.setAttribute('data-mindustry-local-attack-smoke','started'); document.documentElement.setAttribute('data-mindustry-local-attack-map',slug); document.documentElement.setAttribute('data-mindustry-local-attack-enemy-cores',String(cores)); document.documentElement.setAttribute('data-mindustry-local-attack-default-team',team);")
+    private static native void markAttackStarted(String slug, int cores, String team);
 
     @JSBody(params = {"cores"}, script = "document.documentElement.setAttribute('data-mindustry-local-attack-win-smoke','armed'); document.documentElement.setAttribute('data-mindustry-local-attack-removed-cores',String(cores));")
     private static native void markAttackWinArmed(int cores);
