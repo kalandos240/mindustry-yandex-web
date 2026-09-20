@@ -83,6 +83,27 @@ if text.count(old_attack_gate) != 1:
     raise SystemExit("Browser Attack-mode rule gate anchor changed")
 text = text.replace(old_attack_gate, new_attack_gate, 1)
 
+old_team_stage = '''        stageTeamRules(rules, rules.defaultTeam);
+        if(rules.waveTeam != rules.defaultTeam) stageTeamRules(rules, rules.waveTeam);
+'''
+new_team_stage = '''        stageTeamRules(rules, rules.defaultTeam);
+        if(rules.waveTeam != rules.defaultTeam) stageTeamRules(rules, rules.waveTeam);
+
+        // Until team builder/RTS AI is ported, disable it only for teams that are
+        // actually active in the loaded Attack world. This avoids materializing all
+        // 256 TeamRule entries while keeping arbitrary valid multi-team maps safe.
+        if(startModeOverride == Gamemode.attack && state != null && state.teams != null){
+            for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
+                if(data.team != rules.defaultTeam && data.team != rules.waveTeam){
+                    stageTeamRules(rules, data.team);
+                }
+            }
+        }
+'''
+if text.count(old_team_stage) != 1:
+    raise SystemExit("Browser Attack-mode active-team staging anchor changed")
+text = text.replace(old_team_stage, new_team_stage, 1)
+
 old_started = '''        markStarted(slug, map.plainName(), world.width(), world.height());
         startEnemyPathSmoke();
 '''
