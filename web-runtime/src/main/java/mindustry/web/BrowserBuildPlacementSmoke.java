@@ -181,6 +181,10 @@ public final class BrowserBuildPlacementSmoke{
                 throw new IllegalStateException("Conveyor completed without an observed stock loopBuild BrowserAudio voice");
             }
             if(removeAfterBuild){
+                if(control.input.block != Blocks.conveyor){
+                    throw new IllegalStateException("Conveyor selection disappeared before stock right-click deselect test");
+                }
+                uiFrames = 0;
                 stage = 7;
                 markRemovalStage("built-before-removal", targetX, targetY);
             }else{
