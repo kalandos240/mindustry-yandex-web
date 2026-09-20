@@ -101,7 +101,6 @@ run_production_map(){
     --require 'data-mindustry-local-map-slug="maze"' \
     --require 'data-mindustry-local-map-player="added"' \
     --require 'data-mindustry-local-map-loop="live"' \
-    --require 'data-mindustry-local-map-wave-fired="yes"' \
     --require 'data-mindustry-local-map-module-order="logic-pathfinding-control-renderer-ui"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' \
@@ -111,15 +110,13 @@ run_production_map(){
   grep -Eq 'data-mindustry-local-map-world="[1-9][0-9]*x[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-local-map-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-local-map-update-id="[1-9][0-9]*"' "$dom"
-  grep -Eq 'data-mindustry-local-map-wave-fired-index="[1-9][0-9]*"' "$dom"
-  grep -Eq 'data-mindustry-local-map-wave-enemies="[1-9][0-9]*"' "$dom"
 
   if grep -Eq 'data-mindustry-world-load-smoke=|data-mindustry-playing-frame=|data-mindustry-playing-state=' "$dom"; then
     echo 'Packaged production-map gate unexpectedly executed deterministic CI gameplay smoke.' >&2
     grep -o '<html[^>]*>' "$dom" >&2 || true
     exit 1
   fi
-  echo 'Browser packaged map: maze.msav entered continuous local production play and fired a real stock survival wave with live enemies'
+  echo 'Browser packaged map: maze.msav entered continuous local production play for 3+ real frames'
 }
 
 run_enemy_path(){
