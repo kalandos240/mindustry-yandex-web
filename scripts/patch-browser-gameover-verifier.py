@@ -25,6 +25,7 @@ new_require = '''    --require 'data-mindustry-local-map-player="added"' \\
     --require 'data-mindustry-local-gameover-ui="ready"' \\
     --require 'data-mindustry-local-map-wave-smoke="armed"' \\
     --require 'data-mindustry-local-map-wave-fired="yes"' \\
+    --require 'data-mindustry-local-map-wave-ai="moved"' \\
     --require 'data-mindustry-local-map-gameover-smoke="armed"' \\
     --require 'data-mindustry-local-map-gameover="ready"' \\
     --require 'data-mindustry-local-map-loop="game-over"' \\
@@ -43,6 +44,8 @@ new_greps = '''  grep -Eq 'data-mindustry-local-map-world="[1-9][0-9]*x[1-9][0-9
   grep -Eq 'data-mindustry-local-map-update-id="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-local-map-wave-fired-index="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-local-map-wave-enemies="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-local-map-wave-ai-unit-id="[0-9]+"' "$dom"
+  grep -Eq 'data-mindustry-local-map-wave-ai-unit="[A-Za-z0-9_-]+"' "$dom"
   grep -Eq 'data-mindustry-local-map-gameover-wave="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-local-map-gameover-winner="[A-Za-z0-9_-]+"' "$dom"
 '''
@@ -52,11 +55,11 @@ text = text.replace(old_greps, new_greps, 1)
 
 old_echo = '''  echo 'Browser packaged map: maze.msav entered continuous local production play for 3+ real frames'
 '''
-new_echo = '''  echo 'Browser packaged map: maze.msav ran 3+ real frames, spawned a real survival wave, then entered lean local core-loss Game Over'
+new_echo = '''  echo 'Browser packaged map: maze.msav ran real play -> spawned wave -> stock enemy AI moved -> lean local core-loss Game Over'
 '''
 if text.count(old_echo) != 1:
     raise SystemExit("Packaged-map verifier result message anchor no longer matches")
 text = text.replace(old_echo, new_echo, 1)
 
 VERIFY.write_text(text, encoding="utf-8")
-print("Extended packaged-map Chrome gate through real wave spawn and lean local Game Over")
+print("Extended packaged-map Chrome gate through wave spawn, enemy AI movement and local Game Over")
