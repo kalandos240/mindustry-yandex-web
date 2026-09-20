@@ -82,3 +82,4 @@ subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-building
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-item-transfer-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-player-control-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-mobile-input-smoke.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-enemy-path-smoke.py")], check=True)
