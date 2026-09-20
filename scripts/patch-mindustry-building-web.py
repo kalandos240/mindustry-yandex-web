@@ -5,9 +5,10 @@ ROOT = Path(__file__).resolve().parents[1]
 CORE = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry"
 BUILDER = CORE / "entities" / "comp" / "BuilderComp.java"
 BUILDING = CORE / "entities" / "comp" / "BuildingComp.java"
+DESKTOP = CORE / "input" / "DesktopInput.java"
 CONSTRUCT = CORE / "world" / "blocks" / "ConstructBlock.java"
 
-for path in (BUILDER, BUILDING, CONSTRUCT):
+for path in (BUILDER, BUILDING, DESKTOP, CONSTRUCT):
     if not path.is_file():
         raise SystemExit(f"Missing pinned Mindustry building source: {path}")
 
@@ -66,6 +67,20 @@ if "Call.tileConfig(" in building:
     raise SystemExit("BuildingComp Web source still reaches generated tileConfig transport")
 BUILDING.write_text(building, encoding="utf-8")
 
+desktop = DESKTOP.read_text(encoding="utf-8")
+rotate_old = "                Call.rotateBlock(player, cursor.build, Core.input.axisTap(Binding.rotate) > 0);"
+rotate_new = (
+    "                // Web/Yandex local play owns the authoritative building rotation.\n"
+    "                // Preserve the stock rotateBlock validation/body without generated RPC transport.\n"
+    "                InputHandler.rotateBlock(player, cursor.build, Core.input.axisTap(Binding.rotate) > 0);"
+)
+if desktop.count(rotate_old) != 1:
+    raise SystemExit("DesktopInput Web rotation patch no longer matches pinned upstream")
+desktop = desktop.replace(rotate_old, rotate_new, 1)
+if "Call.rotateBlock(" in desktop:
+    raise SystemExit("DesktopInput Web source still reaches generated rotateBlock transport")
+DESKTOP.write_text(desktop, encoding="utf-8")
+
 construct = CONSTRUCT.read_text(encoding="utf-8")
 finish_replacements = [
     (
@@ -90,4 +105,4 @@ if "Call.constructFinish(" in construct or "Call.deconstructFinish(" in construc
     raise SystemExit("ConstructBlock Web source still reaches generated construction-finish transport")
 CONSTRUCT.write_text(construct, encoding="utf-8")
 
-print("Enabled local-authoritative Web build/configure begin/finish paths without NetServer/NetClient Call transport")
+print("Enabled local-authoritative Web build/configure/rotate begin/finish paths without NetServer/NetClient Call transport")
