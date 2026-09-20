@@ -70,9 +70,21 @@ new_methods = '''    private static void startAttackSmoke(){
             throw new IllegalStateException("Attack smoke requires no pre-existing enemy core on maze");
         }
 
-        mindustry.world.Tile spawn = spawner.getSpawns().isEmpty() ? null : spawner.getSpawns().first();
+        mindustry.gen.Building playerCore = state.rules.defaultTeam.core();
+        mindustry.world.Tile spawn = null;
+        float minDistance = tilesize * 20f;
+        for(int x = 2; x < world.width() - 2 && spawn == null; x++){
+            for(int y = 2; y < world.height() - 2; y++){
+                mindustry.world.Tile tile = world.tile(x, y);
+                if(tile != null && tile.block() == mindustry.content.Blocks.air &&
+                !tile.floor().isDeep() && tile.dst(playerCore.tile) >= minDistance / tilesize){
+                    spawn = tile;
+                    break;
+                }
+            }
+        }
         if(spawn == null){
-            throw new IllegalStateException("Attack smoke requires a real packaged-map spawn tile");
+            throw new IllegalStateException("Attack smoke found no safe interior tile for an enemy core");
         }
 
         spawn.setBlock(mindustry.content.Blocks.coreShard, state.rules.waveTeam, 0);
