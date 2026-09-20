@@ -63,6 +63,42 @@ placement_function = '''run_build_placement_map(){
   echo 'Browser construction: real palette DOM click -> conveyor selection -> world DOM click -> stock DesktopInput BuildPlan -> local builder + stock loopBuild BrowserAudio voice -> completed team conveyor PASS'
 }
 
+run_build_removal_map(){
+  local profile="/tmp/mindustry-web-profile-build-removal-map"
+  local dom="/tmp/mindustry-web-build-removal-map.html"
+  rm -rf "$profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:8081/index.html?lang=en&mindustryMapSmoke=maze&mindustryBuildPlacementSmoke=1&mindustryBuildRemovalSmoke=1" \
+    --profile "$profile" \
+    --port 9243 \
+    --timeout 90 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="production"' \
+    --require 'data-mindustry-input="ready"' \
+    --require 'data-mindustry-input-mode="desktop"' \
+    --require 'data-mindustry-stock-input="desktop"' \
+    --require 'data-mindustry-local-map-state="playing"' \
+    --require 'data-mindustry-local-map-slug="maze"' \
+    --require 'data-mindustry-local-map-player="added"' \
+    --require 'data-mindustry-local-map-loop="live"' \
+    --require 'data-mindustry-build-palette="ready"' \
+    --require 'data-mindustry-build-placement-audio="loopBuild-browser-voice"' \
+    --require 'data-mindustry-build-removal-smoke="removed"' \
+    --require 'data-mindustry-build-removal-source="dom-pointer-event"' \
+    --require 'data-mindustry-build-removal-plan-observed="true"' \
+    --require 'data-mindustry-build-removal-final-tile="air"' \
+    --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
+
+  grep -Eq 'data-mindustry-build-removal-tile-x="[0-9]+"' "$dom"
+  grep -Eq 'data-mindustry-build-removal-tile-y="[0-9]+"' "$dom"
+  grep -Eq 'data-mindustry-build-removal-unit-id="[0-9]+"' "$dom"
+  grep -Eq 'data-mindustry-build-removal-unit="[A-Za-z0-9_-]+"' "$dom"
+  grep -Eq 'data-mindustry-build-removal-frames="[0-9]+"' "$dom"
+  echo 'Browser demolition: real conveyor construction -> stock right-click deselect -> second right-click breaking mode -> breaking BuildPlan -> local builder -> air tile PASS'
+}
+
 run_locale(){
 '''
 if verify.count(function_anchor) != 1:
@@ -76,6 +112,7 @@ run_locale en
 call_replacement = '''run_player_input_map
 run_player_combat_map
 run_build_placement_map
+run_build_removal_map
 run_locale en
 '''
 if verify.count(call_anchor) != 1:
