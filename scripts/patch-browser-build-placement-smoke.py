@@ -23,45 +23,7 @@ if application.count(old_hook) != 1:
 APPLICATION.write_text(application.replace(old_hook, new_hook, 1), encoding="utf-8")
 
 verify = VERIFY.read_text(encoding="utf-8")
-function_anchor = '''run_build_rotate_map(){
-  local profile="/tmp/mindustry-web-profile-build-rotate-map"
-  local dom="/tmp/mindustry-web-build-rotate-map.html"
-  rm -rf "$profile"
-
-  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:8081/index.html?lang=en&mindustryMapSmoke=maze&mindustryBuildPlacementSmoke=1&mindustryBuildRotateSmoke=1" \
-    --profile "$profile" \
-    --port 9244 \
-    --timeout 90 \
-    --require 'data-mindustry-web="ready"' \
-    --require 'data-mindustry-smoke-mode="production"' \
-    --require 'data-mindustry-input="ready"' \
-    --require 'data-mindustry-input-mode="desktop"' \
-    --require 'data-mindustry-stock-input="desktop"' \
-    --require 'data-mindustry-local-map-state="playing"' \
-    --require 'data-mindustry-local-map-slug="maze"' \
-    --require 'data-mindustry-local-map-player="added"' \
-    --require 'data-mindustry-local-map-loop="live"' \
-    --require 'data-mindustry-build-palette="ready"' \
-    --require 'data-mindustry-build-placement-audio="loopBuild-browser-voice"' \
-    --require 'data-mindustry-build-rotate-smoke="rotated"' \
-    --require 'data-mindustry-build-rotate-source="dom-key-wheel"' \
-    --require 'data-mindustry-network="local-only"' \
-    --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
-
-  grep -Eq 'data-mindustry-build-rotate-before="[0-3]"' "$dom"
-  grep -Eq 'data-mindustry-build-rotate-after="[0-3]"' "$dom"
-  grep -Eq 'data-mindustry-build-rotate-tile-x="[0-9]+"' "$dom"
-  grep -Eq 'data-mindustry-build-rotate-tile-y="[0-9]+"' "$dom"
-  if grep -Eq 'data-mindustry-build-rotate-before="([0-3])"[^>]*data-mindustry-build-rotate-after="\1"' "$dom"; then
-    echo 'Rotate smoke reported unchanged rotation.' >&2
-    exit 1
-  fi
-  echo 'Browser rotation: real conveyor construction -> DOM R hold + wheel -> stock DesktopInput rotatePlaced -> local InputHandler.rotateBlock -> changed building.rotation PASS'
-}
-
-run_locale(){
-'''
+function_anchor = '''run_locale(){'''
 placement_function = '''run_build_placement_map(){
   local profile="/tmp/mindustry-web-profile-build-placement-map"
   local dom="/tmp/mindustry-web-build-placement-map.html"
@@ -134,6 +96,44 @@ run_build_removal_map(){
   grep -Eq 'data-mindustry-build-removal-unit="[A-Za-z0-9_-]+"' "$dom"
   grep -Eq 'data-mindustry-build-removal-frames="[0-9]+"' "$dom"
   echo 'Browser demolition: real conveyor construction -> stock right-click deselect -> second right-click breaking mode -> breaking BuildPlan -> local builder -> air tile PASS'
+}
+
+
+run_build_rotate_map(){
+  local profile="/tmp/mindustry-web-profile-build-rotate-map"
+  local dom="/tmp/mindustry-web-build-rotate-map.html"
+  rm -rf "$profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:8081/index.html?lang=en&mindustryMapSmoke=maze&mindustryBuildPlacementSmoke=1&mindustryBuildRotateSmoke=1" \
+    --profile "$profile" \
+    --port 9244 \
+    --timeout 90 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="production"' \
+    --require 'data-mindustry-input="ready"' \
+    --require 'data-mindustry-input-mode="desktop"' \
+    --require 'data-mindustry-stock-input="desktop"' \
+    --require 'data-mindustry-local-map-state="playing"' \
+    --require 'data-mindustry-local-map-slug="maze"' \
+    --require 'data-mindustry-local-map-player="added"' \
+    --require 'data-mindustry-local-map-loop="live"' \
+    --require 'data-mindustry-build-palette="ready"' \
+    --require 'data-mindustry-build-placement-audio="loopBuild-browser-voice"' \
+    --require 'data-mindustry-build-rotate-smoke="rotated"' \
+    --require 'data-mindustry-build-rotate-source="dom-key-wheel"' \
+    --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
+
+  grep -Eq 'data-mindustry-build-rotate-before="[0-3]"' "$dom"
+  grep -Eq 'data-mindustry-build-rotate-after="[0-3]"' "$dom"
+  grep -Eq 'data-mindustry-build-rotate-tile-x="[0-9]+"' "$dom"
+  grep -Eq 'data-mindustry-build-rotate-tile-y="[0-9]+"' "$dom"
+  if grep -Eq 'data-mindustry-build-rotate-before="([0-3])"[^>]*data-mindustry-build-rotate-after="\1"' "$dom"; then
+    echo 'Rotate smoke reported unchanged rotation.' >&2
+    exit 1
+  fi
+  echo 'Browser rotation: real conveyor construction -> DOM R hold + wheel -> stock DesktopInput rotatePlaced -> local InputHandler.rotateBlock -> changed building.rotation PASS'
 }
 
 run_locale(){
