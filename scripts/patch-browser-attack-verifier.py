@@ -11,7 +11,9 @@ text = VERIFY.read_text(encoding="utf-8")
 
 function_anchor = '''run_locale(){
 '''
-attack_function = '''run_attack_mode(){
+attack_function = '''# Attack-mode gate intentionally uses its own browser profile so it cannot inherit
+# Survival save/localStorage state from the preceding production-map checks.
+run_attack_mode(){
   local profile="/tmp/mindustry-web-profile-attack"
   local dom="/tmp/mindustry-web-attack.html"
   rm -rf "$profile"
