@@ -30,6 +30,7 @@ public final class BrowserBuildPlacementSmoke{
     private static boolean completed;
     private static boolean pointerDown;
     private static boolean planObserved;
+    private static boolean buildSoundObserved;
     private static int stage;
     private static int spawnFrames;
     private static int uiFrames;
@@ -155,9 +156,20 @@ public final class BrowserBuildPlacementSmoke{
         }
         if(planObserved) markPlanObserved(targetX, targetY, unit.plans().size);
 
+        if(planObserved && Sounds.loopBuild instanceof BrowserSound){
+            int voices = Sounds.loopBuild.countPlaying();
+            if(voices > 0){
+                buildSoundObserved = true;
+                markBuildSoundObserved(voices);
+            }
+        }
+
         if(tile.block() == Blocks.conveyor && tile.build != null && tile.build.team == player.team()){
             if(!planObserved){
                 throw new IllegalStateException("Conveyor completed without smoke observing the stock player BuildPlan");
+            }
+            if(!buildSoundObserved){
+                throw new IllegalStateException("Conveyor completed without an observed stock loopBuild BrowserAudio voice");
             }
             completed = true;
             control.input.block = null; // cleanup only after stock construction has completed.
@@ -265,6 +277,9 @@ public final class BrowserBuildPlacementSmoke{
 
     @JSBody(params = {"frames", "plans", "tile", "observed"}, script = "document.documentElement.setAttribute('data-mindustry-build-placement-smoke', 'building'); document.documentElement.setAttribute('data-mindustry-build-placement-build-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-build-placement-plans', String(plans)); document.documentElement.setAttribute('data-mindustry-build-placement-current-tile', tile); document.documentElement.setAttribute('data-mindustry-build-placement-plan-observed', String(observed));")
     private static native void markBuildProgress(int frames, int plans, String tile, boolean observed);
+
+    @JSBody(params = {"voices"}, script = "document.documentElement.setAttribute('data-mindustry-build-placement-audio', 'loopBuild-browser-voice'); document.documentElement.setAttribute('data-mindustry-build-placement-audio-voices', String(voices));")
+    private static native void markBuildSoundObserved(int voices);
 
     @JSBody(params = {"x", "y", "frames", "id", "type"}, script = "document.documentElement.setAttribute('data-mindustry-build-placement-smoke', 'built'); document.documentElement.setAttribute('data-mindustry-build-placement-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-placement-block', 'conveyor'); document.documentElement.setAttribute('data-mindustry-build-placement-plan-observed', 'true'); document.documentElement.setAttribute('data-mindustry-build-placement-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-placement-tile-y', String(y)); document.documentElement.setAttribute('data-mindustry-build-placement-build-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-build-placement-unit-id', String(id)); document.documentElement.setAttribute('data-mindustry-build-placement-unit', type);")
     private static native void markBuilt(int x, int y, int frames, int id, String type);
