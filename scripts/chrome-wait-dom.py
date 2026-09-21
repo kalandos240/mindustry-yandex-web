@@ -178,6 +178,9 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=25.0)
     parser.add_argument("--port", type=int, default=9223)
     parser.add_argument("--require", action="append", default=[])
+    parser.add_argument("--after-resize-width", type=int)
+    parser.add_argument("--after-resize-height", type=int)
+    parser.add_argument("--after-resize-require", action="append", default=[])
     parser.add_argument("--chrome", default="google-chrome")
     parser.add_argument(
         "--emulate-mobile",
@@ -185,6 +188,10 @@ def main() -> int:
         help="Apply touch/coarse mobile CDP emulation before navigating to --url.",
     )
     args = parser.parse_args()
+    if (args.after_resize_width is None) != (args.after_resize_height is None):
+        parser.error("--after-resize-width and --after-resize-height must be provided together")
+    if args.after_resize_require and args.after_resize_width is None:
+        parser.error("--after-resize-require requires --after-resize-width/--after-resize-height")
 
     profile = Path(args.profile)
     profile.mkdir(parents=True, exist_ok=True)
@@ -215,6 +222,8 @@ def main() -> int:
     ws: WebSocket | None = None
     last_html = ""
     polls = 0
+    resize_requested = args.after_resize_width is not None
+    resized = False
     try:
         ws = WebSocket(target_websocket(args.port, launch_url, deadline))
         message_id = 1
@@ -249,9 +258,24 @@ def main() -> int:
             last_html = evaluate(ws, message_id, "document.documentElement.outerHTML")
             polls += 1
             message_id += 1
-            if all(marker in last_html for marker in args.require):
+            required = args.after_resize_require if resized else args.require
+            if all(marker in last_html for marker in required):
+                if resize_requested and not resized:
+                    cdp_command(ws, message_id, "Emulation.setDeviceMetricsOverride", {
+                        "width": args.after_resize_width,
+                        "height": args.after_resize_height,
+                        "deviceScaleFactor": 2.75 if args.emulate_mobile else 1,
+                        "mobile": bool(args.emulate_mobile),
+                    })
+                    message_id += 1
+                    evaluate(ws, message_id, "window.dispatchEvent(new Event('orientationchange')); 'resize-dispatched'")
+                    message_id += 1
+                    resized = True
+                    continue
+
                 elapsed = time.monotonic() - started
-                sys.stderr.write(f"Chrome required markers ready in {elapsed:.3f}s after {polls} DOM poll(s).\n")
+                phase = " after live resize" if resized else ""
+                sys.stderr.write(f"Chrome required markers ready{phase} in {elapsed:.3f}s after {polls} DOM poll(s).\n")
                 sys.stdout.write("<!DOCTYPE html>\n" + last_html + "\n")
                 return 0
             time.sleep(0.1)
