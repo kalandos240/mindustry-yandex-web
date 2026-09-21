@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.files.*;
+import arc.struct.*;
 import mindustry.content.*;
 import mindustry.game.*;
 import mindustry.io.*;
@@ -190,6 +191,44 @@ public final class BrowserCampaignRuntime{
         active = true;
         markStarted(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             sector.save.file.length());
+    }
+
+    /**
+     * Mirrors PlanetDialog.canSelect() for normal campaign look/landing mode, restricted
+     * to named SectorPreset entries used by the lean browser selector.
+     */
+    public static boolean canSelectPreset(SectorPreset preset){
+        if(preset == null || preset.sector == null || preset.planet == null || preset.sector.preset != preset){
+            return false;
+        }
+
+        Sector sector = preset.sector;
+        if(sector.planet.generator == null || sector.isShielded()) return false;
+        if(sector.hasBase() || sector.id == sector.planet.startSector) return true;
+
+        if(preset.requireUnlock){
+            var node = preset.techNode;
+            return preset.unlocked()
+                || node == null
+                || node.parent == null
+                || (node.parent.content.unlocked()
+                    && (!(node.parent.content instanceof SectorPreset parentPreset)
+                        || parentPreset.sector.hasBase()));
+        }
+
+        return sector.planet.generator.allowLanding(sector);
+    }
+
+    public static Seq<SectorPreset> selectablePresets(){
+        Seq<SectorPreset> result = new Seq<>();
+        for(SectorPreset preset : content.sectors()){
+            if(canSelectPreset(preset)) result.add(preset);
+        }
+        result.sort((a, b) -> {
+            int planet = a.planet.name.compareTo(b.planet.name);
+            return planet != 0 ? planet : a.localizedName.compareTo(b.localizedName);
+        });
+        return result;
     }
 
     /** Ensure a packaged vanilla SectorPreset has its stock FileMapGenerator bound after Vars.maps exists. */
