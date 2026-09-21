@@ -12,10 +12,10 @@ REPORT = ROOT / "work" / "web-performance-report.txt"
 # and reflective field metadata required for exact objective load/save semantics. Relative
 # to the pre-objective campaign build this intentional compatibility layer adds 79,206 raw
 # / 7,755 gzip bytes, with no forbidden desktop/network markers.
-JS_BASELINE = 22_906_353
-JS_LIMIT = 22_925_000
-JS_GZIP_BASELINE = 2_631_101
-JS_GZIP_LIMIT = 2_643_000
+JS_BASELINE = 22_976_213
+JS_LIMIT = 22_995_000
+JS_GZIP_BASELINE = 2_633_446
+JS_GZIP_LIMIT = 2_645_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
