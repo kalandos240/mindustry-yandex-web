@@ -55,6 +55,27 @@ patch("io/SaveIO.java", [
     ('public static final Seq<SaveVersion> versionArray = Seq.with(new Save1(), new Save2(), new Save3(), new Save4(), new Save5(), new Save6(), new Save7(), new Save8(), new Save9(), new Save10(), new Save11(), new Save12(), new Save13());',
      'public static final Seq<SaveVersion> versionArray = Seq.with(new Save4(), new Save13()); // Web: pinned built-in v4 maps + current v13 saves.',
      'SaveIO minimal map/save version graph'),
+    ('''    public static SaveMeta getMeta(Fi file){
+        try{
+            return getMeta(getStream(file));
+        }catch(Throwable e){
+            Log.err(e);
+            return getMeta(getBackupStream(file));
+        }
+    }''',
+     '''    public static SaveMeta getMeta(Fi file){
+        try{
+            return getMeta(getStream(file));
+        }catch(Throwable e){
+            Log.err(e);
+            Fi backup = backupFileFor(file);
+            if(!backup.exists()){
+                throw new RuntimeException("Primary save metadata read failed with no backup: " + e, e);
+            }
+            return getMeta(getBackupStream(file));
+        }
+    }''',
+     'SaveIO preserve primary metadata failure when backup is absent'),
     ('import mindustry.game.EventType.*;\nimport mindustry.io.versions.*;',
      'import mindustry.game.EventType.*;\nimport mindustry.core.*;\nimport mindustry.gen.*;\nimport mindustry.io.versions.*;',
      'SaveIO Web reset imports'),
