@@ -34,6 +34,12 @@ public final class BrowserCampaignRuntime{
         if(testChecked) return;
         testChecked = true;
 
+        if(continueRequested()){
+            markContinueRequested();
+            continueLastSector();
+            return;
+        }
+
         String requested = requestedSector();
         if(requested == null || requested.isEmpty()) return;
         if(!"groundZero".equalsIgnoreCase(requested)){
@@ -42,6 +48,64 @@ public final class BrowserCampaignRuntime{
 
         markRequested(requested);
         startGroundZero();
+    }
+
+    public static boolean hasLastSector(){
+        return control != null && control.saves != null && control.saves.getLastSector() != null;
+    }
+
+    /** Restore the last persisted campaign sector through stock SaveSlot/SaveIO semantics. */
+    public static void continueLastSector(){
+        if(active) throw new IllegalStateException("A browser campaign sector is already active");
+        if(state == null || !state.isMenu() || logic == null || world == null || control == null
+        || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
+            throw new IllegalStateException("Browser campaign continue requires a stable production menu runtime");
+        }
+        if(net == null || net.active() || netServer != null || netClient != null){
+            throw new IllegalStateException("Browser campaign continue escaped permanent single-player mode");
+        }
+
+        Saves.SaveSlot slot = control.saves.getLastSector();
+        if(slot == null || !slot.isSector() || slot.file == null || !slot.file.exists() || !SaveIO.isSaveValid(slot.file)){
+            throw new IllegalStateException("Browser campaign continue has no valid last-sector save");
+        }
+
+        Sector sector = slot.getSector();
+        if(sector == null){
+            throw new IllegalStateException("Browser campaign continue save is not bound to a sector");
+        }
+
+        int savedWave = slot.meta == null ? -1 : slot.meta.wave;
+        markPhase("continue-reset");
+        logic.reset();
+
+        markPhase("continue-load");
+        try{
+            slot.load(world.makeSectorContext(sector));
+        }catch(Throwable error){
+            throw new IllegalStateException("Browser campaign sector save failed stock SaveSlot.load", error);
+        }
+
+        slot.setAutosave(true);
+        state.rules.sector = sector;
+        state.rules.cloudColor = sector.planet.landCloudColor;
+
+        if(state.rules.defaultTeam.core() == null || world.width() <= 0 || world.height() <= 0){
+            throw new IllegalStateException("Browser campaign continue restored no playable core/world");
+        }
+
+        state.set(mindustry.core.GameState.State.playing);
+        player.team(state.rules.defaultTeam);
+        if(!player.isAdded()) player.add();
+        player.set(state.rules.defaultTeam.core());
+        Core.camera.position.set(state.rules.defaultTeam.core());
+
+        current = sector;
+        frames = 0;
+        active = true;
+
+        markContinued(sector.id, sector.planet.name, state.wave, savedWave,
+            world.width(), world.height(), slot.file.length());
     }
 
     public static void startGroundZero(){
@@ -171,11 +235,20 @@ public final class BrowserCampaignRuntime{
         }
     }
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignContinue') === '1';")
+    private static native boolean continueRequested();
+
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSmoke') || '';")
     private static native String requestedSector();
 
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
     private static native void markRequested(String name);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-continue-test','requested');")
+    private static native void markContinueRequested();
+
+    @JSBody(params = {"sectorId", "planet", "wave", "savedWave", "width", "height", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-continue','ready'); document.documentElement.setAttribute('data-mindustry-campaign-state','playing'); document.documentElement.setAttribute('data-mindustry-campaign-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-planet',planet); document.documentElement.setAttribute('data-mindustry-campaign-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-saved-wave',String(savedWave)); document.documentElement.setAttribute('data-mindustry-campaign-world',String(width)+'x'+String(height)); document.documentElement.setAttribute('data-mindustry-campaign-save','valid'); document.documentElement.setAttribute('data-mindustry-campaign-save-bytes',String(bytes));")
+    private static native void markContinued(int sectorId, String planet, int wave, int savedWave, int width, int height, long bytes);
 
     @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-phase', phase);")
     private static native void markPhase(String phase);
