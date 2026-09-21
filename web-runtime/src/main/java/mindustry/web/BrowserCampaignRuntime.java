@@ -21,6 +21,8 @@ import static mindustry.Vars.*;
 public final class BrowserCampaignRuntime{
     private static boolean active;
     private static boolean testChecked;
+    private static boolean diagnostics;
+    private static boolean coreReadyMarked;
     private static boolean saveSmokeArmed;
     private static Sector current;
     private static int frames;
@@ -50,6 +52,7 @@ public final class BrowserCampaignRuntime{
 
     /** Production menu action: start Ground Zero once, then resume the same sector thereafter. */
     public static void playGroundZero(){
+        diagnostics = false;
         boolean resume = hasGroundZeroSave();
         markProductionAction(resume ? "continue" : "play");
         if(resume){
@@ -65,6 +68,7 @@ public final class BrowserCampaignRuntime{
 
         String resumeRequested = requestedResumeSector();
         if(resumeRequested != null && !resumeRequested.isEmpty()){
+            diagnostics = true;
             if(!"groundZero".equalsIgnoreCase(resumeRequested)){
                 throw new IllegalArgumentException("Unsupported browser campaign resume sector: " + resumeRequested);
             }
@@ -76,6 +80,7 @@ public final class BrowserCampaignRuntime{
 
         String requested = requestedSector();
         if(requested == null || requested.isEmpty()) return;
+        diagnostics = true;
         if(!"groundZero".equalsIgnoreCase(requested)){
             throw new IllegalArgumentException("Unsupported browser campaign smoke sector: " + requested);
         }
@@ -87,6 +92,7 @@ public final class BrowserCampaignRuntime{
     public static void startGroundZero(){
         if(active) throw new IllegalStateException("A browser campaign sector is already active");
         saveSmokeArmed = false;
+        coreReadyMarked = false;
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("Browser campaign start requires a stable production menu runtime");
@@ -121,13 +127,13 @@ public final class BrowserCampaignRuntime{
         }
         markGeneratorReady(preset.generator.map.file.path());
 
-        markPhase("reset");
+        diagPhase("reset");
         logic.reset();
 
         preset.quietUnlock();
         sector.planet.setLastSector(sector);
 
-        markPhase("world-load-sector");
+        diagPhase("world-load-sector");
         world.loadSector(sector);
         if(state.rules == null || state.rules.sector != sector || state.map == null
         || world.width() <= 0 || world.height() <= 0 || state.rules.defaultTeam.core() == null){
@@ -138,7 +144,7 @@ public final class BrowserCampaignRuntime{
         sector.info.destination = sector;
         sector.info.attempts++;
 
-        markPhase("play");
+        diagPhase("play");
         logic.play();
 
         player.team(state.rules.defaultTeam);
@@ -150,7 +156,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Ground Zero did not enter campaign playing state");
         }
 
-        markPhase("sector-save");
+        diagPhase("sector-save");
 
         // SaveVersion.writeStringMap uses DataOutput.writeUTF for every metadata
         // value. Diagnose the exact stock JSON field before SaveIO collapses an
@@ -229,7 +235,7 @@ public final class BrowserCampaignRuntime{
         long expectedBytes = sector.save.file.length();
 
         sector.planet.setLastSector(sector);
-        markPhase("sector-load");
+        diagPhase("sector-load");
         sector.save.load(world.makeSectorContext(sector));
         sector.save.setAutosave(true);
         state.rules.sector = sector;
@@ -262,6 +268,7 @@ public final class BrowserCampaignRuntime{
         frames = 0;
         active = true;
         saveSmokeArmed = false;
+        coreReadyMarked = false;
         markResumed(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             expectedBytes, state.wave, loadedTickMillis);
     }
@@ -294,6 +301,7 @@ public final class BrowserCampaignRuntime{
         current = null;
         frames = 0;
         saveSmokeArmed = false;
+        coreReadyMarked = false;
         logic.reset();
         markReturnedToMenu();
     }
@@ -303,7 +311,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Browser campaign checkpoint requires an active campaign sector");
         }
 
-        markPhase("sector-checkpoint");
+        diagPhase("sector-checkpoint");
         control.saves.saveSector(current);
         if(current.save == null || current.save.file == null || !current.save.file.exists()
         || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
@@ -329,24 +337,24 @@ public final class BrowserCampaignRuntime{
 
         long beforeUpdate = state.updateId;
 
-        markPhase("logic");
+        diagPhase("logic");
         logic.updateWebPlayingCore();
-        markPhase("logic-ready");
+        diagPhase("logic-ready");
 
         pathfinder.updateWeb();
         controlPath.updateWeb();
 
-        markPhase("control");
+        diagPhase("control");
         control.update();
-        markPhase("control-ready");
+        diagPhase("control-ready");
 
-        markPhase("renderer");
+        diagPhase("renderer");
         renderer.update();
-        markPhase("renderer-ready");
+        diagPhase("renderer-ready");
 
-        markPhase("ui");
+        diagPhase("ui");
         ui.update();
-        markPhase("ui-ready");
+        diagPhase("ui-ready");
 
         // A HUD action can checkpoint/reset the campaign during Scene.act(). Once Back
         // has returned to the menu, do not validate the old playing-state update clock.
@@ -359,15 +367,24 @@ public final class BrowserCampaignRuntime{
         }
 
         frames++;
-        markFrame(frames, state.updateId, state.wave);
-        if(frames >= 3){
+        if(diagnostics) markFrame(frames, state.updateId, state.wave);
+        if(frames >= 3 && !coreReadyMarked){
             if(saveSmokeRequested() && !saveSmokeArmed){
                 saveSmokeArmed = true;
                 saveCampaignCheckpoint();
             }
-            markReady(frames, state.wave, current.info.attempts,
-                current.save != null && current.save.file != null && SaveIO.isSaveValid(current.save.file));
+
+            coreReadyMarked = true;
+            if(diagnostics){
+                boolean savePresent = current.save != null && current.save.file != null
+                    && current.save.file.exists() && current.save.file.length() >= 128;
+                markReady(frames, state.wave, current.info.attempts, savePresent);
+            }
         }
+    }
+
+    private static void diagPhase(String phase){
+        if(diagnostics) markPhase(phase);
     }
 
     /** Exact byte count used by DataOutputStream.writeUTF's modified UTF-8 payload. */
