@@ -91,3 +91,4 @@ subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-team-ai-sm
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-team-ai-verifier.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-campaign-core-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-campaign-core-verifier.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-campaign-continue-verifier.py")], check=True)
