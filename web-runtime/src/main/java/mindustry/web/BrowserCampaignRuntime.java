@@ -5,6 +5,7 @@ import arc.files.*;
 import mindustry.content.*;
 import mindustry.game.*;
 import mindustry.io.*;
+import mindustry.maps.generators.*;
 import mindustry.type.*;
 import org.teavm.jso.JSBody;
 
@@ -63,6 +64,21 @@ public final class BrowserCampaignRuntime{
         if(!presetFile.exists() || presetFile.length() < 128){
             throw new IllegalStateException("Packaged Ground Zero preset map is missing");
         }
+        if(maps == null){
+            throw new IllegalStateException("Ground Zero campaign start requires initialized Maps");
+        }
+
+        // SectorPreset content is constructed before BrowserLocalMapRuntime creates Vars.maps,
+        // so vanilla FileMapGenerator initially captures map=null in the lean Web startup.
+        // Rebind the exact preset generator now that Maps and the packaged sector asset exist;
+        // World.loadSector below remains the stock campaign world-loading path.
+        if(preset.generator == null || preset.generator.map == null){
+            preset.generator = new FileMapGenerator("groundZero", preset);
+        }
+        if(preset.generator.map == null || !preset.generator.map.file.exists()){
+            throw new IllegalStateException("Ground Zero FileMapGenerator failed late Web map binding");
+        }
+        markGeneratorReady(preset.generator.map.file.path());
 
         markPhase("reset");
         logic.reset();
@@ -163,6 +179,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-phase', phase);")
     private static native void markPhase(String phase);
+
+    @JSBody(params = {"path"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-generator','ready'); document.documentElement.setAttribute('data-mindustry-campaign-map-path',path);")
+    private static native void markGeneratorReady(String path);
 
     @JSBody(params = {"sectorId", "planet", "preset", "width", "height", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-state','playing'); document.documentElement.setAttribute('data-mindustry-campaign-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-planet',planet); document.documentElement.setAttribute('data-mindustry-campaign-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-world',String(width)+'x'+String(height)); document.documentElement.setAttribute('data-mindustry-campaign-save','valid'); document.documentElement.setAttribute('data-mindustry-campaign-save-bytes',String(bytes));")
     private static native void markStarted(int sectorId, String planet, String preset, int width, int height, long bytes);
