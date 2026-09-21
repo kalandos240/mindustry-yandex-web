@@ -194,12 +194,25 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     @JSBody(script = """
+        const root = document.documentElement;
         const forced = new URLSearchParams(location.search).get('mindustryMobile');
-        if(forced === '1') return true;
-        if(forced === '0') return false;
+        if(forced === '1' || forced === '0'){
+            root.setAttribute('data-mindustry-device-source', 'query-override');
+            return forced === '1';
+        }
+
+        const platform = globalThis.__mindustryYandex;
+        const type = String(platform && platform.deviceType || '').toLowerCase();
+        if(type){
+            root.setAttribute('data-mindustry-device-source', 'yandex-sdk');
+            if(type === 'mobile' || type === 'tablet') return true;
+            if(type === 'desktop' || type === 'tv') return false;
+        }
+
         const points = Number(navigator.maxTouchPoints || 0);
         const coarse = !!(globalThis.matchMedia && matchMedia('(pointer: coarse)').matches);
         const noHover = !!(globalThis.matchMedia && matchMedia('(hover: none)').matches);
+        root.setAttribute('data-mindustry-device-source', 'browser-fallback');
         return points > 0 && (coarse || noHover);
         """)
     private static native boolean detectMobileBrowser();
