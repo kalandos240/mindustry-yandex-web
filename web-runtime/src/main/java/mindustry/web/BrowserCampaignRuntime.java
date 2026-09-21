@@ -110,6 +110,26 @@ public final class BrowserCampaignRuntime{
         }
 
         markPhase("sector-save");
+
+        // SaveVersion.writeStringMap uses DataOutput.writeUTF for every metadata
+        // value. Diagnose the exact stock JSON field before SaveIO collapses an
+        // oversized value into a generic "UTF Error"; do not change the v13 wire
+        // format or truncate campaign state.
+        String rulesJson = JsonIO.write(state.rules);
+        String statsJson = JsonIO.write(state.stats);
+        String localesJson = JsonIO.write(state.mapLocales);
+        int rulesUtf = modifiedUtf8Length(rulesJson);
+        int statsUtf = modifiedUtf8Length(statsJson);
+        int localesUtf = modifiedUtf8Length(localesJson);
+        markMetaLengths(rulesUtf, statsUtf, localesUtf, rulesJson.length());
+
+        if(rulesUtf > 65535 || statsUtf > 65535 || localesUtf > 65535){
+            throw new IllegalStateException(
+                "Campaign v13 metadata exceeds writeUTF: rules=" + rulesUtf +
+                ", stats=" + statsUtf + ", locales=" + localesUtf
+            );
+        }
+
         control.saves.saveSector(sector);
         if(sector.save == null || sector.save.file == null || !sector.save.file.exists()
         || sector.save.file.length() < 128 || !SaveIO.isSaveValid(sector.save.file)){
@@ -170,6 +190,25 @@ public final class BrowserCampaignRuntime{
                 current.save != null && current.save.file != null && SaveIO.isSaveValid(current.save.file));
         }
     }
+
+    /** Exact byte count used by DataOutputStream.writeUTF's modified UTF-8 payload. */
+    private static int modifiedUtf8Length(String value){
+        int bytes = 0;
+        for(int i = 0; i < value.length(); i++){
+            int c = value.charAt(i);
+            if(c >= 0x0001 && c <= 0x007f){
+                bytes++;
+            }else if(c > 0x07ff){
+                bytes += 3;
+            }else{
+                bytes += 2;
+            }
+        }
+        return bytes;
+    }
+
+    @JSBody(params = {"rules", "stats", "locales", "rulesChars"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-meta-rules-utf',String(rules)); document.documentElement.setAttribute('data-mindustry-campaign-meta-stats-utf',String(stats)); document.documentElement.setAttribute('data-mindustry-campaign-meta-locales-utf',String(locales)); document.documentElement.setAttribute('data-mindustry-campaign-meta-rules-chars',String(rulesChars));")
+    private static native void markMetaLengths(int rules, int stats, int locales, int rulesChars);
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSmoke') || '';")
     private static native String requestedSector();
