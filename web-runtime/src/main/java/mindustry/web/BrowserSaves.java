@@ -58,6 +58,17 @@ public final class BrowserSaves extends Saves{
     }
 
     @Override
+    public void saveSector(Sector sector){
+        // Keep stock MSAV creation/autosave/name semantics, then mirror the stock
+        // lastSectorSave pointer into the browser override and persist the setting
+        // immediately. A tab/process can disappear without Arc's desktop exit hook,
+        // so campaign Continue must not depend on a later Settings.autosave().
+        super.saveSector(sector);
+        browserLastSector = sector.save;
+        Core.settings.forceSave();
+    }
+
+    @Override
     public SaveSlot getLastSector(){
         return browserLastSector;
     }
