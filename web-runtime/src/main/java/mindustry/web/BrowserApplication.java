@@ -28,6 +28,7 @@ public final class BrowserApplication extends WebApplicationBase{
     private boolean platformPaused;
     private boolean lastPlatformPaused;
     private boolean lastGameplayActive;
+    private boolean awaitingPlatformResumeFrame;
     private int browserFrameCallbacks;
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
@@ -94,6 +95,10 @@ public final class BrowserApplication extends WebApplicationBase{
             if(!platformPaused){
                 frame();
                 syncGameplayMarker();
+                if(awaitingPlatformResumeFrame){
+                    awaitingPlatformResumeFrame = false;
+                    BrowserYandex.markResumeFrame(browserFrameCallbacks);
+                }
             }
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
@@ -147,6 +152,7 @@ public final class BrowserApplication extends WebApplicationBase{
             pause();
         }else{
             resume();
+            awaitingPlatformResumeFrame = true;
         }
     }
 

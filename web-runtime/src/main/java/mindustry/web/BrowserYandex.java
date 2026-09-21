@@ -33,4 +33,10 @@ public final class BrowserYandex{
         }
         """)
     public static native void markPauseState(String state);
+
+    @JSBody(params = {"frame"}, script = """
+        document.documentElement.setAttribute('data-mindustry-platform-resume-frame', 'ready');
+        document.documentElement.setAttribute('data-mindustry-platform-resume-frame-index', String(frame));
+        """)
+    public static native void markResumeFrame(int frame);
 }

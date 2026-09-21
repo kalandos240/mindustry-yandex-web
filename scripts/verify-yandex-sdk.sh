@@ -257,6 +257,7 @@ run_ad_lifecycle(){
     --require 'data-mindustry-platform-pause-observed="yes"' \
     --require 'data-mindustry-platform-resume-observed="yes"' \
     --require 'data-mindustry-platform-pause="running"' \
+    --require 'data-mindustry-platform-resume-frame="ready"' \
     --require 'data-mindustry-input-reset="platform-pause"' \
     --require 'data-mindustry-audio-pause-observed="yes"' \
     --require 'data-mindustry-audio-resume-observed="yes"' \
