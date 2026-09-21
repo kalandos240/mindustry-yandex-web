@@ -33,7 +33,9 @@ function = '''run_campaign_core(){
     --require 'data-mindustry-network-mode="singleplayer-only"' \
     --require 'data-mindustry-links="none"' > "$dom"
 
-  grep -q 'data-mindustry-campaign-sector-id="15"' "$dom"
+  # SectorPreset.groundZero is authored at position 15, then pinned serpulo.json
+  # remaps it to sector 170 during content initialization.
+  grep -q 'data-mindustry-campaign-sector-id="170"' "$dom"
   grep -Eq 'data-mindustry-campaign-world="[1-9][0-9]*x[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-campaign-save-bytes="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-campaign-frames="[3-9]|[1-9][0-9]+"' "$dom"
