@@ -175,6 +175,8 @@ public final class BrowserCampaignRuntime{
 
         markPhase("sector-save");
         control.saves.saveSector(sector);
+        Core.settings.forceSave();
+        flushCampaignStorage();
         if(sector.save == null || sector.save.file == null || !sector.save.file.exists()
         || sector.save.file.length() < 128 || !SaveIO.isSaveValid(sector.save.file)){
             throw new IllegalStateException("Ground Zero did not create a valid stock sector save");
@@ -255,6 +257,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(params = {"path"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-generator','ready'); document.documentElement.setAttribute('data-mindustry-campaign-map-path',path);")
     private static native void markGeneratorReady(String path);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-save-flush','pending'); globalThis.__mindustryStorage.flush().then(function(){document.documentElement.setAttribute('data-mindustry-campaign-save-flush','ready');}).catch(function(){document.documentElement.setAttribute('data-mindustry-campaign-save-flush','error');});")
+    private static native void flushCampaignStorage();
 
     @JSBody(params = {"sectorId", "planet", "preset", "width", "height", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-state','playing'); document.documentElement.setAttribute('data-mindustry-campaign-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-planet',planet); document.documentElement.setAttribute('data-mindustry-campaign-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-world',String(width)+'x'+String(height)); document.documentElement.setAttribute('data-mindustry-campaign-save','valid'); document.documentElement.setAttribute('data-mindustry-campaign-save-bytes',String(bytes));")
     private static native void markStarted(int sectorId, String planet, String preset, int width, int height, long bytes);
