@@ -117,10 +117,14 @@ public final class BrowserGameplayRuntime{
                 }
                 BrowserPlayingRuntime.updateFrame();
             }else{
-                if(!BrowserLocalMapRuntime.active()){
-                    throw new IllegalStateException("Production Web entered playing state outside a user/local built-in map session");
+                if(BrowserCampaignRuntime.active()){
+                    BrowserCampaignRuntime.updateFrame();
+                }else{
+                    if(!BrowserLocalMapRuntime.active()){
+                        throw new IllegalStateException("Production Web entered playing state outside a local-map or campaign session");
+                    }
+                    BrowserLocalMapRuntime.updateFrame();
                 }
-                BrowserLocalMapRuntime.updateFrame();
             }
             return;
         }
@@ -148,10 +152,10 @@ public final class BrowserGameplayRuntime{
         }else if(smokeMode && menuUpdateFrames == 5){
             BrowserPlayingRuntime.begin();
         }else if(!smokeMode && menuUpdateFrames == 4){
-            // CI can request one real packaged-map launch without changing normal
-            // production startup. Without mindustryMapSmoke this is a no-op and the
-            // user remains in the selector until clicking a map.
-            BrowserLocalMapRuntime.maybeStartTestMap();
+            // CI may request one real campaign sector or packaged local map. Without
+            // either query, production remains in the user-controlled local selector.
+            BrowserCampaignRuntime.maybeStartTestSector();
+            if(state.isMenu()) BrowserLocalMapRuntime.maybeStartTestMap();
         }
     }
 
