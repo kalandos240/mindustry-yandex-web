@@ -134,14 +134,8 @@ public final class BrowserCampaignRuntime{
 
         // SectorPreset content is constructed before BrowserLocalMapRuntime creates Vars.maps,
         // so vanilla FileMapGenerator initially captures map=null in the lean Web startup.
-        // Rebind the exact preset generator now that Maps and the packaged sector asset exist;
-        // World.loadSector below remains the stock campaign world-loading path.
-        if(preset.generator == null || preset.generator.map == null){
-            preset.generator = new FileMapGenerator("groundZero", preset);
-        }
-        if(preset.generator.map == null || !preset.generator.map.file.exists()){
-            throw new IllegalStateException("Ground Zero FileMapGenerator failed late Web map binding");
-        }
+        // Late-bind through the preset's stock name once Maps and packaged campaign assets exist.
+        ensurePresetGenerator(preset);
         markGeneratorReady(preset.generator.map.file.path());
 
         markPhase("reset");
@@ -196,6 +190,29 @@ public final class BrowserCampaignRuntime{
         active = true;
         markStarted(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             sector.save.file.length());
+    }
+
+    /** Ensure a packaged vanilla SectorPreset has its stock FileMapGenerator bound after Vars.maps exists. */
+    public static void ensurePresetGenerator(SectorPreset preset){
+        if(preset == null || preset.planet == null){
+            throw new IllegalArgumentException("Campaign preset is incomplete");
+        }
+        if(maps == null){
+            throw new IllegalStateException("Campaign preset binding requires initialized Maps");
+        }
+
+        if(preset.generator == null || preset.generator.map == null){
+            preset.generator = new FileMapGenerator(preset.name, preset);
+        }
+        if(preset.generator.map == null || preset.generator.map.file == null || !preset.generator.map.file.exists()){
+            throw new IllegalStateException("Packaged campaign map missing for preset " + preset.name);
+        }
+    }
+
+    public static void bindAllPackagedPresets(){
+        for(SectorPreset preset : content.sectors()){
+            ensurePresetGenerator(preset);
+        }
     }
 
     public static void updateFrame(){
