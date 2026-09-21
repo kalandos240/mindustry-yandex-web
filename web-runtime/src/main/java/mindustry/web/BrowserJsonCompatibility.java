@@ -81,30 +81,36 @@ public final class BrowserJsonCompatibility{
             @Override
             public void write(Json json, Rules.TeamRule value, Class knownType){
                 json.writeObjectStart();
-                json.writeValue("aiCoreSpawn", value.aiCoreSpawn);
-                json.writeValue("protectCores", value.protectCores);
-                json.writeValue("checkPlacement", value.checkPlacement);
-                json.writeValue("cheat", value.cheat);
-                json.writeValue("fillItems", value.fillItems);
-                json.writeValue("infiniteResources", value.infiniteResources);
-                json.writeValue("prebuildAi", value.prebuildAi);
-                json.writeValue("buildAi", value.buildAi);
-                json.writeValue("buildAiTier", value.buildAiTier);
-                json.writeValue("rtsAi", value.rtsAi);
-                json.writeValue("rtsMinSquad", value.rtsMinSquad);
-                json.writeValue("rtsMaxSquad", value.rtsMaxSquad);
-                json.writeValue("rtsMinWeight", value.rtsMinWeight);
-                json.writeValue("unitFactoryActivationDelay", value.unitFactoryActivationDelay);
-                json.writeValue("unitBuildSpeedMultiplier", value.unitBuildSpeedMultiplier);
-                json.writeValue("unitDamageMultiplier", value.unitDamageMultiplier);
-                json.writeValue("unitCrashDamageMultiplier", value.unitCrashDamageMultiplier);
-                json.writeValue("unitMineSpeedMultiplier", value.unitMineSpeedMultiplier);
-                json.writeValue("unitCostMultiplier", value.unitCostMultiplier);
-                json.writeValue("unitHealthMultiplier", value.unitHealthMultiplier);
-                json.writeValue("blockHealthMultiplier", value.blockHealthMultiplier);
-                json.writeValue("blockDamageMultiplier", value.blockDamageMultiplier);
-                json.writeValue("buildSpeedMultiplier", value.buildSpeedMultiplier);
-                json.writeValue("extraCoreBuildRadius", value.extraCoreBuildRadius);
+
+                // Mirror Arc Json prototype suppression explicitly. TeaVM cannot
+                // construct TeamRule reflectively for Json.getDefaultValues(), and
+                // writing every default field for each materialized team can push the
+                // v13 rules metadata above DataOutput.writeUTF's 65,535-byte limit.
+                if(!value.aiCoreSpawn) json.writeValue("aiCoreSpawn", false);
+                if(!value.protectCores) json.writeValue("protectCores", false);
+                if(!value.checkPlacement) json.writeValue("checkPlacement", false);
+                if(value.cheat) json.writeValue("cheat", true);
+                if(value.fillItems) json.writeValue("fillItems", true);
+                if(value.infiniteResources) json.writeValue("infiniteResources", true);
+                if(value.prebuildAi) json.writeValue("prebuildAi", true);
+                if(value.buildAi) json.writeValue("buildAi", true);
+                if(value.buildAiTier != 1f) json.writeValue("buildAiTier", value.buildAiTier);
+                if(value.rtsAi) json.writeValue("rtsAi", true);
+                if(value.rtsMinSquad != 4) json.writeValue("rtsMinSquad", value.rtsMinSquad);
+                if(value.rtsMaxSquad != 50) json.writeValue("rtsMaxSquad", value.rtsMaxSquad);
+                if(value.rtsMinWeight != 1.2f) json.writeValue("rtsMinWeight", value.rtsMinWeight);
+                if(value.unitFactoryActivationDelay != 0f) json.writeValue("unitFactoryActivationDelay", value.unitFactoryActivationDelay);
+                if(value.unitBuildSpeedMultiplier != 1f) json.writeValue("unitBuildSpeedMultiplier", value.unitBuildSpeedMultiplier);
+                if(value.unitDamageMultiplier != 1f) json.writeValue("unitDamageMultiplier", value.unitDamageMultiplier);
+                if(value.unitCrashDamageMultiplier != 1f) json.writeValue("unitCrashDamageMultiplier", value.unitCrashDamageMultiplier);
+                if(value.unitMineSpeedMultiplier != 1f) json.writeValue("unitMineSpeedMultiplier", value.unitMineSpeedMultiplier);
+                if(value.unitCostMultiplier != 1f) json.writeValue("unitCostMultiplier", value.unitCostMultiplier);
+                if(value.unitHealthMultiplier != 1f) json.writeValue("unitHealthMultiplier", value.unitHealthMultiplier);
+                if(value.blockHealthMultiplier != 1f) json.writeValue("blockHealthMultiplier", value.blockHealthMultiplier);
+                if(value.blockDamageMultiplier != 1f) json.writeValue("blockDamageMultiplier", value.blockDamageMultiplier);
+                if(value.buildSpeedMultiplier != 1f) json.writeValue("buildSpeedMultiplier", value.buildSpeedMultiplier);
+                if(value.extraCoreBuildRadius != 0f) json.writeValue("extraCoreBuildRadius", value.extraCoreBuildRadius);
+
                 json.writeObjectEnd();
             }
 
