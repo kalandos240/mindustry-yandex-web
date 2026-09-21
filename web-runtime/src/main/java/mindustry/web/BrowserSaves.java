@@ -40,8 +40,39 @@ public final class BrowserSaves extends Saves{
             }
         });
 
-        browserLastSector = slots.find(slot -> slot.isSector()
-            && slot.getName().equals(Core.settings.getString("last-sector-save", "<none>")));
+        String requestedLastSector = Core.settings.getString("last-sector-save", "<none>");
+        browserLastSector = null;
+        SaveSlot newestSector = null;
+
+        for(SaveSlot slot : slots){
+            if(!slot.isSector()) continue;
+
+            // Stock sector slots are hidden and always named after their file index.
+            // A browser process can be terminated without the desktop Settings exit hook,
+            // so repair that derived name if localStorage lost only the settings payload.
+            String fileName = slot.file.nameWithoutExtension();
+            String slotName = slot.getName();
+            if("untitled".equals(slotName)){
+                slot.setName(fileName);
+                slotName = fileName;
+            }
+
+            if(slotName.equals(requestedLastSector) || fileName.equals(requestedLastSector)){
+                browserLastSector = slot;
+            }
+            if(newestSector == null || slot.getTimestamp() > newestSector.getTimestamp()){
+                newestSector = slot;
+            }
+        }
+
+        // The MSAV files are authoritative campaign state. If the tiny localStorage
+        // pointer did not survive a hard tab/process shutdown, recover the most recently
+        // written valid sector save and repair the stock pointer for later starts.
+        if(browserLastSector == null && newestSector != null){
+            browserLastSector = newestSector;
+            Core.settings.put("last-sector-save", browserLastSector.getName());
+            Core.settings.forceSave();
+        }
 
         // Browser-local storage begins with current-format save data. Bind parsed
         // sector saves directly; the old desktop beta remap migration is deliberately
