@@ -205,6 +205,12 @@ public final class BrowserJsonCompatibility{
             }
         });
 
+        // Arc geometry values occur inside campaign objective/marker fields.
+        // TeaVM cannot reflectively construct them through Json.newInstance(), so keep
+        // the exact stock field format and replace only object construction.
+        installFields(Vec2.class, Vec2::new);
+        installFields(Point2.class, Point2::new);
+
         // Campaign map rules serialize polymorphic MapObjective subclasses. TeaVM can
         // reach their public no-arg constructors, but Arc Json reflective construction
         // has no constructor metadata for these nested classes. Keep the exact stock
