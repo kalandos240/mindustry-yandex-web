@@ -6,6 +6,7 @@ WEB_DIR="$ROOT_DIR/web-runtime/build/web"
 PROFILE="/tmp/mindustry-campaign-save-profile"
 SAVE_DOM="/tmp/mindustry-campaign-save-dom.html"
 RESUME_DOM="/tmp/mindustry-campaign-resume-dom.html"
+MOBILE_RESUME_DOM="/tmp/mindustry-campaign-mobile-resume-dom.html"
 PORT=8085
 
 command -v google-chrome >/dev/null
@@ -98,4 +99,44 @@ if grep -q 'data-mindustry-campaign-generator=' "$RESUME_DOM"; then
   exit 1
 fi
 
-echo 'Browser campaign Save/Resume: Ground Zero -> 3+ frames -> stock sector checkpoint -> IndexedDB flush -> full Chrome restart -> SaveSlot.load(sector context) -> identical wave/tick -> 3+ campaign frames PASS'
+# Third completely new Chrome process: prove the identical persisted campaign sector
+# resumes through the touch-first/mobile runtime as well, with no regenerated map.
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?mindustryMobile=1&lang=ru&mindustryCampaignContinueSmoke=groundZero" \
+  --profile "$PROFILE" \
+  --port 9259 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-storage="ready"' \
+  --require 'data-mindustry-smoke-mode="production"' \
+  --require 'data-mindustry-input-mode="mobile"' \
+  --require 'data-mindustry-device-mode="mobile"' \
+  --require 'data-mindustry-stock-input="mobile"' \
+  --require 'data-mindustry-campaign-ui="ready"' \
+  --require 'data-mindustry-campaign-ui-layout="mobile"' \
+  --require 'data-mindustry-campaign-resume="ready"' \
+  --require 'data-mindustry-campaign-resume-source="indexed-sector-save"' \
+  --require 'data-mindustry-campaign-state="playing"' \
+  --require 'data-mindustry-campaign-sector-id="170"' \
+  --require 'data-mindustry-campaign-planet="serpulo"' \
+  --require 'data-mindustry-campaign-preset="groundZero"' \
+  --require 'data-mindustry-campaign-save="valid"' \
+  --require 'data-mindustry-campaign-core="ready"' \
+  --require 'data-mindustry-network="local-only"' \
+  --require 'data-mindustry-network-mode="singleplayer-only"' > "$MOBILE_RESUME_DOM"
+
+mobile_wave="$(grep -o 'data-mindustry-campaign-resume-wave="[0-9]*"' "$MOBILE_RESUME_DOM" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+mobile_tick="$(grep -o 'data-mindustry-campaign-resume-tick-ms="[0-9]*"' "$MOBILE_RESUME_DOM" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+mobile_bytes="$(grep -o 'data-mindustry-campaign-resume-bytes="[0-9]*"' "$MOBILE_RESUME_DOM" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+
+test "$mobile_wave" = "$saved_wave"
+test "$mobile_tick" = "$saved_tick"
+test "$mobile_bytes" = "$saved_bytes"
+grep -Eq 'data-mindustry-campaign-frames="([3-9]|[1-9][0-9]+)"' "$MOBILE_RESUME_DOM"
+
+if grep -q 'data-mindustry-campaign-generator=' "$MOBILE_RESUME_DOM"; then
+  echo 'Mobile campaign resume unexpectedly regenerated Ground Zero instead of loading the persisted sector save.' >&2
+  exit 1
+fi
+
+echo 'Browser campaign Save/Resume: Ground Zero checkpoint -> desktop restart/resume -> mobile restart/resume -> identical wave/tick/bytes -> 3+ frames PASS'

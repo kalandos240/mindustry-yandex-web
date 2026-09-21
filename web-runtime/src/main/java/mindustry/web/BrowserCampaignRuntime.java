@@ -22,6 +22,7 @@ public final class BrowserCampaignRuntime{
     private static boolean active;
     private static boolean testChecked;
     private static boolean saveSmokeArmed;
+    private static boolean backSmokeArmed;
     private static Sector current;
     private static int frames;
 
@@ -29,6 +30,32 @@ public final class BrowserCampaignRuntime{
 
     public static boolean active(){
         return active;
+    }
+
+    /** True when BrowserSaves has rebound a valid persisted Ground Zero sector slot. */
+    public static boolean hasGroundZeroSave(){
+        SectorPreset preset = SectorPresets.groundZero;
+        Sector sector = preset == null ? null : preset.sector;
+        if(sector == null || sector.save == null || sector.save.file == null
+        || !sector.save.file.exists() || sector.save.file.length() < 128
+        || !SaveIO.isSaveValid(sector.save.file)){
+            return false;
+        }
+
+        SaveMeta meta = sector.save.meta == null ? SaveIO.getMeta(sector.save.file) : sector.save.meta;
+        return meta != null && meta.version == 13 && meta.rules != null && meta.rules.sector != null
+            && meta.rules.sector.id == sector.id && meta.rules.sector.planet == sector.planet;
+    }
+
+    /** Production menu action: start Ground Zero once, then resume the same sector thereafter. */
+    public static void playGroundZero(){
+        boolean resume = hasGroundZeroSave();
+        markProductionAction(resume ? "continue" : "play");
+        if(resume){
+            continueGroundZero();
+        }else{
+            startGroundZero();
+        }
     }
 
     public static void maybeStartTestSector(){
@@ -59,6 +86,7 @@ public final class BrowserCampaignRuntime{
     public static void startGroundZero(){
         if(active) throw new IllegalStateException("A browser campaign sector is already active");
         saveSmokeArmed = false;
+        backSmokeArmed = false;
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("Browser campaign start requires a stable production menu runtime");
@@ -234,8 +262,42 @@ public final class BrowserCampaignRuntime{
         frames = 0;
         active = true;
         saveSmokeArmed = false;
+        backSmokeArmed = false;
         markResumed(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             expectedBytes, state.wave, loadedTickMillis);
+    }
+
+    /** Normal user Back: checkpoint the live sector before returning to the lean menu. */
+    public static void returnToMenu(){
+        if(!active || current == null) return;
+        if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != current){
+            throw new IllegalStateException("Browser campaign Back requires an active playing campaign sector");
+        }
+
+        int savedWave = state.wave;
+        long savedTickMillis = Math.round(state.tick * 1000d);
+        control.saves.saveSector(current);
+        if(current.save == null || current.save.file == null || !current.save.file.exists()
+        || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
+            throw new IllegalStateException("Campaign Back autosave did not produce a valid Ground Zero sector save");
+        }
+
+        SaveMeta meta = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
+        if(meta == null || meta.version != 13 || meta.rules == null || meta.rules.sector == null
+        || meta.rules.sector.id != current.id || meta.rules.sector.planet != current.planet){
+            throw new IllegalStateException("Campaign Back autosave metadata failed validation");
+        }
+
+        markBackAutoSaved(savedWave, savedTickMillis, current.save.file.length());
+        flushCampaignStorage();
+
+        active = false;
+        current = null;
+        frames = 0;
+        saveSmokeArmed = false;
+        backSmokeArmed = false;
+        logic.reset();
+        markReturnedToMenu();
     }
 
     private static void saveCampaignCheckpoint(){
@@ -301,6 +363,14 @@ public final class BrowserCampaignRuntime{
             }
             markReady(frames, state.wave, current.info.attempts,
                 current.save != null && current.save.file != null && SaveIO.isSaveValid(current.save.file));
+
+            // Deterministic production/mobile gate for the same user-facing Back path.
+            if(backSmokeRequested() && !backSmokeArmed){
+                backSmokeArmed = true;
+                markBackSmokeArmed();
+                returnToMenu();
+                return;
+            }
         }
     }
 
@@ -332,8 +402,23 @@ public final class BrowserCampaignRuntime{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSaveSmoke') === '1';")
     private static native boolean saveSmokeRequested();
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignBackSmoke') === '1';")
+    private static native boolean backSmokeRequested();
+
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
     private static native void markRequested(String name);
+
+    @JSBody(params = {"action"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-production-action', action);")
+    private static native void markProductionAction(String action);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-back-smoke','armed');")
+    private static native void markBackSmokeArmed();
+
+    @JSBody(params = {"wave", "tickMillis", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-back-autosave','ready'); document.documentElement.setAttribute('data-mindustry-campaign-back-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-back-tick-ms',String(tickMillis)); document.documentElement.setAttribute('data-mindustry-campaign-back-bytes',String(bytes));")
+    private static native void markBackAutoSaved(int wave, long tickMillis, long bytes);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-return','menu'); document.documentElement.setAttribute('data-mindustry-campaign-state','menu');")
+    private static native void markReturnedToMenu();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-resume-smoke','requested');")
     private static native void markResumeRequested();
