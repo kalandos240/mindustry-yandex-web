@@ -70,7 +70,19 @@ new_pane = '''        // Landscape phones can be only ~320-400 logical px tall. 
         float mapPaneHeight = mobile
             ? Math.max(120f, Math.min(220f, Core.graphics.getHeight() - 230f))
             : 430f;
-        root.add(pane).width(mobile ? 320f : 380f).height(mapPaneHeight);
+        Cell<ScrollPane> mapPaneCell = root.add(pane).width(mobile ? 320f : 380f).height(mapPaneHeight);
+        final float[] lastMapPaneHeight = {mapPaneHeight};
+        if(mobile){
+            pane.update(() -> {
+                float nextHeight = Math.max(120f, Math.min(220f, Core.graphics.getHeight() - 230f));
+                if(Math.abs(nextHeight - lastMapPaneHeight[0]) > 0.5f){
+                    lastMapPaneHeight[0] = nextHeight;
+                    mapPaneCell.height(nextHeight);
+                    root.invalidateHierarchy();
+                    markCampaignUiResized(nextHeight);
+                }
+            });
+        }
         ui.menuGroup.addChild(root);
         markCampaignUiReady(mobile ? "mobile" : "desktop", campaignWidth, campaignHeight, mapPaneHeight);
 '''
@@ -135,6 +147,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"action"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-action',action);")
     private static native void markCampaignUiAction(String action);
+
+    @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
+    private static native void markCampaignUiResized(float paneHeight);
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignUiBackSmoke') === '1';")
     private static native boolean campaignBackUiSmokeRequested();
