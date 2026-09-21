@@ -56,6 +56,10 @@ cat > "$SDK_STUB" <<'JS'
             root.setAttribute('data-yandex-test-init', 'yes');
             return {
                 environment: {i18n: {lang: 'ru'}},
+                deviceInfo(){
+                    root.setAttribute('data-yandex-test-device-info', 'yes');
+                    return {type: 'desktop'};
+                },
                 on(name, callback){ listeners[name] = callback; },
                 off(name){ delete listeners[name]; },
                 features: {
@@ -110,6 +114,12 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-yandex-test-init="yes"' \
   --require 'data-yandex-sdk="ready"' \
   --require 'data-yandex-locale="ru"' \
+  --require 'data-yandex-test-device-info="yes"' \
+  --require 'data-yandex-device-type="desktop"' \
+  --require 'data-yandex-device-source="yandex-sdk"' \
+  --require 'data-mindustry-device-source="yandex-sdk"' \
+  --require 'data-mindustry-input-mode="desktop"' \
+  --require 'data-mindustry-stock-input="desktop"' \
   --require 'data-mindustry-locale="ru"' \
   --require 'data-mindustry-smoke-mode="ci"' \
   --require 'data-yandex-test-loading-ready-count="1"' \
@@ -147,4 +157,4 @@ fi
 grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$DOM"
-echo 'Yandex SDK browser smoke: explicit CI mode + SDK locale + storage + 3-frame continuous play + Game Ready + pause/resume + BrowserAudio pause/resume + SDK transport PASS'
+echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + BrowserAudio + gameplay transport PASS'
