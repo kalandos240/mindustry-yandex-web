@@ -9,6 +9,20 @@ if not JSON.is_file():
 
 text = JSON.read_text(encoding="utf-8")
 
+# This patch is reached both from patch-arc-fi-web.py and again through the final
+# Web compatibility chain. Treat a fully patched source as success instead of
+# reporting a false pinned-source mismatch on the second invocation.
+already_patched = (
+    "type = webDeclaredClass(type);" in text
+    and "knownType = webDeclaredClass(knownType);" in text
+    and "Class actualType = webDeclaredClass(value.getClass());" in text
+    and "private static Class webDeclaredClass(Class type)" in text
+    and "isAnonymousClass()" not in text
+)
+if already_patched:
+    print("Arc Json TeaVM anonymous-class compatibility already applied")
+    raise SystemExit(0)
+
 old_default = '''    private Object[] getDefaultValues(Class type){
         if(!usePrototypes) return null;
         if(type.isAnonymousClass()) type = type.getSuperclass();
