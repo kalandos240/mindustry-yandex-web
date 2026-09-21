@@ -86,3 +86,6 @@ subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-enemy-path
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-attack-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-attack-smoke.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-attack-verifier.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-team-ai-web.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-team-ai-smoke.py")], check=True)
+subprocess.run([sys.executable, str(root / "scripts" / "patch-browser-team-ai-verifier.py")], check=True)
