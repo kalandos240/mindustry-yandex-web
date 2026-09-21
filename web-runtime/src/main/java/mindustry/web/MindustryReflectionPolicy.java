@@ -32,5 +32,35 @@ public final class MindustryReflectionPolicy extends SimpleReflectionPolicy{
 
         selectClass("mindustry.game.Rules")
             .reflectablePublicMembers();
+
+        // Campaign map objectives are constructed explicitly by BrowserJsonCompatibility,
+        // but Arc Json readFields/writeFields still needs reflective field tables. Retain
+        // fields only for the pinned objective hierarchy; do not broaden reflection to
+        // the whole mindustry.game package.
+        selectClass("mindustry.game.MapObjectives$MapObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$ResearchObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$ProduceObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$ItemObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$CoreItemObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$BuildCountObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$UnitCountObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$DestroyUnitsObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$TimerObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$DestroyBlockObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$DestroyBlocksObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$CommandModeObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$FlagObjective").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$DestroyCoreObjective").reflectableFields(field -> true);
+
+        selectClass("mindustry.game.MapObjectives$ObjectiveMarker").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$PosMarker").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$ShapeTextMarker").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$PointMarker").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$ShapeMarker").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$TextMarker").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$LineMarker").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$TextureMarker").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$QuadMarker").reflectableFields(field -> true);
+        selectClass("mindustry.game.MapObjectives$TextureHolder").reflectableFields(field -> true);
     }
 }
