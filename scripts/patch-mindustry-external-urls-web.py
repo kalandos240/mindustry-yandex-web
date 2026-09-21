@@ -72,25 +72,9 @@ patch("content/SectorPresets.java", [
      'SectorSubmissions.registerSectors'),
 ])
 
-# TeaVM 0.15 does not implement Class.isAnonymousClass(), but Arc Json uses it only
-# to normalize anonymous subclasses to their superclass. Preserve that behavior with
-# the JVM binary-name rule used by Java compilers (Outer$1, Outer$2, ...), avoiding
-# a broad reflection downgrade. This keeps normal JSON/UBJSON save serialization,
-# including MapMarkers, on the stock codec.
-patch_arc("util/serialization/Json.java", [
-    ('public class Json{\n    private static final boolean debug = false;',
-     '''public class Json{\n    private static final boolean debug = false;\n\n    // Web: TeaVM 0.15 lacks Class.isAnonymousClass(). Java anonymous classes use\n    // a binary name whose final '$' component is numeric (Outer$1, Outer$2, ...).\n    private static boolean webIsAnonymousClass(Class type){\n        String name = type.getName();\n        int dollar = name.lastIndexOf('$');\n        if(dollar < 0 || dollar == name.length() - 1) return false;\n        for(int i = dollar + 1; i < name.length(); i++){\n            char c = name.charAt(i);\n            if(c < '0' || c > '9') return false;\n        }\n        return true;\n    }''',
-     'Json.webIsAnonymousClass helper'),
-    ('if(type.isAnonymousClass()) type = type.getSuperclass();',
-     'if(webIsAnonymousClass(type)) type = type.getSuperclass();',
-     'Json.getDefaultValues anonymous class'),
-    ('if(knownType != null && knownType.isAnonymousClass()){',
-     'if(knownType != null && webIsAnonymousClass(knownType)){',
-     'Json.writeValue knownType anonymous class'),
-    ('Class actualType = value.getClass().isAnonymousClass() ? value.getClass().getSuperclass() : value.getClass();',
-     'Class actualType = webIsAnonymousClass(value.getClass()) ? value.getClass().getSuperclass() : value.getClass();',
-     'Json.writeValue actualType anonymous class'),
-])
+# Arc Json anonymous-class compatibility is applied centrally by
+# patch-arc-json-web.py from patch-arc-fi-web.py. Do not patch it a second time here:
+# this script owns external-URL stripping plus Mindustry-side JsonIO/save overlays only.
 
 # JsonIO has one additional direct anonymous-class check in the MapObjectives
 # serializer. Rules are stored in save metadata, so keep that serializer functional
