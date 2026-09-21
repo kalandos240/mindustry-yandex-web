@@ -44,7 +44,7 @@ text = text.replace(old_actual, new_actual, 1)
 anchor = '''    private Object[] getDefaultValues(Class type){
 '''
 helper = '''    /**
-     * TeaVM 0.15 Class does not implement Class.isAnonymousClass(). javac anonymous
+     * TeaVM 0.15 Class lacks anonymous-class reflection. javac anonymous
      * classes use a numeric suffix after the final '$' (Outer$1, Outer$2, ...);
      * named nested classes do not. Preserve Arc's desktop serializer semantics without
      * retaining an unsupported reflection method in the Web graph.
