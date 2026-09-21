@@ -1,5 +1,7 @@
 package mindustry.web;
 
+import arc.func.*;
+import arc.math.geom.*;
 import arc.util.serialization.*;
 import arc.util.serialization.Json.*;
 import mindustry.game.*;
@@ -136,6 +138,143 @@ public final class BrowserJsonCompatibility{
             }
         });
 
+        // Campaign map rules serialize polymorphic MapObjective subclasses. TeaVM can
+        // reach their public no-arg constructors, but Arc Json reflective construction
+        // has no constructor metadata for these nested classes. Keep the exact stock
+        // field format and replace only construction with explicit pinned factories.
+        installFields(MapObjectives.ResearchObjective.class, MapObjectives.ResearchObjective::new);
+        installFields(MapObjectives.ProduceObjective.class, MapObjectives.ProduceObjective::new);
+        installFields(MapObjectives.ItemObjective.class, MapObjectives.ItemObjective::new);
+        installFields(MapObjectives.CoreItemObjective.class, MapObjectives.CoreItemObjective::new);
+        installFields(MapObjectives.BuildCountObjective.class, MapObjectives.BuildCountObjective::new);
+        installFields(MapObjectives.UnitCountObjective.class, MapObjectives.UnitCountObjective::new);
+        installFields(MapObjectives.DestroyUnitsObjective.class, MapObjectives.DestroyUnitsObjective::new);
+        installFields(MapObjectives.TimerObjective.class, MapObjectives.TimerObjective::new);
+        installFields(MapObjectives.DestroyBlockObjective.class, MapObjectives.DestroyBlockObjective::new);
+        installFields(MapObjectives.DestroyBlocksObjective.class, MapObjectives.DestroyBlocksObjective::new);
+        installFields(MapObjectives.CommandModeObjective.class, MapObjectives.CommandModeObjective::new);
+        installFields(MapObjectives.FlagObjective.class, MapObjectives.FlagObjective::new);
+        installFields(MapObjectives.DestroyCoreObjective.class, MapObjectives.DestroyCoreObjective::new);
+
+        // Objective markers own a JsonSerializable wire format. Preserve their stock
+        // write/read methods while replacing reflective construction for every marker
+        // registered by pinned v159.7.
+        installSerializable(MapObjectives.ShapeTextMarker.class, MapObjectives.ShapeTextMarker::new);
+        installSerializable(MapObjectives.PointMarker.class, MapObjectives.PointMarker::new);
+        installSerializable(MapObjectives.ShapeMarker.class, MapObjectives.ShapeMarker::new);
+        installSerializable(MapObjectives.TextMarker.class, MapObjectives.TextMarker::new);
+        installSerializable(MapObjectives.LineMarker.class, MapObjectives.LineMarker::new);
+        installSerializable(MapObjectives.TextureMarker.class, MapObjectives.TextureMarker::new);
+        installSerializable(MapObjectives.QuadMarker.class, MapObjectives.QuadMarker::new);
+        installSerializable(MapObjectives.TextureHolder.class, MapObjectives.TextureHolder::new);
+
+        // JsonIO's stock MapObjectives serializer is semantically correct, but its writer
+        // calls Class.isAnonymousClass(), which TeaVM 0.15 does not implement. Mirror the
+        // stock serializer exactly and use the same javac numeric-suffix detection already
+        // proven by the Web Building configuration patch.
+        JsonIO.json.setSerializer(MapObjectives.class, new Serializer<MapObjectives>(){
+            @Override
+            public void write(Json json, MapObjectives exec, Class knownType){
+                json.writeArrayStart();
+                for(var obj : exec){
+                    json.writeObjectStart(webDeclaredClass(obj.getClass()), null);
+                    json.writeFields(obj);
+
+                    json.writeArrayStart("parents");
+                    for(var parent : obj.parents){
+                        json.writeValue(exec.all.indexOf(parent));
+                    }
+                    json.writeArrayEnd();
+
+                    json.writeValue("editorPos", Point2.pack(obj.editorX, obj.editorY));
+                    json.writeObjectEnd();
+                }
+                json.writeArrayEnd();
+            }
+
+            @Override
+            public MapObjectives read(Json json, JsonValue data, Class type){
+                MapObjectives exec = new MapObjectives();
+
+                for(JsonValue value = data.child; value != null; value = value.next){
+                    if(value.has("class") && Character.isLowerCase(value.getString("class").charAt(0))){
+                        return new MapObjectives();
+                    }
+
+                    MapObjectives.MapObjective obj = json.readValue(MapObjectives.MapObjective.class, value);
+                    if(value.has("editorPos")){
+                        int pos = value.getInt("editorPos");
+                        obj.editorX = Point2.x(pos);
+                        obj.editorY = Point2.y(pos);
+                    }
+
+                    exec.all.add(obj);
+                    obj.validate();
+                }
+
+                int i = 0;
+                for(JsonValue value = data.child; value != null; value = value.next, i++){
+                    JsonValue parents = value.get("parents");
+                    if(parents == null) continue;
+                    for(JsonValue parent = parents.child; parent != null; parent = parent.next){
+                        int index = parent.asInt();
+                        if(index >= 0 && index < exec.all.size){
+                            exec.all.get(i).parents.add(exec.all.get(index));
+                        }
+                    }
+                }
+
+                return exec;
+            }
+        });
+
         installed = true;
+    }
+
+    private static <T> void installFields(Class<T> type, Prov<T> factory){
+        JsonIO.json.setSerializer(type, new Serializer<T>(){
+            @Override
+            public void write(Json json, T value, Class knownType){
+                json.writeObjectStart();
+                json.writeFields(value);
+                json.writeObjectEnd();
+            }
+
+            @Override
+            public T read(Json json, JsonValue data, Class requestedType){
+                T value = factory.get();
+                json.readFields(value, data);
+                return value;
+            }
+        });
+    }
+
+    private static <T extends JsonSerializable> void installSerializable(Class<T> type, Prov<T> factory){
+        JsonIO.json.setSerializer(type, new Serializer<T>(){
+            @Override
+            public void write(Json json, T value, Class knownType){
+                json.writeObjectStart();
+                value.write(json);
+                json.writeObjectEnd();
+            }
+
+            @Override
+            public T read(Json json, JsonValue data, Class requestedType){
+                T value = factory.get();
+                value.read(json, data);
+                return value;
+            }
+        });
+    }
+
+    private static Class<?> webDeclaredClass(Class<?> type){
+        String className = type.getName();
+        int separator = className.lastIndexOf((char)36);
+        boolean anonymous = separator >= 0 && separator + 1 < className.length();
+        for(int i = separator + 1; anonymous && i < className.length(); i++){
+            char c = className.charAt(i);
+            anonymous = c >= '0' && c <= '9';
+        }
+        return anonymous && type.getSuperclass() != null ? type.getSuperclass() : type;
     }
 }
