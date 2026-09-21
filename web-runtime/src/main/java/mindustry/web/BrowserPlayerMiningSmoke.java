@@ -31,6 +31,7 @@ public final class BrowserPlayerMiningSmoke{
     private static int stage;
     private static int spawnFrames;
     private static int mineFrames;
+    private static int mineClickAttempts;
     private static int approachFrames;
     private static int depositFrames;
     private static int targetX = -1, targetY = -1;
@@ -142,8 +143,28 @@ public final class BrowserPlayerMiningSmoke{
             Tile target = world.tile(targetX, targetY);
             if(target == null) throw new IllegalStateException("Mine target disappeared");
             if(unit.mineTile != target && unit.stack.amount == 0 && core.items.get(targetItem) == coreStartItems){
-                if(++mineFrames >= 30){
-                    throw new IllegalStateException("DOM ore click did not start stock unit mining");
+                mineFrames++;
+
+                // DOM clicks are edge gestures. A slow headless TeaVM frame can leave
+                // one down/up pair outside DesktopInput's consumption window. Retry a
+                // few real pointer gestures only while stock MinerComp still has not
+                // accepted the tile; never assign mineTile or grant items directly.
+                if(mineFrames % 12 == 0 && mineClickAttempts < 3){
+                    Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
+                    targetScreenX = projected.x;
+                    targetScreenY = projected.y;
+                    dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+                    dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
+                    dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
+                    mineClickAttempts++;
+                    markMineRetry(mineClickAttempts);
+                }
+
+                if(mineFrames >= 60){
+                    throw new IllegalStateException(
+                        "DOM ore click did not start stock unit mining after " +
+                        (mineClickAttempts + 1) + " click gestures"
+                    );
                 }
                 return;
             }
@@ -363,6 +384,9 @@ public final class BrowserPlayerMiningSmoke{
 
     @JSBody(params = {"x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-player-mining-tile-y', String(y));")
     private static native void markTarget(int x, int y);
+
+    @JSBody(params = {"attempt"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-click-retry', String(attempt));")
+    private static native void markMineRetry(int attempt);
 
     @JSBody(params = {"item", "delta"}, script = "document.documentElement.setAttribute('data-mindustry-player-mining-smoke', 'deposited'); document.documentElement.setAttribute('data-mindustry-player-mining-transfer', 'miner-auto'); document.documentElement.setAttribute('data-mindustry-player-mining-item', item); document.documentElement.setAttribute('data-mindustry-player-mining-core-delta', String(delta));")
     private static native void markAutoDeposited(String item, int delta);
