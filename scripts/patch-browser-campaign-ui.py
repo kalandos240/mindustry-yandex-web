@@ -20,7 +20,9 @@ old_menu = '''        root.add(Core.bundle.get("customgame", "Custom Game")).pad
 
         Table mapButtons = new Table();
 '''
-new_menu = '''        float campaignWidth = mobile ? 320f : 380f;
+new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enough for phones,
+        // while desktop retains the denser control sizing used by the local-map menu.
+        float campaignWidth = mobile ? 320f : 380f;
         float campaignHeight = mobile ? 58f : 46f;
 
         root.add(Core.bundle.get("campaign", "Campaign") + " — " +
