@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
 import sys
 
 if len(sys.argv) != 2:
@@ -69,3 +70,6 @@ for old, new in replacements:
         raise SystemExit(f"Arc Pixmap Web patch no longer matches pinned upstream: {old.splitlines()[0]!r}")
     pixmap = pixmap.replace(old, new, 1)
 pixmap_path.write_text(pixmap)
+
+root = Path(__file__).resolve().parents[1]
+subprocess.run([sys.executable, str(root / "scripts" / "patch-arc-json-web.py")], check=True)

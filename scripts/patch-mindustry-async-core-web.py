@@ -137,10 +137,14 @@ if "data-mindustry-async-core" not in runtime:
                 }
                 BrowserPlayingRuntime.updateFrame();
             }else{
-                if(!BrowserLocalMapRuntime.active()){
-                    throw new IllegalStateException("Production Web entered playing state outside a user/local built-in map session");
+                if(BrowserCampaignRuntime.active()){
+                    BrowserCampaignRuntime.updateFrame();
+                }else{
+                    if(!BrowserLocalMapRuntime.active()){
+                        throw new IllegalStateException("Production Web entered playing state outside a local-map or campaign session");
+                    }
+                    BrowserLocalMapRuntime.updateFrame();
                 }
-                BrowserLocalMapRuntime.updateFrame();
             }
             return;
         }
@@ -157,9 +161,11 @@ if "data-mindustry-async-core" not in runtime:
                         throw new IllegalStateException("CI Web entered playing state outside the explicit deterministic gameplay smoke");
                     }
                     BrowserPlayingRuntime.updateFrame();
+                }else if(BrowserCampaignRuntime.active()){
+                    BrowserCampaignRuntime.updateFrame();
                 }else{
                     if(!BrowserLocalMapRuntime.active()){
-                        throw new IllegalStateException("Production Web entered playing state outside a user/local built-in map session");
+                        throw new IllegalStateException("Production Web entered playing state outside a local-map or campaign session");
                     }
                     BrowserLocalMapRuntime.updateFrame();
                 }

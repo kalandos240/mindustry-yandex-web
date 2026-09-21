@@ -1,10 +1,13 @@
 package mindustry.web;
 
+import arc.func.*;
+import arc.graphics.*;
+import arc.math.geom.*;
 import arc.util.serialization.*;
 import arc.util.serialization.Json.*;
 import mindustry.game.*;
 import mindustry.io.JsonIO;
-import mindustry.type.MapLocales;
+import mindustry.type.*;
 
 /** Browser-only JSON factories for value types that TeaVM cannot reflectively construct/inspect reliably. */
 public final class BrowserJsonCompatibility{
@@ -78,30 +81,36 @@ public final class BrowserJsonCompatibility{
             @Override
             public void write(Json json, Rules.TeamRule value, Class knownType){
                 json.writeObjectStart();
-                json.writeValue("aiCoreSpawn", value.aiCoreSpawn);
-                json.writeValue("protectCores", value.protectCores);
-                json.writeValue("checkPlacement", value.checkPlacement);
-                json.writeValue("cheat", value.cheat);
-                json.writeValue("fillItems", value.fillItems);
-                json.writeValue("infiniteResources", value.infiniteResources);
-                json.writeValue("prebuildAi", value.prebuildAi);
-                json.writeValue("buildAi", value.buildAi);
-                json.writeValue("buildAiTier", value.buildAiTier);
-                json.writeValue("rtsAi", value.rtsAi);
-                json.writeValue("rtsMinSquad", value.rtsMinSquad);
-                json.writeValue("rtsMaxSquad", value.rtsMaxSquad);
-                json.writeValue("rtsMinWeight", value.rtsMinWeight);
-                json.writeValue("unitFactoryActivationDelay", value.unitFactoryActivationDelay);
-                json.writeValue("unitBuildSpeedMultiplier", value.unitBuildSpeedMultiplier);
-                json.writeValue("unitDamageMultiplier", value.unitDamageMultiplier);
-                json.writeValue("unitCrashDamageMultiplier", value.unitCrashDamageMultiplier);
-                json.writeValue("unitMineSpeedMultiplier", value.unitMineSpeedMultiplier);
-                json.writeValue("unitCostMultiplier", value.unitCostMultiplier);
-                json.writeValue("unitHealthMultiplier", value.unitHealthMultiplier);
-                json.writeValue("blockHealthMultiplier", value.blockHealthMultiplier);
-                json.writeValue("blockDamageMultiplier", value.blockDamageMultiplier);
-                json.writeValue("buildSpeedMultiplier", value.buildSpeedMultiplier);
-                json.writeValue("extraCoreBuildRadius", value.extraCoreBuildRadius);
+
+                // Mirror Arc Json prototype suppression explicitly. TeaVM cannot
+                // construct TeamRule reflectively for Json.getDefaultValues(), and
+                // writing every default field for each materialized team can push the
+                // v13 rules metadata above DataOutput.writeUTF's 65,535-byte limit.
+                if(!value.aiCoreSpawn) json.writeValue("aiCoreSpawn", false);
+                if(!value.protectCores) json.writeValue("protectCores", false);
+                if(!value.checkPlacement) json.writeValue("checkPlacement", false);
+                if(value.cheat) json.writeValue("cheat", true);
+                if(value.fillItems) json.writeValue("fillItems", true);
+                if(value.infiniteResources) json.writeValue("infiniteResources", true);
+                if(value.prebuildAi) json.writeValue("prebuildAi", true);
+                if(value.buildAi) json.writeValue("buildAi", true);
+                if(value.buildAiTier != 1f) json.writeValue("buildAiTier", value.buildAiTier);
+                if(value.rtsAi) json.writeValue("rtsAi", true);
+                if(value.rtsMinSquad != 4) json.writeValue("rtsMinSquad", value.rtsMinSquad);
+                if(value.rtsMaxSquad != 50) json.writeValue("rtsMaxSquad", value.rtsMaxSquad);
+                if(value.rtsMinWeight != 1.2f) json.writeValue("rtsMinWeight", value.rtsMinWeight);
+                if(value.unitFactoryActivationDelay != 0f) json.writeValue("unitFactoryActivationDelay", value.unitFactoryActivationDelay);
+                if(value.unitBuildSpeedMultiplier != 1f) json.writeValue("unitBuildSpeedMultiplier", value.unitBuildSpeedMultiplier);
+                if(value.unitDamageMultiplier != 1f) json.writeValue("unitDamageMultiplier", value.unitDamageMultiplier);
+                if(value.unitCrashDamageMultiplier != 1f) json.writeValue("unitCrashDamageMultiplier", value.unitCrashDamageMultiplier);
+                if(value.unitMineSpeedMultiplier != 1f) json.writeValue("unitMineSpeedMultiplier", value.unitMineSpeedMultiplier);
+                if(value.unitCostMultiplier != 1f) json.writeValue("unitCostMultiplier", value.unitCostMultiplier);
+                if(value.unitHealthMultiplier != 1f) json.writeValue("unitHealthMultiplier", value.unitHealthMultiplier);
+                if(value.blockHealthMultiplier != 1f) json.writeValue("blockHealthMultiplier", value.blockHealthMultiplier);
+                if(value.blockDamageMultiplier != 1f) json.writeValue("blockDamageMultiplier", value.blockDamageMultiplier);
+                if(value.buildSpeedMultiplier != 1f) json.writeValue("buildSpeedMultiplier", value.buildSpeedMultiplier);
+                if(value.extraCoreBuildRadius != 0f) json.writeValue("extraCoreBuildRadius", value.extraCoreBuildRadius);
+
                 json.writeObjectEnd();
             }
 
@@ -136,6 +145,181 @@ public final class BrowserJsonCompatibility{
             }
         });
 
+        // Rules.weather stores WeatherEntry values. The class has a public no-arg
+        // constructor in Java, but TeaVM does not expose it through reflection. Keep
+        // the stock field schema and replace only reflective construction.
+        installFields(Weather.WeatherEntry.class, Weather.WeatherEntry::new);
+
+        // Objective marker geometry uses small Arc value types that otherwise fall
+        // through to reflective construction under TeaVM. Preserve Arc Json's default
+        // object shape exactly while constructing them explicitly.
+        JsonIO.json.setSerializer(Vec2.class, new Serializer<Vec2>(){
+            @Override
+            public void write(Json json, Vec2 value, Class knownType){
+                json.writeObjectStart(Vec2.class, knownType);
+                json.writeValue("x", value.x);
+                json.writeValue("y", value.y);
+                json.writeObjectEnd();
+            }
+
+            @Override
+            public Vec2 read(Json json, JsonValue data, Class type){
+                return new Vec2(data.getFloat("x", 0f), data.getFloat("y", 0f));
+            }
+        });
+
+        JsonIO.json.setSerializer(Point2.class, new Serializer<Point2>(){
+            @Override
+            public void write(Json json, Point2 value, Class knownType){
+                json.writeObjectStart(Point2.class, knownType);
+                json.writeValue("x", value.x);
+                json.writeValue("y", value.y);
+                json.writeObjectEnd();
+            }
+
+            @Override
+            public Point2 read(Json json, JsonValue data, Class type){
+                return new Point2(data.getInt("x", 0), data.getInt("y", 0));
+            }
+        });
+
+        // Campaign map rules serialize polymorphic MapObjective subclasses. TeaVM can
+        // reach their public no-arg constructors, but Arc Json reflective construction
+        // has no constructor metadata for these nested classes. Keep the exact stock
+        // field format and replace only construction with explicit pinned factories.
+        installFields(MapObjectives.ResearchObjective.class, MapObjectives.ResearchObjective::new);
+        installFields(MapObjectives.ProduceObjective.class, MapObjectives.ProduceObjective::new);
+        installFields(MapObjectives.ItemObjective.class, MapObjectives.ItemObjective::new);
+        installFields(MapObjectives.CoreItemObjective.class, MapObjectives.CoreItemObjective::new);
+        installFields(MapObjectives.BuildCountObjective.class, MapObjectives.BuildCountObjective::new);
+        installFields(MapObjectives.UnitCountObjective.class, MapObjectives.UnitCountObjective::new);
+        installFields(MapObjectives.DestroyUnitsObjective.class, MapObjectives.DestroyUnitsObjective::new);
+        installFields(MapObjectives.TimerObjective.class, MapObjectives.TimerObjective::new);
+        installFields(MapObjectives.DestroyBlockObjective.class, MapObjectives.DestroyBlockObjective::new);
+        installFields(MapObjectives.DestroyBlocksObjective.class, MapObjectives.DestroyBlocksObjective::new);
+        installFields(MapObjectives.CommandModeObjective.class, MapObjectives.CommandModeObjective::new);
+        installFields(MapObjectives.FlagObjective.class, MapObjectives.FlagObjective::new);
+        installFields(MapObjectives.DestroyCoreObjective.class, MapObjectives.DestroyCoreObjective::new);
+
+        // Objective markers own a JsonSerializable wire format. Preserve their stock
+        // write/read methods while replacing reflective construction for every marker
+        // registered by pinned v159.7.
+        installSerializable(MapObjectives.ShapeTextMarker.class, MapObjectives.ShapeTextMarker::new);
+        installSerializable(MapObjectives.PointMarker.class, MapObjectives.PointMarker::new);
+        installSerializable(MapObjectives.ShapeMarker.class, MapObjectives.ShapeMarker::new);
+        installSerializable(MapObjectives.TextMarker.class, MapObjectives.TextMarker::new);
+        installSerializable(MapObjectives.LineMarker.class, MapObjectives.LineMarker::new);
+        installSerializable(MapObjectives.TextureMarker.class, MapObjectives.TextureMarker::new);
+        installSerializable(MapObjectives.QuadMarker.class, MapObjectives.QuadMarker::new);
+        installSerializable(MapObjectives.TextureHolder.class, MapObjectives.TextureHolder::new);
+
+        // JsonIO's stock MapObjectives serializer is semantically correct, but its writer
+        // calls Class.isAnonymousClass(), which TeaVM 0.15 does not implement. Mirror the
+        // stock serializer exactly and use the same javac numeric-suffix detection already
+        // proven by the Web Building configuration patch.
+        JsonIO.json.setSerializer(MapObjectives.class, new Serializer<MapObjectives>(){
+            @Override
+            public void write(Json json, MapObjectives exec, Class knownType){
+                json.writeArrayStart();
+                for(var obj : exec){
+                    json.writeObjectStart(webDeclaredClass(obj.getClass()), null);
+                    json.writeFields(obj);
+
+                    json.writeArrayStart("parents");
+                    for(var parent : obj.parents){
+                        json.writeValue(exec.all.indexOf(parent));
+                    }
+                    json.writeArrayEnd();
+
+                    json.writeValue("editorPos", Point2.pack(obj.editorX, obj.editorY));
+                    json.writeObjectEnd();
+                }
+                json.writeArrayEnd();
+            }
+
+            @Override
+            public MapObjectives read(Json json, JsonValue data, Class type){
+                MapObjectives exec = new MapObjectives();
+
+                for(JsonValue value = data.child; value != null; value = value.next){
+                    if(value.has("class") && Character.isLowerCase(value.getString("class").charAt(0))){
+                        return new MapObjectives();
+                    }
+
+                    MapObjectives.MapObjective obj = json.readValue(MapObjectives.MapObjective.class, value);
+                    if(value.has("editorPos")){
+                        int pos = value.getInt("editorPos");
+                        obj.editorX = Point2.x(pos);
+                        obj.editorY = Point2.y(pos);
+                    }
+
+                    exec.all.add(obj);
+                    obj.validate();
+                }
+
+                int i = 0;
+                for(JsonValue value = data.child; value != null; value = value.next, i++){
+                    JsonValue parents = value.get("parents");
+                    if(parents == null) continue;
+                    for(JsonValue parent = parents.child; parent != null; parent = parent.next){
+                        int index = parent.asInt();
+                        if(index >= 0 && index < exec.all.size){
+                            exec.all.get(i).parents.add(exec.all.get(index));
+                        }
+                    }
+                }
+
+                return exec;
+            }
+        });
+
         installed = true;
+    }
+
+    private static <T> void installFields(Class<T> type, Prov<T> factory){
+        JsonIO.json.setSerializer(type, new Serializer<T>(){
+            @Override
+            public void write(Json json, T value, Class knownType){
+                json.writeObjectStart(type, knownType);
+                json.writeFields(value);
+                json.writeObjectEnd();
+            }
+
+            @Override
+            public T read(Json json, JsonValue data, Class requestedType){
+                T value = factory.get();
+                json.readFields(value, data);
+                return value;
+            }
+        });
+    }
+
+    private static <T extends JsonSerializable> void installSerializable(Class<T> type, Prov<T> factory){
+        JsonIO.json.setSerializer(type, new Serializer<T>(){
+            @Override
+            public void write(Json json, T value, Class knownType){
+                json.writeObjectStart(type, knownType);
+                value.write(json);
+                json.writeObjectEnd();
+            }
+
+            @Override
+            public T read(Json json, JsonValue data, Class requestedType){
+                T value = factory.get();
+                value.read(json, data);
+                return value;
+            }
+        });
+    }
+
+    private static Class<?> webDeclaredClass(Class<?> type){
+        String className = type.getName();
+        int separator = className.lastIndexOf((char)36);
+        boolean anonymous = separator >= 0 && separator + 1 < className.length();
+        for(int i = separator + 1; anonymous && i < className.length(); i++){
+            char c = className.charAt(i);
+            anonymous = c >= '0' && c <= '9';
+        }
+        return anonymous && type.getSuperclass() != null ? type.getSuperclass() : type;
     }
 }
