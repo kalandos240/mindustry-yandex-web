@@ -172,45 +172,6 @@ public final class BrowserJsonCompatibility{
             }
         });
 
-        // Objective marker coordinates are regular Arc geometry value types. TeaVM
-        // strips their reflective constructors, so preserve the stock {"x","y"} JSON
-        // shape with explicit construction instead of broad geometry reflection.
-        JsonIO.json.setSerializer(Vec2.class, new Serializer<Vec2>(){
-            @Override
-            public void write(Json json, Vec2 value, Class knownType){
-                json.writeObjectStart();
-                json.writeValue("x", value.x);
-                json.writeValue("y", value.y);
-                json.writeObjectEnd();
-            }
-
-            @Override
-            public Vec2 read(Json json, JsonValue data, Class type){
-                return new Vec2(data.getFloat("x", 0f), data.getFloat("y", 0f));
-            }
-        });
-
-        JsonIO.json.setSerializer(Point2.class, new Serializer<Point2>(){
-            @Override
-            public void write(Json json, Point2 value, Class knownType){
-                json.writeObjectStart();
-                json.writeValue("x", value.x);
-                json.writeValue("y", value.y);
-                json.writeObjectEnd();
-            }
-
-            @Override
-            public Point2 read(Json json, JsonValue data, Class type){
-                return new Point2(data.getInt("x", 0), data.getInt("y", 0));
-            }
-        });
-
-        // Arc geometry values occur inside campaign objective/marker fields.
-        // TeaVM cannot reflectively construct them through Json.newInstance(), so keep
-        // the exact stock field format and replace only object construction.
-        installFields(Vec2.class, Vec2::new);
-        installFields(Point2.class, Point2::new);
-
         // Campaign map rules serialize polymorphic MapObjective subclasses. TeaVM can
         // reach their public no-arg constructors, but Arc Json reflective construction
         // has no constructor metadata for these nested classes. Keep the exact stock
