@@ -58,6 +58,14 @@ public final class BrowserSaves extends Saves{
     }
 
     @Override
+    public void saveSector(Sector sector){
+        super.saveSector(sector);
+        // Parent Saves keeps its last-sector pointer private. Mirror the newly written
+        // stock sector slot so lean Web Continue works immediately without a page reload.
+        browserLastSector = sector.save;
+    }
+
+    @Override
     public SaveSlot getLastSector(){
         return browserLastSector;
     }
