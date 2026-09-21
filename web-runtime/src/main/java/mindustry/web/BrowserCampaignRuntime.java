@@ -352,6 +352,12 @@ public final class BrowserCampaignRuntime{
         ui.update();
         markPhase("ui-ready");
 
+        // A HUD action can checkpoint/reset the campaign during Scene.act(). Once Back
+        // has returned to the menu, do not validate the old playing-state update clock.
+        if(!active || current == null || state.isMenu()) return;
+        if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != current){
+            throw new IllegalStateException("Browser campaign UI left the active sector in an unexpected state");
+        }
         if(state.updateId != beforeUpdate + 1L){
             throw new IllegalStateException("Browser campaign update clock advanced incorrectly");
         }
