@@ -141,6 +141,9 @@ public final class BrowserApplication extends WebApplicationBase{
         // scheduler gate. Propagate it through Arc so BrowserAudio and every other
         // ApplicationListener can suspend/resume their platform resources correctly.
         if(paused){
+            // Ads/tab switches can take focus without matching DOM keyup/pointerup
+            // events. Clear browser-held controls before freezing Arc's frame loop.
+            BrowserInputBridge.releaseAll(config.canvasId, "platform-pause");
             pause();
         }else{
             resume();
