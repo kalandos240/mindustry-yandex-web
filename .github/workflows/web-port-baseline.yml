@@ -314,6 +314,9 @@ jobs:
       - name: Verify automatic desktop/mobile device detection
         run: bash scripts/verify-browser-device-autodetect.sh
 
+      - name: Verify desktop/mobile resize and orientation continuity
+        run: bash scripts/verify-browser-resize-orientation.sh
+
       - name: Verify persistent browser files across a real browser restart
         run: bash scripts/verify-browser-persistence.sh
 
