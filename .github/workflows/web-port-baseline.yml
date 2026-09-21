@@ -311,6 +311,9 @@ jobs:
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
 
+      - name: Verify automatic desktop/mobile device detection
+        run: bash scripts/verify-browser-device-autodetect.sh
+
       - name: Verify persistent browser files across a real browser restart
         run: bash scripts/verify-browser-persistence.sh
 

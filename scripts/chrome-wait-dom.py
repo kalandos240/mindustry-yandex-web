@@ -146,20 +146,29 @@ def target_websocket(port: int, wanted_url: str, deadline: float) -> str:
     raise TimeoutError("Chrome DevTools target did not appear")
 
 
-def evaluate(ws: WebSocket, message_id: int, expression: str) -> str:
-    ws.send_text(json.dumps({
-        "id": message_id,
-        "method": "Runtime.evaluate",
-        "params": {"expression": expression, "returnByValue": True},
-    }))
+def cdp_command(ws: WebSocket, message_id: int, method: str, params: dict | None = None) -> dict:
+    message = {"id": message_id, "method": method}
+    if params is not None:
+        message["params"] = params
+    ws.send_text(json.dumps(message))
     while True:
         payload = json.loads(ws.recv_text())
         if payload.get("id") != message_id:
             continue
         if "error" in payload:
-            raise RuntimeError(f"CDP Runtime.evaluate failed: {payload['error']}")
-        result = payload.get("result", {}).get("result", {})
-        return str(result.get("value", ""))
+            raise RuntimeError(f"CDP {method} failed: {payload['error']}")
+        return payload
+
+
+def evaluate(ws: WebSocket, message_id: int, expression: str) -> str:
+    payload = cdp_command(
+        ws,
+        message_id,
+        "Runtime.evaluate",
+        {"expression": expression, "returnByValue": True},
+    )
+    result = payload.get("result", {}).get("result", {})
+    return str(result.get("value", ""))
 
 
 def main() -> int:
@@ -170,12 +179,18 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=9223)
     parser.add_argument("--require", action="append", default=[])
     parser.add_argument("--chrome", default="google-chrome")
+    parser.add_argument(
+        "--emulate-mobile",
+        action="store_true",
+        help="Apply touch/coarse mobile CDP emulation before navigating to --url.",
+    )
     args = parser.parse_args()
 
     profile = Path(args.profile)
     profile.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     deadline = started + args.timeout
+    launch_url = "about:blank" if args.emulate_mobile else args.url
     command = [
         args.chrome,
         "--headless=new",
@@ -194,15 +209,42 @@ def main() -> int:
         "--enable-unsafe-swiftshader",
         f"--remote-debugging-port={args.port}",
         f"--user-data-dir={profile}",
-        args.url,
+        launch_url,
     ]
     process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     ws: WebSocket | None = None
     last_html = ""
     polls = 0
     try:
-        ws = WebSocket(target_websocket(args.port, args.url, deadline))
+        ws = WebSocket(target_websocket(args.port, launch_url, deadline))
         message_id = 1
+
+        if args.emulate_mobile:
+            # Apply device characteristics before index.html executes so production
+            # BrowserApplication.detectMobileBrowser() sees a real touch/coarse device,
+            # not the CI-only mindustryMobile query override.
+            cdp_command(ws, message_id, "Emulation.setDeviceMetricsOverride", {
+                "width": 390,
+                "height": 844,
+                "deviceScaleFactor": 2.75,
+                "mobile": True,
+            })
+            message_id += 1
+            cdp_command(ws, message_id, "Emulation.setTouchEmulationEnabled", {
+                "enabled": True,
+                "maxTouchPoints": 5,
+            })
+            message_id += 1
+            cdp_command(ws, message_id, "Emulation.setEmulatedMedia", {
+                "features": [
+                    {"name": "pointer", "value": "coarse"},
+                    {"name": "hover", "value": "none"},
+                ]
+            })
+            message_id += 1
+            cdp_command(ws, message_id, "Page.navigate", {"url": args.url})
+            message_id += 1
+
         while time.monotonic() < deadline:
             last_html = evaluate(ws, message_id, "document.documentElement.outerHTML")
             polls += 1
