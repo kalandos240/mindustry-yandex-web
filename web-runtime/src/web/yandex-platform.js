@@ -7,6 +7,8 @@
         initialized: false,
         available: false,
         locale: '',
+        deviceType: '',
+        deviceSource: '',
         paused: false,
         loadingReadySent: false,
         gameplayActive: false,
@@ -40,6 +42,18 @@
         return lang.startsWith('ru') ? 'ru' : 'en';
     }
 
+    function normalizeDeviceType(info){
+        const type = String(info && info.type || '').toLowerCase();
+        if(type === 'desktop' || type === 'mobile' || type === 'tablet' || type === 'tv') return type;
+        try{
+            if(info && typeof info.isMobile === 'function' && info.isMobile()) return 'mobile';
+            if(info && typeof info.isTablet === 'function' && info.isTablet()) return 'tablet';
+            if(info && typeof info.isDesktop === 'function' && info.isDesktop()) return 'desktop';
+            if(info && typeof info.isTV === 'function' && info.isTV()) return 'tv';
+        }catch(_ignored){}
+        return '';
+    }
+
     function onPlatformPause(){
         state.paused = true;
         mark('data-yandex-game-state', 'paused');
@@ -69,6 +83,17 @@
                 state.initialized = true;
                 state.locale = normalizeLocale(ysdk && ysdk.environment && ysdk.environment.i18n && ysdk.environment.i18n.lang);
 
+                let deviceInfo = null;
+                if(ysdk && typeof ysdk.deviceInfo === 'function'){
+                    try{
+                        deviceInfo = await Promise.resolve(ysdk.deviceInfo());
+                    }catch(error){
+                        console.info('Yandex deviceInfo unavailable:', error && error.message ? error.message : error);
+                    }
+                }
+                state.deviceType = normalizeDeviceType(deviceInfo);
+                state.deviceSource = state.deviceType ? 'yandex-sdk' : 'browser-fallback';
+
                 if(ysdk && typeof ysdk.on === 'function'){
                     ysdk.on('game_api_pause', onPlatformPause);
                     ysdk.on('game_api_resume', onPlatformResume);
@@ -76,6 +101,8 @@
 
                 mark('data-yandex-sdk', 'ready');
                 mark('data-yandex-locale', state.locale);
+                mark('data-yandex-device-type', state.deviceType || 'unknown');
+                mark('data-yandex-device-source', state.deviceSource);
                 mark('data-yandex-game-state', 'ready');
                 return state;
             }catch(error){
@@ -85,8 +112,12 @@
                 state.initialized = true;
                 state.available = false;
                 state.locale = normalizeLocale(navigator.language || navigator.userLanguage || 'en');
+                state.deviceType = '';
+                state.deviceSource = 'browser-fallback';
                 mark('data-yandex-sdk', 'unavailable');
                 mark('data-yandex-locale', state.locale);
+                mark('data-yandex-device-type', 'unknown');
+                mark('data-yandex-device-source', state.deviceSource);
                 console.info('Yandex SDK unavailable in this environment:', error && error.message ? error.message : error);
                 return state;
             }

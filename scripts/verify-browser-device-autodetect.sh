@@ -34,6 +34,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --timeout 60 \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-smoke-mode="production"' \
+  --require 'data-yandex-sdk="unavailable"' \
+  --require 'data-mindustry-device-source="browser-fallback"' \
   --require 'data-mindustry-input-mode="desktop"' \
   --require 'data-mindustry-device-mode="desktop"' \
   --require 'data-mindustry-stock-input="desktop"' \
@@ -52,6 +54,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --timeout 60 \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-smoke-mode="production"' \
+  --require 'data-yandex-sdk="unavailable"' \
+  --require 'data-mindustry-device-source="browser-fallback"' \
   --require 'data-mindustry-input-mode="mobile"' \
   --require 'data-mindustry-device-mode="mobile"' \
   --require 'data-mindustry-stock-input="mobile"' \
@@ -65,4 +69,4 @@ if grep -q 'mindustryMobile=' "$desktop_dom" "$mobile_dom"; then
   exit 1
 fi
 
-echo 'Yandex device autodetect: normal desktop -> DesktopInput; touch/coarse phone -> MobileInput without URL override PASS'
+echo 'Yandex device autodetect fallback: desktop -> DesktopInput; touch/coarse phone -> MobileInput without URL override PASS'

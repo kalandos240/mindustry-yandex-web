@@ -25,6 +25,7 @@ public final class BrowserCanvas{
         canvas.__mindustryGLMajor = (typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) ? 2 : 1;
         canvas.__mindustryResizeDirty = true;
         canvas.__mindustryLastDpr = 0;
+        canvas.__mindustryResizeCount = 0;
         const markResizeDirty = () => { canvas.__mindustryResizeDirty = true; };
         if (typeof ResizeObserver !== 'undefined') {
             canvas.__mindustryResizeObserver = new ResizeObserver(markResizeDirty);
@@ -78,6 +79,16 @@ public final class BrowserCanvas{
         canvas.__mindustryPixelRatio = ratio;
         canvas.__mindustryLastDpr = ratio;
         canvas.__mindustryResizeDirty = false;
+
+        if (metricsChanged) {
+            const root = document.documentElement;
+            canvas.__mindustryResizeCount = Number(canvas.__mindustryResizeCount || 0) + 1;
+            root.setAttribute('data-mindustry-resize', 'ready');
+            root.setAttribute('data-mindustry-resize-count', String(canvas.__mindustryResizeCount));
+            root.setAttribute('data-mindustry-resize-last', String(clientWidth) + 'x' + String(clientHeight));
+            root.setAttribute('data-mindustry-resize-buffer', String(width) + 'x' + String(height));
+            root.setAttribute('data-mindustry-resize-orientation', clientWidth >= clientHeight ? 'landscape' : 'portrait');
+        }
         return metricsChanged;
         """)
     public static native boolean resizeToDisplay(String canvasId, float maxPixelRatio);
