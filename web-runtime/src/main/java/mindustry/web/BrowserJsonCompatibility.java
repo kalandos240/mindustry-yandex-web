@@ -1,6 +1,7 @@
 package mindustry.web;
 
 import arc.func.*;
+import arc.graphics.*;
 import arc.math.geom.*;
 import arc.util.serialization.*;
 import arc.util.serialization.Json.*;
@@ -138,6 +139,39 @@ public final class BrowserJsonCompatibility{
             }
         });
 
+        // Objective marker geometry uses small Arc value types that otherwise fall
+        // through to reflective construction under TeaVM. Preserve Arc Json's default
+        // object shape exactly while constructing them explicitly.
+        JsonIO.json.setSerializer(Vec2.class, new Serializer<Vec2>(){
+            @Override
+            public void write(Json json, Vec2 value, Class knownType){
+                json.writeObjectStart(Vec2.class, knownType);
+                json.writeValue("x", value.x);
+                json.writeValue("y", value.y);
+                json.writeObjectEnd();
+            }
+
+            @Override
+            public Vec2 read(Json json, JsonValue data, Class type){
+                return new Vec2(data.getFloat("x", 0f), data.getFloat("y", 0f));
+            }
+        });
+
+        JsonIO.json.setSerializer(Point2.class, new Serializer<Point2>(){
+            @Override
+            public void write(Json json, Point2 value, Class knownType){
+                json.writeObjectStart(Point2.class, knownType);
+                json.writeValue("x", value.x);
+                json.writeValue("y", value.y);
+                json.writeObjectEnd();
+            }
+
+            @Override
+            public Point2 read(Json json, JsonValue data, Class type){
+                return new Point2(data.getInt("x", 0), data.getInt("y", 0));
+            }
+        });
+
         // Campaign map rules serialize polymorphic MapObjective subclasses. TeaVM can
         // reach their public no-arg constructors, but Arc Json reflective construction
         // has no constructor metadata for these nested classes. Keep the exact stock
@@ -235,7 +269,7 @@ public final class BrowserJsonCompatibility{
         JsonIO.json.setSerializer(type, new Serializer<T>(){
             @Override
             public void write(Json json, T value, Class knownType){
-                json.writeObjectStart();
+                json.writeObjectStart(type, knownType);
                 json.writeFields(value);
                 json.writeObjectEnd();
             }
@@ -253,7 +287,7 @@ public final class BrowserJsonCompatibility{
         JsonIO.json.setSerializer(type, new Serializer<T>(){
             @Override
             public void write(Json json, T value, Class knownType){
-                json.writeObjectStart();
+                json.writeObjectStart(type, knownType);
                 value.write(json);
                 json.writeObjectEnd();
             }
