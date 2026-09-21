@@ -33,6 +33,11 @@ public final class MindustryReflectionPolicy extends SimpleReflectionPolicy{
         selectClass("mindustry.game.Rules")
             .reflectablePublicMembers();
 
+        // BrowserJsonCompatibility explicitly constructs Rules.weather entries; retain
+        // only their fields so Arc Json can preserve the stock WeatherEntry schema.
+        selectClass("mindustry.type.Weather$WeatherEntry")
+            .reflectableFields(field -> true);
+
         // Campaign map objectives are constructed explicitly by BrowserJsonCompatibility,
         // but Arc Json readFields/writeFields still needs reflective field tables. Retain
         // fields only for the pinned objective hierarchy; do not broaden reflection to

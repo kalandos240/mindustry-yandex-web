@@ -7,7 +7,7 @@ import arc.util.serialization.*;
 import arc.util.serialization.Json.*;
 import mindustry.game.*;
 import mindustry.io.JsonIO;
-import mindustry.type.MapLocales;
+import mindustry.type.*;
 
 /** Browser-only JSON factories for value types that TeaVM cannot reflectively construct/inspect reliably. */
 public final class BrowserJsonCompatibility{
@@ -144,6 +144,11 @@ public final class BrowserJsonCompatibility{
                 return value;
             }
         });
+
+        // Rules.weather stores WeatherEntry values. The class has a public no-arg
+        // constructor in Java, but TeaVM does not expose it through reflection. Keep
+        // the stock field schema and replace only reflective construction.
+        installFields(Weather.WeatherEntry.class, Weather.WeatherEntry::new);
 
         // Objective marker geometry uses small Arc value types that otherwise fall
         // through to reflective construction under TeaVM. Preserve Arc Json's default
