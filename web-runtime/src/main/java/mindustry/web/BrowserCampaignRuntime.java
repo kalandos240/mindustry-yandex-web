@@ -37,12 +37,14 @@ public final class BrowserCampaignRuntime{
         SectorPreset preset = SectorPresets.groundZero;
         Sector sector = preset == null ? null : preset.sector;
         if(sector == null || sector.save == null || sector.save.file == null
-        || !sector.save.file.exists() || sector.save.file.length() < 128
-        || !SaveIO.isSaveValid(sector.save.file)){
+        || !sector.save.file.exists() || sector.save.file.length() < 128){
             return false;
         }
 
-        SaveMeta meta = sector.save.meta == null ? SaveIO.getMeta(sector.save.file) : sector.save.meta;
+        // BrowserSaves validates every indexed slot before binding it to a Sector, and
+        // SaveSlot.save() refreshes meta after writes. The menu calls this every frame,
+        // so never inflate/re-read the full MSAV here; use the already validated metadata.
+        SaveMeta meta = sector.save.meta;
         return meta != null && meta.version == 13 && meta.rules != null && meta.rules.sector != null
             && meta.rules.sector.id == sector.id && meta.rules.sector.planet == sector.planet;
     }
