@@ -27,7 +27,7 @@ mobile_function = '''run_campaign_mobile_ui(){
   rm -rf "$profile"
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=ru&mindustryCampaignSmoke=groundZero&mindustryCampaignBackSmoke=1" \
+    --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=ru&mindustryCampaignSmoke=groundZero&mindustryCampaignUiBackSmoke=1" \
     --profile "$profile" \
     --port 9260 \
     --timeout 90 \
@@ -40,7 +40,7 @@ mobile_function = '''run_campaign_mobile_ui(){
     --require 'data-mindustry-campaign-ui-layout="mobile"' \
     --require 'data-mindustry-campaign-test="groundZero"' \
     --require 'data-mindustry-campaign-core="ready"' \
-    --require 'data-mindustry-campaign-back-smoke="armed"' \
+    --require 'data-mindustry-campaign-ui-back-smoke="triggered"' \
     --require 'data-mindustry-campaign-back-autosave="ready"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
     --require 'data-mindustry-campaign-return="menu"' \
