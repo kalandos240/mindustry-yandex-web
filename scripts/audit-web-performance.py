@@ -8,15 +8,14 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Attack-mode production measurement after local-authoritative building destruction
-# and stock enemy-core victory resolution became reachable in the Web bundle. Relative
-# to the previous AI baseline this intentional milestone added 18,139 raw bytes but only
-# 545 gzip bytes, with no forbidden desktop/network markers. Keep a narrow raw ceiling
-# and the existing gzip ceiling so later accidental reachability still fails hard.
-JS_BASELINE = 22_206_748
-JS_LIMIT = 22_220_000
-JS_GZIP_BASELINE = 2_547_628
-JS_GZIP_LIMIT = 2_559_000
+# Team-AI production measurement after stock BaseBuilderAI/RtsAI/prebuildAi became
+# reachable in the same local-only Web bundle. This intentional milestone adds 135,562
+# raw / 14,174 gzip bytes relative to the attack-mode baseline, with no forbidden
+# desktop/network markers. Keep tight headroom so later accidental graph growth fails.
+JS_BASELINE = 22_342_310
+JS_LIMIT = 22_360_000
+JS_GZIP_BASELINE = 2_561_802
+JS_GZIP_LIMIT = 2_574_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
