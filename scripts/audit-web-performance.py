@@ -8,15 +8,14 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Ground Zero campaign-core measurement after stock World.loadSector,
-# SectorInfo/Universe campaign ticks and Saves.saveSector became reachable. Relative to
-# the team-AI baseline this intentional milestone adds 484,837 raw / 61,544 gzip bytes,
-# with no forbidden desktop/network markers. Keep narrow headroom so later accidental
-# desktop/service reachability or unexpected campaign graph growth still fails hard.
-JS_BASELINE = 22_827_147
-JS_LIMIT = 22_850_000
-JS_GZIP_BASELINE = 2_623_346
-JS_GZIP_LIMIT = 2_640_000
+# Ground Zero campaign-core measurement with explicit stock MapObjectives factories
+# and reflective field metadata required for exact objective load/save semantics. Relative
+# to the pre-objective campaign build this intentional compatibility layer adds 79,206 raw
+# / 7,755 gzip bytes, with no forbidden desktop/network markers.
+JS_BASELINE = 22_906_353
+JS_LIMIT = 22_925_000
+JS_GZIP_BASELINE = 2_631_101
+JS_GZIP_LIMIT = 2_643_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
