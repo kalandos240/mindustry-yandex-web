@@ -56,10 +56,10 @@ tasks.register("stageWeb", Copy) {
         // was separated from normal production startup.
         include "maps/default/**"
 
-        // First campaign milestone: package the exact Ground Zero preset map used by
-        // SectorPresets.groundZero/FileMapGenerator. Additional sectors stay out until
-        // their campaign runtime/UI gates are proven.
-        include "maps/serpulo/groundZero.msav"
+        // Full pinned vanilla campaign assets. These remain local packaged files:
+        // Serpulo and Erekir sector presets never require external servers or downloads.
+        include "maps/serpulo/**"
+        include "maps/erekir/**"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
