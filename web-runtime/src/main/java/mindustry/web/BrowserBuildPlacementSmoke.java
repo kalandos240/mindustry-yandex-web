@@ -7,6 +7,7 @@ import mindustry.content.*;
 import mindustry.core.World;
 import mindustry.entities.units.*;
 import mindustry.gen.*;
+import mindustry.input.*;
 import mindustry.world.*;
 import org.teavm.jso.JSBody;
 
@@ -234,13 +235,25 @@ public final class BrowserBuildPlacementSmoke{
         if(stage == 21){
             if(Core.scene.hasMouse()) throw new IllegalStateException("Rotate target is covered by an Arc Scene actor");
             dispatchKey("keydown", "KeyR", "r");
+            uiFrames = 0;
             stage = 22;
             markRotateStage("r-down", tile.build.rotation);
             return;
         }
 
         if(stage == 22){
+            // Browser DOM input is queued after the application frame. On heavy TeaVM
+            // frames, do not emit the wheel until the exact stock binding reports R down.
+            if(!Core.input.keyDown(Binding.rotatePlaced)){
+                if(++uiFrames >= maxUiFrames){
+                    dispatchKey("keyup", "KeyR", "r");
+                    throw new IllegalStateException("DOM KeyR never reached stock rotatePlaced binding");
+                }
+                return;
+            }
+
             dispatchWheel(0f, 100f);
+            uiFrames = 0;
             stage = 23;
             markRotateStage("wheel", tile.build.rotation);
             return;
@@ -248,12 +261,19 @@ public final class BrowserBuildPlacementSmoke{
 
         if(stage == 23){
             int rotation = tile.build.rotation;
-            dispatchKey("keyup", "KeyR", "r");
-            if(rotation == originalRotation){
+            if(rotation != originalRotation){
+                dispatchKey("keyup", "KeyR", "r");
+                completed = true;
+                markRotated(originalRotation, rotation, targetX, targetY);
+                return;
+            }
+
+            // The wheel event is queued through the same WebInput bridge. Keep R held
+            // until stock DesktopInput has consumed axisTap(Binding.rotate).
+            if(++uiFrames >= maxUiFrames){
+                dispatchKey("keyup", "KeyR", "r");
                 throw new IllegalStateException("Stock R + wheel rotate input did not change conveyor rotation");
             }
-            completed = true;
-            markRotated(originalRotation, rotation, targetX, targetY);
         }
     }
 

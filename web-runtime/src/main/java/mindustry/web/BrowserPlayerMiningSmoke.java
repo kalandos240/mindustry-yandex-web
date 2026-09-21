@@ -67,6 +67,10 @@ public final class BrowserPlayerMiningSmoke{
 
         if(stage == 0){
             Core.settings.put("smoothcamera", false);
+            // This is an isolated CI profile. Keep the probe deterministic and verify
+            // the normal single-click stock mining path instead of racing the optional
+            // double-tap preference against a heavy TeaVM animation frame.
+            Core.settings.put("doubletapmine", false);
             if(unit.stack.amount != 0){
                 throw new IllegalStateException("Player-mining smoke requires an initially empty local unit stack");
             }
@@ -127,23 +131,9 @@ public final class BrowserPlayerMiningSmoke{
         }
 
         if(stage == 4){
-            if(unit.mineTile == world.tile(targetX, targetY)){
-                stage = 6;
-                return;
-            }
-
-            // Stock default is single-click mining. If the user setting requires
-            // double-tap, only issue the second click after proving the first did
-            // not start mining; never toggle an already-active mineTile back off.
-            dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
-            pointerDown = true;
-            stage = 5;
-            return;
-        }
-
-        if(stage == 5){
-            dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
-            pointerDown = false;
+            // PointerEvents are queued after the application frame. Do not synthesize
+            // an immediate second click: on a slow browser frame that can arrive before
+            // the first stock click is consumed and toggle mining back off.
             stage = 6;
             return;
         }
