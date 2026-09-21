@@ -63,7 +63,5 @@ public final class MindustryReflectionPolicy extends SimpleReflectionPolicy{
         selectClass("mindustry.game.MapObjectives$QuadMarker").reflectableFields(field -> true);
         selectClass("mindustry.game.MapObjectives$TextureHolder").reflectableFields(field -> true);
 
-        selectClass("arc.math.geom.Vec2").reflectableFields(field -> true);
-        selectClass("arc.math.geom.Point2").reflectableFields(field -> true);
     }
 }
