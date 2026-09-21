@@ -181,6 +181,9 @@ def main() -> int:
     parser.add_argument("--after-resize-width", type=int)
     parser.add_argument("--after-resize-height", type=int)
     parser.add_argument("--after-resize-require", action="append", default=[])
+    parser.add_argument("--second-resize-width", type=int)
+    parser.add_argument("--second-resize-height", type=int)
+    parser.add_argument("--second-resize-require", action="append", default=[])
     parser.add_argument("--chrome", default="google-chrome")
     parser.add_argument(
         "--emulate-mobile",
@@ -192,6 +195,12 @@ def main() -> int:
         parser.error("--after-resize-width and --after-resize-height must be provided together")
     if args.after_resize_require and args.after_resize_width is None:
         parser.error("--after-resize-require requires --after-resize-width/--after-resize-height")
+    if (args.second_resize_width is None) != (args.second_resize_height is None):
+        parser.error("--second-resize-width and --second-resize-height must be provided together")
+    if args.second_resize_width is not None and args.after_resize_width is None:
+        parser.error("--second-resize-* requires the first --after-resize-* phase")
+    if args.second_resize_require and args.second_resize_width is None:
+        parser.error("--second-resize-require requires --second-resize-width/--second-resize-height")
 
     profile = Path(args.profile)
     profile.mkdir(parents=True, exist_ok=True)
@@ -223,7 +232,7 @@ def main() -> int:
     last_html = ""
     polls = 0
     resize_requested = args.after_resize_width is not None
-    resized = False
+    resize_phase = 0
     try:
         ws = WebSocket(target_websocket(args.port, launch_url, deadline))
         message_id = 1
@@ -258,9 +267,15 @@ def main() -> int:
             last_html = evaluate(ws, message_id, "document.documentElement.outerHTML")
             polls += 1
             message_id += 1
-            required = args.after_resize_require if resized else args.require
+            if resize_phase == 0:
+                required = args.require
+            elif resize_phase == 1:
+                required = args.after_resize_require
+            else:
+                required = args.second_resize_require
+
             if all(marker in last_html for marker in required):
-                if resize_requested and not resized:
+                if resize_requested and resize_phase == 0:
                     cdp_command(ws, message_id, "Emulation.setDeviceMetricsOverride", {
                         "width": args.after_resize_width,
                         "height": args.after_resize_height,
@@ -268,13 +283,25 @@ def main() -> int:
                         "mobile": bool(args.emulate_mobile),
                     })
                     message_id += 1
-                    evaluate(ws, message_id, "window.dispatchEvent(new Event('orientationchange')); 'resize-dispatched'")
+                    evaluate(ws, message_id, "window.dispatchEvent(new Event('orientationchange')); document.dispatchEvent(new Event('fullscreenchange')); 'resize-dispatched'")
                     message_id += 1
-                    resized = True
+                    resize_phase = 1
+                    continue
+                if args.second_resize_width is not None and resize_phase == 1:
+                    cdp_command(ws, message_id, "Emulation.setDeviceMetricsOverride", {
+                        "width": args.second_resize_width,
+                        "height": args.second_resize_height,
+                        "deviceScaleFactor": 2.75 if args.emulate_mobile else 1,
+                        "mobile": bool(args.emulate_mobile),
+                    })
+                    message_id += 1
+                    evaluate(ws, message_id, "window.dispatchEvent(new Event('resize')); window.dispatchEvent(new Event('orientationchange')); document.dispatchEvent(new Event('fullscreenchange')); 'second-resize-dispatched'")
+                    message_id += 1
+                    resize_phase = 2
                     continue
 
                 elapsed = time.monotonic() - started
-                phase = " after live resize" if resized else ""
+                phase = " after second live resize" if resize_phase == 2 else (" after live resize" if resize_phase == 1 else "")
                 sys.stderr.write(f"Chrome required markers ready{phase} in {elapsed:.3f}s after {polls} DOM poll(s).\n")
                 sys.stdout.write("<!DOCTYPE html>\n" + last_html + "\n")
                 return 0

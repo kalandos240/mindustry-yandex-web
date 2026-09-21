@@ -33,6 +33,17 @@ public final class BrowserCanvas{
         }
         window.addEventListener('resize', markResizeDirty, {passive: true});
         window.addEventListener('orientationchange', markResizeDirty, {passive: true});
+        document.addEventListener('fullscreenchange', () => {
+            canvas.__mindustryResizeDirty = true;
+            document.documentElement.setAttribute('data-mindustry-fullscreen-state',
+                document.fullscreenElement ? 'fullscreen' : 'windowed');
+        }, {passive: true});
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', markResizeDirty, {passive: true});
+            window.visualViewport.addEventListener('scroll', markResizeDirty, {passive: true});
+        }
+        document.documentElement.setAttribute('data-mindustry-fullscreen-state',
+            document.fullscreenElement ? 'fullscreen' : 'windowed');
         document.documentElement.dataset.mindustryGl = canvas.__mindustryGLMajor === 2 ? 'webgl2' : 'webgl1';
         return true;
         """)
@@ -54,6 +65,14 @@ public final class BrowserCanvas{
         const cap = Math.max(1, Number(maxPixelRatio) || 1);
         const ratio = Math.min(deviceRatio, cap);
         if (!canvas.__mindustryResizeDirty && canvas.__mindustryLastDpr === ratio) return false;
+
+        const viewport = window.visualViewport;
+        const cssWidth = viewport ? Math.max(1, Math.round(viewport.width)) : Math.max(1, window.innerWidth | 0);
+        const cssHeight = viewport ? Math.max(1, Math.round(viewport.height)) : Math.max(1, window.innerHeight | 0);
+        if (canvas.style.width !== cssWidth + 'px') canvas.style.width = cssWidth + 'px';
+        if (canvas.style.height !== cssHeight + 'px') canvas.style.height = cssHeight + 'px';
+        if (canvas.style.left !== '0px') canvas.style.left = '0px';
+        if (canvas.style.top !== '0px') canvas.style.top = '0px';
 
         const clientWidth = Math.max(1, canvas.clientWidth | 0);
         const clientHeight = Math.max(1, canvas.clientHeight | 0);
@@ -88,6 +107,8 @@ public final class BrowserCanvas{
             root.setAttribute('data-mindustry-resize-last', String(clientWidth) + 'x' + String(clientHeight));
             root.setAttribute('data-mindustry-resize-buffer', String(width) + 'x' + String(height));
             root.setAttribute('data-mindustry-resize-orientation', clientWidth >= clientHeight ? 'landscape' : 'portrait');
+            root.setAttribute('data-mindustry-viewport-source', viewport ? 'visualViewport' : 'window');
+            root.setAttribute('data-mindustry-viewport-last', String(cssWidth) + 'x' + String(cssHeight));
         }
         return metricsChanged;
         """)
