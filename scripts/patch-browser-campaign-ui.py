@@ -30,11 +30,19 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         root.row();
 
         TextButton campaignButton = new TextButton("");
+        boolean[] campaignContinue = {BrowserCampaignRuntime.hasGroundZeroSave()};
+        campaignButton.setText(Core.bundle.get(campaignContinue[0] ? "continue" : "play",
+            campaignContinue[0] ? "Continue" : "Play"));
+        markCampaignUiAction(campaignContinue[0] ? "continue" : "play");
         campaignButton.clicked(BrowserCampaignRuntime::playGroundZero);
         campaignButton.update(() -> {
             boolean hasSave = BrowserCampaignRuntime.hasGroundZeroSave();
-            campaignButton.setText(Core.bundle.get(hasSave ? "continue" : "play", hasSave ? "Continue" : "Play"));
-            markCampaignUiAction(hasSave ? "continue" : "play");
+            if(hasSave != campaignContinue[0]){
+                campaignContinue[0] = hasSave;
+                campaignButton.setText(Core.bundle.get(hasSave ? "continue" : "play",
+                    hasSave ? "Continue" : "Play"));
+                markCampaignUiAction(hasSave ? "continue" : "play");
+            }
         });
         root.add(campaignButton).width(campaignWidth).height(campaignHeight).padBottom(10f);
         root.row();
