@@ -8,14 +8,14 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Ground Zero campaign-resume measurement after making the stock SaveSlot.load()
-# sector-context path reachable. Relative to the campaign-core baseline this verified
-# persistence milestone adds 26,391 raw / 2,629 gzip bytes; forbidden desktop/network
-# markers remain absent and the Yandex package remains well below its unpacked limit.
-JS_BASELINE = 23_002_604
-JS_LIMIT = 23_022_000
-JS_GZIP_BASELINE = 2_636_075
-JS_GZIP_LIMIT = 2_648_000
+# Production Ground Zero campaign UI measurement after desktop/mobile Play/Continue,
+# touch-sized controls and campaign Back/save paths became reachable. Relative to the
+# persistence baseline this milestone adds 21,745 raw / 871 gzip bytes; forbidden
+# desktop/network markers remain absent and the Yandex package stays far below 100 MiB.
+JS_BASELINE = 23_024_349
+JS_LIMIT = 23_044_000
+JS_GZIP_BASELINE = 2_636_946
+JS_GZIP_LIMIT = 2_649_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes

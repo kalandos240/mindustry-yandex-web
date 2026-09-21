@@ -7,6 +7,7 @@ import mindustry.content.*;
 import mindustry.core.World;
 import mindustry.entities.units.*;
 import mindustry.gen.*;
+import mindustry.input.*;
 import mindustry.world.*;
 import org.teavm.jso.JSBody;
 
@@ -41,6 +42,8 @@ public final class BrowserBuildPlacementSmoke{
     private static int uiFrames;
     private static int buildFrames;
     private static int breakFrames;
+    private static int breakGestureAttempts;
+    private static int rotateGestureAttempts;
     private static int targetX = -1, targetY = -1;
     private static float targetScreenX, targetScreenY;
 
@@ -234,13 +237,26 @@ public final class BrowserBuildPlacementSmoke{
         if(stage == 21){
             if(Core.scene.hasMouse()) throw new IllegalStateException("Rotate target is covered by an Arc Scene actor");
             dispatchKey("keydown", "KeyR", "r");
+            uiFrames = 0;
             stage = 22;
             markRotateStage("r-down", tile.build.rotation);
             return;
         }
 
         if(stage == 22){
+            // Browser DOM input is queued after the application frame. On heavy TeaVM
+            // frames, do not emit the wheel until the exact stock binding reports R down.
+            if(!Core.input.keyDown(Binding.rotatePlaced)){
+                if(++uiFrames >= maxUiFrames){
+                    dispatchKey("keyup", "KeyR", "r");
+                    throw new IllegalStateException("DOM KeyR never reached stock rotatePlaced binding");
+                }
+                return;
+            }
+
             dispatchWheel(0f, 100f);
+            rotateGestureAttempts = 0;
+            uiFrames = 0;
             stage = 23;
             markRotateStage("wheel", tile.build.rotation);
             return;
@@ -248,12 +264,38 @@ public final class BrowserBuildPlacementSmoke{
 
         if(stage == 23){
             int rotation = tile.build.rotation;
-            dispatchKey("keyup", "KeyR", "r");
-            if(rotation == originalRotation){
-                throw new IllegalStateException("Stock R + wheel rotate input did not change conveyor rotation");
+            if(rotation != originalRotation){
+                dispatchKey("keyup", "KeyR", "r");
+                completed = true;
+                markRotated(originalRotation, rotation, targetX, targetY);
+                return;
             }
-            completed = true;
-            markRotated(originalRotation, rotation, targetX, targetY);
+
+            // DOM wheel is an edge event. Under slow/headless TeaVM a single event can
+            // land between stock DesktopInput update windows even while R remains held.
+            // Retry the same physical DOM gesture a few times, never mutating rotation
+            // directly; only a real stock rotatePlaced -> rotateBlock result can pass.
+            uiFrames++;
+            if(uiFrames % 12 == 0 && rotateGestureAttempts < 4){
+                Vec2 projected = Core.camera.project(new Vec2(
+                    targetX * tilesize + tilesize / 2f,
+                    targetY * tilesize + tilesize / 2f
+                ));
+                targetScreenX = projected.x;
+                targetScreenY = projected.y;
+                dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+                dispatchWheel(0f, 100f);
+                rotateGestureAttempts++;
+                markRotateRetry(rotateGestureAttempts, rotation);
+            }
+
+            if(uiFrames >= maxUiFrames){
+                dispatchKey("keyup", "KeyR", "r");
+                throw new IllegalStateException(
+                    "Stock R + wheel rotate input did not change conveyor rotation after " +
+                    (rotateGestureAttempts + 1) + " DOM wheel gestures"
+                );
+            }
         }
     }
 
@@ -294,48 +336,100 @@ public final class BrowserBuildPlacementSmoke{
                 return;
             }
             uiFrames = 0;
-            dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+            aimRemovalTarget();
             stage = 11;
             markRemovalStage("break-hover", targetX, targetY);
             return;
         }
 
         if(stage == 11){
+            Tile current = world.tile(targetX, targetY);
+            if(current == null || current.block() != Blocks.conveyor || current.build == null){
+                throw new IllegalStateException("Removal target changed before stock break gesture");
+            }
+            if(!Build.validBreak(player.team(), targetX, targetY)){
+                throw new IllegalStateException("Stock Build.validBreak rejected the constructed conveyor");
+            }
             if(Core.scene.hasMouse()) throw new IllegalStateException("Break target is covered by an Arc Scene actor");
+
+            // Refresh projection immediately before every gesture. The camera can move a
+            // fraction while the builder finishes construction; stale screen coordinates
+            // must never select a neighboring world tile in a slow headless run.
+            aimRemovalTarget();
             dispatchPointer("pointerdown", targetScreenX, targetScreenY, 2, true);
             pointerDown = true;
             pointerButton = 2;
+            breakGestureAttempts++;
+            uiFrames = 0;
             stage = 12;
-            markRemovalStage("break-down", targetX, targetY);
+            markRemovalGesture("break-down", targetX, targetY, breakGestureAttempts);
             return;
         }
 
         if(stage == 12){
-            // Keep the physical right button held until stock DesktopInput has consumed
-            // Binding.breakBlock and entered breaking mode. On heavy TeaVM frames, a
-            // fixed one-frame press can otherwise release before gameplay input sees it.
-            if(!control.input.isBreaking()){
+            // Keep the physical right button held until the exact stock binding is down
+            // and DesktopInput has entered breaking mode.
+            if(!Core.input.keyDown(Binding.breakBlock) || !control.input.isBreaking()){
                 if(++uiFrames >= maxUiFrames){
                     releasePointer();
-                    throw new IllegalStateException("Second stock right-click never entered DesktopInput breaking mode");
+                    throw new IllegalStateException("Stock right-click never entered confirmed DesktopInput breaking mode");
                 }
                 return;
             }
 
+            // Hold one additional complete frame after mode confirmation so selection
+            // coordinates and button state have both been consumed by stock input.
+            if(uiFrames++ == 0) return;
+
             dispatchPointer("pointerup", targetScreenX, targetScreenY, 2, false);
             pointerDown = false;
+            uiFrames = 0;
             stage = 13;
-            markRemovalStage("break-up", targetX, targetY);
+            markRemovalGesture("break-up", targetX, targetY, breakGestureAttempts);
             return;
         }
 
-        for(BuildPlan plan : unit.plans()){
-            if(plan.breaking && plan.x == targetX && plan.y == targetY){
-                breakPlanObserved = true;
-                break;
+        if(stage == 13){
+            observeBreakPlan(unit);
+
+            if(tile.block() == Blocks.air && tile.build == null){
+                if(!breakPlanObserved){
+                    throw new IllegalStateException("Conveyor disappeared without smoke observing a stock breaking BuildPlan");
+                }
+                completed = true;
+                markRemoved(targetX, targetY, breakFrames, unit.id, unit.type.name);
+                return;
             }
+
+            // A stock release completes by leaving breaking mode. Only after that exact
+            // transition may CI decide that the gesture produced no plan and retry it.
+            if(control.input.isBreaking() || Core.input.keyDown(Binding.breakBlock)){
+                if(++uiFrames >= maxUiFrames){
+                    releasePointer();
+                    throw new IllegalStateException("Stock right-click release never left DesktopInput breaking mode");
+                }
+                return;
+            }
+
+            if(breakPlanObserved){
+                stage = 14;
+                uiFrames = 0;
+            }else if(++uiFrames >= 12){
+                if(breakGestureAttempts >= 3){
+                    throw new IllegalStateException(
+                        "Confirmed stock break gestures produced no breaking BuildPlan after " +
+                        breakGestureAttempts + " attempts"
+                    );
+                }
+                uiFrames = 0;
+                aimRemovalTarget();
+                stage = 11;
+                markRemovalGesture("break-retry", targetX, targetY, breakGestureAttempts + 1);
+            }
+            return;
         }
-        if(breakPlanObserved) markBreakPlanObserved(targetX, targetY, unit.plans().size);
+
+        observeBreakPlan(unit);
 
         if(tile.block() == Blocks.air && tile.build == null){
             if(!breakPlanObserved){
@@ -351,8 +445,31 @@ public final class BrowserBuildPlacementSmoke{
         if(breakFrames >= maxBuildFrames){
             throw new IllegalStateException(
                 "Stock builder did not remove DOM-selected conveyor: tile=" + tile.block().name +
-                ", plans=" + unit.plans().size + ", breakPlanObserved=" + breakPlanObserved
+                ", plans=" + unit.plans().size + ", breakPlanObserved=" + breakPlanObserved +
+                ", gestureAttempts=" + breakGestureAttempts
             );
+        }
+    }
+
+    private static void aimRemovalTarget(){
+        Vec2 projected = Core.camera.project(new Vec2(
+            targetX * tilesize + tilesize / 2f,
+            targetY * tilesize + tilesize / 2f
+        ));
+        targetScreenX = projected.x;
+        targetScreenY = projected.y;
+        dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+    }
+
+    private static void observeBreakPlan(Unit unit){
+        for(BuildPlan plan : unit.plans()){
+            if(plan.breaking && plan.x == targetX && plan.y == targetY){
+                if(!breakPlanObserved){
+                    breakPlanObserved = true;
+                    markBreakPlanObserved(targetX, targetY, unit.plans().size);
+                }
+                return;
+            }
         }
     }
 
@@ -487,11 +604,17 @@ public final class BrowserBuildPlacementSmoke{
     @JSBody(params = {"stage", "rotation"}, script = "document.documentElement.setAttribute('data-mindustry-build-rotate-smoke', stage); document.documentElement.setAttribute('data-mindustry-build-rotate-current', String(rotation)); document.documentElement.setAttribute('data-mindustry-build-rotate-source', 'dom-key-wheel');")
     private static native void markRotateStage(String stage, int rotation);
 
+    @JSBody(params = {"attempt", "rotation"}, script = "document.documentElement.setAttribute('data-mindustry-build-rotate-retry',String(attempt)); document.documentElement.setAttribute('data-mindustry-build-rotate-current',String(rotation));")
+    private static native void markRotateRetry(int attempt, int rotation);
+
     @JSBody(params = {"before", "after", "x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-build-rotate-smoke', 'rotated'); document.documentElement.setAttribute('data-mindustry-build-rotate-source', 'dom-key-wheel'); document.documentElement.setAttribute('data-mindustry-build-rotate-before', String(before)); document.documentElement.setAttribute('data-mindustry-build-rotate-after', String(after)); document.documentElement.setAttribute('data-mindustry-build-rotate-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-rotate-tile-y', String(y));")
     private static native void markRotated(int before, int after, int x, int y);
 
     @JSBody(params = {"stage", "x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-build-removal-smoke', stage); document.documentElement.setAttribute('data-mindustry-build-removal-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-removal-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-removal-tile-y', String(y));")
     private static native void markRemovalStage(String stage, int x, int y);
+
+    @JSBody(params = {"stage", "x", "y", "attempt"}, script = "document.documentElement.setAttribute('data-mindustry-build-removal-smoke', stage); document.documentElement.setAttribute('data-mindustry-build-removal-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-removal-tile-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-removal-tile-y', String(y)); document.documentElement.setAttribute('data-mindustry-build-removal-gesture-attempt', String(attempt));")
+    private static native void markRemovalGesture(String stage, int x, int y, int attempt);
 
     @JSBody(params = {"x", "y", "plans"}, script = "document.documentElement.setAttribute('data-mindustry-build-removal-plan-observed', 'true'); document.documentElement.setAttribute('data-mindustry-build-removal-plan-x', String(x)); document.documentElement.setAttribute('data-mindustry-build-removal-plan-y', String(y)); document.documentElement.setAttribute('data-mindustry-build-removal-plans', String(plans));")
     private static native void markBreakPlanObserved(int x, int y, int plans);
