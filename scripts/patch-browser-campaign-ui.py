@@ -85,7 +85,17 @@ old_hud = '''        controls.button(Core.bundle.get("back", "Back"), BrowserLoc
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
 '''
-new_hud = '''        controls.button(Core.bundle.get("back", "Back"), () -> {
+new_hud = '''        boolean[] campaignBackUiSmoke = {false};
+        controls.update(() -> {
+            if(!campaignBackUiSmoke[0] && campaignBackUiSmokeRequested()
+            && BrowserCampaignRuntime.active() && campaignCoreReady()){
+                campaignBackUiSmoke[0] = true;
+                markCampaignUiBackSmoke();
+                BrowserCampaignRuntime.returnToMenu();
+            }
+        });
+
+        controls.button(Core.bundle.get("back", "Back"), () -> {
             if(BrowserCampaignRuntime.active()){
                 BrowserCampaignRuntime.returnToMenu();
             }else{
@@ -125,6 +135,15 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"action"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-action',action);")
     private static native void markCampaignUiAction(String action);
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignUiBackSmoke') === '1';")
+    private static native boolean campaignBackUiSmokeRequested();
+
+    @JSBody(script = "return document.documentElement.getAttribute('data-mindustry-campaign-core') === 'ready';")
+    private static native boolean campaignCoreReady();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-back-smoke','triggered');")
+    private static native void markCampaignUiBackSmoke();
 
     @JSBody(params = {"slot"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slot', slot);")
     private static native void markLocalSaveUiReady(String slot);
