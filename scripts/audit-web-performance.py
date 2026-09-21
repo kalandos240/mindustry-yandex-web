@@ -8,14 +8,14 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Ground Zero campaign-core measurement with explicit stock MapObjectives factories
-# and reflective field metadata required for exact objective load/save semantics. Relative
-# to the pre-objective campaign build this intentional compatibility layer adds 79,206 raw
-# / 7,755 gzip bytes, with no forbidden desktop/network markers.
-JS_BASELINE = 22_976_213
-JS_LIMIT = 22_995_000
-JS_GZIP_BASELINE = 2_633_446
-JS_GZIP_LIMIT = 2_645_000
+# Ground Zero campaign-resume measurement after making the stock SaveSlot.load()
+# sector-context path reachable. Relative to the campaign-core baseline this verified
+# persistence milestone adds 26,391 raw / 2,629 gzip bytes; forbidden desktop/network
+# markers remain absent and the Yandex package remains well below its unpacked limit.
+JS_BASELINE = 23_002_604
+JS_LIMIT = 23_022_000
+JS_GZIP_BASELINE = 2_636_075
+JS_GZIP_LIMIT = 2_648_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes

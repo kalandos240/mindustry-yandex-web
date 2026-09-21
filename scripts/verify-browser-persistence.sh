@@ -107,3 +107,4 @@ grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$GAME_DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$GAME_DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$GAME_DOM"
 echo 'Browser persistence smoke: explicit CI mode + Java BrowserFi write -> IndexedDB flush -> Chrome restart -> Java byte[] recovery + stock local UI + 3-frame continuous play + BrowserAudio + real WorldLoadEvent recovery PASS'
+bash "$ROOT_DIR/scripts/verify-browser-campaign-save-resume.sh"
