@@ -13,11 +13,19 @@ application = APPLICATION.read_text(encoding="utf-8")
 old_frame = '''            if(!platformPaused){
                 frame();
                 syncGameplayMarker();
+                if(awaitingPlatformResumeFrame){
+                    awaitingPlatformResumeFrame = false;
+                    BrowserYandex.markResumeFrame(browserFrameCallbacks);
+                }
             }
 '''
 new_frame = '''            if(!platformPaused){
                 frame();
                 syncGameplayMarker();
+                if(awaitingPlatformResumeFrame){
+                    awaitingPlatformResumeFrame = false;
+                    BrowserYandex.markResumeFrame(browserFrameCallbacks);
+                }
                 // CI-only observer; inert unless a player-input/possession smoke is requested.
                 BrowserPlayerInputSmoke.update();
             }
