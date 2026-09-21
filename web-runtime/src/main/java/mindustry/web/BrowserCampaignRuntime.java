@@ -197,7 +197,7 @@ public final class BrowserCampaignRuntime{
         }
 
         int expectedWave = indexed.wave;
-        int expectedTickMillis = Math.round(Float.parseFloat(indexed.tags.get("tick", "0")) * 1000f);
+        long expectedTickMillis = Math.round(Double.parseDouble(indexed.tags.get("tick", "0")) * 1000d);
         long expectedBytes = sector.save.file.length();
 
         sector.planet.setLastSector(sector);
@@ -221,7 +221,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Ground Zero persisted sector did not resume campaign playing state");
         }
 
-        int loadedTickMillis = Math.round(state.tick * 1000f);
+        long loadedTickMillis = Math.round(state.tick * 1000d);
         if(state.wave != expectedWave || loadedTickMillis != expectedTickMillis){
             throw new IllegalStateException(
                 "Ground Zero campaign resume changed saved wave/tick: expected wave=" + expectedWave +
@@ -256,7 +256,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Ground Zero campaign checkpoint metadata failed validation");
         }
 
-        int tickMillis = Math.round(state.tick * 1000f);
+        long tickMillis = Math.round(state.tick * 1000d);
         markCheckpoint(state.wave, tickMillis, current.save.file.length());
         flushCampaignStorage();
     }
@@ -351,13 +351,13 @@ public final class BrowserCampaignRuntime{
     private static native void markFrame(int frames, long updateId, int wave);
 
     @JSBody(params = {"wave", "tickMillis", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-checkpoint','ready'); document.documentElement.setAttribute('data-mindustry-campaign-checkpoint-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-checkpoint-tick-ms',String(tickMillis)); document.documentElement.setAttribute('data-mindustry-campaign-checkpoint-bytes',String(bytes)); document.documentElement.setAttribute('data-mindustry-campaign-save-flush','pending');")
-    private static native void markCheckpoint(int wave, int tickMillis, long bytes);
+    private static native void markCheckpoint(int wave, long tickMillis, long bytes);
 
     @JSBody(script = "globalThis.__mindustryStorage.flush().then(function(){document.documentElement.setAttribute('data-mindustry-campaign-save-flush','ready');}).catch(function(e){document.documentElement.setAttribute('data-mindustry-campaign-save-flush','error');});")
     private static native void flushCampaignStorage();
 
     @JSBody(params = {"sectorId", "planet", "preset", "width", "height", "bytes", "wave", "tickMillis"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-resume','ready'); document.documentElement.setAttribute('data-mindustry-campaign-resume-source','indexed-sector-save'); document.documentElement.setAttribute('data-mindustry-campaign-resume-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-resume-tick-ms',String(tickMillis)); document.documentElement.setAttribute('data-mindustry-campaign-resume-bytes',String(bytes)); document.documentElement.setAttribute('data-mindustry-campaign-state','playing'); document.documentElement.setAttribute('data-mindustry-campaign-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-planet',planet); document.documentElement.setAttribute('data-mindustry-campaign-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-world',String(width)+'x'+String(height)); document.documentElement.setAttribute('data-mindustry-campaign-save','valid'); document.documentElement.setAttribute('data-mindustry-campaign-save-bytes',String(bytes));")
-    private static native void markResumed(int sectorId, String planet, String preset, int width, int height, long bytes, int wave, int tickMillis);
+    private static native void markResumed(int sectorId, String planet, String preset, int width, int height, long bytes, int wave, long tickMillis);
 
     @JSBody(params = {"frames", "wave", "attempts", "saveValid"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-core','ready'); document.documentElement.setAttribute('data-mindustry-campaign-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-campaign-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-attempts',String(attempts)); document.documentElement.setAttribute('data-mindustry-campaign-save',saveValid ? 'valid' : 'invalid');")
     private static native void markReady(int frames, int wave, int attempts, boolean saveValid);
