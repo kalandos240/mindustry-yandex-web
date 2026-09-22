@@ -51,7 +51,7 @@ run_campaign_cold_restart(){
   # No mindustryMobile override is used, even for the mobile path.
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     "${device_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1&mindustryCampaignPauseSmoke=1" \
     --profile "$profile" \
     --port "$save_cdp" \
     --timeout 90 \
@@ -66,6 +66,11 @@ run_campaign_cold_restart(){
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-sector-id="170"' \
     --require 'data-mindustry-campaign-save="valid"' \
+    --require 'data-mindustry-campaign-pause-smoke="armed"' \
+    --require 'data-mindustry-campaign-pause="ready"' \
+    --require 'data-mindustry-campaign-pause-clock="frozen"' \
+    --require 'data-mindustry-campaign-pause-resumed="yes"' \
+    --require 'data-mindustry-campaign-pause-state="resumed"' \
     --require 'data-mindustry-campaign-checkpoint="ready"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
     --require 'data-mindustry-network="local-only"' \
@@ -75,6 +80,15 @@ run_campaign_cold_restart(){
   grep -Eq 'data-mindustry-campaign-checkpoint-wave="[0-9]+"' "$save_dom"
   grep -Eq 'data-mindustry-campaign-checkpoint-tick-ms="[1-9][0-9]*"' "$save_dom"
   grep -Eq 'data-mindustry-campaign-checkpoint-bytes="[1-9][0-9]{2,}"' "$save_dom"
+  grep -Eq 'data-mindustry-campaign-pause-frames="([2-9]|[1-9][0-9]+)"' "$save_dom"
+
+  local pause_id frozen_id pause_resume_id
+  pause_id="$(attr "$save_dom" data-mindustry-campaign-pause-update-id)"
+  frozen_id="$(attr "$save_dom" data-mindustry-campaign-pause-frozen-update-id)"
+  pause_resume_id="$(attr "$save_dom" data-mindustry-campaign-resume-update-id)"
+  test -n "$pause_id"
+  test "$pause_id" = "$frozen_id"
+  test "$pause_id" = "$pause_resume_id"
 
   local saved_wave saved_tick saved_bytes
   saved_wave="$(attr "$save_dom" data-mindustry-campaign-checkpoint-wave)"
@@ -159,7 +173,7 @@ run_campaign_cold_restart(){
     exit 1
   fi
 
-  echo "Yandex campaign cold restart ($label): auto device detect -> checkpoint -> cold production menu Continue -> second restart -> identical sector wave/tick/bytes PASS"
+  echo "Yandex campaign cold restart ($label): real play -> 2 frozen pause frames -> resume -> checkpoint -> cold menu Continue -> identical sector wave/tick/bytes PASS"
 }
 
 run_campaign_cold_restart \
