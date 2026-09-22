@@ -199,11 +199,18 @@ old_dispatch = '''        if(!state.isMenu()) return;
         runMenuModuleFrame();
 '''
 new_dispatch = '''        if(state.isPaused()){
-            if(smokeMode || !BrowserLocalMapRuntime.active()){
-                throw new IllegalStateException("Web entered paused state outside a production local-map session");
+            if(smokeMode){
+                throw new IllegalStateException("CI Web entered paused state outside production gameplay");
             }
-            BrowserLocalMapRuntime.updatePausedFrame();
-            return;
+            if(BrowserCampaignRuntime.active()){
+                BrowserCampaignRuntime.updatePausedFrame();
+                return;
+            }
+            if(BrowserLocalMapRuntime.active()){
+                BrowserLocalMapRuntime.updatePausedFrame();
+                return;
+            }
+            throw new IllegalStateException("Web entered paused state outside a production local-map or campaign session");
         }
 
         if(!state.isMenu()) return;
