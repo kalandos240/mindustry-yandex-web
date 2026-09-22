@@ -209,6 +209,9 @@ jobs:
           grep -q "data-mindustry-network', 'local-only'" web-runtime/build/web/index.html
           echo 'Deployable package contains no external URL literals in staged HTML/CSS/BMFont/bundles/JavaScript.'
 
+      - name: Audit Yandex release package requirements
+        run: bash scripts/audit-yandex-release.sh
+
       - name: Audit browser performance budget
         run: python3 scripts/audit-web-performance.py
 
@@ -320,7 +323,13 @@ jobs:
       - name: Verify persistent browser files across a real browser restart
         run: bash scripts/verify-browser-persistence.sh
 
-      - name: Verify stock campaign sector capture on desktop and mobile
+      - name: Verify campaign cold save/resume on desktop and mobile
+        run: bash scripts/verify-browser-campaign-save-resume.sh
+
+      - name: Verify Yandex SDK lifecycle on desktop and mobile
+        run: bash scripts/verify-yandex-sdk.sh
+
+      - name: Verify Ground Zero to Frozen Forest progression on desktop and mobile
         run: bash scripts/verify-browser-campaign-capture.sh
 
       - name: Upload localization report
