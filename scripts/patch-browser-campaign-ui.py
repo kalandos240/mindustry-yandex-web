@@ -121,7 +121,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         // at a time instead of adding a permanent button for every early power node.
         TextButton craterResearch = new TextButton("");
         craterResearch.clicked(BrowserCampaignResearch::spendNextCraterResearch);
-        craterResearch.setDisabled(button -> {
+        craterResearch.setDisabled(() -> {
             mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCraterResearch();
             return next == null || !BrowserCampaignResearch.canSpend(next);
         });
