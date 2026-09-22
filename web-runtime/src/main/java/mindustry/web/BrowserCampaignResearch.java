@@ -64,6 +64,12 @@ public final class BrowserCampaignResearch{
             throw new IllegalStateException("Early campaign progress smoke requires captured Ground Zero");
         }
 
+        stageMissing(source, Blocks.conveyor);
+        spend(Blocks.conveyor);
+        if(!Blocks.conveyor.unlocked()){
+            throw new IllegalStateException("Conveyor did not unlock through stock TechNode research");
+        }
+
         stageMissing(source, Blocks.junction);
         spend(Blocks.junction);
         if(!Blocks.junction.unlocked()){
@@ -195,7 +201,7 @@ public final class BrowserCampaignResearch{
         Events.fire(new ResearchEvent(node.content));
     }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-junction-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-router-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready','true');")
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-conveyor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-junction-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-router-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready','true');")
     private static native void markProgressSmoke();
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady"},
