@@ -68,7 +68,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-input-mode="mobile"' \
   --require 'data-mindustry-campaign-ui-layout="mobile"' \
-  --require 'data-mindustry-campaign-ui-map-pane-height="130"' \
+  --require 'data-mindustry-campaign-ui-map-pane-height="110"' \
   --after-resize-width 844 \
   --after-resize-height 390 \
   --after-resize-require 'data-mindustry-resize-last="844x390"' \
@@ -77,7 +77,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --after-resize-require 'data-mindustry-stock-input="mobile"' \
   --after-resize-require 'data-mindustry-campaign-ui-layout="mobile"' \
   --after-resize-require 'data-mindustry-campaign-ui-resized="ready"' \
-  --after-resize-require 'data-mindustry-campaign-ui-map-pane-height="72"' \
+  --after-resize-require 'data-mindustry-campaign-ui-map-pane-height="56"' \
   --after-resize-require 'data-mindustry-gameplay-loop="menu-stable"' \
   --second-resize-width 390 \
   --second-resize-height 844 \
