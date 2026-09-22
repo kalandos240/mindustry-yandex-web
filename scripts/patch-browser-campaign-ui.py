@@ -57,7 +57,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
         TextButton junctionResearch = new TextButton("");
         junctionResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.junction));
-        junctionResearch.disabled(button -> mindustry.content.Blocks.junction.unlocked()
+        junctionResearch.setDisabled(() -> mindustry.content.Blocks.junction.unlocked()
             || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.junction));
         junctionResearch.update(() -> junctionResearch.setText(
             mindustry.content.Blocks.junction.localizedName + " — " +
@@ -70,7 +70,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
         TextButton routerResearch = new TextButton("");
         routerResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.router));
-        routerResearch.disabled(button -> mindustry.content.Blocks.router.unlocked()
+        routerResearch.setDisabled(() -> mindustry.content.Blocks.router.unlocked()
             || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.router));
         routerResearch.update(() -> routerResearch.setText(
             mindustry.content.Blocks.router.localizedName + " — " +
@@ -84,7 +84,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
         TextButton frozenForestButton = new TextButton("");
         frozenForestButton.clicked(BrowserCampaignRuntime::playFrozenForest);
-        frozenForestButton.disabled(button -> !BrowserCampaignResearch.frozenForestReady());
+        frozenForestButton.setDisabled(() -> !BrowserCampaignResearch.frozenForestReady());
         frozenForestButton.update(() -> {
             boolean ready = BrowserCampaignResearch.frozenForestReady();
             boolean saved = BrowserCampaignRuntime.hasFrozenForestSave();
