@@ -192,6 +192,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-platform-resume-observed="yes"' \
   --require 'data-mindustry-platform-pause="running"' \
   --require 'data-mindustry-input-reset="platform-pause"' \
+  --require 'data-mindustry-storage-lifecycle-flush="yandex-pause-ready"' \
   --require 'data-mindustry-audio="ready"' \
   --require 'data-mindustry-audio-pause-observed="yes"' \
   --require 'data-mindustry-audio-resume-observed="yes"' \
@@ -261,6 +262,7 @@ run_ad_lifecycle(){
     --require 'data-mindustry-platform-resume-frame-state="playing"' \
     --require 'data-mindustry-platform-resume-frame-sector="170"' \
     --require 'data-mindustry-input-reset="platform-pause"' \
+    --require 'data-mindustry-storage-lifecycle-flush="yandex-pause-ready"' \
     --require 'data-mindustry-audio-pause-observed="yes"' \
     --require 'data-mindustry-audio-resume-observed="yes"' \
     --require 'data-mindustry-audio-platform="running"' \
@@ -268,6 +270,7 @@ run_ad_lifecycle(){
     --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
 
   grep -Eq 'data-mindustry-input-reset-count="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-storage-lifecycle-flush-count="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-yandex-test-gameplay-start-count="([2-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-yandex-test-gameplay-stop-count="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-platform-resume-frame-index="[1-9][0-9]*"' "$dom"
