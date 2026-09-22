@@ -24,7 +24,11 @@ fail(){
 # the archive before the next user-controlled map-selection/start milestone is enabled.
 [ -s "$WEB_DIR/assets/maps/default/maze.msav" ] || fail "builtin local map maze.msav missing"
 [ -s "$WEB_DIR/assets/maps/default/archipelago.msav" ] || fail "builtin local map archipelago.msav missing"
+[ -s "$WEB_DIR/assets/maps/serpulo/groundZero.msav" ] || fail "Ground Zero campaign map missing"
+[ -s "$WEB_DIR/assets/maps/serpulo/frozenForest.msav" ] || fail "Frozen Forest campaign map missing"
 grep -Fq 'maps/default/maze.msav' "$MANIFEST" || fail "builtin local map missing from asset manifest"
+grep -Fq 'maps/serpulo/groundZero.msav' "$MANIFEST" || fail "Ground Zero missing from asset manifest"
+grep -Fq 'maps/serpulo/frozenForest.msav' "$MANIFEST" || fail "Frozen Forest missing from asset manifest"
 map_count="$(find "$WEB_DIR/assets/maps/default" -maxdepth 1 -type f -name '*.msav' | wc -l)"
 [ "$map_count" -gt 1 ] || fail "builtin local map set is unexpectedly incomplete"
 echo "Builtin local maps staged: $map_count"
