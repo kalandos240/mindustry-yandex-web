@@ -52,7 +52,7 @@ run_capture(){
     --require 'data-mindustry-campaign-captured="true"' \
     --require 'data-mindustry-campaign-captured-sector-id="170"' \
     --require 'data-mindustry-campaign-captured-wave="10"' \
-    --require 'data-mindustry-campaign-progress-smoke="sector-started"' \
+    --require 'data-mindustry-campaign-progress-smoke="stable"' \
     --require 'data-mindustry-campaign-progress-preset="frozenForest"' \
     --require 'data-mindustry-campaign-frozen-forest-ready="true"' \
     --require 'data-mindustry-campaign-junction-unlocked="true"' \
@@ -67,6 +67,8 @@ run_capture(){
   grep -Eq 'data-mindustry-campaign-captured-bytes="[1-9][0-9]{2,}"' "$dom"
   grep -q 'data-mindustry-campaign-capture-win-wave="10"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-sector-id="[0-9]+"' "$dom"
+  grep -Eq 'data-mindustry-campaign-progress-frames="([3-9]|[1-9][0-9]+)"' "$dom"
+  grep -Eq 'data-mindustry-campaign-progress-update-id="[1-9][0-9]*"' "$dom"
   grep -q 'data-mindustry-campaign-map-path="maps/serpulo/frozenForest.msav"' "$dom"
   echo "Stock campaign progression ($label): Ground Zero capture -> Junction/Router research -> Frozen Forest unlock/start PASS"
 }
