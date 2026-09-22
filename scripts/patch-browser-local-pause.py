@@ -61,7 +61,6 @@ new_frames = '''        frames++;
         // then resume into the same local session before the wave/Game Over gate continues.
         if(pauseSmokeRequested() && !pauseSmokeArmed && frames == 1){
             pauseSmokeArmed = true;
-            markPauseSmokeArmed();
             pause();
             return;
         }
@@ -91,56 +90,45 @@ old_helper = '''    private static void updateGameOverFrame(){
 '''
 new_helper = '''    /** Freeze the real local simulation while keeping the canvas and lean Scene responsive. */
     public static void pause(){
-        if(!active || current == null || !state.isPlaying() || state.gameOver || state.rules.pauseDisabled) return;
+        if((!active && !BrowserCampaignRuntime.active()) || !state.isPlaying() || state.gameOver || state.rules.pauseDisabled) return;
         pauseUpdateId = state.updateId;
         pausedFrames = 0;
         state.set(mindustry.core.GameState.State.paused);
         markPaused(pauseUpdateId);
     }
 
-    /** Resume exactly the same local GameState; no world reload or network transition. */
+    /** Resume the same single-player GameState; no world reload or network transition. */
     public static void resume(){
-        if(!active || current == null || !state.isPaused() || state.gameOver) return;
+        if((!active && !BrowserCampaignRuntime.active()) || !state.isPaused() || state.gameOver) return;
         long frozenUpdateId = state.updateId;
         if(pauseUpdateId != 0L && frozenUpdateId != pauseUpdateId){
-            throw new IllegalStateException("Browser local pause advanced the gameplay update clock");
+            throw new IllegalStateException("Browser pause advanced the gameplay update clock");
         }
         state.set(mindustry.core.GameState.State.playing);
         markResumed(frozenUpdateId);
     }
 
-    /** One paused browser frame: renderer + Scene only; Logic/pathfinding remain frozen. */
+    /** One paused browser frame: renderer + Scene only; Logic/Universe/pathfinding remain frozen. */
     public static void updatePausedFrame(){
-        if(!active || current == null || !state.isPaused() || state.gameOver){
-            throw new IllegalStateException("Browser paused frame requires an active paused local session");
+        if((!active && !BrowserCampaignRuntime.active()) || !state.isPaused() || state.gameOver){
+            throw new IllegalStateException("Browser paused frame requires an active single-player session");
         }
 
         long beforeUpdateId = state.updateId;
-        markPhase("pause-renderer");
         renderer.update();
-        markPhase("pause-ui");
         ui.update();
-        markPhase("pause-ui-ready");
 
-        // A pause-overlay action may resume or return to the selector during Scene.act().
-        if(!active || state.isMenu()) return;
-        if(state.isPlaying()){
-            if(state.updateId != beforeUpdateId){
-                throw new IllegalStateException("Browser resume changed updateId inside the paused frame");
-            }
-            return;
-        }
-        if(!state.isPaused()){
-            throw new IllegalStateException("Browser paused local session entered an unexpected state");
-        }
-        if(state.updateId != beforeUpdateId || state.updateId != pauseUpdateId){
+        // Pause-overlay actions may resume or return to a menu during Scene.act().
+        if((!active && !BrowserCampaignRuntime.active()) || state.isMenu()) return;
+        if(state.isPlaying()) return;
+        if(!state.isPaused() || state.updateId != beforeUpdateId || state.updateId != pauseUpdateId){
             throw new IllegalStateException("Browser paused frame advanced the gameplay update clock");
         }
 
         pausedFrames++;
         markPauseFrame(pausedFrames, state.updateId);
 
-        if(pauseSmokeArmed && pauseSmokeRequested() && pausedFrames >= 2){
+        if(pauseSmokeRequested() && pausedFrames >= 2){
             markPauseClockFrozen(state.updateId);
             resume();
         }
@@ -155,7 +143,7 @@ text = text.replace(old_helper, new_helper, 1)
 old_query = '''    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryGameOverSmoke') === '1';")
     private static native boolean gameOverSmokeRequested();
 '''
-new_query = '''    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPauseSmoke') === '1';")
+new_query = '''    @JSBody(script = "var q=new URLSearchParams(location.search); return q.get('mindustryPauseSmoke')==='1'||q.get('mindustryCampaignPauseSmoke')==='1';")
     private static native boolean pauseSmokeRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryGameOverSmoke') === '1';")
@@ -168,19 +156,16 @@ text = text.replace(old_query, new_query, 1)
 old_markers = '''    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-gameover-smoke', 'armed');")
     private static native void markGameOverSmokeArmed();
 '''
-new_markers = '''    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-pause-smoke', 'armed');")
-    private static native void markPauseSmokeArmed();
-
-    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-pause', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-pause-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-map-pause-state', 'paused');")
+new_markers = '''    @JSBody(params = {"updateId"}, script = "var d=document.documentElement; d.setAttribute('data-mindustry-local-map-pause-smoke','armed'); d.setAttribute('data-mindustry-local-map-pause','ready'); d.setAttribute('data-mindustry-local-map-pause-update-id',String(updateId)); d.setAttribute('data-mindustry-local-map-pause-state','paused'); d.setAttribute('data-mindustry-campaign-pause-smoke','armed'); d.setAttribute('data-mindustry-campaign-pause','ready'); d.setAttribute('data-mindustry-campaign-pause-update-id',String(updateId)); d.setAttribute('data-mindustry-campaign-pause-state','paused');")
     private static native void markPaused(long updateId);
 
-    @JSBody(params = {"frames", "updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-pause-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-local-map-pause-frame-update-id', String(updateId));")
+    @JSBody(params = {"frames", "updateId"}, script = "var d=document.documentElement; d.setAttribute('data-mindustry-local-map-pause-frames',String(frames)); d.setAttribute('data-mindustry-local-map-pause-frame-update-id',String(updateId)); d.setAttribute('data-mindustry-campaign-pause-frames',String(frames)); d.setAttribute('data-mindustry-campaign-pause-frame-update-id',String(updateId));")
     private static native void markPauseFrame(int frames, long updateId);
 
-    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-pause-clock', 'frozen'); document.documentElement.setAttribute('data-mindustry-local-map-pause-frozen-update-id', String(updateId));")
+    @JSBody(params = {"updateId"}, script = "var d=document.documentElement; d.setAttribute('data-mindustry-local-map-pause-clock','frozen'); d.setAttribute('data-mindustry-local-map-pause-frozen-update-id',String(updateId)); d.setAttribute('data-mindustry-campaign-pause-clock','frozen'); d.setAttribute('data-mindustry-campaign-pause-frozen-update-id',String(updateId));")
     private static native void markPauseClockFrozen(long updateId);
 
-    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-pause-resumed', 'yes'); document.documentElement.setAttribute('data-mindustry-local-map-resume-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-map-pause-state', 'resumed');")
+    @JSBody(params = {"updateId"}, script = "var d=document.documentElement; d.setAttribute('data-mindustry-local-map-pause-resumed','yes'); d.setAttribute('data-mindustry-local-map-resume-update-id',String(updateId)); d.setAttribute('data-mindustry-local-map-pause-state','resumed'); d.setAttribute('data-mindustry-campaign-pause-resumed','yes'); d.setAttribute('data-mindustry-campaign-resume-update-id',String(updateId)); d.setAttribute('data-mindustry-campaign-pause-state','resumed');")
     private static native void markResumed(long updateId);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-gameover-smoke', 'armed');")
@@ -199,8 +184,8 @@ old_dispatch = '''        if(!state.isMenu()) return;
         runMenuModuleFrame();
 '''
 new_dispatch = '''        if(state.isPaused()){
-            if(smokeMode || !BrowserLocalMapRuntime.active()){
-                throw new IllegalStateException("Web entered paused state outside a production local-map session");
+            if(smokeMode || (!BrowserLocalMapRuntime.active() && !BrowserCampaignRuntime.active())){
+                throw new IllegalStateException("Web entered paused state outside production single-player");
             }
             BrowserLocalMapRuntime.updatePausedFrame();
             return;

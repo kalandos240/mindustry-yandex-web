@@ -276,8 +276,8 @@ public final class BrowserCampaignRuntime{
     /** Normal user Back: checkpoint the live sector before returning to the lean menu. */
     public static void returnToMenu(){
         if(!active || current == null) return;
-        if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != current){
-            throw new IllegalStateException("Browser campaign Back requires an active playing campaign sector");
+        if((!state.isPlaying() && !state.isPaused()) || !state.isCampaign() || state.rules.sector != current){
+            throw new IllegalStateException("Browser campaign Back requires an active playing or paused campaign sector");
         }
 
         int savedWave = state.wave;
@@ -356,9 +356,9 @@ public final class BrowserCampaignRuntime{
         ui.update();
         diagPhase("ui-ready");
 
-        // A HUD action can checkpoint/reset the campaign during Scene.act(). Once Back
-        // has returned to the menu, do not validate the old playing-state update clock.
+        // HUD actions may reset or pause the campaign during Scene.act().
         if(!active || current == null || state.isMenu()) return;
+        if(state.isPaused()) return;
         if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != current){
             throw new IllegalStateException("Browser campaign UI left the active sector in an unexpected state");
         }
@@ -368,6 +368,10 @@ public final class BrowserCampaignRuntime{
 
         frames++;
         if(diagnostics) markFrame(frames, state.updateId, state.wave);
+        if(campaignPauseSmokeRequested() && frames == 1){
+            BrowserLocalMapRuntime.pause();
+            return;
+        }
         if(frames >= 3 && !coreReadyMarked){
             if(saveSmokeRequested() && !saveSmokeArmed){
                 saveSmokeArmed = true;
@@ -414,6 +418,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSaveSmoke') === '1';")
     private static native boolean saveSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignPauseSmoke') === '1';")
+    private static native boolean campaignPauseSmokeRequested();
 
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
     private static native void markRequested(String name);
