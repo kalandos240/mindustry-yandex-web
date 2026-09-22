@@ -325,7 +325,7 @@ jobs:
 
       # verify-browser-persistence already chains campaign cold save/resume, and
       # verify-browser-locales already chains the Yandex SDK desktop/mobile lifecycle.
-      - name: Verify Ground Zero to Frozen Forest progression on desktop and mobile
+      - name: Verify Ground Zero to Frozen Forest to Cratered Battleground progression
         run: bash scripts/verify-browser-campaign-capture.sh
 
       - name: Upload localization report
