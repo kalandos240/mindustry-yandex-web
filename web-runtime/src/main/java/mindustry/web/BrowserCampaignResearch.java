@@ -30,6 +30,40 @@ public final class BrowserCampaignResearch{
         return SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked();
     }
 
+    public static boolean crateredBattlegroundReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.crateredBattleground != null && SectorPresets.crateredBattleground.unlocked();
+    }
+
+    /**
+     * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
+     * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
+     * vanilla is waiting for the player to produce/discover coal before Combustion Generator.
+     */
+    public static UnlockableContent nextCraterResearch(){
+        if(!Blocks.mechanicalDrill.unlocked()) return Blocks.mechanicalDrill;
+        if(!Items.coal.unlocked()) return null;
+        if(!Blocks.combustionGenerator.unlocked()) return Blocks.combustionGenerator;
+        if(!Blocks.powerNode.unlocked()) return Blocks.powerNode;
+        if(!Blocks.mender.unlocked()) return Blocks.mender;
+        return null;
+    }
+
+    public static boolean waitingForCraterCoal(){
+        return Blocks.mechanicalDrill.unlocked() && !Items.coal.unlocked();
+    }
+
+    public static void spendNextCraterResearch(){
+        UnlockableContent next = nextCraterResearch();
+        if(next == null){
+            if(waitingForCraterCoal()){
+                throw new IllegalStateException("Cratered Battleground progression is waiting for coal production");
+            }
+            return;
+        }
+        spend(next);
+    }
+
     public static boolean canSpend(UnlockableContent content){
         TechNode node = node(content);
         if(content.unlocked() || !objectivesComplete(node)) return false;
@@ -91,6 +125,50 @@ public final class BrowserCampaignResearch{
         markProgressSmoke();
     }
 
+    /**
+     * CI-only continuation of the stock early Serpulo path after Frozen Forest.
+     * Resource quantities are staged deterministically, but every research purchase still
+     * goes through the same production spend()/TechNode objective/parent checks.
+     */
+    public static void runCraterProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.frozenForest.sector || !captured(SectorPresets.frozenForest)){
+            throw new IllegalStateException("Crater progression smoke requires captured Frozen Forest");
+        }
+
+        stageAndSpend(source, Blocks.mechanicalDrill);
+
+        // In production, Control.update() unlocks every item present in the campaign core.
+        // The smoke supplies one produced coal deterministically and invokes that same
+        // UnlockableContent state transition so Research(coal) is not bypassed.
+        if(!Items.coal.unlocked()){
+            ItemSeq produced = new ItemSeq();
+            produced.add(Items.coal, 1);
+            source.addItems(produced);
+            Items.coal.unlock();
+        }
+
+        stageAndSpend(source, Blocks.combustionGenerator);
+        stageAndSpend(source, Blocks.powerNode);
+        stageAndSpend(source, Blocks.mender);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!crateredBattlegroundReady()){
+            throw new IllegalStateException("Cratered Battleground did not auto-unlock after stock prerequisites completed");
+        }
+
+        Core.settings.forceSave();
+        markCraterProgressSmoke();
+    }
+
+    private static void stageAndSpend(Sector source, UnlockableContent content){
+        if(content.unlocked()) return;
+        stageMissing(source, content);
+        spend(content);
+        if(!content.unlocked()){
+            throw new IllegalStateException("Stock TechNode research did not unlock " + content.name);
+        }
+    }
+
     private static void stageMissing(Sector source, UnlockableContent content){
         TechNode node = node(content);
         ItemSeq staged = new ItemSeq();
@@ -138,7 +216,8 @@ public final class BrowserCampaignResearch{
         Core.settings.forceSave();
 
         markResearch(content.name, spent, remaining(content), content.unlocked(),
-            SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked());
+            SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked(),
+            SectorPresets.crateredBattleground != null && SectorPresets.crateredBattleground.unlocked());
     }
 
     private static TechNode node(UnlockableContent content){
@@ -204,12 +283,16 @@ public final class BrowserCampaignResearch{
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-conveyor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-junction-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-router-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready','true');")
     private static native void markProgressSmoke();
 
-    @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady"},
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','crater-research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-drill-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-coal-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-combustion-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-power-node-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mender-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-ready','true');")
+    private static native void markCraterProgressSmoke();
+
+    @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
             "document.documentElement.setAttribute('data-mindustry-campaign-research-content',name);" +
             "document.documentElement.setAttribute('data-mindustry-campaign-research-spent',String(spent));" +
             "document.documentElement.setAttribute('data-mindustry-campaign-research-remaining',String(remaining));" +
             "document.documentElement.setAttribute('data-mindustry-campaign-research-unlocked',unlocked ? 'true' : 'false');" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready',frozenReady ? 'true' : 'false');")
-    private static native void markResearch(String name, int spent, int remaining, boolean unlocked, boolean frozenReady);
+            "document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready',frozenReady ? 'true' : 'false');" +
+            "document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-ready',craterReady ? 'true' : 'false');")
+    private static native void markResearch(String name, int spent, int remaining, boolean unlocked, boolean frozenReady, boolean craterReady);
 }
