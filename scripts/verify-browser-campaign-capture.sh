@@ -37,7 +37,7 @@ run_capture(){
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     "${device_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignCaptureSmoke=1" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignCaptureSmoke=1&mindustryCampaignProgressSmoke=1" \
     --profile "$profile" \
     --port "$cdp" \
     --timeout 90 \
@@ -52,16 +52,26 @@ run_capture(){
     --require 'data-mindustry-campaign-captured="true"' \
     --require 'data-mindustry-campaign-captured-sector-id="170"' \
     --require 'data-mindustry-campaign-captured-wave="10"' \
+    --require 'data-mindustry-campaign-progress-smoke="sector-started"' \
+    --require 'data-mindustry-campaign-progress-preset="frozenForest"' \
+    --require 'data-mindustry-campaign-frozen-forest-ready="true"' \
+    --require 'data-mindustry-campaign-junction-unlocked="true"' \
+    --require 'data-mindustry-campaign-router-unlocked="true"' \
+    --require 'data-mindustry-campaign-preset="frozenForest"' \
+    --require 'data-mindustry-campaign-state="playing"' \
+    --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
   grep -Eq 'data-mindustry-campaign-captured-bytes="[1-9][0-9]{2,}"' "$dom"
   grep -q 'data-mindustry-campaign-capture-win-wave="10"' "$dom"
-  echo "Stock campaign capture ($label): Ground Zero winWave -> Logic victory predicate -> SectorCaptureEvent -> persisted sector PASS"
+  grep -Eq 'data-mindustry-campaign-progress-sector-id="[0-9]+"' "$dom"
+  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/frozenForest.msav"' "$dom"
+  echo "Stock campaign progression ($label): Ground Zero capture -> Junction/Router research -> Frozen Forest unlock/start PASS"
 }
 
 run_capture desktop desktop 0 /tmp/mindustry-campaign-capture-desktop /tmp/mindustry-campaign-capture-desktop.html 9263
 run_capture mobile mobile 1 /tmp/mindustry-campaign-capture-mobile /tmp/mindustry-campaign-capture-mobile.html 9264
 
-echo 'Browser campaign capture matrix: desktop + auto-detected mobile PASS'
+echo 'Browser campaign progression matrix: desktop + auto-detected mobile Ground Zero -> Frozen Forest PASS'
