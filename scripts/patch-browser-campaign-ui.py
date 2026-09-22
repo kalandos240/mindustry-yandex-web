@@ -114,14 +114,32 @@ new_hud = '''        boolean[] campaignBackUiSmoke = {false};
                 BrowserLocalMapRuntime.returnToMenu();
             }
         }).size(mobile ? 148f : 116f, mobile ? 56f : 44f).pad(8f);
-        controls.button(Core.bundle.get("pause", "Pause"), BrowserLocalMapRuntime::pause)
-            .size(mobile ? 148f : 116f, mobile ? 56f : 44f)
-            .disabled(button -> BrowserCampaignRuntime.active())
-            .pad(8f);
+        controls.button(Core.bundle.get("pause", "Pause"), () -> {
+            if(BrowserCampaignRuntime.active()){
+                BrowserCampaignRuntime.pause();
+            }else{
+                BrowserLocalMapRuntime.pause();
+            }
+        }).size(mobile ? 148f : 116f, mobile ? 56f : 44f).pad(8f);
 '''
 if text.count(old_hud) != 1:
     raise SystemExit("Campaign UI HUD anchor no longer matches post-pause UI")
 text = text.replace(old_hud, new_hud, 1)
+
+old_pause_resume = '''        overlay.button(Core.bundle.get("resume", "Resume"), BrowserLocalMapRuntime::resume)
+            .size(mobile ? 180f : 156f, mobile ? 58f : 48f);
+'''
+new_pause_resume = '''        overlay.button(Core.bundle.get("resume", "Resume"), () -> {
+            if(BrowserCampaignRuntime.active()){
+                BrowserCampaignRuntime.resume();
+            }else{
+                BrowserLocalMapRuntime.resume();
+            }
+        }).size(mobile ? 196f : 156f, mobile ? 62f : 48f);
+'''
+if text.count(old_pause_resume) != 1:
+    raise SystemExit("Campaign UI pause-overlay Resume anchor no longer matches post-pause UI")
+text = text.replace(old_pause_resume, new_pause_resume, 1)
 
 old_pause_back = '''        overlay.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
             .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
@@ -168,4 +186,4 @@ if text.count(marker_anchor) != 1:
 text = text.replace(marker_anchor, marker_replacement, 1)
 
 UI.write_text(text, encoding="utf-8")
-print("Enabled lean Campaign/Continue menu and campaign-aware desktop/mobile Back controls")
+print("Enabled lean Campaign/Continue menu with campaign-aware desktop/mobile Back/Pause/Resume controls")
