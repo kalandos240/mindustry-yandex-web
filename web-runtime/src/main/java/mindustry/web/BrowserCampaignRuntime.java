@@ -24,6 +24,9 @@ public final class BrowserCampaignRuntime{
     private static boolean diagnostics;
     private static boolean coreReadyMarked;
     private static boolean saveSmokeArmed;
+    private static boolean pauseSmokeArmed;
+    private static long pauseUpdateId;
+    private static int pausedFrames;
     private static Sector current;
     private static int frames;
 
@@ -93,6 +96,9 @@ public final class BrowserCampaignRuntime{
         if(active) throw new IllegalStateException("A browser campaign sector is already active");
         saveSmokeArmed = false;
         coreReadyMarked = false;
+        pauseSmokeArmed = false;
+        pauseUpdateId = 0L;
+        pausedFrames = 0;
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("Browser campaign start requires a stable production menu runtime");
@@ -269,6 +275,9 @@ public final class BrowserCampaignRuntime{
         active = true;
         saveSmokeArmed = false;
         coreReadyMarked = false;
+        pauseSmokeArmed = false;
+        pauseUpdateId = 0L;
+        pausedFrames = 0;
         markResumed(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             expectedBytes, state.wave, loadedTickMillis);
     }
@@ -276,8 +285,8 @@ public final class BrowserCampaignRuntime{
     /** Normal user Back: checkpoint the live sector before returning to the lean menu. */
     public static void returnToMenu(){
         if(!active || current == null) return;
-        if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != current){
-            throw new IllegalStateException("Browser campaign Back requires an active playing campaign sector");
+        if((!state.isPlaying() && !state.isPaused()) || !state.isCampaign() || state.rules.sector != current){
+            throw new IllegalStateException("Browser campaign Back requires an active playing or paused campaign sector");
         }
 
         int savedWave = state.wave;
@@ -302,8 +311,75 @@ public final class BrowserCampaignRuntime{
         frames = 0;
         saveSmokeArmed = false;
         coreReadyMarked = false;
+        pauseSmokeArmed = false;
+        pauseUpdateId = 0L;
+        pausedFrames = 0;
         logic.reset();
         markReturnedToMenu();
+    }
+
+    /** Freeze the active campaign simulation while keeping renderer/UI responsive. */
+    public static void pause(){
+        if(!active || current == null || !state.isPlaying() || !state.isCampaign()
+        || state.rules.sector != current || state.rules.pauseDisabled) return;
+
+        pauseUpdateId = state.updateId;
+        pausedFrames = 0;
+        state.set(mindustry.core.GameState.State.paused);
+        markPaused(pauseUpdateId);
+    }
+
+    /** Resume the exact same campaign GameState without reloading the sector save. */
+    public static void resume(){
+        if(!active || current == null || !state.isPaused() || !state.isCampaign()
+        || state.rules.sector != current) return;
+
+        long frozenUpdateId = state.updateId;
+        if(pauseUpdateId != 0L && frozenUpdateId != pauseUpdateId){
+            throw new IllegalStateException("Browser campaign pause advanced the gameplay update clock");
+        }
+
+        state.set(mindustry.core.GameState.State.playing);
+        markPauseResumed(frozenUpdateId);
+    }
+
+    /** One paused campaign frame: draw + Scene only; Logic/Universe/pathfinding stay frozen. */
+    public static void updatePausedFrame(){
+        if(!active || current == null || !state.isPaused() || !state.isCampaign()
+        || state.rules.sector != current){
+            throw new IllegalStateException("Browser paused frame requires the active Ground Zero campaign sector");
+        }
+
+        long beforeUpdateId = state.updateId;
+
+        diagPhase("pause-renderer");
+        renderer.update();
+        diagPhase("pause-ui");
+        ui.update();
+        diagPhase("pause-ui-ready");
+
+        // Pause overlay actions may resume or return to the menu during Scene.act().
+        if(!active || state.isMenu()) return;
+        if(state.isPlaying()){
+            if(state.updateId != beforeUpdateId){
+                throw new IllegalStateException("Browser campaign resume changed updateId inside the paused frame");
+            }
+            return;
+        }
+        if(!state.isPaused() || !state.isCampaign() || state.rules.sector != current){
+            throw new IllegalStateException("Browser paused campaign entered an unexpected state");
+        }
+        if(state.updateId != beforeUpdateId || state.updateId != pauseUpdateId){
+            throw new IllegalStateException("Browser paused campaign frame advanced the gameplay update clock");
+        }
+
+        pausedFrames++;
+        markPauseFrame(pausedFrames, state.updateId);
+
+        if(pauseSmokeArmed && campaignPauseSmokeRequested() && pausedFrames >= 2){
+            markPauseClockFrozen(state.updateId);
+            resume();
+        }
     }
 
     private static void saveCampaignCheckpoint(){
@@ -356,9 +432,17 @@ public final class BrowserCampaignRuntime{
         ui.update();
         diagPhase("ui-ready");
 
-        // A HUD action can checkpoint/reset the campaign during Scene.act(). Once Back
-        // has returned to the menu, do not validate the old playing-state update clock.
+        // A HUD action can checkpoint/reset/pause the campaign during Scene.act().
         if(!active || current == null || state.isMenu()) return;
+        if(state.isPaused()){
+            if(!state.isCampaign() || state.rules.sector != current){
+                throw new IllegalStateException("Browser campaign pause lost the active sector");
+            }
+            if(state.updateId != beforeUpdate + 1L){
+                throw new IllegalStateException("Browser campaign pause frame advanced incorrectly");
+            }
+            return;
+        }
         if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != current){
             throw new IllegalStateException("Browser campaign UI left the active sector in an unexpected state");
         }
@@ -368,6 +452,15 @@ public final class BrowserCampaignRuntime{
 
         frames++;
         if(diagnostics) markFrame(frames, state.updateId, state.wave);
+
+        // Deterministic desktop/mobile gate: pause after one real campaign tick, render
+        // two frozen frames, then resume this exact sector before persistence checks.
+        if(campaignPauseSmokeRequested() && !pauseSmokeArmed && frames == 1){
+            pauseSmokeArmed = true;
+            markPauseSmokeArmed();
+            pause();
+            return;
+        }
         if(frames >= 3 && !coreReadyMarked){
             if(saveSmokeRequested() && !saveSmokeArmed){
                 saveSmokeArmed = true;
@@ -415,11 +508,29 @@ public final class BrowserCampaignRuntime{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSaveSmoke') === '1';")
     private static native boolean saveSmokeRequested();
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignPauseSmoke') === '1';")
+    private static native boolean campaignPauseSmokeRequested();
+
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
     private static native void markRequested(String name);
 
     @JSBody(params = {"action"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-production-action', action);")
     private static native void markProductionAction(String action);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-pause-smoke','armed');")
+    private static native void markPauseSmokeArmed();
+
+    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-pause','ready'); document.documentElement.setAttribute('data-mindustry-campaign-pause-state','paused'); document.documentElement.setAttribute('data-mindustry-campaign-pause-update-id',String(updateId));")
+    private static native void markPaused(long updateId);
+
+    @JSBody(params = {"frames", "updateId"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-pause-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-campaign-pause-frame-update-id',String(updateId));")
+    private static native void markPauseFrame(int frames, long updateId);
+
+    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-pause-clock','frozen'); document.documentElement.setAttribute('data-mindustry-campaign-pause-frozen-update-id',String(updateId));")
+    private static native void markPauseClockFrozen(long updateId);
+
+    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-pause-resumed','yes'); document.documentElement.setAttribute('data-mindustry-campaign-pause-state','resumed'); document.documentElement.setAttribute('data-mindustry-campaign-resume-update-id',String(updateId));")
+    private static native void markPauseResumed(long updateId);
 
     @JSBody(params = {"wave", "tickMillis", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-back-autosave','ready'); document.documentElement.setAttribute('data-mindustry-campaign-back-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-back-tick-ms',String(tickMillis)); document.documentElement.setAttribute('data-mindustry-campaign-back-bytes',String(bytes));")
     private static native void markBackAutoSaved(int wave, long tickMillis, long bytes);
