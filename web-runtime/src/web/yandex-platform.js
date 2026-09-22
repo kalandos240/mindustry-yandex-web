@@ -59,6 +59,14 @@
     function onPlatformPause(){
         state.paused = true;
         mark('data-yandex-game-state', 'paused');
+
+        // Start the IndexedDB durability barrier before Arc freezes. This is critical
+        // on mobile where game_api_pause may be followed by tab/app suspension.
+        const storage = globalThis.__mindustryStorage;
+        if(storage && typeof storage.lifecycleFlush === 'function'){
+            storage.lifecycleFlush('yandex-pause');
+        }
+
         dispatch('mindustry:yandex-pause');
     }
 

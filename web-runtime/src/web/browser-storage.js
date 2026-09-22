@@ -145,6 +145,34 @@
         });
     }
 
-    const api = {init, get, put, remove, removeTree, exists, hasChildren, paths, byteLength, flush};
+    let lifecycleFlushCount = 0;
+    function lifecycleFlush(reason){
+        const label = String(reason || 'unknown');
+        const root = document.documentElement;
+        root.setAttribute('data-mindustry-storage-lifecycle-flush', label + '-pending');
+        return flush().then(() => {
+            lifecycleFlushCount++;
+            root.setAttribute('data-mindustry-storage-lifecycle-flush', label + '-ready');
+            root.setAttribute('data-mindustry-storage-lifecycle-flush-count', String(lifecycleFlushCount));
+            return true;
+        }).catch(error => {
+            root.setAttribute('data-mindustry-storage-lifecycle-flush', label + '-error');
+            root.setAttribute('data-mindustry-storage-lifecycle-flush-error',
+                String(error && error.name ? error.name : 'storage-flush-error'));
+            console.error('Mindustry lifecycle storage flush failed:', error);
+            return false;
+        });
+    }
+
+    const api = {init, get, put, remove, removeTree, exists, hasChildren, paths, byteLength, flush, lifecycleFlush};
     globalThis.__mindustryStorage = api;
+
+    // Browser/Yandex lifecycle boundaries can freeze or destroy a mobile page before
+    // a later application frame runs. Kick an IndexedDB barrier as soon as the page
+    // becomes hidden or is being discarded. Yandex game_api_pause calls the same API
+    // explicitly from yandex-platform.js.
+    document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState === 'hidden') lifecycleFlush('visibility-hidden');
+    }, {passive: true});
+    window.addEventListener('pagehide', () => lifecycleFlush('pagehide'), {passive: true});
 })();
