@@ -8,14 +8,15 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Production Ground Zero campaign UI measurement after desktop/mobile Play/Continue,
-# touch-sized controls and campaign Back/save paths became reachable. Relative to the
-# persistence baseline this milestone adds 21,745 raw / 871 gzip bytes; forbidden
-# desktop/network markers remain absent and the Yandex package stays far below 100 MiB.
-JS_BASELINE = 23_024_349
-JS_LIMIT = 23_044_000
-JS_GZIP_BASELINE = 2_636_946
-JS_GZIP_LIMIT = 2_649_000
+# Ground Zero -> Frozen Forest progression measurement after stock sector capture,
+# Conveyor/Junction/Router TechNode research and the second real campaign preset became
+# reachable on desktop/mobile. Relative to the previous Ground Zero UI milestone this
+# adds 100,140 raw / 10,536 gzip bytes. The compiled graph still contains no forbidden
+# desktop/network markers, and the staged Yandex package remains below 100 MiB.
+JS_BASELINE = 23_124_489
+JS_LIMIT = 23_146_000
+JS_GZIP_BASELINE = 2_647_482
+JS_GZIP_LIMIT = 2_661_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
