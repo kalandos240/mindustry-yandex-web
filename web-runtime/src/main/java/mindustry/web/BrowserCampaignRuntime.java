@@ -24,8 +24,6 @@ public final class BrowserCampaignRuntime{
     private static boolean diagnostics;
     private static boolean coreReadyMarked;
     private static boolean saveSmokeArmed;
-    private static long pauseUpdateId;
-    private static int pausedFrames;
     private static Sector current;
     private static int frames;
 
@@ -95,8 +93,6 @@ public final class BrowserCampaignRuntime{
         if(active) throw new IllegalStateException("A browser campaign sector is already active");
         saveSmokeArmed = false;
         coreReadyMarked = false;
-        pauseUpdateId = 0L;
-        pausedFrames = 0;
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("Browser campaign start requires a stable production menu runtime");
@@ -273,8 +269,6 @@ public final class BrowserCampaignRuntime{
         active = true;
         saveSmokeArmed = false;
         coreReadyMarked = false;
-        pauseUpdateId = 0L;
-        pausedFrames = 0;
         markResumed(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             expectedBytes, state.wave, loadedTickMillis);
     }
@@ -308,48 +302,8 @@ public final class BrowserCampaignRuntime{
         frames = 0;
         saveSmokeArmed = false;
         coreReadyMarked = false;
-        pauseUpdateId = 0L;
-        pausedFrames = 0;
         logic.reset();
         markReturnedToMenu();
-    }
-
-    /** Freeze campaign simulation while keeping renderer/UI responsive. */
-    public static void pause(){
-        if(!active || !state.isPlaying() || state.rules.pauseDisabled) return;
-        pauseUpdateId = state.updateId;
-        pausedFrames = 0;
-        state.set(mindustry.core.GameState.State.paused);
-        markPaused(pauseUpdateId);
-    }
-
-    public static void resume(){
-        if(!active || !state.isPaused()) return;
-        if(state.updateId != pauseUpdateId){
-            throw new IllegalStateException("Campaign pause clock advanced");
-        }
-        state.set(mindustry.core.GameState.State.playing);
-        markPauseResumed(state.updateId);
-    }
-
-    public static void updatePausedFrame(){
-        if(!active || !state.isPaused()){
-            throw new IllegalStateException("Invalid paused campaign frame");
-        }
-
-        long frozen = state.updateId;
-        renderer.update();
-        ui.update();
-
-        if(!active || state.isMenu() || state.isPlaying()) return;
-        if(state.updateId != frozen || frozen != pauseUpdateId){
-            throw new IllegalStateException("Campaign pause clock advanced");
-        }
-
-        pausedFrames++;
-        boolean autoResume = campaignPauseSmokeRequested() && pausedFrames >= 2;
-        markPauseFrame(pausedFrames, frozen, autoResume);
-        if(autoResume) resume();
     }
 
     private static void saveCampaignCheckpoint(){
@@ -415,7 +369,7 @@ public final class BrowserCampaignRuntime{
         frames++;
         if(diagnostics) markFrame(frames, state.updateId, state.wave);
         if(campaignPauseSmokeRequested() && frames == 1){
-            pause();
+            BrowserLocalMapRuntime.pause();
             return;
         }
         if(frames >= 3 && !coreReadyMarked){
@@ -473,15 +427,6 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(params = {"action"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-production-action', action);")
     private static native void markProductionAction(String action);
-
-    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-pause-smoke','armed'); document.documentElement.setAttribute('data-mindustry-campaign-pause','ready'); document.documentElement.setAttribute('data-mindustry-campaign-pause-state','paused'); document.documentElement.setAttribute('data-mindustry-campaign-pause-update-id',String(updateId));")
-    private static native void markPaused(long updateId);
-
-    @JSBody(params = {"frames", "updateId", "frozen"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-pause-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-campaign-pause-frame-update-id',String(updateId)); if(frozen){document.documentElement.setAttribute('data-mindustry-campaign-pause-clock','frozen'); document.documentElement.setAttribute('data-mindustry-campaign-pause-frozen-update-id',String(updateId));}")
-    private static native void markPauseFrame(int frames, long updateId, boolean frozen);
-
-    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-pause-resumed','yes'); document.documentElement.setAttribute('data-mindustry-campaign-pause-state','resumed'); document.documentElement.setAttribute('data-mindustry-campaign-resume-update-id',String(updateId));")
-    private static native void markPauseResumed(long updateId);
 
     @JSBody(params = {"wave", "tickMillis", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-back-autosave','ready'); document.documentElement.setAttribute('data-mindustry-campaign-back-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-back-tick-ms',String(tickMillis)); document.documentElement.setAttribute('data-mindustry-campaign-back-bytes',String(bytes));")
     private static native void markBackAutoSaved(int wave, long tickMillis, long bytes);
