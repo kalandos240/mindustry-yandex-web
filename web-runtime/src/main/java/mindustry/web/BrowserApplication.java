@@ -28,6 +28,7 @@ public final class BrowserApplication extends WebApplicationBase{
     private boolean platformPaused;
     private boolean lastPlatformPaused;
     private boolean lastGameplayActive;
+    private boolean awaitingPlatformResumeFrame;
     private int browserFrameCallbacks;
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
@@ -94,6 +95,13 @@ public final class BrowserApplication extends WebApplicationBase{
             if(!platformPaused){
                 frame();
                 syncGameplayMarker();
+                if(awaitingPlatformResumeFrame){
+                    awaitingPlatformResumeFrame = false;
+                    int resumedSector = Vars.state != null && Vars.state.rules != null && Vars.state.rules.sector != null
+                        ? Vars.state.rules.sector.id : -1;
+                    BrowserYandex.markResumeFrame(browserFrameCallbacks,
+                        Vars.state != null && Vars.state.isPlaying(), resumedSector);
+                }
             }
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
@@ -141,9 +149,13 @@ public final class BrowserApplication extends WebApplicationBase{
         // scheduler gate. Propagate it through Arc so BrowserAudio and every other
         // ApplicationListener can suspend/resume their platform resources correctly.
         if(paused){
+            // Ads/tab switches can take focus without matching DOM keyup/pointerup
+            // events. Clear browser-held controls before freezing Arc's frame loop.
+            BrowserInputBridge.releaseAll(config.canvasId, "platform-pause");
             pause();
         }else{
             resume();
+            awaitingPlatformResumeFrame = true;
         }
     }
 

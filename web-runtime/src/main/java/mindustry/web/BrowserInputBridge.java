@@ -54,6 +54,11 @@ public final class BrowserInputBridge{
         );
     }
 
+    /** Release every browser-held key/pointer at a platform lifecycle boundary. */
+    public static void releaseAll(String canvasId, String reason){
+        releaseAllNative(canvasId, reason);
+    }
+
     private static void typeKey(WebInput input, String key){
         if(key == null || key.isEmpty()) return;
         if(key.length() == 1){
@@ -117,15 +122,25 @@ public final class BrowserInputBridge{
             if (shouldPreventKey(event)) event.preventDefault();
         }, {passive: false});
 
-        window.addEventListener('blur', () => {
+        const releaseAllInput = reason => {
             downCodes.forEach(function(code){ keyUp(code); });
             downCodes.clear();
-            if(pointerSlots.size > 0){
-                releasePointers();
-                pointerSlots.clear();
-                document.documentElement.setAttribute('data-mindustry-pointer-reset', 'blur');
-            }
-        });
+
+            // Always clear Arc pointer state. Mouse pointer 0 is not stored in
+            // pointerSlots, so a map-size guard would leave mouse/touch state stuck
+            // after an ad, tab switch or focus loss.
+            releasePointers();
+            pointerSlots.clear();
+
+            const root = document.documentElement;
+            const count = Number(root.getAttribute('data-mindustry-input-reset-count') || '0') + 1;
+            root.setAttribute('data-mindustry-input-reset-count', String(count));
+            root.setAttribute('data-mindustry-input-reset', String(reason || 'unknown'));
+            root.setAttribute('data-mindustry-pointer-reset', String(reason || 'unknown'));
+        };
+
+        canvas.__mindustryReleaseInput = releaseAllInput;
+        window.addEventListener('blur', () => releaseAllInput('blur'));
 
         canvas.addEventListener('pointerdown', event => {
             const slot = findSlot(event, true);
@@ -169,4 +184,12 @@ public final class BrowserInputBridge{
                                               PointerCallback pointerDown, PointerCallback pointerUp,
                                               PointerMoveCallback pointerMove, ScrollCallback scroll,
                                               VoidCallback releasePointers);
+
+    @JSBody(params = {"canvasId", "reason"}, script = """
+        const canvas = document.getElementById(canvasId);
+        if(canvas && typeof canvas.__mindustryReleaseInput === 'function'){
+            canvas.__mindustryReleaseInput(reason);
+        }
+        """)
+    private static native void releaseAllNative(String canvasId, String reason);
 }

@@ -12,6 +12,8 @@
         paused: false,
         loadingReadySent: false,
         gameplayActive: false,
+        adResumeGameplay: false,
+        adWaitingForResume: false,
         initPromise: null,
         playerPromise: null
     };
@@ -62,6 +64,17 @@
 
     function onPlatformResume(){
         state.paused = false;
+
+        // showFullscreenAdv() may close while game_api_pause is still active. Because
+        // this wrapper explicitly stopped GameplayAPI before opening the ad, Yandex
+        // will not implicitly restart that manually-stopped gameplay on resume.
+        if(state.adResumeGameplay && state.adWaitingForResume){
+            state.adResumeGameplay = false;
+            state.adWaitingForResume = false;
+            gameplayStart();
+            mark('data-yandex-ad-resume', 'restarted-after-platform-resume');
+        }
+
         mark('data-yandex-game-state', state.gameplayActive ? 'playing' : 'ready');
         dispatch('mindustry:yandex-resume');
     }
@@ -154,25 +167,48 @@
         return true;
     }
 
+    function finishFullscreenAdv(){
+        if(!state.adResumeGameplay) return;
+
+        if(state.paused){
+            state.adWaitingForResume = true;
+            mark('data-yandex-ad-resume', 'waiting-platform-resume');
+            return;
+        }
+
+        state.adResumeGameplay = false;
+        state.adWaitingForResume = false;
+        gameplayStart();
+        mark('data-yandex-ad-resume', 'restarted-after-callback');
+    }
+
     function showFullscreenAdv(callbacks = {}){
         if(!state.ysdk || !state.ysdk.adv || typeof state.ysdk.adv.showFullscreenAdv !== 'function'){
             if(typeof callbacks.onError === 'function') callbacks.onError(new Error('Yandex fullscreen ads unavailable'));
             return false;
         }
 
-        gameplayStop();
+        // Only restore gameplay if it was actually active before the ad. Opening an
+        // ad from a menu must not fabricate a playing GameplayAPI state afterwards.
+        state.adResumeGameplay = state.gameplayActive;
+        state.adWaitingForResume = false;
+        if(state.adResumeGameplay) gameplayStop();
+
         state.ysdk.adv.showFullscreenAdv({
             callbacks: {
                 onOpen: () => {
+                    mark('data-yandex-ad-state', 'open');
                     if(typeof callbacks.onOpen === 'function') callbacks.onOpen();
                 },
                 onClose: (wasShown) => {
+                    mark('data-yandex-ad-state', 'closed');
                     if(typeof callbacks.onClose === 'function') callbacks.onClose(Boolean(wasShown));
-                    if(!state.paused) gameplayStart();
+                    finishFullscreenAdv();
                 },
                 onError: (error) => {
+                    mark('data-yandex-ad-state', 'error');
                     if(typeof callbacks.onError === 'function') callbacks.onError(error);
-                    if(!state.paused) gameplayStart();
+                    finishFullscreenAdv();
                 }
             }
         });

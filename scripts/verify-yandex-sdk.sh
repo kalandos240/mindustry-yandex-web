@@ -27,6 +27,12 @@ cat > "$SDK_STUB" <<'JS'
     const root = document.documentElement;
     const listeners = Object.create(null);
     let pauseScheduled = false;
+    let adScheduled = false;
+    let adTriggered = false;
+
+    const params = new URLSearchParams(location.search);
+    const adSmoke = params.get('mindustryYandexAdSmoke') === '1';
+    const testDevice = params.get('mindustryYandexTestDevice') === 'mobile' ? 'mobile' : 'desktop';
 
     function count(name){
         const value = Number(root.getAttribute(name) || '0') + 1;
@@ -39,7 +45,7 @@ cat > "$SDK_STUB" <<'JS'
     }
 
     function schedulePauseCycle(){
-        if(pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
+        if(adSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
@@ -51,6 +57,20 @@ cat > "$SDK_STUB" <<'JS'
         });
     }
 
+    function scheduleAdCycle(){
+        if(!adSmoke || adScheduled) return;
+        adScheduled = true;
+        afterFrames(2, () => {
+            const platform = globalThis.__mindustryYandex;
+            if(!platform || typeof platform.showFullscreenAdv !== 'function'){
+                root.setAttribute('data-yandex-test-ad-error', 'wrapper-missing');
+                return;
+            }
+            root.setAttribute('data-yandex-test-ad-requested', 'yes');
+            platform.showFullscreenAdv();
+        });
+    }
+
     globalThis.YaGames = {
         init: async () => {
             root.setAttribute('data-yandex-test-init', 'yes');
@@ -58,7 +78,7 @@ cat > "$SDK_STUB" <<'JS'
                 environment: {i18n: {lang: 'ru'}},
                 deviceInfo(){
                     root.setAttribute('data-yandex-test-device-info', 'yes');
-                    return {type: 'desktop'};
+                    return {type: testDevice};
                 },
                 on(name, callback){ listeners[name] = callback; },
                 off(name){ delete listeners[name]; },
@@ -73,14 +93,57 @@ cat > "$SDK_STUB" <<'JS'
                         }
                     },
                     GameplayAPI: {
-                        start(){ count('data-yandex-test-gameplay-start-count'); },
+                        start(){
+                            count('data-yandex-test-gameplay-start-count');
+                            if(adTriggered && root.getAttribute('data-yandex-test-ad-resume-sent') === 'yes'){
+                                root.setAttribute('data-yandex-test-ad-gameplay-restarted', 'yes');
+                            }
+                            scheduleAdCycle();
+                        },
                         stop(){ count('data-yandex-test-gameplay-stop-count'); }
                     }
                 },
                 adv: {
                     showFullscreenAdv({callbacks} = {}){
+                        adTriggered = true;
+                        root.setAttribute('data-yandex-test-ad-open', 'yes');
                         if(callbacks.onOpen) callbacks.onOpen();
-                        if(callbacks.onClose) callbacks.onClose(true);
+
+                        // Hold real DOM controls immediately before platform pause.
+                        // BrowserApplication must release them at the lifecycle boundary.
+                        const canvas = document.getElementById('mindustry-canvas');
+                        if(canvas){
+                            window.dispatchEvent(new KeyboardEvent('keydown', {
+                                code: 'KeyD', key: 'd', bubbles: true, cancelable: true
+                            }));
+                            const rect = canvas.getBoundingClientRect();
+                            canvas.dispatchEvent(new PointerEvent('pointerdown', {
+                                pointerId: testDevice === 'mobile' ? 7 : 1,
+                                pointerType: testDevice === 'mobile' ? 'touch' : 'mouse',
+                                isPrimary: true,
+                                clientX: rect.left + rect.width * 0.5,
+                                clientY: rect.top + rect.height * 0.5,
+                                button: 0,
+                                buttons: 1,
+                                bubbles: true,
+                                cancelable: true
+                            }));
+                            root.setAttribute('data-yandex-test-held-input', 'yes');
+                        }
+
+                        root.setAttribute('data-yandex-test-ad-pause-sent', 'yes');
+                        if(listeners.game_api_pause) listeners.game_api_pause();
+
+                        // Close before game_api_resume to exercise the documented race:
+                        // manually-stopped GameplayAPI must be restarted by our wrapper.
+                        setTimeout(() => {
+                            root.setAttribute('data-yandex-test-ad-close', 'yes');
+                            if(callbacks.onClose) callbacks.onClose(true);
+                            setTimeout(() => {
+                                root.setAttribute('data-yandex-test-ad-resume-sent', 'yes');
+                                if(listeners.game_api_resume) listeners.game_api_resume();
+                            }, 100);
+                        }, 50);
                     }
                 },
                 async getPlayer(){
@@ -128,6 +191,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-platform-pause-observed="yes"' \
   --require 'data-mindustry-platform-resume-observed="yes"' \
   --require 'data-mindustry-platform-pause="running"' \
+  --require 'data-mindustry-input-reset="platform-pause"' \
   --require 'data-mindustry-audio="ready"' \
   --require 'data-mindustry-audio-pause-observed="yes"' \
   --require 'data-mindustry-audio-resume-observed="yes"' \
@@ -157,4 +221,60 @@ fi
 grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$DOM"
-echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + BrowserAudio + gameplay transport PASS'
+echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + input reset + BrowserAudio + gameplay transport PASS'
+
+run_ad_lifecycle(){
+  local device="$1"
+  local cdp="$2"
+  local profile="/tmp/mindustry-yandex-ad-${device}-profile"
+  local dom="/tmp/mindustry-yandex-ad-${device}.html"
+  local mobile_args=()
+  if [ "$device" = "mobile" ]; then mobile_args+=(--emulate-mobile); fi
+  rm -rf "$profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    "${mobile_args[@]}" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryYandexAdSmoke=1&mindustryYandexTestDevice=$device" \
+    --profile "$profile" \
+    --port "$cdp" \
+    --timeout 90 \
+    --require 'data-yandex-sdk="ready"' \
+    --require "data-yandex-device-type=\"$device\"" \
+    --require 'data-yandex-device-source="yandex-sdk"' \
+    --require "data-mindustry-input-mode=\"$device\"" \
+    --require "data-mindustry-stock-input=\"$device\"" \
+    --require 'data-mindustry-campaign-core="ready"' \
+    --require 'data-mindustry-campaign-state="playing"' \
+    --require 'data-mindustry-campaign-sector-id="170"' \
+    --require 'data-yandex-test-ad-requested="yes"' \
+    --require 'data-yandex-test-ad-open="yes"' \
+    --require 'data-yandex-test-held-input="yes"' \
+    --require 'data-yandex-test-ad-pause-sent="yes"' \
+    --require 'data-yandex-test-ad-close="yes"' \
+    --require 'data-yandex-test-ad-resume-sent="yes"' \
+    --require 'data-yandex-test-ad-gameplay-restarted="yes"' \
+    --require 'data-yandex-ad-resume="restarted-after-platform-resume"' \
+    --require 'data-mindustry-platform-pause-observed="yes"' \
+    --require 'data-mindustry-platform-resume-observed="yes"' \
+    --require 'data-mindustry-platform-pause="running"' \
+    --require 'data-mindustry-platform-resume-frame="ready"' \
+    --require 'data-mindustry-platform-resume-frame-state="playing"' \
+    --require 'data-mindustry-platform-resume-frame-sector="170"' \
+    --require 'data-mindustry-input-reset="platform-pause"' \
+    --require 'data-mindustry-audio-pause-observed="yes"' \
+    --require 'data-mindustry-audio-resume-observed="yes"' \
+    --require 'data-mindustry-audio-platform="running"' \
+    --require 'data-yandex-game-state="playing"' \
+    --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
+
+  grep -Eq 'data-mindustry-input-reset-count="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-yandex-test-gameplay-start-count="([2-9]|[1-9][0-9]+)"' "$dom"
+  grep -Eq 'data-yandex-test-gameplay-stop-count="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-platform-resume-frame-index="[1-9][0-9]*"' "$dom"
+  echo "Yandex fullscreen ad lifecycle ($device): held input -> pause/audio stop -> close-before-resume race -> input reset -> real Ground Zero frame after gameplay/audio resume PASS"
+}
+
+run_ad_lifecycle desktop 9266
+run_ad_lifecycle mobile 9267
+
+echo 'Yandex lifecycle matrix: desktop + mobile fullscreen-ad pause/resume race PASS'

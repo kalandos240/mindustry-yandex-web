@@ -13,11 +13,25 @@ application = APPLICATION.read_text(encoding="utf-8")
 old_frame = '''            if(!platformPaused){
                 frame();
                 syncGameplayMarker();
+                if(awaitingPlatformResumeFrame){
+                    awaitingPlatformResumeFrame = false;
+                    int resumedSector = Vars.state != null && Vars.state.rules != null && Vars.state.rules.sector != null
+                        ? Vars.state.rules.sector.id : -1;
+                    BrowserYandex.markResumeFrame(browserFrameCallbacks,
+                        Vars.state != null && Vars.state.isPlaying(), resumedSector);
+                }
             }
 '''
 new_frame = '''            if(!platformPaused){
                 frame();
                 syncGameplayMarker();
+                if(awaitingPlatformResumeFrame){
+                    awaitingPlatformResumeFrame = false;
+                    int resumedSector = Vars.state != null && Vars.state.rules != null && Vars.state.rules.sector != null
+                        ? Vars.state.rules.sector.id : -1;
+                    BrowserYandex.markResumeFrame(browserFrameCallbacks,
+                        Vars.state != null && Vars.state.isPlaying(), resumedSector);
+                }
                 // CI-only observer; inert unless a player-input/possession smoke is requested.
                 BrowserPlayerInputSmoke.update();
             }
