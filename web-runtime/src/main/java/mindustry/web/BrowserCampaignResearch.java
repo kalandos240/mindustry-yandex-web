@@ -58,6 +58,43 @@ public final class BrowserCampaignResearch{
      * Equivalent to one ResearchDialog spend action: consume every currently available
      * requirement up to the node target, persist partial progress, then unlock when complete.
      */
+    /** CI-only helper: supply exactly the missing early research resources, then use the production spend path. */
+    public static void runEarlyProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.groundZero.sector || !groundZeroCaptured()){
+            throw new IllegalStateException("Early campaign progress smoke requires captured Ground Zero");
+        }
+
+        stageMissing(source, Blocks.junction);
+        spend(Blocks.junction);
+        if(!Blocks.junction.unlocked()){
+            throw new IllegalStateException("Junction did not unlock through stock TechNode research");
+        }
+
+        stageMissing(source, Blocks.router);
+        spend(Blocks.router);
+        if(!Blocks.router.unlocked()){
+            throw new IllegalStateException("Router did not unlock through stock TechNode research");
+        }
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!frozenForestReady()){
+            throw new IllegalStateException("Frozen Forest did not auto-unlock after stock prerequisites completed");
+        }
+
+        Core.settings.forceSave();
+        markProgressSmoke();
+    }
+
+    private static void stageMissing(Sector source, UnlockableContent content){
+        TechNode node = node(content);
+        ItemSeq staged = new ItemSeq();
+        for(int i = 0; i < node.requirements.length; i++){
+            int missing = Math.max(0, node.requirements[i].amount - node.finishedRequirements[i].amount);
+            if(missing > 0) staged.add(node.requirements[i].item, missing);
+        }
+        source.addItems(staged);
+    }
+
     public static void spend(UnlockableContent content){
         TechNode node = node(content);
         if(content.unlocked()) return;
@@ -157,6 +194,9 @@ public final class BrowserCampaignResearch{
 
         Events.fire(new ResearchEvent(node.content));
     }
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','research-ready');")
+    private static native void markProgressSmoke();
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
