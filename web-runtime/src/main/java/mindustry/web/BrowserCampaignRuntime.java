@@ -405,6 +405,10 @@ public final class BrowserCampaignRuntime{
 
         frames++;
 
+        if(progressSmokeRequested() && current.preset == SectorPresets.frozenForest && frames >= 3){
+            markProgressStable(current.id, current.preset.name, frames, state.updateId, state.wave);
+        }
+
         if(captureSmokeStaged && !captureSmokeComplete){
             if(current.info.wasCaptured && !state.rules.waves && !state.rules.attackMode){
                 if(current.save == null || current.save.file == null || !current.save.file.exists()
@@ -488,6 +492,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(params = {"sectorId", "preset"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','sector-started'); document.documentElement.setAttribute('data-mindustry-campaign-progress-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-progress-preset',preset);")
     private static native void markProgressSectorStarted(int sectorId, String preset);
+
+    @JSBody(params = {"sectorId", "preset", "frames", "updateId", "wave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','stable'); document.documentElement.setAttribute('data-mindustry-campaign-progress-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-progress-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-progress-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-campaign-progress-update-id',String(updateId)); document.documentElement.setAttribute('data-mindustry-campaign-progress-wave',String(wave));")
+    private static native void markProgressStable(int sectorId, String preset, int frames, long updateId, int wave);
 
     @JSBody(params = {"wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
     private static native void markCaptureStaged(int wave, int winWave);
