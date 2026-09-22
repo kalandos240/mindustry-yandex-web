@@ -416,8 +416,7 @@ public final class BrowserCampaignRuntime{
                     throw new IllegalStateException("Stock Ground Zero capture did not persist a valid sector save");
                 }
                 SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
-                if(captured == null || captured.rules == null || captured.rules.sector == null
-                || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
+                if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
                     throw new IllegalStateException("Captured Ground Zero save metadata lost the active sector");
                 }
                 captureSmokeComplete = true;
