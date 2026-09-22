@@ -33,6 +33,13 @@ map_count="$(find "$WEB_DIR/assets/maps/default" -maxdepth 1 -type f -name '*.ms
 [ "$map_count" -gt 1 ] || fail "builtin local map set is unexpectedly incomplete"
 echo "Builtin local maps staged: $map_count"
 
+# Campaign milestone assets: only sectors whose real TechTree progression is currently
+# exposed by the lean browser campaign UI are allowed into the Yandex package.
+for preset in groundZero frozenForest crateredBattleground; do
+  [ -s "$WEB_DIR/assets/maps/serpulo/$preset.msav" ] || fail "campaign preset map missing: $preset.msav"
+  grep -Fq "maps/serpulo/$preset.msav" "$MANIFEST" || fail "campaign preset missing from asset manifest: $preset.msav"
+done
+
 # Stock Renderer must remain completely local. Shaders.init(), Content.load(),
 # Renderer.init(), PlanetRenderer/Bloom and EnvRenderers all execute in the browser
 # gameplay path and may queue textures before the second AssetManager drain.
