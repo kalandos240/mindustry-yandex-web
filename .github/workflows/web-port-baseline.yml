@@ -323,12 +323,8 @@ jobs:
       - name: Verify persistent browser files across a real browser restart
         run: bash scripts/verify-browser-persistence.sh
 
-      - name: Verify campaign cold save/resume on desktop and mobile
-        run: bash scripts/verify-browser-campaign-save-resume.sh
-
-      - name: Verify Yandex SDK lifecycle on desktop and mobile
-        run: bash scripts/verify-yandex-sdk.sh
-
+      # verify-browser-persistence already chains campaign cold save/resume, and
+      # verify-browser-locales already chains the Yandex SDK desktop/mobile lifecycle.
       - name: Verify Ground Zero to Frozen Forest progression on desktop and mobile
         run: bash scripts/verify-browser-campaign-capture.sh
 
