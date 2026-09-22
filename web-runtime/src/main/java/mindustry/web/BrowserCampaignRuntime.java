@@ -37,16 +37,20 @@ public final class BrowserCampaignRuntime{
 
     /** True when BrowserSaves has rebound a valid persisted Ground Zero sector slot. */
     public static boolean hasGroundZeroSave(){
-        SectorPreset preset = SectorPresets.groundZero;
+        return hasSectorSave(SectorPresets.groundZero);
+    }
+
+    public static boolean hasFrozenForestSave(){
+        return hasSectorSave(SectorPresets.frozenForest);
+    }
+
+    private static boolean hasSectorSave(SectorPreset preset){
         Sector sector = preset == null ? null : preset.sector;
         if(sector == null || sector.save == null || sector.save.file == null
         || !sector.save.file.exists() || sector.save.file.length() < 128){
             return false;
         }
 
-        // BrowserSaves validates every indexed slot before binding it to a Sector, and
-        // SaveSlot.save() refreshes meta after writes. The menu calls this every frame,
-        // so never inflate/re-read the full MSAV here; use the already validated metadata.
         SaveMeta meta = sector.save.meta;
         return meta != null && meta.version == 13 && meta.rules != null && meta.rules.sector != null
             && meta.rules.sector.id == sector.id && meta.rules.sector.planet == sector.planet;
@@ -61,6 +65,27 @@ public final class BrowserCampaignRuntime{
             continueGroundZero();
         }else{
             startGroundZero();
+        }
+    }
+
+    /** Production progression action unlocked by the stock Serpulo tech tree. */
+    public static void playFrozenForest(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.frozenForest;
+        if(preset == null || !preset.unlocked()){
+            throw new IllegalStateException("Frozen Forest is still locked by stock campaign prerequisites");
+        }
+
+        boolean resume = hasFrozenForestSave();
+        markProductionAction(resume ? "continue-frozenForest" : "play-frozenForest");
+        if(resume){
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.groundZero == null ? null : SectorPresets.groundZero.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()){
+                throw new IllegalStateException("Frozen Forest launch requires a captured Ground Zero base");
+            }
+            startPreset(preset, origin);
         }
     }
 
@@ -92,11 +117,16 @@ public final class BrowserCampaignRuntime{
     }
 
     public static void startGroundZero(){
+        startPreset(SectorPresets.groundZero, SectorPresets.groundZero == null ? null : SectorPresets.groundZero.sector);
+    }
+
+    private static void startPreset(SectorPreset preset, Sector origin){
         if(active) throw new IllegalStateException("A browser campaign sector is already active");
         saveSmokeArmed = false;
         captureSmokeStaged = false;
         captureSmokeComplete = false;
         coreReadyMarked = false;
+
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("Browser campaign start requires a stable production menu runtime");
@@ -105,47 +135,46 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Browser campaign start escaped permanent single-player mode");
         }
 
-        SectorPreset preset = SectorPresets.groundZero;
         Sector sector = preset == null ? null : preset.sector;
         if(preset == null || sector == null || sector.planet != Planets.serpulo){
-            throw new IllegalStateException("Ground Zero campaign metadata is incomplete");
+            throw new IllegalStateException("Campaign preset metadata is incomplete");
+        }
+        if(preset != SectorPresets.groundZero && !preset.unlocked()){
+            throw new IllegalStateException("Campaign preset is locked: " + preset.name);
         }
 
-        Fi presetFile = Core.files.internal("maps/serpulo/groundZero." + mapExtension);
+        Fi presetFile = Core.files.internal("maps/serpulo/" + preset.name + "." + mapExtension);
         if(!presetFile.exists() || presetFile.length() < 128){
-            throw new IllegalStateException("Packaged Ground Zero preset map is missing");
+            throw new IllegalStateException("Packaged campaign preset map is missing: " + preset.name);
         }
         if(maps == null){
-            throw new IllegalStateException("Ground Zero campaign start requires initialized Maps");
+            throw new IllegalStateException("Campaign start requires initialized Maps");
         }
 
-        // SectorPreset content is constructed before BrowserLocalMapRuntime creates Vars.maps,
-        // so vanilla FileMapGenerator initially captures map=null in the lean Web startup.
-        // Rebind the exact preset generator now that Maps and the packaged sector asset exist;
-        // World.loadSector below remains the stock campaign world-loading path.
         if(preset.generator == null || preset.generator.map == null){
-            preset.generator = new FileMapGenerator("groundZero", preset);
+            preset.generator = new FileMapGenerator(preset.name, preset);
         }
         if(preset.generator.map == null || !preset.generator.map.file.exists()){
-            throw new IllegalStateException("Ground Zero FileMapGenerator failed late Web map binding");
+            throw new IllegalStateException("Campaign FileMapGenerator failed late Web map binding: " + preset.name);
         }
         markGeneratorReady(preset.generator.map.file.path());
 
         diagPhase("reset");
         logic.reset();
 
-        preset.quietUnlock();
+        if(preset == SectorPresets.groundZero) preset.quietUnlock();
         sector.planet.setLastSector(sector);
 
         diagPhase("world-load-sector");
         world.loadSector(sector);
         if(state.rules == null || state.rules.sector != sector || state.map == null
         || world.width() <= 0 || world.height() <= 0 || state.rules.defaultTeam.core() == null){
-            throw new IllegalStateException("World.loadSector did not create a valid Ground Zero campaign world");
+            throw new IllegalStateException("World.loadSector did not create a valid campaign world: " + preset.name);
         }
 
-        sector.info.origin = sector;
-        sector.info.destination = sector;
+        Sector effectiveOrigin = origin == null ? sector : origin;
+        sector.info.origin = effectiveOrigin;
+        sector.info.destination = effectiveOrigin;
         sector.info.attempts++;
 
         diagPhase("play");
@@ -156,16 +185,12 @@ public final class BrowserCampaignRuntime{
         player.set(state.rules.defaultTeam.core());
         Core.camera.position.set(state.rules.defaultTeam.core());
 
-        if(!state.isPlaying() || !state.isCampaign()){
-            throw new IllegalStateException("Ground Zero did not enter campaign playing state");
+        if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != sector){
+            throw new IllegalStateException("Campaign preset did not enter playing state: " + preset.name);
         }
 
         diagPhase("sector-save");
 
-        // SaveVersion.writeStringMap uses DataOutput.writeUTF for every metadata
-        // value. Diagnose the exact stock JSON field before SaveIO collapses an
-        // oversized value into a generic "UTF Error"; do not change the v13 wire
-        // format or truncate campaign state.
         String rulesJson = JsonIO.write(state.rules);
         String statsJson = JsonIO.write(state.stats);
         String localesJson = JsonIO.write(state.mapLocales);
@@ -182,15 +207,8 @@ public final class BrowserCampaignRuntime{
         }
 
         control.saves.saveSector(sector);
-        if(sector.save == null || sector.save.file == null || !sector.save.file.exists()
-        || sector.save.file.length() < 128 || !SaveIO.isSaveValid(sector.save.file)){
-            throw new IllegalStateException("Ground Zero did not create a valid stock sector save");
-        }
-
-        SaveMeta meta = sector.save.meta == null ? SaveIO.getMeta(sector.save.file) : sector.save.meta;
-        if(meta == null || meta.version != 13 || meta.rules == null || meta.rules.sector == null
-        || meta.rules.sector.id != sector.id || meta.rules.sector.planet != sector.planet){
-            throw new IllegalStateException("Ground Zero sector-save metadata failed validation");
+        if(!hasSectorSave(preset) || !SaveIO.isSaveValid(sector.save.file)){
+            throw new IllegalStateException("Campaign preset did not create a valid stock sector save: " + preset.name);
         }
 
         Events.fire(new EventType.SectorLaunchEvent(sector));
@@ -203,9 +221,12 @@ public final class BrowserCampaignRuntime{
             sector.save.file.length());
     }
 
-
     /** Restore the persisted stock Ground Zero sector save after browser/IndexedDB restart. */
     public static void continueGroundZero(){
+        continuePreset(SectorPresets.groundZero);
+    }
+
+    private static void continuePreset(SectorPreset preset){
         if(active) throw new IllegalStateException("A browser campaign sector is already active");
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
@@ -215,23 +236,18 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Browser campaign continue escaped permanent single-player mode");
         }
 
-        SectorPreset preset = SectorPresets.groundZero;
         Sector sector = preset == null ? null : preset.sector;
         if(preset == null || sector == null || sector.planet != Planets.serpulo){
-            throw new IllegalStateException("Ground Zero campaign metadata is incomplete on resume");
+            throw new IllegalStateException("Campaign preset metadata is incomplete on resume");
         }
-        if(sector.save == null || sector.save.file == null || !sector.save.file.exists()
-        || sector.save.file.length() < 128 || !SaveIO.isSaveValid(sector.save.file)){
-            throw new IllegalStateException("Ground Zero persisted sector save is missing or invalid");
-        }
-        if(control.saves.getLastSector() != sector.save){
-            throw new IllegalStateException("Ground Zero persisted save was not restored as the last campaign sector");
+        if(!hasSectorSave(preset) || !SaveIO.isSaveValid(sector.save.file)){
+            throw new IllegalStateException("Persisted campaign sector save is missing or invalid: " + preset.name);
         }
 
         SaveMeta indexed = sector.save.meta == null ? SaveIO.getMeta(sector.save.file) : sector.save.meta;
         if(indexed == null || indexed.version != 13 || indexed.rules == null || indexed.rules.sector == null
         || indexed.rules.sector.id != sector.id || indexed.rules.sector.planet != sector.planet){
-            throw new IllegalStateException("Ground Zero persisted sector metadata is invalid");
+            throw new IllegalStateException("Persisted campaign sector metadata is invalid: " + preset.name);
         }
 
         int expectedWave = indexed.wave;
@@ -246,7 +262,7 @@ public final class BrowserCampaignRuntime{
         state.rules.cloudColor = sector.planet.landCloudColor;
 
         if(state.rules.defaultTeam.core() == null || world.width() <= 0 || world.height() <= 0){
-            throw new IllegalStateException("Ground Zero persisted sector restored an invalid world/core");
+            throw new IllegalStateException("Persisted campaign sector restored an invalid world/core: " + preset.name);
         }
 
         player.team(state.rules.defaultTeam);
@@ -256,13 +272,13 @@ public final class BrowserCampaignRuntime{
 
         state.set(mindustry.core.GameState.State.playing);
         if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != sector){
-            throw new IllegalStateException("Ground Zero persisted sector did not resume campaign playing state");
+            throw new IllegalStateException("Persisted campaign sector did not resume playing state: " + preset.name);
         }
 
         long loadedTickMillis = Math.round(state.tick * 1000d);
         if(state.wave != expectedWave || loadedTickMillis != expectedTickMillis){
             throw new IllegalStateException(
-                "Ground Zero campaign resume changed saved wave/tick: expected wave=" + expectedWave +
+                "Campaign resume changed saved wave/tick: expected wave=" + expectedWave +
                 ", tickMillis=" + expectedTickMillis + ", actual wave=" + state.wave +
                 ", tickMillis=" + loadedTickMillis
             );
