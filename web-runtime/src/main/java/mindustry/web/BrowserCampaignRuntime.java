@@ -362,9 +362,9 @@ public final class BrowserCampaignRuntime{
         // CI can deterministically stage the exact stock Ground Zero victory predicate.
         // Do not call sectorCapture() directly: the following Logic update must take the
         // vanilla winWave/enemies/spawner branch and dispatch Call.sectorCapture().
-        if(captureSmokeRequested() && !captureSmokeStaged && frames >= 3){
-            if(current.preset != SectorPresets.groundZero || state.rules.winWave <= 0
-            || state.enemies != 0 || spawner == null || spawner.isSpawning()){
+        if(captureSmokeRequested() && current.preset == SectorPresets.groundZero
+        && !captureSmokeStaged && frames >= 3){
+            if(state.rules.winWave <= 0 || state.enemies != 0 || spawner == null || spawner.isSpawning()){
                 throw new IllegalStateException("Ground Zero capture smoke could not stage the stock victory predicate");
             }
             state.wave = state.rules.winWave;
@@ -419,6 +419,14 @@ public final class BrowserCampaignRuntime{
                 captureSmokeComplete = true;
                 flushCampaignStorage();
                 markCaptureComplete(current.id, state.wave, current.save.file.length());
+
+                if(progressSmokeRequested()){
+                    BrowserCampaignResearch.runEarlyProgressSmoke(current);
+                    returnToMenu();
+                    playFrozenForest();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
             }else if(frames > 8){
                 throw new IllegalStateException("Stock Ground Zero victory predicate did not dispatch sector capture");
             }
@@ -474,6 +482,12 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignCaptureSmoke') === '1';")
     private static native boolean captureSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignProgressSmoke') === '1';")
+    private static native boolean progressSmokeRequested();
+
+    @JSBody(params = {"sectorId", "preset"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','sector-started'); document.documentElement.setAttribute('data-mindustry-campaign-progress-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-progress-preset',preset);")
+    private static native void markProgressSectorStarted(int sectorId, String preset);
 
     @JSBody(params = {"wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
     private static native void markCaptureStaged(int wave, int winWave);
