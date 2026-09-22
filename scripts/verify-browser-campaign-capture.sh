@@ -50,15 +50,23 @@ run_capture(){
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-capture="ready"' \
     --require 'data-mindustry-campaign-captured="true"' \
-    --require 'data-mindustry-campaign-captured-sector-id="170"' \
-    --require 'data-mindustry-campaign-captured-wave="10"' \
+    --require 'data-mindustry-campaign-ground-zero-captured="true"' \
+    --require 'data-mindustry-campaign-ground-zero-capture-wave="10"' \
+    --require 'data-mindustry-campaign-frozen-forest-captured="true"' \
+    --require 'data-mindustry-campaign-frozen-forest-capture-wave="15"' \
     --require 'data-mindustry-campaign-progress-smoke="stable"' \
-    --require 'data-mindustry-campaign-progress-preset="frozenForest"' \
+    --require 'data-mindustry-campaign-progress-preset="crateredBattleground"' \
     --require 'data-mindustry-campaign-frozen-forest-ready="true"' \
     --require 'data-mindustry-campaign-conveyor-unlocked="true"' \
     --require 'data-mindustry-campaign-junction-unlocked="true"' \
     --require 'data-mindustry-campaign-router-unlocked="true"' \
-    --require 'data-mindustry-campaign-preset="frozenForest"' \
+    --require 'data-mindustry-campaign-mechanical-drill-unlocked="true"' \
+    --require 'data-mindustry-campaign-coal-unlocked="true"' \
+    --require 'data-mindustry-campaign-combustion-generator-unlocked="true"' \
+    --require 'data-mindustry-campaign-power-node-unlocked="true"' \
+    --require 'data-mindustry-campaign-mender-unlocked="true"' \
+    --require 'data-mindustry-campaign-cratered-battleground-ready="true"' \
+    --require 'data-mindustry-campaign-preset="crateredBattleground"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
@@ -66,15 +74,15 @@ run_capture(){
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
   grep -Eq 'data-mindustry-campaign-captured-bytes="[1-9][0-9]{2,}"' "$dom"
-  grep -q 'data-mindustry-campaign-capture-win-wave="10"' "$dom"
+  grep -q 'data-mindustry-campaign-capture-win-wave="15"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-sector-id="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-update-id="[1-9][0-9]*"' "$dom"
-  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/frozenForest.msav"' "$dom"
-  echo "Stock campaign progression ($label): Ground Zero capture -> Junction/Router research -> Frozen Forest unlock/start PASS"
+  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/crateredBattleground.msav"' "$dom"
+  echo "Stock campaign progression ($label): Ground Zero wave 10 -> Frozen Forest wave 15 -> Mechanical Drill/Coal/Combustion/Power Node/Mender -> Cratered Battleground stable play PASS"
 }
 
 run_capture desktop desktop 0 /tmp/mindustry-campaign-capture-desktop /tmp/mindustry-campaign-capture-desktop.html 9263
 run_capture mobile mobile 1 /tmp/mindustry-campaign-capture-mobile /tmp/mindustry-campaign-capture-mobile.html 9264
 
-echo 'Browser campaign progression matrix: desktop + auto-detected mobile Ground Zero -> Frozen Forest PASS'
+echo 'Browser campaign progression matrix: desktop + auto-detected mobile Ground Zero -> Frozen Forest -> Cratered Battleground PASS'
