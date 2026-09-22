@@ -44,7 +44,64 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 markCampaignUiAction(hasSave ? "continue" : "play");
             }
         });
-        root.add(campaignButton).width(campaignWidth).height(campaignHeight).padBottom(10f);
+        root.add(campaignButton).width(campaignWidth).height(campaignHeight).padBottom(8f);
+        root.row();
+
+        // Early Serpulo progression uses the exact stock TechNode requirements/objectives,
+        // but presents them in a compact Yandex-friendly surface instead of constructing
+        // the heavyweight desktop ResearchDialog tree.
+        Table campaignProgress = new Table();
+        campaignProgress.defaults().pad(2f);
+        campaignProgress.add(Core.bundle.get("research", "Research")).colspan(2).padBottom(2f);
+        campaignProgress.row();
+
+        TextButton junctionResearch = new TextButton("");
+        junctionResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.junction));
+        junctionResearch.disabled(button -> mindustry.content.Blocks.junction.unlocked()
+            || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.junction));
+        junctionResearch.update(() -> junctionResearch.setText(
+            mindustry.content.Blocks.junction.localizedName + " — " +
+            (mindustry.content.Blocks.junction.unlocked()
+                ? Core.bundle.get("unlocked", "Unlocked")
+                : Core.bundle.get("research", "Research") + " " +
+                    BrowserCampaignResearch.remaining(mindustry.content.Blocks.junction))
+        ));
+        campaignProgress.add(junctionResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f);
+
+        TextButton routerResearch = new TextButton("");
+        routerResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.router));
+        routerResearch.disabled(button -> mindustry.content.Blocks.router.unlocked()
+            || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.router));
+        routerResearch.update(() -> routerResearch.setText(
+            mindustry.content.Blocks.router.localizedName + " — " +
+            (mindustry.content.Blocks.router.unlocked()
+                ? Core.bundle.get("unlocked", "Unlocked")
+                : Core.bundle.get("research", "Research") + " " +
+                    BrowserCampaignResearch.remaining(mindustry.content.Blocks.router))
+        ));
+        campaignProgress.add(routerResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f);
+        campaignProgress.row();
+
+        TextButton frozenForestButton = new TextButton("");
+        frozenForestButton.clicked(BrowserCampaignRuntime::playFrozenForest);
+        frozenForestButton.disabled(button -> !BrowserCampaignResearch.frozenForestReady());
+        frozenForestButton.update(() -> {
+            boolean ready = BrowserCampaignResearch.frozenForestReady();
+            boolean saved = BrowserCampaignRuntime.hasFrozenForestSave();
+            frozenForestButton.setText(Core.bundle.get("sector.frozenForest.name", "Frozen Forest") + " — " +
+                (ready
+                    ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                    : Core.bundle.get("locked", "Locked")));
+            markCampaignProgressState(
+                mindustry.content.Blocks.junction.unlocked(),
+                mindustry.content.Blocks.router.unlocked(),
+                ready,
+                saved
+            );
+        });
+        campaignProgress.add(frozenForestButton).colspan(2).width(campaignWidth).height(mobile ? 54f : 44f).padTop(2f);
+
+        root.add(campaignProgress).width(campaignWidth).padBottom(8f);
         root.row();
 
         root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
@@ -68,13 +125,13 @@ old_pane = '''        root.add(pane).width(mobile ? 320f : 380f).height(mobile ?
 new_pane = '''        // Landscape phones can be only ~320-400 logical px tall. Keep the
         // campaign controls touch-sized, and let the map list yield vertical space.
         float mapPaneHeight = mobile
-            ? Math.max(120f, Math.min(220f, Core.graphics.getHeight() - 230f))
-            : 430f;
+            ? Math.max(96f, Math.min(170f, Core.graphics.getHeight() - 340f))
+            : 330f;
         Cell<ScrollPane> mapPaneCell = root.add(pane).width(mobile ? 320f : 380f).height(mapPaneHeight);
         final float[] lastMapPaneHeight = {mapPaneHeight};
         if(mobile){
             pane.update(() -> {
-                float nextHeight = Math.max(120f, Math.min(220f, Core.graphics.getHeight() - 230f));
+                float nextHeight = Math.max(96f, Math.min(170f, Core.graphics.getHeight() - 340f));
                 if(Math.abs(nextHeight - lastMapPaneHeight[0]) > 0.5f){
                     lastMapPaneHeight[0] = nextHeight;
                     mapPaneCell.height(nextHeight);
@@ -147,6 +204,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"action"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-action',action);")
     private static native void markCampaignUiAction(String action);
+
+    @JSBody(params = {"junction", "router", "frozenReady", "frozenSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-junction-unlocked',junction ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-router-unlocked',router ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready',frozenReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-save',frozenSaved ? 'true' : 'false');")
+    private static native void markCampaignProgressState(boolean junction, boolean router, boolean frozenReady, boolean frozenSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
