@@ -195,7 +195,7 @@ public final class BrowserCampaignResearch{
         Events.fire(new ResearchEvent(node.content));
     }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','research-ready');")
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-junction-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-router-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready','true');")
     private static native void markProgressSmoke();
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady"},
