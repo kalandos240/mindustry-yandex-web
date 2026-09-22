@@ -56,7 +56,7 @@ tasks.register("stageWeb", Copy) {
         // was separated from normal production startup.
         include "maps/default/**"
 
-        // Campaign progression milestone: package only the two proven Serpulo presets.
+        // Campaign progression milestone: package only the three proven Serpulo presets.
         // Later sectors remain excluded until their runtime/UI gates are added.
         include "maps/serpulo/groundZero.msav"
         include "maps/serpulo/frozenForest.msav"
