@@ -60,6 +60,7 @@ tasks.register("stageWeb", Copy) {
         // Later sectors remain excluded until their runtime/UI gates are added.
         include "maps/serpulo/groundZero.msav"
         include "maps/serpulo/frozenForest.msav"
+        include "maps/serpulo/crateredBattleground.msav"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
