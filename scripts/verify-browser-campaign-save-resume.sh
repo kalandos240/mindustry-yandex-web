@@ -28,26 +28,37 @@ attr(){
   grep -o "$name=\"[0-9]*\"" "$file" | head -1 | sed -E 's/.*="([0-9]+)"/\1/'
 }
 
-run_campaign_restart(){
+run_campaign_cold_restart(){
   local label="$1"
   local input_mode="$2"
-  local mobile_query="$3"
+  local emulate_mobile="$3"
   local profile="$4"
   local save_dom="$5"
-  local resume_dom="$6"
-  local save_cdp="$7"
-  local resume_cdp="$8"
+  local cold_dom="$6"
+  local resume_dom="$7"
+  local save_cdp="$8"
+  local cold_cdp="$9"
+  local resume_cdp="${10}"
+
+  local device_args=()
+  if [ "$emulate_mobile" = "1" ]; then
+    device_args+=(--emulate-mobile)
+  fi
 
   rm -rf "$profile"
 
+  # Process 1: production device detection + real Ground Zero sector checkpoint.
+  # No mindustryMobile override is used, even for the mobile path.
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en${mobile_query}&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1" \
+    "${device_args[@]}" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1" \
     --profile "$profile" \
     --port "$save_cdp" \
     --timeout 90 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-storage="ready"' \
     --require 'data-mindustry-smoke-mode="production"' \
+    --require 'data-mindustry-device-source="browser-fallback"' \
     --require "data-mindustry-input-mode=\"${input_mode}\"" \
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
     --require 'data-mindustry-campaign-test="groundZero"' \
@@ -70,14 +81,49 @@ run_campaign_restart(){
   saved_tick="$(attr "$save_dom" data-mindustry-campaign-checkpoint-tick-ms)"
   saved_bytes="$(attr "$save_dom" data-mindustry-campaign-checkpoint-bytes)"
 
+  # Process 2: true cold production boot. Do not auto-start or auto-resume campaign.
+  # BrowserSaves must hydrate/reindex before menu creation and the normal Campaign
+  # button must advertise Continue using the persisted Ground Zero sector.
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en${mobile_query}&mindustryCampaignContinueSmoke=groundZero" \
+    "${device_args[@]}" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en" \
+    --profile "$profile" \
+    --port "$cold_cdp" \
+    --timeout 90 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-storage="ready"' \
+    --require 'data-mindustry-smoke-mode="production"' \
+    --require 'data-mindustry-device-source="browser-fallback"' \
+    --require "data-mindustry-input-mode=\"${input_mode}\"" \
+    --require "data-mindustry-stock-input=\"${input_mode}\"" \
+    --require 'data-mindustry-campaign-ui="ready"' \
+    --require "data-mindustry-campaign-ui-layout=\"${input_mode}\"" \
+    --require 'data-mindustry-campaign-ui-action="continue"' \
+    --require 'data-mindustry-gameplay-loop="menu-stable"' \
+    --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-network-mode="singleplayer-only"' > "$cold_dom"
+
+  if grep -q 'data-mindustry-campaign-generator=' "$cold_dom"; then
+    echo "Cold boot ($label) unexpectedly regenerated a campaign world instead of staying in the production menu." >&2
+    exit 1
+  fi
+  if grep -q 'data-mindustry-campaign-state="playing"' "$cold_dom"; then
+    echo "Cold boot ($label) unexpectedly auto-entered campaign play." >&2
+    exit 1
+  fi
+
+  # Process 3: same profile/origin again. Exercise the stock sector load path and
+  # prove the exact persisted checkpoint survives a cold menu boot in between.
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    "${device_args[@]}" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignContinueSmoke=groundZero" \
     --profile "$profile" \
     --port "$resume_cdp" \
     --timeout 90 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-storage="ready"' \
     --require 'data-mindustry-smoke-mode="production"' \
+    --require 'data-mindustry-device-source="browser-fallback"' \
     --require "data-mindustry-input-mode=\"${input_mode}\"" \
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
     --require 'data-mindustry-campaign-test="groundZero"' \
@@ -113,21 +159,23 @@ run_campaign_restart(){
     exit 1
   fi
 
-  echo "Browser campaign Save/Resume ($label): Ground Zero -> checkpoint -> IndexedDB flush -> full Chrome restart -> identical wave/tick/bytes -> 3+ campaign frames PASS"
+  echo "Yandex campaign cold restart ($label): auto device detect -> checkpoint -> cold production menu Continue -> second restart -> identical sector wave/tick/bytes PASS"
 }
 
-run_campaign_restart \
-  desktop desktop "" \
+run_campaign_cold_restart \
+  desktop desktop 0 \
   /tmp/mindustry-campaign-save-profile \
   /tmp/mindustry-campaign-save-dom.html \
+  /tmp/mindustry-campaign-cold-menu-dom.html \
   /tmp/mindustry-campaign-resume-dom.html \
-  9257 9258
+  9257 9258 9259
 
-run_campaign_restart \
-  mobile mobile "&mindustryMobile=1" \
+run_campaign_cold_restart \
+  mobile mobile 1 \
   /tmp/mindustry-campaign-save-mobile-profile \
   /tmp/mindustry-campaign-save-mobile-dom.html \
+  /tmp/mindustry-campaign-cold-mobile-menu-dom.html \
   /tmp/mindustry-campaign-resume-mobile-dom.html \
-  9259 9260
+  9260 9261 9262
 
-echo 'Browser campaign persistence matrix: desktop + mobile Ground Zero save/restart/resume PASS'
+echo 'Yandex campaign cold-reload matrix: desktop + auto-detected mobile production menu/restart/resume PASS'
