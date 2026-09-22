@@ -15,7 +15,10 @@ old_frame = '''            if(!platformPaused){
                 syncGameplayMarker();
                 if(awaitingPlatformResumeFrame){
                     awaitingPlatformResumeFrame = false;
-                    BrowserYandex.markResumeFrame(browserFrameCallbacks);
+                    int resumedSector = Vars.state != null && Vars.state.rules != null && Vars.state.rules.sector != null
+                        ? Vars.state.rules.sector.id : -1;
+                    BrowserYandex.markResumeFrame(browserFrameCallbacks,
+                        Vars.state != null && Vars.state.isPlaying(), resumedSector);
                 }
             }
 '''
