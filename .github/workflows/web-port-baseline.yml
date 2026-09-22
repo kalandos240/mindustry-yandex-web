@@ -320,6 +320,9 @@ jobs:
       - name: Verify persistent browser files across a real browser restart
         run: bash scripts/verify-browser-persistence.sh
 
+      - name: Verify stock campaign sector capture on desktop and mobile
+        run: bash scripts/verify-browser-campaign-capture.sh
+
       - name: Upload localization report
         if: always()
         uses: actions/upload-artifact@v4
