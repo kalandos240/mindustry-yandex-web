@@ -8,15 +8,16 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Ground Zero -> Frozen Forest progression measurement after stock sector capture,
-# Conveyor/Junction/Router TechNode research and the second real campaign preset became
-# reachable on desktop/mobile. Relative to the previous Ground Zero UI milestone this
-# adds 100,140 raw / 10,536 gzip bytes. The compiled graph still contains no forbidden
-# desktop/network markers, and the staged Yandex package remains below 100 MiB.
-JS_BASELINE = 23_124_489
-JS_LIMIT = 23_146_000
-JS_GZIP_BASELINE = 2_647_482
-JS_GZIP_LIMIT = 2_661_000
+# Ground Zero -> Frozen Forest -> Cratered Battleground progression measurement
+# after the third real Serpulo preset and its stock Mechanical Drill -> Coal ->
+# Combustion Generator -> Power Node -> Mender prerequisite path became reachable.
+# Relative to the two-sector baseline this adds 30,865 raw / 2,195 gzip bytes.
+# Forbidden desktop/network markers remain absent and the staged Yandex package is
+# ~75 MB, still comfortably below the 100 MiB unpacked limit.
+JS_BASELINE = 23_155_354
+JS_LIMIT = 23_178_000
+JS_GZIP_BASELINE = 2_649_677
+JS_GZIP_LIMIT = 2_663_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
