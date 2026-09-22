@@ -51,7 +51,7 @@ mobile_function = '''run_campaign_mobile_ui(){
 
   grep -q 'data-mindustry-campaign-ui-button-width="320"' "$dom"
   grep -q 'data-mindustry-campaign-ui-button-height="58"' "$dom"
-  grep -Eq 'data-mindustry-campaign-ui-map-pane-height="(9[6-9]|1[0-6][0-9]|170)"' "$dom"
+  grep -Eq 'data-mindustry-campaign-ui-map-pane-height="(7[2-9]|[89][0-9]|1[01][0-9]|12[0-9]|130)"' "$dom"
   grep -Eq 'data-mindustry-campaign-back-wave="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-campaign-back-tick-ms="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-campaign-back-bytes="[1-9][0-9]{2,}"' "$dom"

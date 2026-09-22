@@ -55,6 +55,7 @@ run_capture(){
     --require 'data-mindustry-campaign-progress-smoke="stable"' \
     --require 'data-mindustry-campaign-progress-preset="frozenForest"' \
     --require 'data-mindustry-campaign-frozen-forest-ready="true"' \
+    --require 'data-mindustry-campaign-conveyor-unlocked="true"' \
     --require 'data-mindustry-campaign-junction-unlocked="true"' \
     --require 'data-mindustry-campaign-router-unlocked="true"' \
     --require 'data-mindustry-campaign-preset="frozenForest"' \
