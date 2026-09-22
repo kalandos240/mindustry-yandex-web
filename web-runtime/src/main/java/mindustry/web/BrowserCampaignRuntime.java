@@ -24,6 +24,8 @@ public final class BrowserCampaignRuntime{
     private static boolean diagnostics;
     private static boolean coreReadyMarked;
     private static boolean saveSmokeArmed;
+    private static boolean captureSmokeStaged;
+    private static boolean captureSmokeComplete;
     private static Sector current;
     private static int frames;
 
@@ -92,6 +94,8 @@ public final class BrowserCampaignRuntime{
     public static void startGroundZero(){
         if(active) throw new IllegalStateException("A browser campaign sector is already active");
         saveSmokeArmed = false;
+        captureSmokeStaged = false;
+        captureSmokeComplete = false;
         coreReadyMarked = false;
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
@@ -268,6 +272,8 @@ public final class BrowserCampaignRuntime{
         frames = 0;
         active = true;
         saveSmokeArmed = false;
+        captureSmokeStaged = false;
+        captureSmokeComplete = false;
         coreReadyMarked = false;
         markResumed(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             expectedBytes, state.wave, loadedTickMillis);
@@ -301,6 +307,8 @@ public final class BrowserCampaignRuntime{
         current = null;
         frames = 0;
         saveSmokeArmed = false;
+        captureSmokeStaged = false;
+        captureSmokeComplete = false;
         coreReadyMarked = false;
         logic.reset();
         markReturnedToMenu();
@@ -335,6 +343,19 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Browser campaign frame requires the active Ground Zero sector");
         }
 
+        // CI can deterministically stage the exact stock Ground Zero victory predicate.
+        // Do not call sectorCapture() directly: the following Logic update must take the
+        // vanilla winWave/enemies/spawner branch and dispatch Call.sectorCapture().
+        if(captureSmokeRequested() && !captureSmokeStaged && frames >= 3){
+            if(current.preset != SectorPresets.groundZero || state.rules.winWave <= 0
+            || state.enemies != 0 || spawner == null || spawner.isSpawning()){
+                throw new IllegalStateException("Ground Zero capture smoke could not stage the stock victory predicate");
+            }
+            state.wave = state.rules.winWave;
+            captureSmokeStaged = true;
+            markCaptureStaged(state.wave, state.rules.winWave);
+        }
+
         long beforeUpdate = state.updateId;
 
         diagPhase("logic");
@@ -367,6 +388,25 @@ public final class BrowserCampaignRuntime{
         }
 
         frames++;
+
+        if(captureSmokeStaged && !captureSmokeComplete){
+            if(current.info.wasCaptured && !state.rules.waves && !state.rules.attackMode){
+                if(current.save == null || current.save.file == null || !current.save.file.exists()
+                || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
+                    throw new IllegalStateException("Stock Ground Zero capture did not persist a valid sector save");
+                }
+                SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
+                if(captured == null || captured.rules == null || captured.rules.sector != current){
+                    throw new IllegalStateException("Captured Ground Zero save metadata lost the active sector");
+                }
+                captureSmokeComplete = true;
+                flushCampaignStorage();
+                markCaptureComplete(current.id, state.wave, current.save.file.length());
+            }else if(frames > 8){
+                throw new IllegalStateException("Stock Ground Zero victory predicate did not dispatch sector capture");
+            }
+        }
+
         if(diagnostics) markFrame(frames, state.updateId, state.wave);
         if(frames >= 3 && !coreReadyMarked){
             if(saveSmokeRequested() && !saveSmokeArmed){
@@ -414,6 +454,15 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSaveSmoke') === '1';")
     private static native boolean saveSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignCaptureSmoke') === '1';")
+    private static native boolean captureSmokeRequested();
+
+    @JSBody(params = {"wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
+    private static native void markCaptureStaged(int wave, int winWave);
+
+    @JSBody(params = {"sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes));")
+    private static native void markCaptureComplete(int sectorId, int wave, long bytes);
 
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
     private static native void markRequested(String name);
