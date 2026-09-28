@@ -38,6 +38,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --after-resize-width 1180 \
   --after-resize-height 640 \
   --after-resize-require 'data-mindustry-resize-last="1180x640"' \
+  --after-resize-require 'data-mindustry-canvas-viewport="1180x640"' \
+  --after-resize-require 'data-mindustry-canvas-viewport-match="true"' \
   --after-resize-require 'data-mindustry-resize-orientation="landscape"' \
   --after-resize-require 'data-mindustry-input-mode="desktop"' \
   --after-resize-require 'data-mindustry-campaign-state="playing"' \
@@ -48,6 +50,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --second-resize-height 900 \
   --second-resize-require 'data-mindustry-resize-last="1440x900"' \
   --second-resize-require 'data-mindustry-viewport-last="1440x900"' \
+  --second-resize-require 'data-mindustry-canvas-viewport="1440x900"' \
+  --second-resize-require 'data-mindustry-canvas-viewport-match="true"' \
   --second-resize-require 'data-mindustry-input-mode="desktop"' \
   --second-resize-require 'data-mindustry-campaign-state="playing"' \
   --second-resize-require 'data-mindustry-campaign-sector-id="170"' \
@@ -72,6 +76,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --after-resize-width 844 \
   --after-resize-height 390 \
   --after-resize-require 'data-mindustry-resize-last="844x390"' \
+  --after-resize-require 'data-mindustry-canvas-viewport="844x390"' \
+  --after-resize-require 'data-mindustry-canvas-viewport-match="true"' \
   --after-resize-require 'data-mindustry-resize-orientation="landscape"' \
   --after-resize-require 'data-mindustry-input-mode="mobile"' \
   --after-resize-require 'data-mindustry-stock-input="mobile"' \
@@ -83,6 +89,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --second-resize-height 844 \
   --second-resize-require 'data-mindustry-resize-last="390x844"' \
   --second-resize-require 'data-mindustry-viewport-last="390x844"' \
+  --second-resize-require 'data-mindustry-canvas-viewport="390x844"' \
+  --second-resize-require 'data-mindustry-canvas-viewport-match="true"' \
   --second-resize-require 'data-mindustry-resize-orientation="portrait"' \
   --second-resize-require 'data-mindustry-input-mode="mobile"' \
   --second-resize-require 'data-mindustry-campaign-ui-layout="mobile"' \
@@ -92,6 +100,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --third-resize-height 390 \
   --third-resize-require 'data-mindustry-resize-last="844x390"' \
   --third-resize-require 'data-mindustry-viewport-last="844x390"' \
+  --third-resize-require 'data-mindustry-canvas-viewport="844x390"' \
+  --third-resize-require 'data-mindustry-canvas-viewport-match="true"' \
   --third-resize-require 'data-mindustry-resize-orientation="landscape"' \
   --third-resize-require 'data-mindustry-input-mode="mobile"' \
   --third-resize-require 'data-mindustry-stock-input="mobile"' \
@@ -115,6 +125,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --after-resize-width 844 \
   --after-resize-height 390 \
   --after-resize-require 'data-mindustry-resize-last="844x390"' \
+  --after-resize-require 'data-mindustry-canvas-viewport="844x390"' \
+  --after-resize-require 'data-mindustry-canvas-viewport-match="true"' \
   --after-resize-require 'data-mindustry-resize-orientation="landscape"' \
   --after-resize-require 'data-mindustry-input-mode="mobile"' \
   --after-resize-require 'data-mindustry-stock-input="mobile"' \
@@ -126,6 +138,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --second-resize-height 844 \
   --second-resize-require 'data-mindustry-resize-last="390x844"' \
   --second-resize-require 'data-mindustry-viewport-last="390x844"' \
+  --second-resize-require 'data-mindustry-canvas-viewport="390x844"' \
+  --second-resize-require 'data-mindustry-canvas-viewport-match="true"' \
   --second-resize-require 'data-mindustry-resize-orientation="portrait"' \
   --second-resize-require 'data-mindustry-input-mode="mobile"' \
   --second-resize-require 'data-mindustry-stock-input="mobile"' \
@@ -137,6 +151,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --third-resize-height 390 \
   --third-resize-require 'data-mindustry-resize-last="844x390"' \
   --third-resize-require 'data-mindustry-viewport-last="844x390"' \
+  --third-resize-require 'data-mindustry-canvas-viewport="844x390"' \
+  --third-resize-require 'data-mindustry-canvas-viewport-match="true"' \
   --third-resize-require 'data-mindustry-resize-orientation="landscape"' \
   --third-resize-require 'data-mindustry-input-mode="mobile"' \
   --third-resize-require 'data-mindustry-stock-input="mobile"' \
