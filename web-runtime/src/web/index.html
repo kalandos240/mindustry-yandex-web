@@ -113,8 +113,10 @@
             root.setAttribute('data-mindustry-assets-eager', String(eagerManifest.length));
             root.setAttribute('data-mindustry-assets-streamed', String(manifest.length - eagerManifest.length));
 
-            let next = 0, loaded = 0;
+            let next = 0, loaded = 0, loadedBytes = 0;
             const workers = Math.max(1, Math.min(8, eagerManifest.length));
+            const preloadStarted = performance.now();
+            root.setAttribute('data-mindustry-assets-preload-workers', String(workers));
 
             async function preloadWorker(){
                 while(true){
@@ -124,7 +126,9 @@
                     const url = 'assets/' + path;
                     const response = await fetch(url);
                     if(!response.ok) throw new Error('Asset preload failed (' + response.status + '): ' + url);
-                    cache[url] = new Int8Array(await response.arrayBuffer());
+                    const bytes = new Int8Array(await response.arrayBuffer());
+                    cache[url] = bytes;
+                    loadedBytes += bytes.byteLength;
                     loaded++;
                     status.textContent = 'Preloading Mindustry assets ' + loaded + '/' + eagerManifest.length + '...';
                 }
@@ -133,6 +137,9 @@
             const tasks = [];
             for(let i = 0; i < workers; i++) tasks.push(preloadWorker());
             await Promise.all(tasks);
+            root.setAttribute('data-mindustry-assets-eager-bytes', String(loadedBytes));
+            root.setAttribute('data-mindustry-assets-preload-ms', String(Math.max(1, Math.round(performance.now() - preloadStarted))));
+            root.setAttribute('data-mindustry-assets-preload', 'ready');
             status.textContent = 'Starting Mindustry...';
             main();
         })().catch(error => {
