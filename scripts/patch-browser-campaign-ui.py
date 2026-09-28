@@ -216,8 +216,30 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.coastlineCaptured()
             && !BrowserCampaignResearch.navalFortressReady()){
                 BrowserCampaignResearch.spendNextNavalFortressResearch();
-            }else if(BrowserCampaignResearch.navalFortressReady()){
+            }else if(BrowserCampaignResearch.navalFortressReady()
+            && !BrowserCampaignResearch.navalFortressCaptured()){
                 BrowserCampaignRuntime.playNavalFortress();
+            }else if(BrowserCampaignResearch.navalFortressCaptured()
+            && BrowserCampaignResearch.overgrowthReady()
+            && !BrowserCampaignResearch.overgrowthCaptured()){
+                BrowserCampaignRuntime.playOvergrowth();
+            }else if(BrowserCampaignResearch.overgrowthCaptured()
+            && !BrowserCampaignResearch.mycelialBastionReady()){
+                BrowserCampaignResearch.spendNextMycelialResearch();
+            }else if(BrowserCampaignResearch.mycelialBastionReady()
+            && !BrowserCampaignResearch.mycelialBastionCaptured()){
+                BrowserCampaignRuntime.playMycelialBastion();
+            }else if(BrowserCampaignResearch.mycelialBastionCaptured()
+            && !BrowserCampaignResearch.littoralShipyardReady()){
+                BrowserCampaignResearch.spendNextLittoralResearch();
+            }else if(BrowserCampaignResearch.littoralShipyardReady()
+            && !BrowserCampaignResearch.littoralShipyardCaptured()){
+                BrowserCampaignRuntime.playLittoralShipyard();
+            }else if(BrowserCampaignResearch.littoralShipyardCaptured()
+            && !BrowserCampaignResearch.planetaryTerminalReady()){
+                BrowserCampaignResearch.spendNextTerminalResearch();
+            }else if(BrowserCampaignResearch.planetaryTerminalReady()){
+                BrowserCampaignRuntime.playPlanetaryTerminal();
             }
         });
         craterResearch.setDisabled(() -> {
@@ -316,6 +338,27 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
             if(!BrowserCampaignResearch.navalFortressReady()){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNavalFortressResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.navalFortressCaptured()) return false;
+
+            if(!BrowserCampaignResearch.overgrowthReady()) return true;
+            if(!BrowserCampaignResearch.overgrowthCaptured()) return false;
+
+            if(!BrowserCampaignResearch.mycelialBastionReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextMycelialResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.mycelialBastionCaptured()) return false;
+
+            if(!BrowserCampaignResearch.littoralShipyardReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextLittoralResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.littoralShipyardCaptured()) return false;
+
+            if(!BrowserCampaignResearch.planetaryTerminalReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTerminalResearch();
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
             return false;
@@ -497,9 +540,43 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                     ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
                     : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
                         BrowserCampaignResearch.remaining(next));
-            }else{
+            }else if(!BrowserCampaignResearch.navalFortressCaptured()){
                 boolean saved = BrowserCampaignRuntime.hasNavalFortressSave();
                 craterResearch.setText(Core.bundle.get("sector.navalFortress.name", "Naval Fortress") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.overgrowthCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasOvergrowthSave();
+                craterResearch.setText(Core.bundle.get("sector.overgrowth.name", "Overgrowth") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.mycelialBastionReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextMycelialResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.mycelialBastionCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasMycelialBastionSave();
+                craterResearch.setText(Core.bundle.get("sector.mycelialBastion.name", "Mycelial Bastion") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.littoralShipyardReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextLittoralResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.littoralShipyardCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasLittoralShipyardSave();
+                craterResearch.setText(Core.bundle.get("sector.littoralShipyard.name", "Littoral Shipyard") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.planetaryTerminalReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTerminalResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else{
+                boolean saved = BrowserCampaignRuntime.hasPlanetaryTerminalSave();
+                craterResearch.setText(Core.bundle.get("sector.planetaryTerminal.name", "Planetary Launch Terminal") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }
 
@@ -562,6 +639,16 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.coastlineCaptured(),
                 BrowserCampaignResearch.navalFortressReady(),
                 BrowserCampaignRuntime.hasNavalFortressSave()
+            );
+            markCampaignTerminalState(
+                BrowserCampaignResearch.overgrowthReady(),
+                BrowserCampaignResearch.overgrowthCaptured(),
+                BrowserCampaignResearch.mycelialBastionReady(),
+                BrowserCampaignResearch.mycelialBastionCaptured(),
+                BrowserCampaignResearch.littoralShipyardReady(),
+                BrowserCampaignResearch.littoralShipyardCaptured(),
+                BrowserCampaignResearch.planetaryTerminalReady(),
+                BrowserCampaignRuntime.hasPlanetaryTerminalSave()
             );
         });
 
@@ -716,6 +803,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"facilityReady", "facilityCaptured", "perilousReady", "perilousCaptured", "extractionReady", "extractionCaptured", "coastlineReady", "coastlineCaptured", "navalReady", "navalSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-final-infra-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-facility32m-ready',facilityReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-facility32m-captured',facilityCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-ready',perilousReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-captured',perilousCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-ready',extractionReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-captured',extractionCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-ready',coastlineReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-captured',coastlineCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-ready',navalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-save',navalSaved ? 'true' : 'false');")
     private static native void markCampaignFinalInfraState(boolean facilityReady, boolean facilityCaptured, boolean perilousReady, boolean perilousCaptured, boolean extractionReady, boolean extractionCaptured, boolean coastlineReady, boolean coastlineCaptured, boolean navalReady, boolean navalSaved);
+
+    @JSBody(params = {"overgrowthReady", "overgrowthCaptured", "mycelialReady", "mycelialCaptured", "littoralReady", "littoralCaptured", "terminalReady", "terminalSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-terminal-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-ready',overgrowthReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-captured',overgrowthCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-ready',mycelialReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-captured',mycelialCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-ready',littoralReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-captured',littoralCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-ready',terminalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-save',terminalSaved ? 'true' : 'false');")
+    private static native void markCampaignTerminalState(boolean overgrowthReady, boolean overgrowthCaptured, boolean mycelialReady, boolean mycelialCaptured, boolean littoralReady, boolean littoralCaptured, boolean terminalReady, boolean terminalSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
