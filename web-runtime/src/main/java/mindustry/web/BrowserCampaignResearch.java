@@ -25,6 +25,33 @@ public final class BrowserCampaignResearch{
         return captured(SectorPresets.groundZero);
     }
 
+    public static boolean onsetCaptured(){
+        return captured(SectorPresets.onset);
+    }
+
+    public static boolean aegisReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.aegis != null && SectorPresets.aegis.unlocked();
+    }
+
+    public static boolean aegisCaptured(){
+        return captured(SectorPresets.aegis);
+    }
+
+    public static boolean lakeReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.lake != null && SectorPresets.lake.unlocked();
+    }
+
+    public static boolean lakeCaptured(){
+        return captured(SectorPresets.lake);
+    }
+
+    public static boolean intersectReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.intersect != null && SectorPresets.intersect.unlocked();
+    }
+
     public static boolean frozenForestReady(){
         if(control != null) control.checkAutoUnlocks();
         return SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked();
@@ -609,6 +636,32 @@ public final class BrowserCampaignResearch{
         if(next != null) spend(next);
     }
 
+    public static UnlockableContent nextAegisResearch(){
+        if(!Blocks.duct.unlocked()) return Blocks.duct;
+        if(!Blocks.ductRouter.unlocked()) return Blocks.ductRouter;
+        if(!Blocks.ductBridge.unlocked()) return Blocks.ductBridge;
+        return null;
+    }
+
+    public static void spendNextAegisResearch(){
+        UnlockableContent next = nextAegisResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextIntersectResearch(){
+        if(!Blocks.turbineCondenser.unlocked()) return Blocks.turbineCondenser;
+        if(!Blocks.beamNode.unlocked()) return Blocks.beamNode;
+        if(!Blocks.ventCondenser.unlocked()) return Blocks.ventCondenser;
+        if(!Blocks.tankFabricator.unlocked()) return Blocks.tankFabricator;
+        if(!Blocks.shipFabricator.unlocked()) return Blocks.shipFabricator;
+        return null;
+    }
+
+    public static void spendNextIntersectResearch(){
+        UnlockableContent next = nextIntersectResearch();
+        if(next != null) spend(next);
+    }
+
     public static boolean canSpend(UnlockableContent content){
         TechNode node = node(content);
         if(content.unlocked() || !objectivesComplete(node)) return false;
@@ -637,6 +690,39 @@ public final class BrowserCampaignResearch{
      * Equivalent to one ResearchDialog spend action: consume every currently available
      * requirement up to the node target, persist partial progress, then unlock when complete.
      */
+    /** CI-only Onset tutorial research: preserve the stock Silicon Arc Furnace parent chain. */
+    public static void runOnsetResearchSmoke(Sector source){
+        if(source == null || source != SectorPresets.onset.sector){
+            throw new IllegalStateException("Onset objective smoke requires active Onset");
+        }
+
+        stageAndSpend(source, Blocks.turbineCondenser);
+        stageAndSpend(source, Blocks.cliffCrusher);
+        stageAndSpend(source, Blocks.siliconArcFurnace);
+
+        Core.settings.forceSave();
+        markOnsetResearchSmoke();
+    }
+
+    /** After stock Onset capture, buy the exact TechTree prerequisites for Aegis. */
+    public static void runAegisProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.onset.sector || !onsetCaptured()){
+            throw new IllegalStateException("Aegis progression requires captured Onset");
+        }
+
+        stageAndSpend(source, Blocks.duct);
+        stageAndSpend(source, Blocks.ductRouter);
+        stageAndSpend(source, Blocks.ductBridge);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!aegisReady()){
+            throw new IllegalStateException("Aegis did not auto-unlock after stock prerequisites completed");
+        }
+
+        Core.settings.forceSave();
+        markAegisProgressSmoke();
+    }
+
     /** CI-only helper: supply exactly the missing early research resources, then use the production spend path. */
     public static void runEarlyProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.groundZero.sector || !groundZeroCaptured()){
@@ -1421,6 +1507,12 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-advanced-launch-pad-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-reactor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tetrative-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-omura-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-ready','true');")
     private static native void markTerminalProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-onset-research','ready'); document.documentElement.setAttribute('data-mindustry-erekir-silicon-arc-furnace-unlocked','true');")
+    private static native void markOnsetResearchSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-duct-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-duct-router-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-duct-bridge-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-aegis-ready','true');")
+    private static native void markAegisProgressSmoke();
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready','true');")
     private static native void markTaintedProgressSmoke();
