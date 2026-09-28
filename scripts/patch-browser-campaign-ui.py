@@ -98,7 +98,8 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
         TextButton frozenForestButton = new TextButton("");
         frozenForestButton.clicked(BrowserCampaignRuntime::playFrozenForest);
-        frozenForestButton.setDisabled(() -> !BrowserCampaignResearch.frozenForestReady());
+        frozenForestButton.setDisabled(() -> !BrowserCampaignRuntime.campaignAssetsReady()
+            || !BrowserCampaignResearch.frozenForestReady());
         frozenForestButton.update(() -> {
             boolean ready = BrowserCampaignResearch.frozenForestReady();
             boolean saved = BrowserCampaignRuntime.hasFrozenForestSave();
@@ -268,6 +269,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }
         });
         craterResearch.setDisabled(() -> {
+            if(!BrowserCampaignRuntime.campaignAssetsReady()) return true;
             if(!BrowserCampaignResearch.crateredBattlegroundReady()){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCraterResearch();
                 return next == null || !BrowserCampaignResearch.canSpend(next);
@@ -898,6 +900,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         });
         erekirProgress.setDisabled(() -> {
             if(!BrowserCampaignResearch.onsetCaptured()) return false;
+            if(!BrowserCampaignRuntime.campaignAssetsReady()) return true;
 
             if(!BrowserCampaignResearch.aegisReady()){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAegisResearch();
