@@ -60,4 +60,11 @@ if old_gl not in text:
     raise SystemExit("Renderer glGetError cadence no longer matches pinned upstream")
 text = text.replace(old_gl, new_gl, 1)
 
+preview_calls = "        MapPreviewLoader.checkPreviews();\n"
+if text.count(preview_calls) != 2:
+    raise SystemExit(f"Renderer Web preview polling expected 2 pinned calls, found {text.count(preview_calls)}")
+text = text.replace(preview_calls, "")
+if "MapPreviewLoader.checkPreviews()" in text:
+    raise SystemExit("Renderer Web patch retained map-preview polling")
+
 path.write_text(text, encoding="utf-8")
