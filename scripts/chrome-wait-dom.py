@@ -273,7 +273,26 @@ def main() -> int:
             message_id += 1
 
         while time.monotonic() < deadline:
-            last_html = evaluate(ws, message_id, "document.documentElement.outerHTML")
+            last_html = evaluate(
+                ws,
+                message_id,
+                """(() => {
+                    const root = document.documentElement;
+                    const canvas = document.getElementById('mindustry-canvas');
+                    if(canvas){
+                        const rect = canvas.getBoundingClientRect();
+                        const width = Math.round(rect.width);
+                        const height = Math.round(rect.height);
+                        root.setAttribute('data-mindustry-canvas-viewport', width + 'x' + height);
+                        root.setAttribute(
+                            'data-mindustry-canvas-viewport-match',
+                            width === Math.round(window.innerWidth) && height === Math.round(window.innerHeight)
+                                ? 'true' : 'false'
+                        );
+                    }
+                    return root.outerHTML;
+                })()""",
+            )
             polls += 1
             message_id += 1
             if resize_phase == 0:
