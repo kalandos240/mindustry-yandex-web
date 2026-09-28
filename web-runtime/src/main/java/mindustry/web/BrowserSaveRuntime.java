@@ -141,6 +141,7 @@ public final class BrowserSaveRuntime{
 
         localSessionAvailable = true;
         markLocalSessionAvailability("available");
+        BrowserUiRuntime.syncLocalSaveUiState();
         markLocalSessionSaved(meta.tags.get("mapname", "unknown"), meta.wave, meta.version,
             Vars.world.width(), Vars.world.height(), file.length());
         flushLocalSessionStorage();
@@ -175,6 +176,7 @@ public final class BrowserSaveRuntime{
         file.delete();
         localSessionAvailable = false;
         markLocalSessionAvailability("empty");
+        BrowserUiRuntime.syncLocalSaveUiState();
     }
 
     private static void verifyMoveCopyDelete(){
