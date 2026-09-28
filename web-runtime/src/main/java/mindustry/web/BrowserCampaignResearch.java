@@ -72,6 +72,17 @@ public final class BrowserCampaignResearch{
     private static final UnlockableContent[] nextKarstSequence = {Blocks.coreAcropolis};
     private static final UnlockableContent[] nextOriginSequence = {Blocks.payloadMassDriver, Blocks.constructor, Blocks.diffuse, Blocks.sublimate, Blocks.afflict, Blocks.electricHeater, Blocks.atmosphericConcentrator, Blocks.cyanogenSynthesizer, Blocks.tankAssembler, UnitTypes.vanquish, Blocks.shipAssembler, UnitTypes.quell, UnitTypes.disrupt, Blocks.mechAssembler, UnitTypes.tecta, UnitTypes.collaris, Blocks.disperse, Blocks.scathe, Blocks.malign, Blocks.pyrolysisGenerator, Blocks.fluxReactor, Blocks.neoplasiaReactor, Blocks.basicAssemblerModule};
 
+    private static final UnlockableContent[] nextCraterBeforeCoal = {Blocks.mechanicalDrill};
+    private static final UnlockableContent[] nextCraterAfterCoal = {Blocks.combustionGenerator, Blocks.powerNode, Blocks.mender};
+    private static final UnlockableContent[] nextImpactBeforeThorium = {Blocks.laserDrill};
+    private static final UnlockableContent[] nextImpactAfterThorium = {Blocks.lancer, Blocks.salvo, Blocks.coreFoundation};
+    private static final UnlockableContent[] nextNuclearBeforePlastanium = {Blocks.thermalGenerator, Blocks.laserDrill, Blocks.plastaniumCompressor};
+    private static final UnlockableContent[] nextNuclearAfterPlastanium = {Blocks.salvo, Blocks.swarmer};
+    private static final UnlockableContent[] nextDesolateBeforeCryofluid = {Blocks.coreNucleus, Blocks.pulverizer, Blocks.incinerator, Blocks.melter, Blocks.cryofluidMixer};
+    private static final UnlockableContent[] nextDesolateAfterCryofluid = {Blocks.thermalGenerator, Blocks.differentialGenerator, Blocks.thoriumReactor};
+    private static final UnlockableContent[] nextMarshBeforeProduction = {Blocks.electrolyzer, Blocks.tankRefabricator, Blocks.oxidationChamber, Blocks.reinforcedConduit, Blocks.reinforcedPump};
+    private static final UnlockableContent[] nextMarshAfterProduction = {Blocks.chemicalCombustionChamber};
+
     public static boolean groundZeroCaptured(){
         return captured(SectorPresets.groundZero);
     }
@@ -86,12 +97,10 @@ public final class BrowserCampaignResearch{
      * vanilla is waiting for the player to produce/discover coal before Combustion Generator.
      */
     public static UnlockableContent nextCraterResearch(){
-        if(!Blocks.mechanicalDrill.unlocked()) return Blocks.mechanicalDrill;
+        UnlockableContent next = firstLocked(nextCraterBeforeCoal);
+        if(next != null) return next;
         if(!Items.coal.unlocked()) return null;
-        if(!Blocks.combustionGenerator.unlocked()) return Blocks.combustionGenerator;
-        if(!Blocks.powerNode.unlocked()) return Blocks.powerNode;
-        if(!Blocks.mender.unlocked()) return Blocks.mender;
-        return null;
+        return firstLocked(nextCraterAfterCoal);
     }
 
     public static boolean waitingForCraterCoal(){
@@ -145,12 +154,10 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextImpactResearch(){
-        if(!Blocks.laserDrill.unlocked()) return Blocks.laserDrill;
+        UnlockableContent next = firstLocked(nextImpactBeforeThorium);
+        if(next != null) return next;
         if(!Items.thorium.unlocked()) return null;
-        if(!Blocks.lancer.unlocked()) return Blocks.lancer;
-        if(!Blocks.salvo.unlocked()) return Blocks.salvo;
-        if(!Blocks.coreFoundation.unlocked()) return Blocks.coreFoundation;
-        return null;
+        return firstLocked(nextImpactAfterThorium);
     }
 
     public static boolean waitingForImpactThorium(){
@@ -173,13 +180,10 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextNuclearResearch(){
-        if(!Blocks.thermalGenerator.unlocked()) return Blocks.thermalGenerator;
-        if(!Blocks.laserDrill.unlocked()) return Blocks.laserDrill;
-        if(!Blocks.plastaniumCompressor.unlocked()) return Blocks.plastaniumCompressor;
+        UnlockableContent next = firstLocked(nextNuclearBeforePlastanium);
+        if(next != null) return next;
         if(!Items.plastanium.unlocked()) return null;
-        if(!Blocks.salvo.unlocked()) return Blocks.salvo;
-        if(!Blocks.swarmer.unlocked()) return Blocks.swarmer;
-        return null;
+        return firstLocked(nextNuclearAfterPlastanium);
     }
 
     public static boolean waitingForNuclearPlastanium(){
@@ -198,16 +202,10 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextDesolateResearch(){
-        if(!Blocks.coreNucleus.unlocked()) return Blocks.coreNucleus;
-        if(!Blocks.pulverizer.unlocked()) return Blocks.pulverizer;
-        if(!Blocks.incinerator.unlocked()) return Blocks.incinerator;
-        if(!Blocks.melter.unlocked()) return Blocks.melter;
-        if(!Blocks.cryofluidMixer.unlocked()) return Blocks.cryofluidMixer;
+        UnlockableContent next = firstLocked(nextDesolateBeforeCryofluid);
+        if(next != null) return next;
         if(!Liquids.cryofluid.unlocked()) return null;
-        if(!Blocks.thermalGenerator.unlocked()) return Blocks.thermalGenerator;
-        if(!Blocks.differentialGenerator.unlocked()) return Blocks.differentialGenerator;
-        if(!Blocks.thoriumReactor.unlocked()) return Blocks.thoriumReactor;
-        return null;
+        return firstLocked(nextDesolateAfterCryofluid);
     }
 
     public static boolean waitingForDesolateCryofluid(){
@@ -290,14 +288,10 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextMarshResearch(){
-        if(!Blocks.electrolyzer.unlocked()) return Blocks.electrolyzer;
-        if(!Blocks.tankRefabricator.unlocked()) return Blocks.tankRefabricator;
-        if(!Blocks.oxidationChamber.unlocked()) return Blocks.oxidationChamber;
-        if(!Blocks.reinforcedConduit.unlocked()) return Blocks.reinforcedConduit;
-        if(!Blocks.reinforcedPump.unlocked()) return Blocks.reinforcedPump;
+        UnlockableContent next = firstLocked(nextMarshBeforeProduction);
+        if(next != null) return next;
         if(!Items.oxide.unlocked() || !Liquids.arkycite.unlocked()) return null;
-        if(!Blocks.chemicalCombustionChamber.unlocked()) return Blocks.chemicalCombustionChamber;
-        return null;
+        return firstLocked(nextMarshAfterProduction);
     }
 
     public static boolean waitingForMarshProduction(){
