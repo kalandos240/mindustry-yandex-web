@@ -8,6 +8,10 @@ if not VERIFY.is_file():
     raise SystemExit(f"Missing browser verification script: {VERIFY}")
 
 text = VERIFY.read_text(encoding="utf-8")
+if 'mindustryGameOverSmoke=1' in text and 'data-mindustry-local-map-gameover="ready"' in text:
+    print("Local Game Over browser verifier already present")
+    raise SystemExit(0)
+
 
 old_url = '''    --url "http://127.0.0.1:8081/index.html?lang=en&mindustryMapSmoke=maze" \\
 '''
