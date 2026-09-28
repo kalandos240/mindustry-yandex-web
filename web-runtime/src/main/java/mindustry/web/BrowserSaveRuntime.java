@@ -25,8 +25,10 @@ import java.io.*;
  * before a full world save can be enabled.
  */
 public final class BrowserSaveRuntime{
+    private static final String localSessionName = "web-local-survival." + Vars.saveExtension;
     private static Saves saves;
     private static boolean initialized;
+    private static boolean localSessionAvailable;
 
     private BrowserSaveRuntime(){}
 
@@ -65,9 +67,11 @@ public final class BrowserSaveRuntime{
             browserSaves.load();
             saves = browserSaves;
             SaveVersion.setWebPlaytime(browserSaves.getTotalPlaytime());
+            localSessionAvailable = validLocalSessionFile();
         });
 
         initialized = true;
+        markLocalSessionAvailability(localSessionAvailable ? "available" : "empty");
         markPhase("ready");
         markReady(saves.getSaveSlots().size);
     }
@@ -88,6 +92,89 @@ public final class BrowserSaveRuntime{
 
     static long totalPlaytimeForSave(){
         return saves == null ? 0L : saves.getTotalPlaytime();
+    }
+
+    private static Fi localSessionFile(){
+        return Vars.saveDirectory.child(localSessionName);
+    }
+
+    private static boolean validLocalSessionFile(){
+        Fi file = localSessionFile();
+        return file.exists() && SaveIO.isSaveValid(file);
+    }
+
+    public static boolean hasLocalSession(){
+        return initialized && localSessionAvailable;
+    }
+
+    public static SaveMeta localSessionMeta(){
+        if(!initialized || !localSessionAvailable){
+            throw new IllegalStateException("Browser local survival save is not available");
+        }
+        SaveMeta meta = SaveIO.getMeta(localSessionFile());
+        if(meta == null || meta.version != 13 || meta.rules == null || meta.rules.sector != null || meta.rules.pvp){
+            throw new IllegalStateException("Browser local survival save metadata is invalid");
+        }
+        return meta;
+    }
+
+    public static SaveMeta saveLocalSession(){
+        if(!initialized || Vars.state == null || !Vars.state.isGame() || Vars.state.gameOver
+        || Vars.state.isCampaign() || Vars.state.isEditor() || Vars.state.rules.pvp){
+            throw new IllegalStateException("Browser local save requires a live non-campaign single-player session");
+        }
+        if(Vars.net == null || Vars.net.active() || Vars.netServer != null || Vars.netClient != null){
+            throw new IllegalStateException("Browser local save escaped permanent single-player mode");
+        }
+
+        SaveVersion.setWebPlaytime(totalPlaytimeForSave());
+        Fi file = localSessionFile();
+        SaveIO.save(file);
+        if(!file.exists() || file.length() < 128 || !SaveIO.isSaveValid(file)){
+            throw new IllegalStateException("Browser local survival save did not produce a valid MSAV");
+        }
+
+        SaveMeta meta = SaveIO.getMeta(file);
+        if(meta == null || meta.version != 13 || meta.rules == null || meta.rules.sector != null || meta.rules.pvp){
+            throw new IllegalStateException("Browser local survival save metadata failed validation");
+        }
+
+        localSessionAvailable = true;
+        markLocalSessionAvailability("available");
+        markLocalSessionSaved(meta.tags.get("mapname", "unknown"), meta.wave, meta.version,
+            Vars.world.width(), Vars.world.height(), file.length());
+        flushLocalSessionStorage();
+        return meta;
+    }
+
+    public static SaveMeta loadLocalSession(){
+        if(!initialized || !localSessionAvailable || !validLocalSessionFile()){
+            localSessionAvailable = false;
+            markLocalSessionAvailability("empty");
+            throw new IllegalStateException("Browser local survival save is missing or invalid");
+        }
+        if(Vars.net == null || Vars.net.active() || Vars.netServer != null || Vars.netClient != null){
+            throw new IllegalStateException("Browser local continue escaped permanent single-player mode");
+        }
+
+        SaveMeta meta = localSessionMeta();
+        SaveIO.load(localSessionFile());
+        if(Vars.state == null || Vars.world == null || Vars.world.width() <= 0 || Vars.world.height() <= 0){
+            throw new IllegalStateException("Browser local survival save restored an invalid world");
+        }
+
+        markLocalSessionLoaded(meta.tags.get("mapname", "unknown"), meta.wave, meta.version,
+            Vars.world.width(), Vars.world.height());
+        return meta;
+    }
+
+    public static void deleteLocalSession(){
+        if(!initialized) return;
+        Fi file = localSessionFile();
+        SaveIO.backupFileFor(file).delete();
+        file.delete();
+        localSessionAvailable = false;
+        markLocalSessionAvailability("empty");
     }
 
     private static void verifyMoveCopyDelete(){
@@ -428,6 +515,18 @@ public final class BrowserSaveRuntime{
         for(int i = 0; i < expected.length; i++) if(actual[i] != expected[i]) return false;
         return true;
     }
+
+    @JSBody(params = {"state"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-slot', state);")
+    private static native void markLocalSessionAvailability(String state);
+
+    @JSBody(params = {"map", "wave", "version", "width", "height", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-state', 'saved'); document.documentElement.setAttribute('data-mindustry-local-save-map-name', map); document.documentElement.setAttribute('data-mindustry-local-save-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-save-version', String(version)); document.documentElement.setAttribute('data-mindustry-local-save-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-save-bytes', String(bytes)); document.documentElement.setAttribute('data-mindustry-local-save-flush', 'pending');")
+    private static native void markLocalSessionSaved(String map, int wave, int version, int width, int height, long bytes);
+
+    @JSBody(params = {"map", "wave", "version", "width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-load', 'ready'); document.documentElement.setAttribute('data-mindustry-local-save-load-map-name', map); document.documentElement.setAttribute('data-mindustry-local-save-load-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-save-load-version', String(version)); document.documentElement.setAttribute('data-mindustry-local-save-load-world', String(width) + 'x' + String(height));")
+    private static native void markLocalSessionLoaded(String map, int wave, int version, int width, int height);
+
+    @JSBody(script = "globalThis.__mindustryStorage.flush().then(function(){document.documentElement.setAttribute('data-mindustry-local-save-flush','ready');}).catch(function(e){document.documentElement.setAttribute('data-mindustry-local-save-flush','error');});")
+    private static native void flushLocalSessionStorage();
 
     @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-saveio-phase', phase);")
     private static native void markPhase(String phase);
