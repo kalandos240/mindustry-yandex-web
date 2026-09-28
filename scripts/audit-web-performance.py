@@ -14,7 +14,8 @@ REPORT = ROOT / "work" / "web-performance-report.txt"
 # -> Fungal Pass -> Frontier -> Salt Flats -> Tar Fields -> Impact 0078 -> Stained Mountains
 # -> Infested Canyons -> Nuclear Complex -> Desolate Rift -> Facility 32M -> Perilous Harbor
 # -> Extraction Outpost -> Coastline -> Naval Fortress -> Overgrowth -> Mycelial Bastion
-# -> Littoral Shipyard -> Planetary Terminal) must still fit this existing TeaVM budget;
+# -> Littoral Shipyard -> Planetary Terminal plus Tainted Woods, Atolls, Testing Grounds,
+# Sunken Pier and Weathered Channels) must still fit this existing TeaVM budget;
 # do not rebaseline merely because campaign code grew.
 # Forbidden desktop/network markers and the 100 MiB unpacked Yandex limit remain
 # hard release gates.
