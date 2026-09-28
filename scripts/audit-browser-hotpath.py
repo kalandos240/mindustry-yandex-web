@@ -9,6 +9,7 @@ INPUT = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / 
 APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
 LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 CAMPAIGN_UI = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
+WEB_LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "WebClientLauncher.java").read_text(encoding="utf-8")
 
 failures = []
 
@@ -67,8 +68,19 @@ forbid(APPLY_PORT, "Arrays.sort(sortKeys", "SpriteBatch Web patch")
 require(LOCAL_MAP, "private static final int perfEffectsPerFrame = 2", "particle perf workload")
 require(LOCAL_MAP, "private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame", "particle perf workload")
 require(LOCAL_MAP, "Fx.drillSteam.at(x, y)", "particle perf workload")
+require(LOCAL_MAP, "Fx.drillSteam.shouldCreate()", "particle perf workload")
 require(LOCAL_MAP, "data-mindustry-perf-effect-kind','drillSteam", "particle perf workload")
 require(LOCAL_MAP, "perfEffects != perfTargetEffects", "particle perf workload")
+
+# Lean Web UI never constructs the stock Settings dialog, so renderer defaults must
+# be installed explicitly. Mobile keeps real effects but disables the heaviest purely
+# visual paths by default; saved user choices remain authoritative.
+require(WEB_LAUNCHER, '"effects", true', "renderer defaults")
+require(WEB_LAUNCHER, '"animatedwater", !mobileMode', "renderer defaults")
+require(WEB_LAUNCHER, '"animatedshields", !mobileMode', "renderer defaults")
+require(WEB_LAUNCHER, 'if(mobileMode && !Core.settings.has("bloom"))', "renderer defaults")
+require(WEB_LAUNCHER, 'Core.settings.put("bloom", false)', "renderer defaults")
+require(WEB_LAUNCHER, "data-mindustry-renderer-profile", "renderer defaults")
 
 # Campaign menu telemetry and auto-unlock scans must not return to 60Hz production work.
 require(CAMPAIGN_UI, "if(BrowserCampaignRuntime.diagnosticsEnabled()){", "campaign diagnostic telemetry gate")
