@@ -161,6 +161,11 @@ public final class BrowserUiRuntime{
         return initialized;
     }
 
+    public static void syncLocalSaveUiState(){
+        if(!initialized) return;
+        markLocalSaveUiReady(BrowserSaveRuntime.hasLocalSession() ? "available" : "empty");
+    }
+
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
     private static native void markReady();
 
