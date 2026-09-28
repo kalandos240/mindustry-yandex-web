@@ -188,8 +188,36 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.nuclearComplexCaptured()
             && !BrowserCampaignResearch.desolateRiftReady()){
                 BrowserCampaignResearch.spendNextDesolateResearch();
-            }else if(BrowserCampaignResearch.desolateRiftReady()){
+            }else if(BrowserCampaignResearch.desolateRiftReady()
+            && !BrowserCampaignResearch.desolateRiftCaptured()){
                 BrowserCampaignRuntime.playDesolateRift();
+            }else if(BrowserCampaignResearch.desolateRiftCaptured()
+            && BrowserCampaignResearch.facility32mReady()
+            && !BrowserCampaignResearch.facility32mCaptured()){
+                BrowserCampaignRuntime.playFacility32m();
+            }else if(BrowserCampaignResearch.facility32mCaptured()
+            && !BrowserCampaignResearch.perilousHarborReady()){
+                BrowserCampaignResearch.spendNextPerilousResearch();
+            }else if(BrowserCampaignResearch.perilousHarborReady()
+            && !BrowserCampaignResearch.perilousHarborCaptured()){
+                BrowserCampaignRuntime.playPerilousHarbor();
+            }else if(BrowserCampaignResearch.perilousHarborCaptured()
+            && !BrowserCampaignResearch.extractionOutpostReady()){
+                BrowserCampaignResearch.spendNextExtractionResearch();
+            }else if(BrowserCampaignResearch.extractionOutpostReady()
+            && !BrowserCampaignResearch.extractionOutpostCaptured()){
+                BrowserCampaignRuntime.playExtractionOutpost();
+            }else if(BrowserCampaignResearch.extractionOutpostCaptured()
+            && !BrowserCampaignResearch.coastlineReady()){
+                BrowserCampaignResearch.spendNextCoastlineResearch();
+            }else if(BrowserCampaignResearch.coastlineReady()
+            && !BrowserCampaignResearch.coastlineCaptured()){
+                BrowserCampaignRuntime.playCoastline();
+            }else if(BrowserCampaignResearch.coastlineCaptured()
+            && !BrowserCampaignResearch.navalFortressReady()){
+                BrowserCampaignResearch.spendNextNavalFortressResearch();
+            }else if(BrowserCampaignResearch.navalFortressReady()){
+                BrowserCampaignRuntime.playNavalFortress();
             }
         });
         craterResearch.setDisabled(() -> {
@@ -261,6 +289,33 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
             if(!BrowserCampaignResearch.desolateRiftReady()){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextDesolateResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.desolateRiftCaptured()) return false;
+
+            if(!BrowserCampaignResearch.facility32mReady()) return true;
+            if(!BrowserCampaignResearch.facility32mCaptured()) return false;
+
+            if(!BrowserCampaignResearch.perilousHarborReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextPerilousResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.perilousHarborCaptured()) return false;
+
+            if(!BrowserCampaignResearch.extractionOutpostReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextExtractionResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.extractionOutpostCaptured()) return false;
+
+            if(!BrowserCampaignResearch.coastlineReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCoastlineResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.coastlineCaptured()) return false;
+
+            if(!BrowserCampaignResearch.navalFortressReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNavalFortressResearch();
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
             return false;
@@ -398,9 +453,53 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                         : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
                             BrowserCampaignResearch.remaining(next));
                 }
-            }else{
+            }else if(!BrowserCampaignResearch.desolateRiftCaptured()){
                 boolean saved = BrowserCampaignRuntime.hasDesolateRiftSave();
                 craterResearch.setText(Core.bundle.get("sector.desolateRift.name", "Desolate Rift") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.facility32mCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasFacility32mSave();
+                craterResearch.setText(Core.bundle.get("sector.facility32m.name", "Facility 32M") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.perilousHarborReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextPerilousResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.perilousHarborCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasPerilousHarborSave();
+                craterResearch.setText(Core.bundle.get("sector.perilousHarbor.name", "Perilous Harbor") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.extractionOutpostReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextExtractionResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.extractionOutpostCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasExtractionOutpostSave();
+                craterResearch.setText(Core.bundle.get("sector.extractionOutpost.name", "Extraction Outpost") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.coastlineReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCoastlineResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.coastlineCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasCoastlineSave();
+                craterResearch.setText(Core.bundle.get("sector.coastline.name", "Coastline") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.navalFortressReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNavalFortressResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else{
+                boolean saved = BrowserCampaignRuntime.hasNavalFortressSave();
+                craterResearch.setText(Core.bundle.get("sector.navalFortress.name", "Naval Fortress") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }
 
@@ -451,6 +550,18 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.nuclearComplexCaptured(),
                 BrowserCampaignResearch.desolateRiftReady(),
                 BrowserCampaignRuntime.hasDesolateRiftSave()
+            );
+            markCampaignFinalInfraState(
+                BrowserCampaignResearch.facility32mReady(),
+                BrowserCampaignResearch.facility32mCaptured(),
+                BrowserCampaignResearch.perilousHarborReady(),
+                BrowserCampaignResearch.perilousHarborCaptured(),
+                BrowserCampaignResearch.extractionOutpostReady(),
+                BrowserCampaignResearch.extractionOutpostCaptured(),
+                BrowserCampaignResearch.coastlineReady(),
+                BrowserCampaignResearch.coastlineCaptured(),
+                BrowserCampaignResearch.navalFortressReady(),
+                BrowserCampaignRuntime.hasNavalFortressSave()
             );
         });
 
@@ -602,6 +713,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"stainedReady", "stainedCaptured", "infestedReady", "infestedCaptured", "nuclearReady", "nuclearCaptured", "desolateReady", "desolateSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-late-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-ready',stainedReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-captured',stainedCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-ready',infestedReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-captured',infestedCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-ready',nuclearReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-captured',nuclearCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-ready',desolateReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-save',desolateSaved ? 'true' : 'false');")
     private static native void markCampaignLateState(boolean stainedReady, boolean stainedCaptured, boolean infestedReady, boolean infestedCaptured, boolean nuclearReady, boolean nuclearCaptured, boolean desolateReady, boolean desolateSaved);
+
+    @JSBody(params = {"facilityReady", "facilityCaptured", "perilousReady", "perilousCaptured", "extractionReady", "extractionCaptured", "coastlineReady", "coastlineCaptured", "navalReady", "navalSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-final-infra-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-facility32m-ready',facilityReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-facility32m-captured',facilityCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-ready',perilousReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-captured',perilousCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-ready',extractionReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-captured',extractionCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-ready',coastlineReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-captured',coastlineCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-ready',navalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-save',navalSaved ? 'true' : 'false');")
+    private static native void markCampaignFinalInfraState(boolean facilityReady, boolean facilityCaptured, boolean perilousReady, boolean perilousCaptured, boolean extractionReady, boolean extractionCaptured, boolean coastlineReady, boolean coastlineCaptured, boolean navalReady, boolean navalSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
