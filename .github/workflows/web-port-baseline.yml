@@ -325,7 +325,7 @@ jobs:
 
       # verify-browser-persistence already chains campaign cold save/resume, and
       # verify-browser-locales already chains the Yandex SDK desktop/mobile lifecycle.
-      - name: Verify campaign progression through Biomass Fungal Frontier to Salt Flats
+      - name: Verify campaign progression through Salt Flats to Tar Fields
         run: bash scripts/verify-browser-campaign-capture.sh
 
       - name: Upload localization report
