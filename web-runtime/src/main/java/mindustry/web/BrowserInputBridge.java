@@ -167,6 +167,7 @@ public final class BrowserInputBridge{
             const slot = findSlot(event, true);
             if (slot < 0) return;
             const p = coords(event);
+            pendingMoves.delete(slot);
             try { canvas.setPointerCapture(event.pointerId); } catch (_) {}
             canvas.focus({preventScroll: true});
             pointerDown(slot, p[0], p[1], event.button | 0);
