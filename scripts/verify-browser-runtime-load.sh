@@ -73,6 +73,8 @@ run_load(){
     --require "data-mindustry-renderer-profile=\"${renderer_profile}\"" \
     --require "data-mindustry-renderer-bloom=\"${renderer_bloom}\"" \
     --require 'data-mindustry-renderer-effects="true"' \
+    --require 'data-mindustry-renderer-settings-policy="32-frame"' \
+    --require 'data-mindustry-renderer-gl-error-policy="120-frame"' \
     --require "data-mindustry-renderer-animated-water=\"${renderer_water}\"" \
     --require "data-mindustry-renderer-animated-shields=\"${renderer_shields}\"" \
     --require 'data-mindustry-local-map-test="maze"' \
