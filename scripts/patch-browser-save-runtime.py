@@ -8,6 +8,14 @@ if not SAVE.is_file():
     raise SystemExit(f"Missing browser save runtime source: {SAVE}")
 
 text = SAVE.read_text(encoding="utf-8")
+if all(marker in text for marker in (
+    'private static final String localSessionName = "web-local-survival." + Vars.saveExtension;',
+    "public static SaveMeta saveLocalSession()",
+    "public static SaveMeta loadLocalSession()",
+    "private static native void flushLocalSessionStorage();",
+)):
+    print("Fixed browser-local SaveIO slot already present in committed Web overlay")
+    raise SystemExit(0)
 
 old_fields = '''public final class BrowserSaveRuntime{\n    private static Saves saves;\n    private static boolean initialized;\n'''
 new_fields = '''public final class BrowserSaveRuntime{\n    private static final String localSessionName = "web-local-survival." + Vars.saveExtension;\n    private static Saves saves;\n    private static boolean initialized;\n    private static boolean localSessionAvailable;\n'''
