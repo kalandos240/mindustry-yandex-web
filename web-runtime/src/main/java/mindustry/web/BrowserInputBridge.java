@@ -82,6 +82,20 @@ public final class BrowserInputBridge{
 
         const downCodes = new Set();
         const pointerSlots = new Map();
+        const pendingMoves = new Map();
+        let moveFramePending = false;
+
+        const flushMoves = () => {
+            moveFramePending = false;
+            pendingMoves.forEach((p, slot) => pointerMove(slot, p[0], p[1]));
+            pendingMoves.clear();
+        };
+
+        const scheduleMoveFlush = () => {
+            if(moveFramePending) return;
+            moveFramePending = true;
+            requestAnimationFrame(flushMoves);
+        };
 
         const coords = event => {
             // The game canvas is fixed to the viewport. PointerEvent offset coordinates are
@@ -137,6 +151,7 @@ public final class BrowserInputBridge{
             // after an ad, tab switch or focus loss.
             releasePointers();
             pointerSlots.clear();
+            pendingMoves.clear();
 
             const root = document.documentElement;
             const count = Number(root.getAttribute('data-mindustry-input-reset-count') || '0') + 1;
@@ -161,8 +176,8 @@ public final class BrowserInputBridge{
         canvas.addEventListener('pointermove', event => {
             const slot = findSlot(event, false);
             if (slot < 0) return;
-            const p = coords(event);
-            pointerMove(slot, p[0], p[1]);
+            pendingMoves.set(slot, coords(event));
+            scheduleMoveFlush();
             event.preventDefault();
         }, {passive: false});
 
@@ -170,6 +185,10 @@ public final class BrowserInputBridge{
             const slot = findSlot(event, false);
             if (slot < 0) return;
             const p = coords(event);
+            // Preserve the final drag coordinate even when several DOM moves were
+            // collapsed into this browser frame.
+            pendingMoves.delete(slot);
+            pointerMove(slot, p[0], p[1]);
             pointerUp(slot, p[0], p[1], event.button | 0);
             if (event.pointerType !== 'mouse') pointerSlots.delete(event.pointerId);
             event.preventDefault();
@@ -186,6 +205,7 @@ public final class BrowserInputBridge{
         canvas.addEventListener('contextmenu', event => event.preventDefault());
         document.documentElement.dataset.mindustryInput = 'ready';
         document.documentElement.setAttribute('data-mindustry-input-coordinates', 'offset-cached');
+        document.documentElement.setAttribute('data-mindustry-input-move-policy', 'raf-coalesced');
         """)
     private static native void installNative(String canvasId, KeyDownCallback keyDown, KeyUpCallback keyUp,
                                               PointerCallback pointerDown, PointerCallback pointerUp,
