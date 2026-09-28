@@ -74,6 +74,21 @@ atlas_pngs = sorted((WEB / "assets" / "sprites").glob("sprites*.png"))
 font_pngs = sorted((WEB / "assets" / "webfonts").glob("*.png"))
 atlas_rgba = rgba_bytes(atlas_pngs)
 font_rgba = rgba_bytes(font_pngs)
+
+asset_files = [path for path in (WEB / "assets").rglob("*") if path.is_file()]
+audio_files = [
+    path for path in asset_files
+    if path.relative_to(WEB / "assets").parts[0] in {"sounds", "music"}
+]
+campaign_map_files = sorted(
+    list((WEB / "assets" / "maps" / "serpulo").glob("*.msav"))
+    + list((WEB / "assets" / "maps" / "erekir").glob("*.msav"))
+)
+audio_bytes = sum(path.stat().st_size for path in audio_files)
+campaign_map_bytes = sum(path.stat().st_size for path in campaign_map_files)
+eager_asset_files = [path for path in asset_files if path not in audio_files]
+eager_asset_bytes = sum(path.stat().st_size for path in eager_asset_files)
+
 forbidden_found = [marker for marker in FORBIDDEN_JS_MARKERS if marker in js_text]
 
 lines = [
@@ -89,6 +104,12 @@ lines = [
     f"Staged package bytes: {total_bytes}",
     f"Yandex unpacked limit bytes: {YANDEX_UNPACKED_LIMIT}",
     f"Staged file count: {len(files)}",
+    f"Eager packaged asset files: {len(eager_asset_files)}",
+    f"Eager packaged asset bytes: {eager_asset_bytes}",
+    f"Streamed audio files: {len(audio_files)}",
+    f"Streamed audio bytes: {audio_bytes}",
+    f"Campaign map files: {len(campaign_map_files)}",
+    f"Campaign map bytes: {campaign_map_bytes}",
     f"Atlas PNG pages: {len(atlas_pngs)}",
     f"Atlas estimated RGBA GPU bytes: {atlas_rgba}",
     f"Baked font PNG pages: {len(font_pngs)}",
