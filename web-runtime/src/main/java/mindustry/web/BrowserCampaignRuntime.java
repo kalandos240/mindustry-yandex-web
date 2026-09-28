@@ -52,6 +52,10 @@ public final class BrowserCampaignRuntime{
         return hasSectorSave(SectorPresets.ruinousShores);
     }
 
+    public static boolean hasWindsweptIslandsSave(){
+        return hasSectorSave(SectorPresets.windsweptIslands);
+    }
+
     private static boolean hasSectorSave(SectorPreset preset){
         Sector sector = preset == null ? null : preset.sector;
         if(sector == null || sector.save == null || sector.save.file == null
@@ -134,6 +138,27 @@ public final class BrowserCampaignRuntime{
             Sector origin = SectorPresets.crateredBattleground == null ? null : SectorPresets.crateredBattleground.sector;
             if(origin == null || !origin.hasBase() || !origin.isCaptured()){
                 throw new IllegalStateException("Ruinous Shores launch requires a captured Cratered Battleground base");
+            }
+            startPreset(preset, origin);
+        }
+    }
+
+    /** Production progression action unlocked after captured Ruinous Shores + stock drilling/turret/power research. */
+    public static void playWindsweptIslands(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.windsweptIslands;
+        if(preset == null || !preset.unlocked()){
+            throw new IllegalStateException("Windswept Islands is still locked by stock campaign prerequisites");
+        }
+
+        boolean resume = hasWindsweptIslandsSave();
+        markProductionAction(resume ? "continue-windsweptIslands" : "play-windsweptIslands");
+        if(resume){
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.ruinousShores == null ? null : SectorPresets.ruinousShores.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()){
+                throw new IllegalStateException("Windswept Islands launch requires a captured Ruinous Shores base");
             }
             startPreset(preset, origin);
         }
@@ -409,12 +434,13 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Browser campaign frame requires the active Ground Zero sector");
         }
 
-        // CI deterministically stages the exact stock victory predicate for the three
+        // CI deterministically stages the exact stock victory predicate for the four
         // proven early sectors. Do not call sectorCapture() directly: Logic must take the
         // vanilla winWave/enemies/spawner branch and dispatch Call.sectorCapture().
         boolean progressionCapture = current.preset == SectorPresets.groundZero
             || current.preset == SectorPresets.frozenForest
-            || current.preset == SectorPresets.crateredBattleground;
+            || current.preset == SectorPresets.crateredBattleground
+            || current.preset == SectorPresets.ruinousShores;
         if(captureSmokeRequested() && progressionCapture && !captureSmokeStaged && frames >= 3){
             if(state.rules.winWave <= 0 || state.enemies != 0 || spawner == null || spawner.isSpawning()){
                 throw new IllegalStateException("Campaign capture smoke could not stage the stock victory predicate for " + current.preset.name);
@@ -460,7 +486,8 @@ public final class BrowserCampaignRuntime{
         if(progressSmokeRequested()
         && (current.preset == SectorPresets.frozenForest
             || current.preset == SectorPresets.crateredBattleground
-            || current.preset == SectorPresets.ruinousShores)
+            || current.preset == SectorPresets.ruinousShores
+            || current.preset == SectorPresets.windsweptIslands)
         && frames >= 3){
             markProgressStable(current.id, current.preset.name, frames, state.updateId, state.wave);
         }
@@ -500,6 +527,14 @@ public final class BrowserCampaignRuntime{
                     BrowserCampaignResearch.runRuinousProgressSmoke(current);
                     returnToMenu();
                     playRuinousShores();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.ruinousShores){
+                    BrowserCampaignResearch.runWindsweptProgressSmoke(current);
+                    returnToMenu();
+                    playWindsweptIslands();
                     markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
                     return;
                 }
@@ -571,7 +606,7 @@ public final class BrowserCampaignRuntime{
     @JSBody(params = {"preset", "wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
     private static native void markCaptureStaged(String preset, int wave, int winWave);
 
-    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));}")
+    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));} if(preset === 'ruinousShores'){document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-capture-wave',String(wave));}")
     private static native void markCaptureComplete(String preset, int sectorId, int wave, long bytes);
 
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
