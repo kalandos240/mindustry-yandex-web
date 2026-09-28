@@ -89,6 +89,15 @@ public final class BrowserCampaignResearch{
         return SectorPresets.saltFlats != null && SectorPresets.saltFlats.unlocked();
     }
 
+    public static boolean saltFlatsCaptured(){
+        return captured(SectorPresets.saltFlats);
+    }
+
+    public static boolean tarFieldsReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.tarFields != null && SectorPresets.tarFields.unlocked();
+    }
+
     /**
      * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
      * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
@@ -192,6 +201,21 @@ public final class BrowserCampaignResearch{
 
     public static void spendNextSaltResearch(){
         UnlockableContent next = nextSaltResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextTarResearch(){
+        if(!Blocks.sporePress.unlocked()) return Blocks.sporePress;
+        if(!Blocks.coalCentrifuge.unlocked()) return Blocks.coalCentrifuge;
+        if(!Blocks.conduit.unlocked()) return Blocks.conduit;
+        if(!Blocks.arc.unlocked()) return Blocks.arc;
+        if(!Blocks.scorch.unlocked()) return Blocks.scorch;
+        if(!Blocks.wave.unlocked()) return Blocks.wave;
+        return null;
+    }
+
+    public static void spendNextTarResearch(){
+        UnlockableContent next = nextTarResearch();
         if(next != null) spend(next);
     }
 
@@ -408,6 +432,27 @@ public final class BrowserCampaignResearch{
         markSaltProgressSmoke();
     }
 
+    public static void runTarProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.saltFlats.sector
+        || !captured(SectorPresets.saltFlats)){
+            throw new IllegalStateException("Tar Fields progression requires captured Salt Flats");
+        }
+
+        stageAndSpend(source, Blocks.sporePress);
+        stageAndSpend(source, Blocks.coalCentrifuge);
+        stageAndSpend(source, Blocks.conduit);
+        stageAndSpend(source, Blocks.arc);
+        stageAndSpend(source, Blocks.scorch);
+        stageAndSpend(source, Blocks.wave);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!tarFieldsReady()){
+            throw new IllegalStateException("Tar Fields did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markTarProgressSmoke();
+    }
+
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
         stageMissing(source, content);
@@ -553,6 +598,9 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-copper-wall-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-copper-wall-large-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-titanium-wall-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-door-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-ready','true');")
     private static native void markSaltProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-press-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-coal-centrifuge-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-conduit-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-arc-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-scorch-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-wave-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-ready','true');")
+    private static native void markTarProgressSmoke();
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady", "windsweptReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
