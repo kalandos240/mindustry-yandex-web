@@ -43,6 +43,44 @@ with zipfile.ZipFile(archive_path, "r") as archive:
         raise SystemExit("unexpected wrapper directory")
     if any(name.endswith(".map") for name in names):
         raise SystemExit("source map leaked into release ZIP")
+
+    serpulo = {
+        "groundZero", "frozenForest", "crateredBattleground", "ruinousShores",
+        "windsweptIslands", "biomassFacility", "fungalPass", "frontier", "saltFlats",
+        "tarFields", "impact0078", "stainedMountains", "infestedCanyons",
+        "nuclearComplex", "desolateRift", "facility32m", "perilousHarbor",
+        "extractionOutpost", "coastline", "navalFortress", "overgrowth",
+        "mycelialBastion", "littoralShipyard", "planetaryTerminal", "taintedWoods",
+        "atolls", "testingGrounds", "sunkenPier", "weatheredChannels",
+    }
+    erekir = {
+        "onset", "aegis", "lake", "intersect", "atlas", "split", "basin", "marsh",
+        "peaks", "ravine", "caldera-erekir", "stronghold", "crevice", "siege",
+        "crossroads", "karst", "origin",
+    }
+    actual_serpulo = {
+        PurePosixPath(name).stem
+        for name in names
+        if name.startswith("assets/maps/serpulo/") and name.endswith(".msav")
+    }
+    actual_erekir = {
+        PurePosixPath(name).stem
+        for name in names
+        if name.startswith("assets/maps/erekir/") and name.endswith(".msav")
+    }
+    if actual_serpulo != serpulo:
+        raise SystemExit(
+            f"Serpulo archive map set mismatch: missing={sorted(serpulo - actual_serpulo)} "
+            f"extra={sorted(actual_serpulo - serpulo)}"
+        )
+    if actual_erekir != erekir:
+        raise SystemExit(
+            f"Erekir archive map set mismatch: missing={sorted(erekir - actual_erekir)} "
+            f"extra={sorted(actual_erekir - erekir)}"
+        )
+    if "assets/planets/erekir.json" not in names:
+        raise SystemExit("Erekir planet definition missing from release ZIP")
+
     archive.extractall(target)
 PY
 
@@ -111,4 +149,4 @@ grep -Eq 'data-mindustry-assets-preload-ms="[1-9][0-9]*"' /tmp/mindustry-release
 grep -Eq 'data-mindustry-assets-eager-bytes="[1-9][0-9]*"' /tmp/mindustry-release-archive-mobile.html
 grep -Eq 'data-mindustry-assets-preload-ms="[1-9][0-9]*"' /tmp/mindustry-release-archive-mobile.html
 
-echo 'Yandex release ZIP smoke: SHA-256 + root layout + desktop boot + mobile boot/canvas geometry PASS'
+echo 'Yandex release ZIP smoke: SHA-256 + exact 29 Serpulo/17 Erekir map sets + root layout + desktop boot + mobile boot/canvas geometry PASS'
