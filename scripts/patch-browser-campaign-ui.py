@@ -882,6 +882,17 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.crossroadsReady()
             && !BrowserCampaignResearch.crossroadsCaptured()){
                 BrowserCampaignRuntime.playCrossroads();
+            }else if(BrowserCampaignResearch.crossroadsCaptured()
+            && !BrowserCampaignResearch.karstReady()){
+                BrowserCampaignResearch.spendNextKarstResearch();
+            }else if(BrowserCampaignResearch.karstReady()
+            && !BrowserCampaignResearch.karstCaptured()){
+                BrowserCampaignRuntime.playKarst();
+            }else if(BrowserCampaignResearch.karstCaptured()
+            && !BrowserCampaignResearch.originReady()){
+                BrowserCampaignResearch.spendNextOriginResearch();
+            }else if(BrowserCampaignResearch.originReady()){
+                BrowserCampaignRuntime.playOrigin();
             }
         });
         erekirProgress.setDisabled(() -> {
@@ -938,7 +949,19 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             if(!BrowserCampaignResearch.siegeReady()) return true;
             if(!BrowserCampaignResearch.siegeCaptured()) return false;
             if(!BrowserCampaignResearch.crossroadsReady()) return true;
-            return BrowserCampaignResearch.crossroadsCaptured();
+            if(!BrowserCampaignResearch.crossroadsCaptured()) return false;
+
+            if(!BrowserCampaignResearch.karstReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextKarstResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.karstCaptured()) return false;
+
+            if(!BrowserCampaignResearch.originReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOriginResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            return false;
         });
         erekirProgress.update(() -> {
             if(!BrowserCampaignResearch.onsetCaptured()){
@@ -1079,9 +1102,26 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                     (BrowserCampaignResearch.crossroadsReady()
                         ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
                         : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.karstReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextKarstResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.karstCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasKarstSave();
+                erekirProgress.setText(Core.bundle.get("sector.karst.name", "Karst") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.originReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOriginResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
             }else{
-                erekirProgress.setText(Core.bundle.get("sector.crossroads.name", "Crossroads") + " — " +
-                    Core.bundle.get("complete", "Complete"));
+                boolean saved = BrowserCampaignRuntime.hasOriginSave();
+                erekirProgress.setText(Core.bundle.get("sector.origin.name", "Origin") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }
 
             markCampaignErekirState(
@@ -1135,6 +1175,13 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.crossroadsReady(),
                 BrowserCampaignResearch.crossroadsCaptured(),
                 BrowserCampaignRuntime.hasCrossroadsSave()
+            );
+            markCampaignErekirFinalState(
+                BrowserCampaignResearch.karstReady(),
+                BrowserCampaignResearch.karstCaptured(),
+                BrowserCampaignRuntime.hasKarstSave(),
+                BrowserCampaignResearch.originReady(),
+                BrowserCampaignRuntime.hasOriginSave()
             );
         });
         root.add(erekirProgress).width(campaignWidth).height(mobile ? 54f : 44f).padBottom(8f);
@@ -1282,6 +1329,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"strongholdReady", "strongholdCaptured", "strongholdSaved", "creviceReady", "creviceCaptured", "creviceSaved", "siegeReady", "siegeCaptured", "siegeSaved", "crossroadsReady", "crossroadsCaptured", "crossroadsSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-late-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-ready',strongholdReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-captured',strongholdCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-save',strongholdSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-ready',creviceReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-captured',creviceCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-save',creviceSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-ready',siegeReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-captured',siegeCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-save',siegeSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-ready',crossroadsReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-captured',crossroadsCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-save',crossroadsSaved ? 'true' : 'false');")
     private static native void markCampaignErekirLateState(boolean strongholdReady, boolean strongholdCaptured, boolean strongholdSaved, boolean creviceReady, boolean creviceCaptured, boolean creviceSaved, boolean siegeReady, boolean siegeCaptured, boolean siegeSaved, boolean crossroadsReady, boolean crossroadsCaptured, boolean crossroadsSaved);
+
+    @JSBody(params = {"karstReady", "karstCaptured", "karstSaved", "originReady", "originSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-final-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-ready',karstReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-captured',karstCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-save',karstSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-origin-ready',originReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-origin-save',originSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirFinalState(boolean karstReady, boolean karstCaptured, boolean karstSaved, boolean originReady, boolean originSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
