@@ -56,6 +56,33 @@ public final class BrowserCampaignResearch{
         return captured(SectorPresets.intersect);
     }
 
+    public static boolean atlasReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.atlas != null && SectorPresets.atlas.unlocked();
+    }
+
+    public static boolean atlasCaptured(){
+        return captured(SectorPresets.atlas);
+    }
+
+    public static boolean splitReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.split != null && SectorPresets.split.unlocked();
+    }
+
+    public static boolean splitCaptured(){
+        return captured(SectorPresets.split);
+    }
+
+    public static boolean basinReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.basin != null && SectorPresets.basin.unlocked();
+    }
+
+    public static boolean basinCaptured(){
+        return captured(SectorPresets.basin);
+    }
+
     public static boolean frozenForestReady(){
         if(control != null) control.checkAutoUnlocks();
         return SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked();
@@ -685,6 +712,28 @@ public final class BrowserCampaignResearch{
         if(next != null) spend(next);
     }
 
+    public static UnlockableContent nextAtlasResearch(){
+        if(!Blocks.mechFabricator.unlocked()) return Blocks.mechFabricator;
+        return null;
+    }
+
+    public static void spendNextAtlasResearch(){
+        UnlockableContent next = nextAtlasResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextSplitResearch(){
+        if(!Blocks.reinforcedPayloadConveyor.unlocked()) return Blocks.reinforcedPayloadConveyor;
+        if(!Blocks.overflowDuct.unlocked()) return Blocks.overflowDuct;
+        if(!Blocks.reinforcedContainer.unlocked()) return Blocks.reinforcedContainer;
+        return null;
+    }
+
+    public static void spendNextSplitResearch(){
+        UnlockableContent next = nextSplitResearch();
+        if(next != null) spend(next);
+    }
+
     public static boolean canSpend(UnlockableContent content){
         TechNode node = node(content);
         if(content.unlocked() || !objectivesComplete(node)) return false;
@@ -782,6 +831,54 @@ public final class BrowserCampaignResearch{
 
         Core.settings.forceSave();
         markIntersectProgressSmoke();
+    }
+
+    public static void runAtlasProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.intersect.sector || !intersectCaptured()){
+            throw new IllegalStateException("Atlas progression requires captured Intersect");
+        }
+
+        stageAndSpend(source, Blocks.mechFabricator);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!atlasReady()){
+            throw new IllegalStateException("Atlas did not auto-unlock after stock prerequisites completed");
+        }
+
+        Core.settings.forceSave();
+        markAtlasProgressSmoke();
+    }
+
+    public static void runSplitProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.atlas.sector || !atlasCaptured()){
+            throw new IllegalStateException("Split progression requires captured Atlas");
+        }
+
+        stageAndSpend(source, Blocks.reinforcedPayloadConveyor);
+        stageAndSpend(source, Blocks.overflowDuct);
+        stageAndSpend(source, Blocks.reinforcedContainer);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!splitReady()){
+            throw new IllegalStateException("Split did not auto-unlock after stock prerequisites completed");
+        }
+
+        Core.settings.forceSave();
+        markSplitProgressSmoke();
+    }
+
+    public static void verifyBasinReadyAfterAtlas(Sector source){
+        if(source == null || source != SectorPresets.split.sector || !splitCaptured()){
+            throw new IllegalStateException("Basin smoke order requires captured Split");
+        }
+        if(!atlasCaptured()){
+            throw new IllegalStateException("Basin requires captured Atlas");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!basinReady()){
+            throw new IllegalStateException("Basin did not auto-unlock after captured Atlas");
+        }
+        markBasinReadySmoke();
     }
 
     /** CI-only helper: supply exactly the missing early research resources, then use the production spend path. */
@@ -1580,6 +1677,15 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-vent-condenser-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-ship-fabricator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-intersect-ready','true');")
     private static native void markIntersectProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-mech-fabricator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-atlas-ready','true');")
+    private static native void markAtlasProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-reinforced-payload-conveyor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-overflow-duct-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-reinforced-container-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-split-ready','true');")
+    private static native void markSplitProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-ready','true');")
+    private static native void markBasinReadySmoke();
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready','true');")
     private static native void markTaintedProgressSmoke();
