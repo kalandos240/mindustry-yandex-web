@@ -155,7 +155,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 }
             }else if(!BrowserCampaignResearch.crateredBattlegroundCaptured()){
                 craterResearch.setText(Core.bundle.get("sector.crateredBattleground.name", "Cratered Battleground") +
-                    " — " + Core.bundle.get("sector.capture", "Capture"));
+                    " — " + Core.bundle.get("locked", "Locked"));
             }else if(BrowserCampaignResearch.ruinousShoresReady()){
                 boolean saved = BrowserCampaignRuntime.hasRuinousShoresSave();
                 craterResearch.setText(Core.bundle.get("sector.ruinousShores.name", "Ruinous Shores") + " — " +
