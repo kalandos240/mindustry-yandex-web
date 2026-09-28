@@ -358,6 +358,10 @@ jobs:
           test -s work/release/mindustry-yandex-release.zip
           test -s work/release/mindustry-yandex-release.zip.sha256
 
+      - name: Verify packaged Yandex release archive
+        if: success()
+        run: bash scripts/verify-yandex-release-archive.sh
+
       - name: Upload Yandex release archive
         if: success()
         uses: actions/upload-artifact@v4
