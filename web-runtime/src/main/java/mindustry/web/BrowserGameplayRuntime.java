@@ -168,21 +168,23 @@ public final class BrowserGameplayRuntime{
     }
 
     private static void runMenuModuleFrame(){
-        markModulePhase("logic");
+        boolean trace = smokeMode || moduleLoopFrames < 3;
+
+        if(trace) markModulePhase("logic");
         logic.updateWebMenu();
-        markModulePhase("logic-ready");
+        if(trace) markModulePhase("logic-ready");
 
-        markModulePhase("control");
+        if(trace) markModulePhase("control");
         control.update();
-        markModulePhase("control-ready");
+        if(trace) markModulePhase("control-ready");
 
-        markModulePhase("renderer");
+        if(trace) markModulePhase("renderer");
         renderer.update();
-        markModulePhase("renderer-ready");
+        if(trace) markModulePhase("renderer-ready");
 
-        markModulePhase("ui");
+        if(trace) markModulePhase("ui");
         ui.update();
-        markModulePhase("ui-ready");
+        if(trace) markModulePhase("ui-ready");
 
         moduleLoopFrames++;
         if(moduleLoopFrames == 1){
