@@ -87,7 +87,18 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --second-resize-require 'data-mindustry-input-mode="mobile"' \
   --second-resize-require 'data-mindustry-campaign-ui-layout="mobile"' \
   --second-resize-require 'data-mindustry-campaign-ui-map-pane-height="130"' \
-  --second-resize-require 'data-mindustry-gameplay-loop="menu-stable"' > /tmp/mindustry-resize-mobile-menu.html
+  --second-resize-require 'data-mindustry-gameplay-loop="menu-stable"' \
+  --third-resize-width 844 \
+  --third-resize-height 390 \
+  --third-resize-require 'data-mindustry-resize-last="844x390"' \
+  --third-resize-require 'data-mindustry-viewport-last="844x390"' \
+  --third-resize-require 'data-mindustry-resize-orientation="landscape"' \
+  --third-resize-require 'data-mindustry-input-mode="mobile"' \
+  --third-resize-require 'data-mindustry-stock-input="mobile"' \
+  --third-resize-require 'data-mindustry-campaign-ui-layout="mobile"' \
+  --third-resize-require 'data-mindustry-campaign-ui-resized="ready"' \
+  --third-resize-require 'data-mindustry-campaign-ui-map-pane-height="56"' \
+  --third-resize-require 'data-mindustry-gameplay-loop="menu-stable"' > /tmp/mindustry-resize-mobile-menu.html
 
 # Mobile gameplay: rotate an already-running Ground Zero session. MobileInput must
 # remain active and campaign play must continue in the same sector.
@@ -121,12 +132,23 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --second-resize-require 'data-mindustry-campaign-state="playing"' \
   --second-resize-require 'data-mindustry-campaign-sector-id="170"' \
   --second-resize-require 'data-mindustry-campaign-core="ready"' \
-  --second-resize-require 'data-mindustry-network="local-only"' > /tmp/mindustry-resize-mobile-campaign.html
+  --second-resize-require 'data-mindustry-network="local-only"' \
+  --third-resize-width 844 \
+  --third-resize-height 390 \
+  --third-resize-require 'data-mindustry-resize-last="844x390"' \
+  --third-resize-require 'data-mindustry-viewport-last="844x390"' \
+  --third-resize-require 'data-mindustry-resize-orientation="landscape"' \
+  --third-resize-require 'data-mindustry-input-mode="mobile"' \
+  --third-resize-require 'data-mindustry-stock-input="mobile"' \
+  --third-resize-require 'data-mindustry-campaign-state="playing"' \
+  --third-resize-require 'data-mindustry-campaign-sector-id="170"' \
+  --third-resize-require 'data-mindustry-campaign-core="ready"' \
+  --third-resize-require 'data-mindustry-network="local-only"' > /tmp/mindustry-resize-mobile-campaign.html
 
 grep -Eq 'data-mindustry-campaign-frames="([4-9]|[1-9][0-9]+)"' /tmp/mindustry-resize-mobile-campaign.html
 
 grep -Eq 'data-mindustry-resize-count="([3-9]|[1-9][0-9]+)"' /tmp/mindustry-resize-desktop.html
-grep -Eq 'data-mindustry-resize-count="([3-9]|[1-9][0-9]+)"' /tmp/mindustry-resize-mobile-menu.html
-grep -Eq 'data-mindustry-resize-count="([3-9]|[1-9][0-9]+)"' /tmp/mindustry-resize-mobile-campaign.html
+grep -Eq 'data-mindustry-resize-count="([4-9]|[1-9][0-9]+)"' /tmp/mindustry-resize-mobile-menu.html
+grep -Eq 'data-mindustry-resize-count="([4-9]|[1-9][0-9]+)"' /tmp/mindustry-resize-mobile-campaign.html
 
-echo 'Yandex viewport continuity: desktop resize cycle + mobile portrait-landscape-portrait reflow + live campaign continuity PASS'
+echo 'Yandex viewport continuity: desktop resize cycle + mobile portrait-landscape-portrait-landscape fullscreen-style re-entry + live campaign continuity PASS'
