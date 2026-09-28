@@ -110,6 +110,10 @@ run_load(){
   grep -q 'data-mindustry-perf-effects-target="240"' "$dom"
   grep -q 'data-mindustry-perf-effects="240"' "$dom"
   grep -q 'data-mindustry-perf-effect-kind="drillSteam"' "$dom"
+  grep -Eq 'data-mindustry-perf-sort-calls="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-perf-sort-max-requests="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-perf-sort-max-runs="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-perf-sort-fast-paths="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-local-map-update-id="[1-9][0-9]{2,}"' "$dom"
   grep -Eq 'data-mindustry-campaign-assets-bytes="[1-9][0-9]*"' "$dom"
 
@@ -128,7 +132,7 @@ run_load(){
     exit 1
   fi
 
-  echo "Runtime load smoke ($label): 64 units + 240 drillSteam effects over 120 frames in ${elapsed}ms (~${fps} fps); preload ${status_updates}/${eager}; 44 campaign maps idle-warmed PASS" | tee -a "$REPORT"
+  echo "Runtime load smoke ($label): 64 units + 240 drillSteam effects over 120 frames in ${elapsed}ms (~${fps} fps); SpriteBatch sorter/fast-path exercised; preload ${status_updates}/${eager}; 44 campaign maps idle-warmed PASS" | tee -a "$REPORT"
 }
 
 run_load desktop desktop 0 \
