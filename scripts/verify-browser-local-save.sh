@@ -59,6 +59,7 @@ run_local_save(){
     --require 'data-mindustry-local-map-pause-smoke="armed"' \
     --require 'data-mindustry-local-map-pause="ready"' \
     --require 'data-mindustry-local-map-pause-clock="frozen"' \
+    --require 'data-mindustry-local-map-save-during-pause="true"' \
     --require 'data-mindustry-local-map-pause-resumed="yes"' \
     --require 'data-mindustry-local-map-save-smoke="armed"' \
     --require 'data-mindustry-local-map-save="ready"' \
@@ -75,9 +76,10 @@ run_local_save(){
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$first_dom"
 
-  local pause_id frozen_id resume_id save_wave save_version save_bytes auto_wave auto_update
+  local pause_id frozen_id paused_save_id resume_id save_wave save_version save_bytes auto_wave auto_update
   pause_id="$(attr "$first_dom" data-mindustry-local-map-pause-update-id)"
   frozen_id="$(attr "$first_dom" data-mindustry-local-map-pause-frozen-update-id)"
+  paused_save_id="$(attr "$first_dom" data-mindustry-local-map-save-during-pause-update-id)"
   resume_id="$(attr "$first_dom" data-mindustry-local-map-resume-update-id)"
   save_wave="$(attr "$first_dom" data-mindustry-local-save-wave)"
   save_version="$(attr "$first_dom" data-mindustry-local-save-version)"
@@ -87,6 +89,7 @@ run_local_save(){
 
   test -n "$pause_id"
   test "$pause_id" = "$frozen_id"
+  test "$pause_id" = "$paused_save_id"
   test "$pause_id" = "$resume_id"
   test "$save_version" = "13"
   test -n "$save_wave"
