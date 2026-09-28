@@ -149,7 +149,8 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
         // top-level wave-team/isEnemy count into that mandatory pass.
         state.teams.updateTeamStats();
         state.enemies = state.teams.webWaveEnemies;
-        MapPreviewLoader.checkPreviews();
+        // Web never installs the desktop/network MapPreviewLoader reflection callbacks;
+        // do not retain or poll that no-op preview bridge in the gameplay hot path.
 
         Time.update();
         logicVars.update();
