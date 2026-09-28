@@ -87,8 +87,8 @@ public final class BrowserInputBridge{
             // The game canvas is fixed to the viewport. PointerEvent offset coordinates are
             // already target-relative, so avoid getBoundingClientRect()/layout reads on every
             // pointermove. BrowserCanvas keeps CSS dimensions cached on resize.
-            const width = Math.max(1, (canvas.__mindustryClientWidth || canvas.clientWidth) | 0);
-            const height = Math.max(1, (canvas.__mindustryClientHeight || canvas.clientHeight) | 0);
+            const width = Math.max(1, canvas.__mindustryClientWidth | 0);
+            const height = Math.max(1, canvas.__mindustryClientHeight | 0);
             const ox = Number.isFinite(event.offsetX) ? event.offsetX : event.clientX;
             const oy = Number.isFinite(event.offsetY) ? event.offsetY : event.clientY;
             const x = Math.max(0, Math.min(width, Math.floor(ox)));
