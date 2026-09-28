@@ -168,6 +168,21 @@ if captured_aliases != expected_captured_aliases:
 require(RESEARCH, "public static boolean isCaptured(SectorPreset preset)", "generic campaign capture query")
 require(UI_PATCH, "BrowserCampaignResearch.isCaptured(", "campaign UI generic capture query")
 
+spend_next_aliases = set(re.findall(r"public static void (spendNext[A-Za-z0-9]+)\(\)", RESEARCH))
+expected_spend_next_aliases = {
+    "spendNextCraterResearch",
+    "spendNextImpactResearch",
+    "spendNextNuclearResearch",
+    "spendNextDesolateResearch",
+}
+if spend_next_aliases != expected_spend_next_aliases:
+    failures.append(
+        "campaign spend-next dedup regression: "
+        f"expected={sorted(expected_spend_next_aliases)} actual={sorted(spend_next_aliases)}"
+    )
+require(RESEARCH, "public static void spendNext(UnlockableContent next)", "generic campaign spend-next")
+require(UI_PATCH, "BrowserCampaignResearch.spendNext(", "campaign UI generic spend-next")
+
 save_aliases = set(re.findall(r"public static boolean (has[A-Za-z0-9]+Save)\(\)", RUNTIME))
 expected_save_aliases = {"hasGroundZeroSave", "hasOnsetSave"}
 if save_aliases != expected_save_aliases:
