@@ -30,6 +30,53 @@ EREKIR = [
     ("crossroads", "crossroads"), ("karst", "karst"), ("origin", "origin"),
 ]
 
+LAUNCH_ORIGINS = {
+    "frozenForest": "groundZero",
+    "crateredBattleground": "frozenForest",
+    "ruinousShores": "crateredBattleground",
+    "windsweptIslands": "ruinousShores",
+    "biomassFacility": "windsweptIslands",
+    "fungalPass": "biomassFacility",
+    "frontier": "fungalPass",
+    "saltFlats": "frontier",
+    "tarFields": "saltFlats",
+    "impact0078": "tarFields",
+    "stainedMountains": "biomassFacility",
+    "infestedCanyons": "stainedMountains",
+    "nuclearComplex": "infestedCanyons",
+    "desolateRift": "nuclearComplex",
+    "facility32m": "stainedMountains",
+    "perilousHarbor": "frontier",
+    "extractionOutpost": "perilousHarbor",
+    "coastline": "extractionOutpost",
+    "navalFortress": "coastline",
+    "overgrowth": "frontier",
+    "mycelialBastion": "overgrowth",
+    "littoralShipyard": "mycelialBastion",
+    "planetaryTerminal": "littoralShipyard",
+    "taintedWoods": "infestedCanyons",
+    "atolls": "extractionOutpost",
+    "testingGrounds": "coastline",
+    "sunkenPier": "navalFortress",
+    "weatheredChannels": "navalFortress",
+    "aegis": "onset",
+    "lake": "aegis",
+    "intersect": "lake",
+    "atlas": "intersect",
+    "split": "atlas",
+    "basin": "atlas",
+    "marsh": "basin",
+    "peaks": "marsh",
+    "ravine": "marsh",
+    "caldera": "ravine",
+    "stronghold": "caldera",
+    "crevice": "stronghold",
+    "siege": "crevice",
+    "crossroads": "siege",
+    "karst": "crossroads",
+    "origin": "karst",
+}
+
 failures = []
 
 def require(haystack: str, needle: str, where: str) -> None:
@@ -104,6 +151,27 @@ for method in sorted(research_referenced - research_declared):
     failures.append(f"campaign Java surface: missing BrowserCampaignResearch.{method} declaration")
 for method in sorted(runtime_referenced - runtime_declared):
     failures.append(f"campaign Java surface: missing BrowserCampaignRuntime.{method} declaration")
+
+save_aliases = set(re.findall(r"public static boolean (has[A-Za-z0-9]+Save)\(\)", RUNTIME))
+expected_save_aliases = {"hasGroundZeroSave", "hasOnsetSave"}
+if save_aliases != expected_save_aliases:
+    failures.append(
+        "campaign save-query dedup regression: "
+        f"expected={sorted(expected_save_aliases)} actual={sorted(save_aliases)}"
+    )
+require(RUNTIME, "public static boolean hasSave(SectorPreset preset)", "generic campaign save query")
+require(UI_PATCH, "BrowserCampaignRuntime.hasSave(", "campaign UI generic save query")
+
+for preset, origin in LAUNCH_ORIGINS.items():
+    action = "caldera" if preset == "caldera" else preset
+    require(
+        RUNTIME,
+        f'playUnlockedPreset(SectorPresets.{preset}, SectorPresets.{origin}, "{action}")',
+        f"campaign launch mapping {preset}",
+    )
+
+if len(LAUNCH_ORIGINS) != 44:
+    failures.append(f"campaign launch mapping count changed: {len(LAUNCH_ORIGINS)} != 44")
 
 # The pinned Origin finale is special: it must stay a five-stage timer graph followed
 # by the stock attack victory predicate. These markers make accidental regression
