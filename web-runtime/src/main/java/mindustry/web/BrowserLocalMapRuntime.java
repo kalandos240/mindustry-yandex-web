@@ -3,6 +3,7 @@ package mindustry.web;
 import arc.*;
 import arc.files.*;
 import arc.struct.*;
+import mindustry.content.*;
 import mindustry.game.*;
 import mindustry.game.EventType.*;
 import mindustry.io.*;
@@ -39,6 +40,10 @@ public final class BrowserLocalMapRuntime{
     private static boolean testStartChecked;
     private static Map current;
     private static int frames;
+    private static boolean perfSmoke;
+    private static boolean perfReady;
+    private static int perfUnits;
+    private static final int perfTargetFrames = 120;
 
     private BrowserLocalMapRuntime(){}
 
@@ -160,6 +165,9 @@ public final class BrowserLocalMapRuntime{
 
         current = map;
         frames = 0;
+        perfSmoke = perfSmokeRequested();
+        perfReady = false;
+        perfUnits = 0;
         active = true;
 
         try{
@@ -181,6 +189,28 @@ public final class BrowserLocalMapRuntime{
 
         Core.camera.position.set(state.rules.defaultTeam.core());
         markStarted(slug, map.plainName(), world.width(), world.height());
+        if(perfSmoke) stagePerfLoad();
+    }
+
+    private static void stagePerfLoad(){
+        float centerX = world.width() * tilesize / 2f;
+        float centerY = world.height() * tilesize / 2f;
+        int ground = 48;
+        int air = 16;
+
+        for(int i = 0; i < ground; i++){
+            float x = centerX + ((i % 12) - 5.5f) * tilesize * 1.5f;
+            float y = centerY + ((i / 12) - 1.5f) * tilesize * 1.5f;
+            UnitTypes.dagger.spawn(Team.crux, x, y);
+        }
+        for(int i = 0; i < air; i++){
+            float x = centerX + ((i % 8) - 3.5f) * tilesize * 2f;
+            float y = centerY + ((i / 8) - 0.5f) * tilesize * 2f;
+            UnitTypes.flare.spawn(Team.crux, x, y);
+        }
+
+        perfUnits = ground + air;
+        markPerfStarted(perfUnits, perfTargetFrames);
     }
 
     /** One production browser frame. Unlike BrowserPlayingRuntime this never auto-restores. */
@@ -222,6 +252,10 @@ public final class BrowserLocalMapRuntime{
         frames++;
         markFrame(frames, state.updateId, player.unit() == null ? "spawning" : player.unit().type.name);
         if(frames >= 3) markLive(frames);
+        if(perfSmoke && !perfReady && frames >= perfTargetFrames){
+            perfReady = true;
+            markPerfReady(frames, perfUnits);
+        }
     }
 
     /** Return to the stable local map selector without touching any remote service. */
@@ -231,6 +265,9 @@ public final class BrowserLocalMapRuntime{
         active = false;
         current = null;
         frames = 0;
+        perfSmoke = false;
+        perfReady = false;
+        perfUnits = 0;
         logic.reset();
         markReturned(previous);
     }
@@ -301,6 +338,9 @@ public final class BrowserLocalMapRuntime{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryMapSmoke') || ''; ")
     private static native String requestedTestMap();
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPerfSmoke') === '1';")
+    private static native boolean perfSmokeRequested();
+
     @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-map-catalog', 'ready'); document.documentElement.setAttribute('data-mindustry-map-count', String(count)); document.documentElement.setAttribute('data-mindustry-map-source', 'pinned-builtin-local-only');")
     private static native void markCatalogReady(int count);
 
@@ -318,6 +358,12 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-loop', 'live'); document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames));")
     private static native void markLive(int frames);
+
+    @JSBody(params = {"units", "targetFrames"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames));")
+    private static native void markPerfStarted(int units, int targetFrames);
+
+    @JSBody(params = {"frames", "units"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
+    private static native void markPerfReady(int frames, int units);
 
     @JSBody(params = {"slug"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-state', 'menu'); document.documentElement.setAttribute('data-mindustry-local-map-returned-from', slug); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'stopped');")
     private static native void markReturned(String slug);
