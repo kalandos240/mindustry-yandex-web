@@ -71,8 +71,16 @@ public final class BrowserCampaignRuntime{
         return hasSectorSave(SectorPresets.onset);
     }
 
+    /**
+     * Cheap menu/UI save hint. BrowserSaves already validates and binds indexed sector
+     * metadata during startup, so avoid IndexedDB-backed Fi.exists()/length() bridge calls
+     * on every Scene update. Actual play/resume still uses strict hasSectorSave().
+     */
     public static boolean hasSave(SectorPreset preset){
-        return hasSectorSave(preset);
+        Sector sector = preset == null ? null : preset.sector;
+        SaveMeta meta = sector == null || sector.save == null ? null : sector.save.meta;
+        return meta != null && meta.version == 13 && meta.rules != null && meta.rules.sector != null
+            && meta.rules.sector.id == sector.id && meta.rules.sector.planet == sector.planet;
     }
 
     private static boolean hasSectorSave(SectorPreset preset){
