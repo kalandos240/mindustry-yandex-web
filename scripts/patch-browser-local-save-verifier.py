@@ -8,6 +8,10 @@ if not PERSIST.is_file():
     raise SystemExit(f"Missing browser persistence verifier: {PERSIST}")
 
 text = PERSIST.read_text(encoding="utf-8")
+if 'verify-browser-local-save-resume.sh' in text:
+    print("Local Save/Continue persistence gate already present")
+    raise SystemExit(0)
+
 anchor = "echo 'Browser persistence smoke: explicit CI mode + Java BrowserFi write -> IndexedDB flush -> Chrome restart -> Java byte[] recovery + stock local UI + 3-frame continuous play + BrowserAudio + real WorldLoadEvent recovery PASS'\n"
 replacement = anchor + 'bash "$ROOT_DIR/scripts/verify-browser-local-save-resume.sh"\n'
 
