@@ -138,6 +138,7 @@ jobs:
         run: |
           test -s web-runtime/build/web/index.html
           test -s web-runtime/build/web/mindustry.js
+          test -z "$(find web-runtime/build/web -type f -name '*.map' -print -quit)"
           test -s web-runtime/build/web/yandex-platform.js
           test -s web-runtime/build/web/browser-storage.js
           test -s web-runtime/build/web/browser-audio.js
