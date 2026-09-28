@@ -58,7 +58,7 @@ public final class BrowserLocalMapRuntime{
     private static int perfUnits;
     private static int perfEffects;
     private static final int perfTargetFrames = 120;
-    private static final int perfEffectsPerFrame = 4;
+    private static final int perfEffectsPerFrame = 2;
     private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame;
 
     private BrowserLocalMapRuntime(){}
@@ -265,7 +265,7 @@ public final class BrowserLocalMapRuntime{
             int row = (index >> 4) & 7;
             float x = cx + (col - 7.5f) * 6f;
             float y = cy + (row - 3.5f) * 6f;
-            Fx.unitCapKill.at(x, y);
+            Fx.drillSteam.at(x, y);
         }
     }
 
@@ -742,7 +742,7 @@ public final class BrowserLocalMapRuntime{
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-loop', 'live'); document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames));")
     private static native void markLive(int frames);
 
-    @JSBody(params = {"units", "targetFrames", "targetEffects"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames)); root.setAttribute('data-mindustry-perf-effects-target',String(targetEffects));")
+    @JSBody(params = {"units", "targetFrames", "targetEffects"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames)); root.setAttribute('data-mindustry-perf-effects-target',String(targetEffects)); root.setAttribute('data-mindustry-perf-effect-kind','drillSteam');")
     private static native void markPerfStarted(int units, int targetFrames, int targetEffects);
 
     @JSBody(params = {"frames", "units", "effects"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-effects',String(effects)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
