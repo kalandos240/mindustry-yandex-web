@@ -1406,6 +1406,20 @@ public final class BrowserCampaignRuntime{
             markIntersectAttackStage(enemyCores);
         }
 
+        // Basin's two scripted nuclear targets may not be the only enemy cores.
+        // Wait for the real objective executor to apply nukeannounce/nuke1, then finish
+        // any remaining attack cores through the same stock attack victory predicate.
+        if(captureSmokeRequested() && current.preset == SectorPresets.basin
+        && captureSmokeStaged && !captureSmokeComplete
+        && state.rules.objectiveFlags.contains("nukeannounce")
+        && state.rules.objectiveFlags.contains("nuke1")
+        && state.rules.waveTeam.cores().size > 0){
+            int enemyCores = state.rules.waveTeam.cores().size;
+            var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
+            enemyCoresSnapshot.each(core -> core.kill());
+            markBasinAttackStage(enemyCores);
+        }
+
         if(progressSmokeRequested()
         && (current.preset == SectorPresets.frozenForest
             || current.preset == SectorPresets.crateredBattleground
@@ -1824,6 +1838,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-nuclear-flags','ready');")
     private static native void markBasinObjectiveFlagsReady();
+
+    @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-attack-stage','ready'); document.documentElement.setAttribute('data-mindustry-erekir-basin-enemy-cores',String(enemyCores));")
+    private static native void markBasinAttackStage(int enemyCores);
 
     @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-intersect-attack-stage','ready'); document.documentElement.setAttribute('data-mindustry-erekir-intersect-enemy-cores',String(enemyCores));")
     private static native void markIntersectAttackStage(int enemyCores);
