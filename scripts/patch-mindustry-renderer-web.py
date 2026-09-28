@@ -9,7 +9,7 @@ path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
 
 old_field = "    private int glErrors;\n"
-new_field = "    private int glErrors, webSettingsPoll;\n"
+new_field = "    private int glErrors, webSettingsPoll, webBloomIntensity = 6, webBloomBlur = 1;\n    private boolean webDrawHitboxes;\n"
 if old_field not in text:
     raise SystemExit("Renderer glErrors field no longer matches pinned upstream")
 text = text.replace(old_field, new_field, 1)
@@ -48,6 +48,9 @@ new_settings = """        // Web/Yandex: the lean runtime has no live stock Sett
             showPings = settings.getBool("showpings", true);
             showOtherBuildPlans = settings.getBool("showotherbuildplans", true);
             pixelate = settings.getBool("pixelate");
+            webDrawHitboxes = settings.getBool("drawhitboxes");
+            webBloomIntensity = settings.getInt("bloomintensity", 6);
+            webBloomBlur = settings.getInt("bloomblur", 1);
         }
 """
 if old_settings not in text:
@@ -59,6 +62,22 @@ new_gl = "if(glErrors < maxGlErrors && graphics.getFrameId() % 120 == 0){"
 if old_gl not in text:
     raise SystemExit("Renderer glGetError cadence no longer matches pinned upstream")
 text = text.replace(old_gl, new_gl, 1)
+
+old_bloom_settings = '''            bloom.setBloomIntensity(settings.getInt("bloomintensity", 6) / 4f + 1f);
+            bloom.blurPasses = settings.getInt("bloomblur", 1);
+'''
+new_bloom_settings = '''            bloom.setBloomIntensity(webBloomIntensity / 4f + 1f);
+            bloom.blurPasses = webBloomBlur;
+'''
+if old_bloom_settings not in text:
+    raise SystemExit("Renderer Web bloom settings hot path no longer matches pinned upstream")
+text = text.replace(old_bloom_settings, new_bloom_settings, 1)
+
+old_hitboxes = '        if(settings.getBool("drawhitboxes")){\n'
+new_hitboxes = '        if(webDrawHitboxes){\n'
+if old_hitboxes not in text:
+    raise SystemExit("Renderer Web hitbox settings hot path no longer matches pinned upstream")
+text = text.replace(old_hitboxes, new_hitboxes, 1)
 
 preview_calls = "        MapPreviewLoader.checkPreviews();\n"
 if text.count(preview_calls) != 2:
