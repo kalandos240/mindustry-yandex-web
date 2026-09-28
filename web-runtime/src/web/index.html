@@ -108,10 +108,27 @@
             globalThis.__mindustryAssetCache = cache;
 
             // Arc's synchronous Fi bridge needs renderer/UI/content assets in memory before
-            // main(). Audio is URL-backed, so omit OGG files from this duplicate byte[] cache.
-            const eagerManifest = manifest.filter(path => !path.startsWith('sounds/') && !path.startsWith('music/'));
+            // main(). Audio is URL-backed. Campaign maps are only needed when a sector starts,
+            // so normal production boot preloads Ground Zero/Onset and warms the remaining
+            // maps in the background after main() begins. Full progression CI keeps all maps
+            // eager to make deterministic multi-sector smoke independent of background timing.
+            const params = new URLSearchParams(location.search);
+            const forceCampaignEager = params.get('mindustryCampaignProgressSmoke') === '1';
+            const isAudio = path => path.startsWith('sounds/') || path.startsWith('music/');
+            const isCampaignMap = path => path.startsWith('maps/serpulo/') || path.startsWith('maps/erekir/');
+            const isStartupCampaignMap = path =>
+                path === 'maps/serpulo/groundZero.msav' || path === 'maps/erekir/onset.msav';
+
+            const deferredCampaignManifest = forceCampaignEager ? [] :
+                manifest.filter(path => isCampaignMap(path) && !isStartupCampaignMap(path));
+            const deferredCampaignSet = new Set(deferredCampaignManifest);
+            const eagerManifest = manifest.filter(path => !isAudio(path) && !deferredCampaignSet.has(path));
+            const streamedAudio = manifest.filter(isAudio);
+
             root.setAttribute('data-mindustry-assets-eager', String(eagerManifest.length));
-            root.setAttribute('data-mindustry-assets-streamed', String(manifest.length - eagerManifest.length));
+            root.setAttribute('data-mindustry-assets-streamed', String(streamedAudio.length));
+            root.setAttribute('data-mindustry-assets-deferred-campaign', String(deferredCampaignManifest.length));
+            root.setAttribute('data-mindustry-campaign-assets', deferredCampaignManifest.length ? 'pending' : 'ready');
 
             let next = 0, loaded = 0, loadedBytes = 0;
             const workers = Math.max(1, Math.min(8, eagerManifest.length));
@@ -147,6 +164,43 @@
             root.setAttribute('data-mindustry-assets-status-updates', String(statusUpdates));
             root.setAttribute('data-mindustry-assets-preload', 'ready');
             status.textContent = 'Starting Mindustry...';
+
+            async function warmCampaignMaps(){
+                if(!deferredCampaignManifest.length) return;
+                let cursor = 0, warmed = 0, warmedBytes = 0;
+                const campaignWorkers = Math.max(1, Math.min(4, deferredCampaignManifest.length));
+                root.setAttribute('data-mindustry-campaign-assets-workers', String(campaignWorkers));
+
+                async function worker(){
+                    while(true){
+                        const index = cursor++;
+                        if(index >= deferredCampaignManifest.length) return;
+                        const path = deferredCampaignManifest[index];
+                        const url = 'assets/' + path;
+                        const response = await fetch(url);
+                        if(!response.ok) throw new Error('Campaign map warmup failed (' + response.status + '): ' + url);
+                        const bytes = new Int8Array(await response.arrayBuffer());
+                        cache[url] = bytes;
+                        warmedBytes += bytes.byteLength;
+                        warmed++;
+                    }
+                }
+
+                const jobs = [];
+                for(let i = 0; i < campaignWorkers; i++) jobs.push(worker());
+                await Promise.all(jobs);
+                root.setAttribute('data-mindustry-campaign-assets-count', String(warmed));
+                root.setAttribute('data-mindustry-campaign-assets-bytes', String(warmedBytes));
+                root.setAttribute('data-mindustry-campaign-assets', 'ready');
+            }
+
+            if(deferredCampaignManifest.length){
+                warmCampaignMaps().catch(error => {
+                    root.setAttribute('data-mindustry-campaign-assets', 'error');
+                    console.error(error);
+                });
+            }
+
             main();
         })().catch(error => {
             const root = document.documentElement;
