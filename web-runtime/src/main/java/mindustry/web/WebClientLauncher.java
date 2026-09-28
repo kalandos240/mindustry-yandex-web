@@ -43,6 +43,7 @@ public final class WebClientLauncher extends ClientLauncher{
         ios = Core.app.isIOS();
         android = Core.app.isAndroid();
         markMindustryDeviceMode(mobile ? "mobile" : "desktop");
+        installRendererDefaults(mobile);
 
         // Stock Renderer is initialized below after the content/save substrate exists.
         // Keep a temporary camera available during the earlier bootstrap steps; Renderer
@@ -197,6 +198,32 @@ public final class WebClientLauncher extends ClientLauncher{
 
         rendererRuntimeLoaded = true;
         markRendererInitialized();
+    }
+
+    private static void installRendererDefaults(boolean mobileMode){
+        // Full SettingsMenuDialog is intentionally absent from the lean Web UI, so install
+        // the stock defaults that Renderer normally receives there. Persisted user values
+        // remain authoritative. Mobile starts with the expensive purely-visual paths off,
+        // while gameplay effects stay enabled and are covered by the particle perf smoke.
+        Core.settings.defaults(
+            "effects", true,
+            "animatedwater", !mobileMode,
+            "animatedshields", !mobileMode,
+            "linear", !mobileMode,
+            "blockstatus", false,
+            "pixelate", false
+        );
+        if(mobileMode && !Core.settings.has("bloom")){
+            Core.settings.put("bloom", false);
+        }
+
+        markRendererProfile(
+            mobileMode ? "mobile-performance" : "desktop-stock",
+            Core.settings.getBool("bloom", true),
+            Core.settings.getBool("effects"),
+            Core.settings.getBool("animatedwater"),
+            Core.settings.getBool("animatedshields")
+        );
     }
 
     private static void drainAssetQueue(String label){
@@ -367,6 +394,9 @@ public final class WebClientLauncher extends ClientLauncher{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer', 'constructed');")
     private static native void markRendererReady();
+
+    @JSBody(params = {"profile", "bloom", "effects", "water", "shields"}, script = "document.documentElement.setAttribute('data-mindustry-renderer-profile', profile); document.documentElement.setAttribute('data-mindustry-renderer-bloom', bloom ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-effects', effects ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-animated-water', water ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-animated-shields', shields ? 'true' : 'false');")
+    private static native void markRendererProfile(String profile, boolean bloom, boolean effects, boolean water, boolean shields);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer-init', 'ready');")
     private static native void markRendererInitialized();
