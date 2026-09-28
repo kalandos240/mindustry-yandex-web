@@ -5,6 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="$ROOT_DIR/web-runtime/build/web"
 PORT=8090
 MAX_ELAPSED_MS=30000
+REPORT="$ROOT_DIR/work/browser-runtime-load-report.txt"
+mkdir -p "$(dirname "$REPORT")"
+: > "$REPORT"
 
 command -v google-chrome >/dev/null
 test -s "$WEB_DIR/index.html"
@@ -75,7 +78,7 @@ run_load(){
     exit 1
   fi
 
-  echo "Runtime load smoke ($label): 64 vanilla units + 120 Logic/Pathfinding/Control/Renderer/UI frames in ${elapsed}ms (~${fps} fps) PASS"
+  echo "Runtime load smoke ($label): 64 vanilla units + 120 Logic/Pathfinding/Control/Renderer/UI frames in ${elapsed}ms (~${fps} fps) PASS" | tee -a "$REPORT"
 }
 
 run_load desktop desktop 0 \
@@ -88,4 +91,4 @@ run_load mobile mobile 1 \
   /tmp/mindustry-runtime-load-mobile.html \
   9287
 
-echo 'Runtime load matrix: desktop + auto-detected mobile 64-unit/120-frame stability PASS'
+echo 'Runtime load matrix: desktop + auto-detected mobile 64-unit/120-frame stability PASS' | tee -a "$REPORT"
