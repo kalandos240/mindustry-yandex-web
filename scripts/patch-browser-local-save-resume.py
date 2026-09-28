@@ -10,6 +10,16 @@ for path in (RUNTIME, UI):
         raise SystemExit(f"Missing browser source for local save/continue patch: {path}")
 
 text = RUNTIME.read_text(encoding="utf-8")
+ui_now = UI.read_text(encoding="utf-8")
+if all(marker in text for marker in (
+    "public static void saveLocalSession()",
+    "public static void continueSaved()",
+    "private static native boolean continueSmokeRequested();",
+    "private static native void markContinued(",
+)) and "BrowserLocalMapRuntime::continueSaved" in ui_now \
+and "BrowserLocalMapRuntime::saveLocalSession" in ui_now:
+    print("Local Save Game + Continue milestone already present in committed Web overlay")
+    raise SystemExit(0)
 
 old_fields = '''    private static boolean pauseSmokeArmed;\n    private static long pauseUpdateId;\n    private static int pausedFrames;\n    private static Map current;\n'''
 new_fields = '''    private static boolean pauseSmokeArmed;\n    private static long pauseUpdateId;\n    private static int pausedFrames;\n    private static boolean saveSmokeArmed;\n    private static Map current;\n'''
