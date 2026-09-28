@@ -25,6 +25,8 @@ require(APP, "boolean resizeFallback = (callbackIndex & 63) == 0", "BrowserAppli
 require(APP, "if((callbackIndex & 63) == 0)", "BrowserApplication")
 require(APP, "data-mindustry-pause-policy','event-driven-64-frame-fallback", "BrowserApplication")
 require(APP, "data-mindustry-frame-resize-policy','event-driven-64-frame-fallback", "BrowserApplication")
+require(APP, "pixelRatioCap = mobileBrowser ? Math.min(config.maxPixelRatio, 1.5f) : config.maxPixelRatio", "BrowserApplication")
+require(APP, "data-mindustry-pixel-ratio-policy", "BrowserApplication")
 
 # One initialization sample plus one 64-frame fallback sample is intentional.
 paused_calls = APP.count("BrowserYandex.paused()")
@@ -62,9 +64,10 @@ forbid(APPLY_PORT, "Arrays.sort(sortKeys", "SpriteBatch Web patch")
 
 # Runtime load must actually exercise the sorted/effect path before this optimization
 # can be considered protected.
-require(LOCAL_MAP, "private static final int perfEffectsPerFrame = 4", "particle perf workload")
+require(LOCAL_MAP, "private static final int perfEffectsPerFrame = 2", "particle perf workload")
 require(LOCAL_MAP, "private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame", "particle perf workload")
-require(LOCAL_MAP, "Fx.unitCapKill.at(x, y)", "particle perf workload")
+require(LOCAL_MAP, "Fx.drillSteam.at(x, y)", "particle perf workload")
+require(LOCAL_MAP, "data-mindustry-perf-effect-kind','drillSteam", "particle perf workload")
 require(LOCAL_MAP, "perfEffects != perfTargetEffects", "particle perf workload")
 
 # Campaign menu telemetry and auto-unlock scans must not return to 60Hz production work.
