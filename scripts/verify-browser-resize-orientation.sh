@@ -33,6 +33,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --timeout 90 \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-input-mode="desktop"' \
+  --require 'data-mindustry-resize-policy="event-driven"' \
+  --require 'data-mindustry-frame-resize-policy="event-driven-64-frame-fallback"' \
   --require 'data-mindustry-campaign-core="ready"' \
   --require 'data-mindustry-campaign-sector-id="170"' \
   --after-resize-width 1180 \
@@ -71,6 +73,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --timeout 90 \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-input-mode="mobile"' \
+  --require 'data-mindustry-resize-policy="event-driven"' \
+  --require 'data-mindustry-frame-resize-policy="event-driven-64-frame-fallback"' \
   --require 'data-mindustry-campaign-ui-layout="mobile"' \
   --require 'data-mindustry-campaign-ui-map-pane-height="110"' \
   --after-resize-width 844 \
