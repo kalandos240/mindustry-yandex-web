@@ -138,6 +138,12 @@ for old, new, name in [
 path.write_text(text)
 PY
 
+# Stock Renderer polls a dozen settings every frame and calls glGetError every 10
+# frames. The lean Web UI has no live stock Settings dialog, so sample settings at a
+# low cadence and keep GL error probing diagnostic rather than a hot-path operation.
+python3 "$ROOT_DIR/scripts/patch-mindustry-renderer-web.py" \
+  "$MINDUSTRY_DIR/core/src/mindustry/core/Renderer.java"
+
 # ClientLauncher contains desktop/JVM-only startup probes. Patch only the temporary
 # Web checkout: launch-marker/file logging will return with writable browser Fi,
 # while Runtime.maxMemory has no JavaScript equivalent.
