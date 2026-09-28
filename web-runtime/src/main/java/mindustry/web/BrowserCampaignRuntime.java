@@ -527,9 +527,8 @@ public final class BrowserCampaignRuntime{
                 if(enemyCores <= 0){
                     throw new IllegalStateException("Attack campaign smoke expected at least one enemy core for " + current.preset.name);
                 }
-                while(state.rules.waveTeam.cores().size > 0){
-                    state.rules.waveTeam.cores().first().kill();
-                }
+                var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
+                enemyCoresSnapshot.each(core -> core.kill());
                 captureSmokeStaged = true;
                 markCaptureStaged(current.preset.name, state.wave, 0);
             }else{
