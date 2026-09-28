@@ -22,10 +22,11 @@ import static mindustry.Vars.*;
  * Maps.defaultMapNames. The extra canyon.msav present in the asset directory is not part
  * of that stock list and therefore remains packaged-but-hidden, matching upstream.
  *
- * Browser build overlays expand this base runtime with the already-proven stock survival
- * wave lifecycle and local core-loss Game Over handling. Fog, weather, campaign/PvP and
- * builder/RTS AI remain explicit later milestones. Map loading, stock entities/buildings,
- * player input, rendering, pathfinding and browser persistence are real and local-only.
+ * The runtime preserves stock survival waves, local core-loss Game Over, pause/resume,
+ * a fixed current-v13 browser save/Continue slot and Back autosave. Fog, weather, PvP and
+ * builder/RTS/prebuild team AI remain intentionally disabled in this lean custom-game path.
+ * Map loading, entities/buildings, player input, rendering, pathfinding and persistence are
+ * real, permanent single-player and local-only.
  */
 public final class BrowserLocalMapRuntime{
     private static final String[] builtinSlugs = {
