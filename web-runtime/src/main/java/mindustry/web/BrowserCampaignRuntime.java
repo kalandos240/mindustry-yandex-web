@@ -1758,17 +1758,21 @@ public final class BrowserCampaignRuntime{
     @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-onset-capture-stage','objectives-then-attack'); document.documentElement.setAttribute('data-mindustry-erekir-onset-enemy-cores',String(enemyCores));")
     private static native void markOnsetObjectiveCaptureStaged(int enemyCores);
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-aegis-objectives','ready'); document.documentElement.setAttribute('data-mindustry-erekir-aegis-begin-build','true');")
-    private static native void markAegisObjectivesReady();
+    private static void markAegisObjectivesReady(){
+        setRuntimeDomAttribute("data-mindustry-erekir-aegis-objectives", "ready");
+        setRuntimeDomAttribute("data-mindustry-erekir-aegis-begin-build", "true");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-lake-objectives','ready');")
-    private static native void markLakeObjectivesReady();
+    private static void markLakeObjectivesReady(){
+        setRuntimeDomAttribute("data-mindustry-erekir-lake-objectives", "ready");
+    }
 
     @JSBody(params = {"preset", "enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-attack-objectives',preset); document.documentElement.setAttribute('data-mindustry-erekir-attack-enemy-cores',String(enemyCores));")
     private static native void markErekirAttackObjectiveStage(String preset, int enemyCores);
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-intersect-wave-stage','9');")
-    private static native void markIntersectWaveStage();
+    private static void markIntersectWaveStage(){
+        setRuntimeDomAttribute("data-mindustry-erekir-intersect-wave-stage", "9");
+    }
 
     @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-split-objectives','staged'); document.documentElement.setAttribute('data-mindustry-erekir-split-enemy-cores',String(enemyCores));")
     private static native void markSplitObjectiveStage(int enemyCores);
@@ -1776,50 +1780,64 @@ public final class BrowserCampaignRuntime{
     @JSBody(params = {"targets"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-objectives','staged'); document.documentElement.setAttribute('data-mindustry-erekir-basin-nuclear-targets',String(targets));")
     private static native void markBasinObjectiveStage(int targets);
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-nuclear-flags','ready');")
-    private static native void markBasinObjectiveFlagsReady();
+    private static void markBasinObjectiveFlagsReady(){
+        setRuntimeDomAttribute("data-mindustry-erekir-basin-nuclear-flags", "ready");
+    }
 
     @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-attack-stage','ready'); document.documentElement.setAttribute('data-mindustry-erekir-basin-enemy-cores',String(enemyCores));")
     private static native void markBasinAttackStage(int enemyCores);
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-marsh-objectives','staged');")
-    private static native void markMarshObjectivesStaged();
+    private static void markMarshObjectivesStaged(){
+        setRuntimeDomAttribute("data-mindustry-erekir-marsh-objectives", "staged");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-marsh-objective-flags','ready');")
-    private static native void markMarshObjectiveFlagsReady();
+    private static void markMarshObjectiveFlagsReady(){
+        setRuntimeDomAttribute("data-mindustry-erekir-marsh-objective-flags", "ready");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-peaks-objectives','staged');")
-    private static native void markPeaksObjectivesStaged();
+    private static void markPeaksObjectivesStaged(){
+        setRuntimeDomAttribute("data-mindustry-erekir-peaks-objectives", "staged");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-peaks-objective-flags','ready');")
-    private static native void markPeaksObjectiveFlagsReady();
+    private static void markPeaksObjectiveFlagsReady(){
+        setRuntimeDomAttribute("data-mindustry-erekir-peaks-objective-flags", "ready");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-stronghold-objectives','staged');")
-    private static native void markStrongholdObjectivesStaged();
+    private static void markStrongholdObjectivesStaged(){
+        setRuntimeDomAttribute("data-mindustry-erekir-stronghold-objectives", "staged");
+    }
 
     @JSBody(params = {"targets"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-stronghold-targets','destroyed'); document.documentElement.setAttribute('data-mindustry-erekir-stronghold-target-count',String(targets));")
     private static native void markStrongholdTargetsDestroyed(int targets);
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-stronghold-objective-flags','ready');")
-    private static native void markStrongholdObjectiveFlagsReady();
+    private static void markStrongholdObjectiveFlagsReady(){
+        setRuntimeDomAttribute("data-mindustry-erekir-stronghold-objective-flags", "ready");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-siege-objectives','staged');")
-    private static native void markSiegeObjectivesStaged();
+    private static void markSiegeObjectivesStaged(){
+        setRuntimeDomAttribute("data-mindustry-erekir-siege-objectives", "staged");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-siege-objective-flags','ready');")
-    private static native void markSiegeObjectiveFlagsReady();
+    private static void markSiegeObjectiveFlagsReady(){
+        setRuntimeDomAttribute("data-mindustry-erekir-siege-objective-flags", "ready");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-crossroads-objectives','staged');")
-    private static native void markCrossroadsObjectivesStaged();
+    private static void markCrossroadsObjectivesStaged(){
+        setRuntimeDomAttribute("data-mindustry-erekir-crossroads-objectives", "staged");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-crossroads-objective-flags','ready');")
-    private static native void markCrossroadsObjectiveFlagsReady();
+    private static void markCrossroadsObjectiveFlagsReady(){
+        setRuntimeDomAttribute("data-mindustry-erekir-crossroads-objective-flags", "ready");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-origin-objectives','staged'); document.documentElement.setAttribute('data-mindustry-erekir-origin-objective-count','5');")
-    private static native void markOriginObjectivesStaged();
+    private static void markOriginObjectivesStaged(){
+        setRuntimeDomAttribute("data-mindustry-erekir-origin-objectives", "staged");
+        setRuntimeDomAttribute("data-mindustry-erekir-origin-objective-count", "5");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-origin-objective-flags','ready');")
-    private static native void markOriginObjectiveFlagsReady();
+    private static void markOriginObjectiveFlagsReady(){
+        setRuntimeDomAttribute("data-mindustry-erekir-origin-objective-flags", "ready");
+    }
 
     @JSBody(params = {"preset", "enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-scenario-attack',preset); document.documentElement.setAttribute('data-mindustry-erekir-scenario-enemy-cores',String(enemyCores));")
     private static native void markErekirScenarioAttackArmed(String preset, int enemyCores);
@@ -1886,11 +1904,14 @@ public final class BrowserCampaignRuntime{
     @JSBody(params = {"wave", "tickMillis", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-back-autosave','ready'); document.documentElement.setAttribute('data-mindustry-campaign-back-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-back-tick-ms',String(tickMillis)); document.documentElement.setAttribute('data-mindustry-campaign-back-bytes',String(bytes));")
     private static native void markBackAutoSaved(int wave, long tickMillis, long bytes);
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-return','menu'); document.documentElement.setAttribute('data-mindustry-campaign-state','menu');")
-    private static native void markReturnedToMenu();
+    private static void markReturnedToMenu(){
+        setRuntimeDomAttribute("data-mindustry-campaign-return", "menu");
+        setRuntimeDomAttribute("data-mindustry-campaign-state", "menu");
+    }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-resume-smoke','requested');")
-    private static native void markResumeRequested();
+    private static void markResumeRequested(){
+        setRuntimeDomAttribute("data-mindustry-campaign-resume-smoke", "requested");
+    }
 
     @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-phase', phase);")
     private static native void markPhase(String phase);
