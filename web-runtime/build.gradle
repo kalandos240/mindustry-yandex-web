@@ -82,6 +82,11 @@ tasks.register("stageWeb", Copy) {
         include "maps/serpulo/mycelialBastion.msav"
         include "maps/serpulo/littoralShipyard.msav"
         include "maps/serpulo/planetaryTerminal.msav"
+        include "maps/serpulo/taintedWoods.msav"
+        include "maps/serpulo/atolls.msav"
+        include "maps/serpulo/testingGrounds.msav"
+        include "maps/serpulo/sunkenPier.msav"
+        include "maps/serpulo/weatheredChannels.msav"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
