@@ -897,13 +897,13 @@ old_pane = '''        root.add(pane).width(mobile ? 320f : 380f).height(mobile ?
 new_pane = '''        // Landscape phones can be only ~320-400 logical px tall. Keep the
         // campaign controls touch-sized, and let the map list yield vertical space.
         float mapPaneHeight = mobile
-            ? Math.max(56f, Math.min(110f, Core.graphics.getHeight() - 440f))
+            ? Math.max(56f, Math.min(110f, Core.graphics.getHeight() - 500f))
             : 330f;
         Cell<ScrollPane> mapPaneCell = root.add(pane).width(mobile ? 320f : 380f).height(mapPaneHeight);
         final float[] lastMapPaneHeight = {mapPaneHeight};
         if(mobile){
             pane.update(() -> {
-                float nextHeight = Math.max(56f, Math.min(110f, Core.graphics.getHeight() - 440f));
+                float nextHeight = Math.max(56f, Math.min(110f, Core.graphics.getHeight() - 500f));
                 if(Math.abs(nextHeight - lastMapPaneHeight[0]) > 0.5f){
                     lastMapPaneHeight[0] = nextHeight;
                     mapPaneCell.height(nextHeight);
