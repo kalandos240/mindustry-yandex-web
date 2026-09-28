@@ -22,6 +22,12 @@ if find "$WEB_DIR" -type f -name '*.map' -print -quit | grep -q .; then
   fail "source map file leaked into production package"
 fi
 [ -s "$WEB_DIR/assets/logicids.dat" ] || fail "processor logic ID mapping is missing"
+[ -s "$WEB_DIR/licenses/Mindustry-GPL-3.0.txt" ] || fail "Mindustry GPL-3.0 license text missing"
+[ -s "$WEB_DIR/licenses/Arc-Apache-2.0.txt" ] || fail "Arc Apache-2.0 license text missing"
+[ -s "$WEB_DIR/licenses/SOURCE-NOTICE.txt" ] || fail "source notice missing"
+[ -s "$WEB_DIR/licenses/upstream.lock" ] || fail "upstream lockfile missing from release"
+grep -Fq 'c9686eb5d0ae5dd47ee02c40f99f7d5018ccbc8c' "$WEB_DIR/licenses/SOURCE-NOTICE.txt" || fail "Mindustry source pin missing from notice"
+grep -Fq 'c38f8f5ff27f47a5886d0903aadeba42e4302411' "$WEB_DIR/licenses/SOURCE-NOTICE.txt" || fail "Arc source pin missing from notice"
 [ -s "$WEB_DIR/assets/planets/erekir.json" ] || fail "Erekir planet definition missing"
 for preset in onset aegis lake intersect atlas split basin marsh peaks ravine caldera-erekir stronghold crevice siege crossroads karst origin; do
   [ -s "$WEB_DIR/assets/maps/erekir/$preset.msav" ] || fail "Erekir campaign map missing: $preset.msav"
