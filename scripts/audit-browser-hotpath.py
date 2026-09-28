@@ -8,6 +8,7 @@ CANVAS = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" /
 INPUT = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserInputBridge.java").read_text(encoding="utf-8")
 APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
 LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
+CAMPAIGN_UI = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
 
 failures = []
 
@@ -65,6 +66,14 @@ require(LOCAL_MAP, "private static final int perfEffectsPerFrame = 4", "particle
 require(LOCAL_MAP, "private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame", "particle perf workload")
 require(LOCAL_MAP, "Fx.unitCapKill.at(x, y)", "particle perf workload")
 require(LOCAL_MAP, "perfEffects != perfTargetEffects", "particle perf workload")
+
+# Campaign menu telemetry and auto-unlock scans must not return to 60Hz production work.
+require(CAMPAIGN_UI, "if(BrowserCampaignRuntime.diagnosticsEnabled()){", "campaign diagnostic telemetry gate")
+if CAMPAIGN_UI.count("if(BrowserCampaignRuntime.diagnosticsEnabled()){") < 6:
+    failures.append("campaign UI: expected diagnostics gates around action/state telemetry")
+require(CAMPAIGN_UI, "final int[] campaignUnlockRefreshFrame = {0};", "campaign unlock refresh throttle")
+require(CAMPAIGN_UI, "if((++campaignUnlockRefreshFrame[0] & 31) == 0)", "campaign unlock refresh throttle")
+forbid(CAMPAIGN_UI, "campaignProgress.update(BrowserCampaignResearch::refreshUnlocks)", "campaign UI")
 
 if failures:
     print("Browser hot-path audit: FAIL")
