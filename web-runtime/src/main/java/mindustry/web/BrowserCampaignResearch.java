@@ -723,6 +723,37 @@ public final class BrowserCampaignResearch{
         markAegisProgressSmoke();
     }
 
+    public static void verifyLakeReadyAfterAegis(Sector source){
+        if(source == null || source != SectorPresets.aegis.sector || !aegisCaptured()){
+            throw new IllegalStateException("Lake progression requires captured Aegis");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!lakeReady()){
+            throw new IllegalStateException("Lake did not auto-unlock after captured Aegis");
+        }
+        markLakeReadySmoke();
+    }
+
+    public static void runIntersectProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.lake.sector || !lakeCaptured()){
+            throw new IllegalStateException("Intersect progression requires captured Lake");
+        }
+
+        stageAndSpend(source, Blocks.turbineCondenser);
+        stageAndSpend(source, Blocks.beamNode);
+        stageAndSpend(source, Blocks.ventCondenser);
+        stageAndSpend(source, Blocks.tankFabricator);
+        stageAndSpend(source, Blocks.shipFabricator);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!intersectReady()){
+            throw new IllegalStateException("Intersect did not auto-unlock after stock prerequisites completed");
+        }
+
+        Core.settings.forceSave();
+        markIntersectProgressSmoke();
+    }
+
     /** CI-only helper: supply exactly the missing early research resources, then use the production spend path. */
     public static void runEarlyProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.groundZero.sector || !groundZeroCaptured()){
@@ -1513,6 +1544,12 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-duct-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-duct-router-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-duct-bridge-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-aegis-ready','true');")
     private static native void markAegisProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-lake-ready','true');")
+    private static native void markLakeReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-vent-condenser-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-ship-fabricator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-intersect-ready','true');")
+    private static native void markIntersectProgressSmoke();
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready','true');")
     private static native void markTaintedProgressSmoke();
