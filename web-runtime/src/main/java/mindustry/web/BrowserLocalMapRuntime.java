@@ -56,7 +56,10 @@ public final class BrowserLocalMapRuntime{
     private static boolean perfSmoke;
     private static boolean perfReady;
     private static int perfUnits;
+    private static int perfEffects;
     private static final int perfTargetFrames = 120;
+    private static final int perfEffectsPerFrame = 4;
+    private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame;
 
     private BrowserLocalMapRuntime(){}
 
@@ -181,6 +184,7 @@ public final class BrowserLocalMapRuntime{
         perfSmoke = perfSmokeRequested();
         perfReady = false;
         perfUnits = 0;
+        perfEffects = 0;
         testWaveExpected = false;
         testWaveFired = false;
         testWaveStart = state.wave;
@@ -248,7 +252,21 @@ public final class BrowserLocalMapRuntime{
         }
 
         perfUnits = ground + air;
-        markPerfStarted(perfUnits, perfTargetFrames);
+        perfEffects = 0;
+        markPerfStarted(perfUnits, perfTargetFrames, perfTargetEffects);
+    }
+
+    private static void stagePerfEffects(){
+        float cx = Core.camera.position.x;
+        float cy = Core.camera.position.y;
+        for(int i = 0; i < perfEffectsPerFrame; i++){
+            int index = perfEffects++;
+            int col = index & 15;
+            int row = (index >> 4) & 7;
+            float x = cx + (col - 7.5f) * 6f;
+            float y = cy + (row - 3.5f) * 6f;
+            Fx.unitCapKill.at(x, y);
+        }
     }
 
     /** One production browser frame. Unlike BrowserPlayingRuntime this never auto-restores. */
@@ -287,6 +305,10 @@ public final class BrowserLocalMapRuntime{
         markPhase("control");
         control.update();
         markPhase("control-ready");
+
+        if(perfSmoke && !perfReady && frames < perfTargetFrames){
+            stagePerfEffects();
+        }
 
         markPhase("renderer");
         renderer.update();
@@ -351,8 +373,11 @@ public final class BrowserLocalMapRuntime{
             }
         }
         if(perfSmoke && !perfReady && frames >= perfTargetFrames){
+            if(perfEffects != perfTargetEffects){
+                throw new IllegalStateException("Browser perf effect workload count mismatch: " + perfEffects);
+            }
             perfReady = true;
-            markPerfReady(frames, perfUnits);
+            markPerfReady(frames, perfUnits, perfEffects);
         }
     }
 
@@ -717,11 +742,11 @@ public final class BrowserLocalMapRuntime{
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-loop', 'live'); document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames));")
     private static native void markLive(int frames);
 
-    @JSBody(params = {"units", "targetFrames"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames));")
-    private static native void markPerfStarted(int units, int targetFrames);
+    @JSBody(params = {"units", "targetFrames", "targetEffects"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames)); root.setAttribute('data-mindustry-perf-effects-target',String(targetEffects));")
+    private static native void markPerfStarted(int units, int targetFrames, int targetEffects);
 
-    @JSBody(params = {"frames", "units"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
-    private static native void markPerfReady(int frames, int units);
+    @JSBody(params = {"frames", "units", "effects"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-effects',String(effects)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
+    private static native void markPerfReady(int frames, int units, int effects);
 
     @JSBody(params = {"slug"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-state', 'menu'); document.documentElement.setAttribute('data-mindustry-local-map-returned-from', slug); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'stopped');")
     private static native void markReturned(String slug);
