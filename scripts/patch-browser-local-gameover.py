@@ -10,6 +10,16 @@ for path in (RUNTIME, UI):
         raise SystemExit(f"Missing browser source for local game-over patch: {path}")
 
 text = RUNTIME.read_text(encoding="utf-8")
+ui_now = UI.read_text(encoding="utf-8")
+if all(marker in text for marker in (
+    "private static boolean gameOverSmokeArmed;",
+    "private static void updateGameOverFrame()",
+    "private static native boolean gameOverSmokeRequested();",
+    "private static native void markGameOver(",
+)) and "private static void buildLocalGameOverOverlay()" in ui_now \
+and "private static native void markGameOverUiReady();" in ui_now:
+    print("Local survival Game Over milestone already present in committed Web overlay")
+    raise SystemExit(0)
 
 old_fields = '''    private static boolean testWaveExpected;
     private static boolean testWaveFired;
