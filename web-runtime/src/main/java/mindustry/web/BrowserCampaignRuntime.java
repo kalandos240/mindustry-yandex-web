@@ -48,6 +48,10 @@ public final class BrowserCampaignRuntime{
         return hasSectorSave(SectorPresets.crateredBattleground);
     }
 
+    public static boolean hasRuinousShoresSave(){
+        return hasSectorSave(SectorPresets.ruinousShores);
+    }
+
     private static boolean hasSectorSave(SectorPreset preset){
         Sector sector = preset == null ? null : preset.sector;
         if(sector == null || sector.save == null || sector.save.file == null
@@ -109,6 +113,27 @@ public final class BrowserCampaignRuntime{
             Sector origin = SectorPresets.frozenForest == null ? null : SectorPresets.frozenForest.sector;
             if(origin == null || !origin.hasBase() || !origin.isCaptured()){
                 throw new IllegalStateException("Cratered Battleground launch requires a captured Frozen Forest base");
+            }
+            startPreset(preset, origin);
+        }
+    }
+
+    /** Production progression action unlocked after captured Cratered Battleground + stock materials/liquid research. */
+    public static void playRuinousShores(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.ruinousShores;
+        if(preset == null || !preset.unlocked()){
+            throw new IllegalStateException("Ruinous Shores is still locked by stock campaign prerequisites");
+        }
+
+        boolean resume = hasRuinousShoresSave();
+        markProductionAction(resume ? "continue-ruinousShores" : "play-ruinousShores");
+        if(resume){
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.crateredBattleground == null ? null : SectorPresets.crateredBattleground.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()){
+                throw new IllegalStateException("Ruinous Shores launch requires a captured Cratered Battleground base");
             }
             startPreset(preset, origin);
         }
@@ -384,11 +409,12 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Browser campaign frame requires the active Ground Zero sector");
         }
 
-        // CI deterministically stages the exact stock victory predicate for the two
-        // already-proven early sectors. Do not call sectorCapture() directly: Logic must
-        // take the vanilla winWave/enemies/spawner branch and dispatch Call.sectorCapture().
+        // CI deterministically stages the exact stock victory predicate for the three
+        // proven early sectors. Do not call sectorCapture() directly: Logic must take the
+        // vanilla winWave/enemies/spawner branch and dispatch Call.sectorCapture().
         boolean progressionCapture = current.preset == SectorPresets.groundZero
-            || current.preset == SectorPresets.frozenForest;
+            || current.preset == SectorPresets.frozenForest
+            || current.preset == SectorPresets.crateredBattleground;
         if(captureSmokeRequested() && progressionCapture && !captureSmokeStaged && frames >= 3){
             if(state.rules.winWave <= 0 || state.enemies != 0 || spawner == null || spawner.isSpawning()){
                 throw new IllegalStateException("Campaign capture smoke could not stage the stock victory predicate for " + current.preset.name);
@@ -432,7 +458,9 @@ public final class BrowserCampaignRuntime{
         frames++;
 
         if(progressSmokeRequested()
-        && (current.preset == SectorPresets.frozenForest || current.preset == SectorPresets.crateredBattleground)
+        && (current.preset == SectorPresets.frozenForest
+            || current.preset == SectorPresets.crateredBattleground
+            || current.preset == SectorPresets.ruinousShores)
         && frames >= 3){
             markProgressStable(current.id, current.preset.name, frames, state.updateId, state.wave);
         }
@@ -464,6 +492,14 @@ public final class BrowserCampaignRuntime{
                     BrowserCampaignResearch.runCraterProgressSmoke(current);
                     returnToMenu();
                     playCrateredBattleground();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.crateredBattleground){
+                    BrowserCampaignResearch.runRuinousProgressSmoke(current);
+                    returnToMenu();
+                    playRuinousShores();
                     markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
                     return;
                 }
@@ -535,7 +571,7 @@ public final class BrowserCampaignRuntime{
     @JSBody(params = {"preset", "wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
     private static native void markCaptureStaged(String preset, int wave, int winWave);
 
-    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));}")
+    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));}")
     private static native void markCaptureComplete(String preset, int sectorId, int wave, long bytes);
 
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
