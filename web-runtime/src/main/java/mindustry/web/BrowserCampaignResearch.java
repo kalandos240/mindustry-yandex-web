@@ -1707,15 +1707,16 @@ public final class BrowserCampaignResearch{
     @org.teavm.jso.JSBody(params = {"key", "value"}, script = "document.documentElement.setAttribute(key, value);")
     private static native void setResearchDomAttribute(String key, String value);
 
-    @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady", "windsweptReady"},
-        script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-research-content',name);" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-research-spent',String(spent));" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-research-remaining',String(remaining));" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-research-unlocked',unlocked ? 'true' : 'false');" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready',frozenReady ? 'true' : 'false');" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-ready',craterReady ? 'true' : 'false');" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-ready',ruinousReady ? 'true' : 'false');" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-ready',windsweptReady ? 'true' : 'false');")
-    private static native void markResearch(String name, int spent, int remaining, boolean unlocked, boolean frozenReady, boolean craterReady, boolean ruinousReady, boolean windsweptReady);
+    private static void markResearch(String name, int spent, int remaining, boolean unlocked,
+                                     boolean frozenReady, boolean craterReady, boolean ruinousReady, boolean windsweptReady){
+        setResearchDomAttribute("data-mindustry-campaign-research", "ready");
+        setResearchDomAttribute("data-mindustry-campaign-research-content", name);
+        setResearchDomAttribute("data-mindustry-campaign-research-spent", String.valueOf(spent));
+        setResearchDomAttribute("data-mindustry-campaign-research-remaining", String.valueOf(remaining));
+        setResearchDomAttribute("data-mindustry-campaign-research-unlocked", unlocked ? "true" : "false");
+        setResearchDomAttribute("data-mindustry-campaign-frozen-forest-ready", frozenReady ? "true" : "false");
+        setResearchDomAttribute("data-mindustry-campaign-cratered-battleground-ready", craterReady ? "true" : "false");
+        setResearchDomAttribute("data-mindustry-campaign-ruinous-shores-ready", ruinousReady ? "true" : "false");
+        setResearchDomAttribute("data-mindustry-campaign-windswept-islands-ready", windsweptReady ? "true" : "false");
+    }
 }
