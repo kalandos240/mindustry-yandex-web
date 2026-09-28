@@ -26,6 +26,7 @@ public final class BrowserApplication extends WebApplicationBase{
     private final WebInput input;
     private final BrowserGL20 gl20;
     private final boolean mobileBrowser;
+    private final float pixelRatioCap;
     private String clipboard = "";
     private boolean platformPaused;
     private boolean lastPlatformPaused;
@@ -37,7 +38,9 @@ public final class BrowserApplication extends WebApplicationBase{
         super(listener, config);
 
         mobileBrowser = detectMobileBrowser();
+        pixelRatioCap = mobileBrowser ? Math.min(config.maxPixelRatio, 1.5f) : config.maxPixelRatio;
         markBrowserInputMode(mobileBrowser ? "mobile" : "desktop");
+        markPixelRatioPolicy(pixelRatioCap, mobileBrowser ? "mobile" : "desktop");
 
         if(!BrowserCanvas.initialize(config.canvasId, config.alpha, config.stencil, config.antialiasing,
         config.premultipliedAlpha, config.preserveDrawingBuffer)){
@@ -48,7 +51,7 @@ public final class BrowserApplication extends WebApplicationBase{
         graphics.setWebGLVersion(BrowserCanvas.getWebGLMajor(config.canvasId));
         gl20 = new BrowserGL20(BrowserCanvas.getContext(config.canvasId));
         graphics.setGL20(gl20);
-        BrowserCanvas.resizeToDisplay(config.canvasId, config.maxPixelRatio);
+        BrowserCanvas.resizeToDisplay(config.canvasId, pixelRatioCap);
         updateGraphicsMetrics();
         BrowserCanvas.installResizeSignal(config.canvasId, resizeCallback);
         Core.graphics = graphics;
@@ -87,7 +90,7 @@ public final class BrowserApplication extends WebApplicationBase{
             boolean resizeFallback = (callbackIndex & 63) == 0;
             if(resizePending || resizeFallback){
                 resizePending = false;
-                if(BrowserCanvas.resizeToDisplay(config.canvasId, config.maxPixelRatio)){
+                if(BrowserCanvas.resizeToDisplay(config.canvasId, pixelRatioCap)){
                     updateGraphicsMetrics();
                     resize(graphics.getWidth(), graphics.getHeight());
                 }
@@ -191,7 +194,7 @@ public final class BrowserApplication extends WebApplicationBase{
             BrowserCanvas.getClientHeight(config.canvasId),
             BrowserCanvas.getBackBufferWidth(config.canvasId),
             BrowserCanvas.getBackBufferHeight(config.canvasId),
-            BrowserCanvas.getDensity(config.canvasId, config.maxPixelRatio)
+            BrowserCanvas.getDensity(config.canvasId, pixelRatioCap)
         );
     }
 
@@ -245,6 +248,9 @@ public final class BrowserApplication extends WebApplicationBase{
 
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-input-mode', mode);")
     private static native void markBrowserInputMode(String mode);
+
+    @JSBody(params = {"cap", "mode"}, script = "document.documentElement.setAttribute('data-mindustry-pixel-ratio-cap', String(cap)); document.documentElement.setAttribute('data-mindustry-pixel-ratio-policy', mode === 'mobile' ? 'mobile-1.5x' : 'desktop-config');")
+    private static native void markPixelRatioPolicy(float cap, String mode);
 
     @JSBody(params = {"callback"}, script = "window.requestAnimationFrame(callback);")
     private static native void requestAnimationFrame(FrameCallback callback);
