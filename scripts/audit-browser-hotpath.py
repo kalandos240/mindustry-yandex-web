@@ -133,6 +133,11 @@ for name in [
     if calls != 2:
         failures.append(f"campaign smoke/query cache: expected 2 {name}() occurrences, found {calls}")
 
+# The enormous objective/capture progression graph is CI-only. Production campaign
+# frames must skip its preset/objective comparisons behind one cached boolean branch.
+require(CAMPAIGN_RUNTIME, "if(captureSmoke){\n            // CI stages only", "campaign capture smoke outer guard")
+require(CAMPAIGN_RUNTIME, "if(captureSmoke || progressSmoke){\n            // Intersect uses", "campaign progression smoke outer guard")
+
 # Campaign menu save labels must stay storage-free; strict file validation belongs
 # to the actual launch/resume path, not Scene.update().
 save_hint_start = CAMPAIGN_RUNTIME.index("public static boolean hasSave(SectorPreset preset)")
