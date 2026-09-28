@@ -49,6 +49,10 @@ PY
 test -s "$EXTRACT/index.html"
 test -s "$EXTRACT/mindustry.js"
 test -s "$EXTRACT/assets-manifest.js"
+test -s "$EXTRACT/licenses/Mindustry-GPL-3.0.txt"
+test -s "$EXTRACT/licenses/Arc-Apache-2.0.txt"
+test -s "$EXTRACT/licenses/SOURCE-NOTICE.txt"
+test -s "$EXTRACT/licenses/upstream.lock"
 test -s "$EXTRACT/assets/maps/serpulo/groundZero.msav"
 test -s "$EXTRACT/assets/maps/erekir/origin.msav"
 
