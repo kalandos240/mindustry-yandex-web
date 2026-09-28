@@ -259,6 +259,10 @@ jobs:
           grep -q 'data-mindustry-stock-input="desktop"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-audio="ready"' /tmp/mindustry-web-dom.html
           grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' /tmp/mindustry-web-dom.html
+          grep -q 'data-mindustry-assets-preload="ready"' /tmp/mindustry-web-dom.html
+          grep -Eq 'data-mindustry-assets-eager-bytes="[1-9][0-9]*"' /tmp/mindustry-web-dom.html
+          grep -Eq 'data-mindustry-assets-preload-ms="[1-9][0-9]*"' /tmp/mindustry-web-dom.html
+          grep -Eq 'data-mindustry-assets-preload-workers="[1-8]"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-renderer="constructed"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-renderer-init="ready"' /tmp/mindustry-web-dom.html
           grep -q 'data-mindustry-control="ready"' /tmp/mindustry-web-dom.html
@@ -307,6 +311,9 @@ jobs:
           grep -q 'data-mindustry-device-mode="mobile"' /tmp/mindustry-web-mobile-dom.html
           grep -q 'data-mindustry-stock-input="mobile"' /tmp/mindustry-web-mobile-dom.html
           grep -q 'data-mindustry-audio="ready"' /tmp/mindustry-web-mobile-dom.html
+          grep -q 'data-mindustry-assets-preload="ready"' /tmp/mindustry-web-mobile-dom.html
+          grep -Eq 'data-mindustry-assets-eager-bytes="[1-9][0-9]*"' /tmp/mindustry-web-mobile-dom.html
+          grep -Eq 'data-mindustry-assets-preload-ms="[1-9][0-9]*"' /tmp/mindustry-web-mobile-dom.html
           grep -q 'data-mindustry-renderer-init="ready"' /tmp/mindustry-web-mobile-dom.html
           grep -q 'data-mindustry-control="ready"' /tmp/mindustry-web-mobile-dom.html
           grep -q 'data-mindustry-gameplay-runtime="ready"' /tmp/mindustry-web-mobile-dom.html
