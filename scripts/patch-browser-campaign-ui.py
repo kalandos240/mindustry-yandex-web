@@ -166,8 +166,30 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.tarFieldsCaptured()
             && !BrowserCampaignResearch.impact0078Ready()){
                 BrowserCampaignResearch.spendNextImpactResearch();
-            }else if(BrowserCampaignResearch.impact0078Ready()){
+            }else if(BrowserCampaignResearch.impact0078Ready()
+            && !BrowserCampaignResearch.impact0078Captured()){
                 BrowserCampaignRuntime.playImpact0078();
+            }else if(BrowserCampaignResearch.impact0078Captured()
+            && BrowserCampaignResearch.stainedMountainsReady()
+            && !BrowserCampaignResearch.stainedMountainsCaptured()){
+                BrowserCampaignRuntime.playStainedMountains();
+            }else if(BrowserCampaignResearch.stainedMountainsCaptured()
+            && !BrowserCampaignResearch.infestedCanyonsReady()){
+                BrowserCampaignResearch.spendNextInfestedResearch();
+            }else if(BrowserCampaignResearch.infestedCanyonsReady()
+            && !BrowserCampaignResearch.infestedCanyonsCaptured()){
+                BrowserCampaignRuntime.playInfestedCanyons();
+            }else if(BrowserCampaignResearch.infestedCanyonsCaptured()
+            && !BrowserCampaignResearch.nuclearComplexReady()){
+                BrowserCampaignResearch.spendNextNuclearResearch();
+            }else if(BrowserCampaignResearch.nuclearComplexReady()
+            && !BrowserCampaignResearch.nuclearComplexCaptured()){
+                BrowserCampaignRuntime.playNuclearComplex();
+            }else if(BrowserCampaignResearch.nuclearComplexCaptured()
+            && !BrowserCampaignResearch.desolateRiftReady()){
+                BrowserCampaignResearch.spendNextDesolateResearch();
+            }else if(BrowserCampaignResearch.desolateRiftReady()){
+                BrowserCampaignRuntime.playDesolateRift();
             }
         });
         craterResearch.setDisabled(() -> {
@@ -218,6 +240,27 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
             if(!BrowserCampaignResearch.impact0078Ready()){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextImpactResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.impact0078Captured()) return false;
+
+            if(!BrowserCampaignResearch.stainedMountainsReady()) return true;
+            if(!BrowserCampaignResearch.stainedMountainsCaptured()) return false;
+
+            if(!BrowserCampaignResearch.infestedCanyonsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextInfestedResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.infestedCanyonsCaptured()) return false;
+
+            if(!BrowserCampaignResearch.nuclearComplexReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNuclearResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.nuclearComplexCaptured()) return false;
+
+            if(!BrowserCampaignResearch.desolateRiftReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextDesolateResearch();
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
             return false;
@@ -313,9 +356,51 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                         : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
                             BrowserCampaignResearch.remaining(next));
                 }
-            }else{
+            }else if(!BrowserCampaignResearch.impact0078Captured()){
                 boolean saved = BrowserCampaignRuntime.hasImpact0078Save();
                 craterResearch.setText(Core.bundle.get("sector.impact0078.name", "Impact 0078") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.stainedMountainsCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasStainedMountainsSave();
+                craterResearch.setText(Core.bundle.get("sector.stainedMountains.name", "Stained Mountains") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.infestedCanyonsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextInfestedResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.infestedCanyonsCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasInfestedCanyonsSave();
+                craterResearch.setText(Core.bundle.get("sector.infestedCanyons.name", "Infested Canyons") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.nuclearComplexReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNuclearResearch();
+                if(BrowserCampaignResearch.waitingForNuclearPlastanium()){
+                    craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.plastanium.localizedName));
+                }else{
+                    craterResearch.setText(next == null
+                        ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                        : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                            BrowserCampaignResearch.remaining(next));
+                }
+            }else if(!BrowserCampaignResearch.nuclearComplexCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasNuclearComplexSave();
+                craterResearch.setText(Core.bundle.get("sector.nuclearComplex.name", "Nuclear Production Complex") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.desolateRiftReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextDesolateResearch();
+                if(BrowserCampaignResearch.waitingForDesolateCryofluid()){
+                    craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Liquids.cryofluid.localizedName));
+                }else{
+                    craterResearch.setText(next == null
+                        ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                        : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                            BrowserCampaignResearch.remaining(next));
+                }
+            }else{
+                boolean saved = BrowserCampaignRuntime.hasDesolateRiftSave();
+                craterResearch.setText(Core.bundle.get("sector.desolateRift.name", "Desolate Rift") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }
 
@@ -356,6 +441,16 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 mindustry.content.Blocks.coreFoundation.unlocked(),
                 BrowserCampaignResearch.impact0078Ready(),
                 BrowserCampaignRuntime.hasImpact0078Save()
+            );
+            markCampaignLateState(
+                BrowserCampaignResearch.stainedMountainsReady(),
+                BrowserCampaignResearch.stainedMountainsCaptured(),
+                BrowserCampaignResearch.infestedCanyonsReady(),
+                BrowserCampaignResearch.infestedCanyonsCaptured(),
+                BrowserCampaignResearch.nuclearComplexReady(),
+                BrowserCampaignResearch.nuclearComplexCaptured(),
+                BrowserCampaignResearch.desolateRiftReady(),
+                BrowserCampaignRuntime.hasDesolateRiftSave()
             );
         });
 
@@ -504,6 +599,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"laserDrill", "thorium", "lancer", "salvo", "foundation", "impactReady", "impactSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-impact-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-laser-drill-unlocked',laserDrill ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-thorium-unlocked',thorium ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-lancer-unlocked',lancer ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salvo-unlocked',salvo ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-core-foundation-unlocked',foundation ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-ready',impactReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-save',impactSaved ? 'true' : 'false');")
     private static native void markCampaignImpactState(boolean laserDrill, boolean thorium, boolean lancer, boolean salvo, boolean foundation, boolean impactReady, boolean impactSaved);
+
+    @JSBody(params = {"stainedReady", "stainedCaptured", "infestedReady", "infestedCaptured", "nuclearReady", "nuclearCaptured", "desolateReady", "desolateSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-late-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-ready',stainedReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-captured',stainedCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-ready',infestedReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-captured',infestedCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-ready',nuclearReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-captured',nuclearCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-ready',desolateReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-save',desolateSaved ? 'true' : 'false');")
+    private static native void markCampaignLateState(boolean stainedReady, boolean stainedCaptured, boolean infestedReady, boolean infestedCaptured, boolean nuclearReady, boolean nuclearCaptured, boolean desolateReady, boolean desolateSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
