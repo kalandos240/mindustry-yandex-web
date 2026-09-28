@@ -25,6 +25,7 @@ text = text.replace(old_fields, new_fields, 1)
 
 old_start = '''        periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
+        active = true;
 
         try{
 '''
@@ -32,6 +33,7 @@ new_start = '''        periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
         fogPersistSeedDone = false;
         fogPersistRestoreDone = false;
+        active = true;
 
         try{
 '''
