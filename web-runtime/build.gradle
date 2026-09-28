@@ -105,6 +105,8 @@ tasks.register("stageWeb", Copy) {
         include "maps/erekir/crevice.msav"
         include "maps/erekir/siege.msav"
         include "maps/erekir/crossroads.msav"
+        include "maps/erekir/karst.msav"
+        include "maps/erekir/origin.msav"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
