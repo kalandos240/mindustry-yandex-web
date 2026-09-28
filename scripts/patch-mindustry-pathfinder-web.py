@@ -24,7 +24,7 @@ replacements = [
     ),
     (
         "    /** Current pathfinding thread */\n    @Nullable Thread thread;\n",
-        "    /** Web: true while the browser-frame pathfinding scheduler is active. */\n    boolean webActive;\n",
+        "    /** Web: true while the browser-frame pathfinding scheduler is active. */\n    boolean webActive;\n    /** Round-robin cursor so one busy flowfield cannot monopolize the main thread. */\n    int webFieldCursor;\n",
         "worker field",
     ),
 ]
@@ -65,6 +65,7 @@ new_start = '''    /** Starts or restarts browser-frame pathfinding. */
     /** Stops browser-frame pathfinding and clears deferred work. */
     private void stop(){
         webActive = false;
+        webFieldCursor = 0;
         queue.clear();
         needsRefresh = false;
     }
@@ -119,8 +120,19 @@ new_run = '''    /**
         try{
             queue.run();
 
-            //each update time (not total!) no longer than maxUpdate
-            for(Flowfield data : threadList){
+            // Desktop runs this worker off-thread with up to 8 ms per flowfield. Web owns
+            // one event loop, so cap the TOTAL pathfinding time spent in this frame and
+            // continue round-robin next frame. The frontier algorithm itself is unchanged.
+            int fieldCount = threadList.size;
+            if(fieldCount == 0) return;
+            long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);
+            long frameStart = Time.nanos();
+            int visited = 0;
+
+            while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget){
+                if(webFieldCursor >= threadList.size) webFieldCursor = 0;
+                Flowfield data = threadList.get(webFieldCursor++);
+                visited++;
 
                 //if it's dirty and there is nothing to update, begin updating once more
                 if(data.dirty && data.frontier.size == 0){
@@ -128,7 +140,9 @@ new_run = '''    /**
                     data.dirty = false;
                 }
 
-                updateFrontier(data, maxUpdate);
+                long remaining = frameBudget - Time.timeSinceNanos(frameStart);
+                if(remaining <= 0L) break;
+                updateFrontier(data, Math.min(maxUpdate, remaining));
             }
         }catch(Throwable e){
             e.printStackTrace();
@@ -157,6 +171,9 @@ required = (
     "updateFrontier(data, maxUpdate);",
     "updateTargets(data);",
     "queue.run();",
+    "long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);",
+    "while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget)",
+    "updateFrontier(data, Math.min(maxUpdate, remaining));",
     "preloadPath(getField(state.rules.waveTeam, costGround, fieldCore));",
 )
 for marker in required:
