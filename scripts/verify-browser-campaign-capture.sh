@@ -87,8 +87,17 @@ run_capture(){
     --require 'data-mindustry-campaign-mycelial-bastion-captured="true"' \
     --require 'data-mindustry-campaign-littoral-shipyard-captured="true"' \
     --require 'data-mindustry-campaign-planetary-terminal-captured="true"' \
+    --require 'data-mindustry-campaign-tainted-woods-captured="true"' \
+    --require 'data-mindustry-campaign-tainted-woods-capture-wave="33"' \
+    --require 'data-mindustry-campaign-atolls-captured="true"' \
+    --require 'data-mindustry-campaign-testing-grounds-captured="true"' \
+    --require 'data-mindustry-campaign-testing-grounds-capture-wave="33"' \
+    --require 'data-mindustry-campaign-sunken-pier-captured="true"' \
+    --require 'data-mindustry-campaign-sunken-pier-capture-wave="50"' \
+    --require 'data-mindustry-campaign-weathered-channels-captured="true"' \
+    --require 'data-mindustry-campaign-weathered-channels-capture-wave="40"' \
     --require 'data-mindustry-campaign-progress-smoke="stable"' \
-    --require 'data-mindustry-campaign-progress-preset="planetaryTerminal"' \
+    --require 'data-mindustry-campaign-progress-preset="weatheredChannels"' \
     --require 'data-mindustry-campaign-frozen-forest-ready="true"' \
     --require 'data-mindustry-campaign-conveyor-unlocked="true"' \
     --require 'data-mindustry-campaign-junction-unlocked="true"' \
@@ -189,7 +198,20 @@ run_capture(){
     --require 'data-mindustry-campaign-tetrative-reconstructor-unlocked="true"' \
     --require 'data-mindustry-campaign-omura-unlocked="true"' \
     --require 'data-mindustry-campaign-planetary-terminal-ready="true"' \
-    --require 'data-mindustry-campaign-preset="planetaryTerminal"' \
+    --require 'data-mindustry-campaign-spore-pod-unlocked="true"' \
+    --require 'data-mindustry-campaign-tainted-woods-ready="true"' \
+    --require 'data-mindustry-campaign-poly-unlocked="true"' \
+    --require 'data-mindustry-campaign-mega-unlocked="true"' \
+    --require 'data-mindustry-campaign-atolls-ready="true"' \
+    --require 'data-mindustry-campaign-water-extractor-unlocked="true"' \
+    --require 'data-mindustry-campaign-testing-grounds-ready="true"' \
+    --require 'data-mindustry-campaign-sunken-pier-ready="true"' \
+    --require 'data-mindustry-campaign-surge-smelter-unlocked="true"' \
+    --require 'data-mindustry-campaign-mend-projector-unlocked="true"' \
+    --require 'data-mindustry-campaign-force-projector-unlocked="true"' \
+    --require 'data-mindustry-campaign-overdrive-projector-unlocked="true"' \
+    --require 'data-mindustry-campaign-weathered-channels-ready="true"' \
+    --require 'data-mindustry-campaign-preset="weatheredChannels"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
@@ -197,15 +219,15 @@ run_capture(){
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
   grep -Eq 'data-mindustry-campaign-captured-bytes="[1-9][0-9]{2,}"' "$dom"
-  grep -q 'data-mindustry-campaign-capture-win-wave="0"' "$dom"
+  grep -q 'data-mindustry-campaign-capture-win-wave="40"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-sector-id="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-update-id="[1-9][0-9]*"' "$dom"
-  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/planetaryTerminal.msav"' "$dom"
-  echo "Stock campaign progression ($label): Naval Fortress -> Overgrowth -> Mycelial Bastion -> Littoral Shipyard -> Planetary Launch Terminal capture PASS"
+  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/weatheredChannels.msav"' "$dom"
+  echo "Stock campaign progression ($label): Planetary Terminal -> Tainted 33 -> Atolls attack -> Testing 33 -> Sunken 50 -> Weathered Channels 40 capture PASS"
 }
 
 run_capture desktop desktop 0 /tmp/mindustry-campaign-capture-desktop /tmp/mindustry-campaign-capture-desktop.html 9263
 run_capture mobile mobile 1 /tmp/mindustry-campaign-capture-mobile /tmp/mindustry-campaign-capture-mobile.html 9264
 
-echo 'Browser campaign progression matrix: desktop + auto-detected mobile complete Serpulo path through Planetary Launch Terminal capture PASS'
+echo 'Browser campaign progression matrix: desktop + auto-detected mobile all Serpulo TechTree sectors through Weathered Channels capture PASS'
