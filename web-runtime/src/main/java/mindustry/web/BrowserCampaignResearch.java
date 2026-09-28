@@ -37,6 +37,41 @@ public final class BrowserCampaignResearch{
         if(next != null) spend(next);
     }
 
+    private static UnlockableContent firstLocked(UnlockableContent[] sequence){
+        for(int i = 0; i < sequence.length; i++){
+            if(!sequence[i].unlocked()) return sequence[i];
+        }
+        return null;
+    }
+
+    private static final UnlockableContent[] nextRuinousSequence = {Blocks.graphitePress, Blocks.siliconSmelter, Blocks.kiln, Blocks.mechanicalPump};
+    private static final UnlockableContent[] nextWindsweptSequence = {Blocks.pneumaticDrill, Blocks.duo, Blocks.scatter, Blocks.hail, Blocks.siliconSmelter, Blocks.steamGenerator};
+    private static final UnlockableContent[] nextFungalSequence = {Blocks.groundFactory, UnitTypes.dagger};
+    private static final UnlockableContent[] nextFrontierSequence = {Blocks.airFactory, Blocks.additiveReconstructor, UnitTypes.mace, UnitTypes.flare, UnitTypes.mono};
+    private static final UnlockableContent[] nextSaltSequence = {Blocks.copperWall, Blocks.copperWallLarge, Blocks.titaniumWall, Blocks.door};
+    private static final UnlockableContent[] nextTarSequence = {Blocks.sporePress, Blocks.coalCentrifuge, Blocks.conduit, Blocks.arc, Blocks.scorch, Blocks.wave};
+    private static final UnlockableContent[] nextInfestedSequence = {Blocks.navalFactory, UnitTypes.risso, UnitTypes.minke};
+    private static final UnlockableContent[] nextPerilousSequence = {Blocks.cultivator, UnitTypes.retusa};
+    private static final UnlockableContent[] nextExtractionSequence = {Blocks.multiplicativeReconstructor, UnitTypes.fortress};
+    private static final UnlockableContent[] nextCoastlineSequence = {Blocks.itemBridge, Blocks.titaniumConveyor, Blocks.payloadConveyor};
+    private static final UnlockableContent[] nextNavalFortressSequence = {Blocks.massDriver, UnitTypes.retusa, UnitTypes.oxynoe, UnitTypes.bryde, Blocks.cyclone, Blocks.ripple};
+    private static final UnlockableContent[] nextMycelialSequence = {UnitTypes.crawler, UnitTypes.atrax, UnitTypes.spiroct, UnitTypes.arkyid, Blocks.exponentialReconstructor};
+    private static final UnlockableContent[] nextLittoralSequence = {UnitTypes.sei, Blocks.spectre};
+    private static final UnlockableContent[] nextTerminalSequence = {Blocks.advancedLaunchPad, Blocks.massDriver, Blocks.impactReactor, Blocks.tetrativeReconstructor, UnitTypes.omura};
+    private static final UnlockableContent[] nextAtollsSequence = {UnitTypes.poly, UnitTypes.mega};
+    private static final UnlockableContent[] nextTestingGroundsSequence = {Blocks.waterExtractor};
+    private static final UnlockableContent[] nextWeatheredSequence = {Blocks.surgeSmelter, Blocks.mendProjector, Blocks.forceProjector, Blocks.overdriveProjector};
+    private static final UnlockableContent[] nextOnsetSequence = {Blocks.turbineCondenser, Blocks.plasmaBore, Blocks.beamNode, Blocks.duct, Blocks.cliffCrusher, Blocks.siliconArcFurnace, Blocks.tankFabricator, UnitTypes.stell, Blocks.breach, Blocks.berylliumWall};
+    private static final UnlockableContent[] nextAegisSequence = {Blocks.duct, Blocks.ductRouter, Blocks.ductBridge};
+    private static final UnlockableContent[] nextIntersectSequence = {Blocks.turbineCondenser, Blocks.beamNode, Blocks.ventCondenser, Blocks.tankFabricator, Blocks.shipFabricator};
+    private static final UnlockableContent[] nextAtlasSequence = {Blocks.mechFabricator};
+    private static final UnlockableContent[] nextSplitSequence = {Blocks.reinforcedPayloadConveyor, Blocks.overflowDuct, Blocks.reinforcedContainer};
+    private static final UnlockableContent[] nextPeaksSequence = {Blocks.beamTower, Blocks.tankRefabricator, Blocks.mechRefabricator, Blocks.shipRefabricator, UnitTypes.avert};
+    private static final UnlockableContent[] nextCalderaSequence = {Blocks.heatRedirector};
+    private static final UnlockableContent[] nextStrongholdSequence = {Blocks.coreCitadel};
+    private static final UnlockableContent[] nextKarstSequence = {Blocks.coreAcropolis};
+    private static final UnlockableContent[] nextOriginSequence = {Blocks.payloadMassDriver, Blocks.constructor, Blocks.diffuse, Blocks.sublimate, Blocks.afflict, Blocks.electricHeater, Blocks.atmosphericConcentrator, Blocks.cyanogenSynthesizer, Blocks.tankAssembler, UnitTypes.vanquish, Blocks.shipAssembler, UnitTypes.quell, UnitTypes.disrupt, Blocks.mechAssembler, UnitTypes.tecta, UnitTypes.collaris, Blocks.disperse, Blocks.scathe, Blocks.malign, Blocks.pyrolysisGenerator, Blocks.fluxReactor, Blocks.neoplasiaReactor, Blocks.basicAssemblerModule};
+
     public static boolean groundZeroCaptured(){
         return captured(SectorPresets.groundZero);
     }
@@ -81,11 +116,7 @@ public final class BrowserCampaignResearch{
      * Mechanical Pump.
      */
     public static UnlockableContent nextRuinousResearch(){
-        if(!Blocks.graphitePress.unlocked()) return Blocks.graphitePress;
-        if(!Blocks.siliconSmelter.unlocked()) return Blocks.siliconSmelter;
-        if(!Blocks.kiln.unlocked()) return Blocks.kiln;
-        if(!Blocks.mechanicalPump.unlocked()) return Blocks.mechanicalPump;
-        return null;
+        return firstLocked(nextRuinousSequence);
     }
 
     /**
@@ -94,46 +125,23 @@ public final class BrowserCampaignResearch{
      * relying on unlock() to silently backfill them.
      */
     public static UnlockableContent nextWindsweptResearch(){
-        if(!Blocks.pneumaticDrill.unlocked()) return Blocks.pneumaticDrill;
-        if(!Blocks.duo.unlocked()) return Blocks.duo;
-        if(!Blocks.scatter.unlocked()) return Blocks.scatter;
-        if(!Blocks.hail.unlocked()) return Blocks.hail;
-        if(!Blocks.siliconSmelter.unlocked()) return Blocks.siliconSmelter;
-        if(!Blocks.steamGenerator.unlocked()) return Blocks.steamGenerator;
-        return null;
+        return firstLocked(nextWindsweptSequence);
     }
 
     public static UnlockableContent nextFungalResearch(){
-        if(!Blocks.groundFactory.unlocked()) return Blocks.groundFactory;
-        if(!UnitTypes.dagger.unlocked()) return UnitTypes.dagger;
-        return null;
+        return firstLocked(nextFungalSequence);
     }
 
     public static UnlockableContent nextFrontierResearch(){
-        if(!Blocks.airFactory.unlocked()) return Blocks.airFactory;
-        if(!Blocks.additiveReconstructor.unlocked()) return Blocks.additiveReconstructor;
-        if(!UnitTypes.mace.unlocked()) return UnitTypes.mace;
-        if(!UnitTypes.flare.unlocked()) return UnitTypes.flare;
-        if(!UnitTypes.mono.unlocked()) return UnitTypes.mono;
-        return null;
+        return firstLocked(nextFrontierSequence);
     }
 
     public static UnlockableContent nextSaltResearch(){
-        if(!Blocks.copperWall.unlocked()) return Blocks.copperWall;
-        if(!Blocks.copperWallLarge.unlocked()) return Blocks.copperWallLarge;
-        if(!Blocks.titaniumWall.unlocked()) return Blocks.titaniumWall;
-        if(!Blocks.door.unlocked()) return Blocks.door;
-        return null;
+        return firstLocked(nextSaltSequence);
     }
 
     public static UnlockableContent nextTarResearch(){
-        if(!Blocks.sporePress.unlocked()) return Blocks.sporePress;
-        if(!Blocks.coalCentrifuge.unlocked()) return Blocks.coalCentrifuge;
-        if(!Blocks.conduit.unlocked()) return Blocks.conduit;
-        if(!Blocks.arc.unlocked()) return Blocks.arc;
-        if(!Blocks.scorch.unlocked()) return Blocks.scorch;
-        if(!Blocks.wave.unlocked()) return Blocks.wave;
-        return null;
+        return firstLocked(nextTarSequence);
     }
 
     public static UnlockableContent nextImpactResearch(){
@@ -161,10 +169,7 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextInfestedResearch(){
-        if(!Blocks.navalFactory.unlocked()) return Blocks.navalFactory;
-        if(!UnitTypes.risso.unlocked()) return UnitTypes.risso;
-        if(!UnitTypes.minke.unlocked()) return UnitTypes.minke;
-        return null;
+        return firstLocked(nextInfestedSequence);
     }
 
     public static UnlockableContent nextNuclearResearch(){
@@ -221,56 +226,31 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextPerilousResearch(){
-        if(!Blocks.cultivator.unlocked()) return Blocks.cultivator;
-        if(!UnitTypes.retusa.unlocked()) return UnitTypes.retusa;
-        return null;
+        return firstLocked(nextPerilousSequence);
     }
 
     public static UnlockableContent nextExtractionResearch(){
-        if(!Blocks.multiplicativeReconstructor.unlocked()) return Blocks.multiplicativeReconstructor;
-        if(!UnitTypes.fortress.unlocked()) return UnitTypes.fortress;
-        return null;
+        return firstLocked(nextExtractionSequence);
     }
 
     public static UnlockableContent nextCoastlineResearch(){
-        if(!Blocks.itemBridge.unlocked()) return Blocks.itemBridge;
-        if(!Blocks.titaniumConveyor.unlocked()) return Blocks.titaniumConveyor;
-        if(!Blocks.payloadConveyor.unlocked()) return Blocks.payloadConveyor;
-        return null;
+        return firstLocked(nextCoastlineSequence);
     }
 
     public static UnlockableContent nextNavalFortressResearch(){
-        if(!Blocks.massDriver.unlocked()) return Blocks.massDriver;
-        if(!UnitTypes.retusa.unlocked()) return UnitTypes.retusa;
-        if(!UnitTypes.oxynoe.unlocked()) return UnitTypes.oxynoe;
-        if(!UnitTypes.bryde.unlocked()) return UnitTypes.bryde;
-        if(!Blocks.cyclone.unlocked()) return Blocks.cyclone;
-        if(!Blocks.ripple.unlocked()) return Blocks.ripple;
-        return null;
+        return firstLocked(nextNavalFortressSequence);
     }
 
     public static UnlockableContent nextMycelialResearch(){
-        if(!UnitTypes.crawler.unlocked()) return UnitTypes.crawler;
-        if(!UnitTypes.atrax.unlocked()) return UnitTypes.atrax;
-        if(!UnitTypes.spiroct.unlocked()) return UnitTypes.spiroct;
-        if(!UnitTypes.arkyid.unlocked()) return UnitTypes.arkyid;
-        if(!Blocks.exponentialReconstructor.unlocked()) return Blocks.exponentialReconstructor;
-        return null;
+        return firstLocked(nextMycelialSequence);
     }
 
     public static UnlockableContent nextLittoralResearch(){
-        if(!UnitTypes.sei.unlocked()) return UnitTypes.sei;
-        if(!Blocks.spectre.unlocked()) return Blocks.spectre;
-        return null;
+        return firstLocked(nextLittoralSequence);
     }
 
     public static UnlockableContent nextTerminalResearch(){
-        if(!Blocks.advancedLaunchPad.unlocked()) return Blocks.advancedLaunchPad;
-        if(!Blocks.massDriver.unlocked()) return Blocks.massDriver;
-        if(!Blocks.impactReactor.unlocked()) return Blocks.impactReactor;
-        if(!Blocks.tetrativeReconstructor.unlocked()) return Blocks.tetrativeReconstructor;
-        if(!UnitTypes.omura.unlocked()) return UnitTypes.omura;
-        return null;
+        return firstLocked(nextTerminalSequence);
     }
 
     public static boolean waitingForTaintedSporePod(){
@@ -278,64 +258,35 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextAtollsResearch(){
-        if(!UnitTypes.poly.unlocked()) return UnitTypes.poly;
-        if(!UnitTypes.mega.unlocked()) return UnitTypes.mega;
-        return null;
+        return firstLocked(nextAtollsSequence);
     }
 
     public static UnlockableContent nextTestingGroundsResearch(){
-        if(!Blocks.waterExtractor.unlocked()) return Blocks.waterExtractor;
-        return null;
+        return firstLocked(nextTestingGroundsSequence);
     }
 
     public static UnlockableContent nextWeatheredResearch(){
-        if(!Blocks.surgeSmelter.unlocked()) return Blocks.surgeSmelter;
-        if(!Blocks.mendProjector.unlocked()) return Blocks.mendProjector;
-        if(!Blocks.forceProjector.unlocked()) return Blocks.forceProjector;
-        if(!Blocks.overdriveProjector.unlocked()) return Blocks.overdriveProjector;
-        return null;
+        return firstLocked(nextWeatheredSequence);
     }
 
     public static UnlockableContent nextOnsetResearch(){
-        if(!Blocks.turbineCondenser.unlocked()) return Blocks.turbineCondenser;
-        if(!Blocks.plasmaBore.unlocked()) return Blocks.plasmaBore;
-        if(!Blocks.beamNode.unlocked()) return Blocks.beamNode;
-        if(!Blocks.duct.unlocked()) return Blocks.duct;
-        if(!Blocks.cliffCrusher.unlocked()) return Blocks.cliffCrusher;
-        if(!Blocks.siliconArcFurnace.unlocked()) return Blocks.siliconArcFurnace;
-        if(!Blocks.tankFabricator.unlocked()) return Blocks.tankFabricator;
-        if(!UnitTypes.stell.unlocked()) return UnitTypes.stell;
-        if(!Blocks.breach.unlocked()) return Blocks.breach;
-        if(!Blocks.berylliumWall.unlocked()) return Blocks.berylliumWall;
-        return null;
+        return firstLocked(nextOnsetSequence);
     }
 
     public static UnlockableContent nextAegisResearch(){
-        if(!Blocks.duct.unlocked()) return Blocks.duct;
-        if(!Blocks.ductRouter.unlocked()) return Blocks.ductRouter;
-        if(!Blocks.ductBridge.unlocked()) return Blocks.ductBridge;
-        return null;
+        return firstLocked(nextAegisSequence);
     }
 
     public static UnlockableContent nextIntersectResearch(){
-        if(!Blocks.turbineCondenser.unlocked()) return Blocks.turbineCondenser;
-        if(!Blocks.beamNode.unlocked()) return Blocks.beamNode;
-        if(!Blocks.ventCondenser.unlocked()) return Blocks.ventCondenser;
-        if(!Blocks.tankFabricator.unlocked()) return Blocks.tankFabricator;
-        if(!Blocks.shipFabricator.unlocked()) return Blocks.shipFabricator;
-        return null;
+        return firstLocked(nextIntersectSequence);
     }
 
     public static UnlockableContent nextAtlasResearch(){
-        if(!Blocks.mechFabricator.unlocked()) return Blocks.mechFabricator;
-        return null;
+        return firstLocked(nextAtlasSequence);
     }
 
     public static UnlockableContent nextSplitResearch(){
-        if(!Blocks.reinforcedPayloadConveyor.unlocked()) return Blocks.reinforcedPayloadConveyor;
-        if(!Blocks.overflowDuct.unlocked()) return Blocks.overflowDuct;
-        if(!Blocks.reinforcedContainer.unlocked()) return Blocks.reinforcedContainer;
-        return null;
+        return firstLocked(nextSplitSequence);
     }
 
     public static UnlockableContent nextMarshResearch(){
@@ -355,12 +306,7 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextPeaksResearch(){
-        if(!Blocks.beamTower.unlocked()) return Blocks.beamTower;
-        if(!Blocks.tankRefabricator.unlocked()) return Blocks.tankRefabricator;
-        if(!Blocks.mechRefabricator.unlocked()) return Blocks.mechRefabricator;
-        if(!Blocks.shipRefabricator.unlocked()) return Blocks.shipRefabricator;
-        if(!UnitTypes.avert.unlocked()) return UnitTypes.avert;
-        return null;
+        return firstLocked(nextPeaksSequence);
     }
 
     public static boolean waitingForRavineSlag(){
@@ -368,52 +314,19 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextCalderaResearch(){
-        if(!Blocks.heatRedirector.unlocked()) return Blocks.heatRedirector;
-        return null;
+        return firstLocked(nextCalderaSequence);
     }
 
     public static UnlockableContent nextStrongholdResearch(){
-        if(!Blocks.coreCitadel.unlocked()) return Blocks.coreCitadel;
-        return null;
+        return firstLocked(nextStrongholdSequence);
     }
 
     public static UnlockableContent nextKarstResearch(){
-        if(!Blocks.coreAcropolis.unlocked()) return Blocks.coreAcropolis;
-        return null;
+        return firstLocked(nextKarstSequence);
     }
 
     public static UnlockableContent nextOriginResearch(){
-        if(!Blocks.payloadMassDriver.unlocked()) return Blocks.payloadMassDriver;
-        if(!Blocks.constructor.unlocked()) return Blocks.constructor;
-
-        if(!Blocks.diffuse.unlocked()) return Blocks.diffuse;
-        if(!Blocks.sublimate.unlocked()) return Blocks.sublimate;
-        if(!Blocks.afflict.unlocked()) return Blocks.afflict;
-        if(!Blocks.electricHeater.unlocked()) return Blocks.electricHeater;
-        if(!Blocks.atmosphericConcentrator.unlocked()) return Blocks.atmosphericConcentrator;
-        if(!Blocks.cyanogenSynthesizer.unlocked()) return Blocks.cyanogenSynthesizer;
-
-        if(!Blocks.tankAssembler.unlocked()) return Blocks.tankAssembler;
-        if(!UnitTypes.vanquish.unlocked()) return UnitTypes.vanquish;
-
-        if(!Blocks.shipAssembler.unlocked()) return Blocks.shipAssembler;
-        if(!UnitTypes.quell.unlocked()) return UnitTypes.quell;
-        if(!UnitTypes.disrupt.unlocked()) return UnitTypes.disrupt;
-
-        if(!Blocks.mechAssembler.unlocked()) return Blocks.mechAssembler;
-        if(!UnitTypes.tecta.unlocked()) return UnitTypes.tecta;
-        if(!UnitTypes.collaris.unlocked()) return UnitTypes.collaris;
-
-        if(!Blocks.disperse.unlocked()) return Blocks.disperse;
-        if(!Blocks.scathe.unlocked()) return Blocks.scathe;
-        if(!Blocks.malign.unlocked()) return Blocks.malign;
-
-        if(!Blocks.pyrolysisGenerator.unlocked()) return Blocks.pyrolysisGenerator;
-        if(!Blocks.fluxReactor.unlocked()) return Blocks.fluxReactor;
-        if(!Blocks.neoplasiaReactor.unlocked()) return Blocks.neoplasiaReactor;
-
-        if(!Blocks.basicAssemblerModule.unlocked()) return Blocks.basicAssemblerModule;
-        return null;
+        return firstLocked(nextOriginSequence);
     }
 
     public static boolean canSpend(UnlockableContent content){
