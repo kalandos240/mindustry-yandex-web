@@ -26,6 +26,7 @@ public final class BrowserCampaignRuntime{
     private static boolean saveSmokeArmed;
     private static boolean captureSmokeStaged;
     private static boolean captureSmokeComplete;
+    private static boolean onsetObjectivesStaged;
     private static Sector current;
     private static int frames;
 
@@ -737,6 +738,7 @@ public final class BrowserCampaignRuntime{
         saveSmokeArmed = false;
         captureSmokeStaged = false;
         captureSmokeComplete = false;
+        onsetObjectivesStaged = false;
         coreReadyMarked = false;
 
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
@@ -906,6 +908,7 @@ public final class BrowserCampaignRuntime{
         saveSmokeArmed = false;
         captureSmokeStaged = false;
         captureSmokeComplete = false;
+        onsetObjectivesStaged = false;
         coreReadyMarked = false;
         markResumed(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             expectedBytes, state.wave, loadedTickMillis);
@@ -941,6 +944,7 @@ public final class BrowserCampaignRuntime{
         saveSmokeArmed = false;
         captureSmokeStaged = false;
         captureSmokeComplete = false;
+        onsetObjectivesStaged = false;
         coreReadyMarked = false;
         logic.reset();
         markReturnedToMenu();
@@ -1179,12 +1183,14 @@ public final class BrowserCampaignRuntime{
             || current.preset == SectorPresets.testingGrounds
             || current.preset == SectorPresets.sunkenPier
             || current.preset == SectorPresets.weatheredChannels;
-        if(captureSmokeRequested() && onsetObjectiveCapture && !captureSmokeStaged && frames >= 3){
+        if(captureSmokeRequested() && onsetObjectiveCapture && !onsetObjectivesStaged && frames >= 3){
             stageOnsetObjectivesForCapture();
-
+            onsetObjectivesStaged = true;
+        }else if(captureSmokeRequested() && onsetObjectiveCapture && onsetObjectivesStaged
+        && !captureSmokeStaged && frames >= 4){
             int enemyCores = state.rules.waveTeam.cores().size;
             if(enemyCores <= 0){
-                throw new IllegalStateException("Onset objective smoke expected enemy cores after openMap staging");
+                throw new IllegalStateException("Onset objective smoke expected enemy cores after openMap world-processor frame");
             }
             var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
             enemyCoresSnapshot.each(core -> core.kill());
