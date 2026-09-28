@@ -8,6 +8,14 @@ if not RUNTIME.is_file():
     raise SystemExit(f"Missing browser local-map runtime source: {RUNTIME}")
 
 text = RUNTIME.read_text(encoding="utf-8")
+if all(marker in text for marker in (
+    "private static native boolean autoSaveExitSmokeRequested();",
+    "private static native void markAutoSaved(",
+    "markAutoSaved(previous, savedWave, savedUpdateId);",
+    "markAutoSaveExitSmokeArmed();",
+)):
+    print("Local Back/autosave milestone already present in committed Web overlay")
+    raise SystemExit(0)
 
 old_return = '''    public static void returnToMenu(){
         if(!active) return;
