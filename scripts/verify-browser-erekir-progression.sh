@@ -147,10 +147,14 @@ run_progression(){
     --require 'data-mindustry-erekir-neoplasia-reactor-unlocked="true"' \
     --require 'data-mindustry-erekir-basic-assembler-module-unlocked="true"' \
     --require 'data-mindustry-erekir-origin-ready="true"' \
+    --require 'data-mindustry-erekir-origin-objectives="staged"' \
+    --require 'data-mindustry-erekir-origin-objective-count="5"' \
+    --require 'data-mindustry-erekir-origin-objective-flags="ready"' \
+    --require 'data-mindustry-erekir-origin-captured="true"' \
     --require 'data-mindustry-campaign-capture="ready"' \
     --require 'data-mindustry-campaign-captured="true"' \
-    --require 'data-mindustry-campaign-captured-preset="karst"' \
-    --require 'data-mindustry-campaign-capture-win-wave="10"' \
+    --require 'data-mindustry-campaign-captured-preset="origin"' \
+    --require 'data-mindustry-campaign-capture-win-wave="0"' \
     --require 'data-mindustry-campaign-progress-smoke="stable"' \
     --require 'data-mindustry-campaign-progress-preset="origin"' \
     --require 'data-mindustry-campaign-state="playing"' \
@@ -168,7 +172,7 @@ run_progression(){
   grep -Eq 'data-mindustry-campaign-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-campaign-update-id="[1-9][0-9]*"' "$dom"
 
-  echo "Erekir progression ($label): Crossroads -> Core Acropolis -> Karst wave 10 -> full late-game research -> Origin stable boot PASS"
+  echo "Erekir progression ($label): Crossroads -> Karst wave 10 -> full late-game research -> Origin u1-u5 objective chain -> attack capture PASS"
 }
 
 run_progression desktop desktop 0 \
@@ -181,4 +185,4 @@ run_progression mobile mobile 1 \
   /tmp/mindustry-erekir-progress-mobile.html \
   9275
 
-echo 'Erekir progression matrix: desktop + auto-detected mobile through captured Karst and stable Origin boot PASS'
+echo 'Erekir progression matrix: desktop + auto-detected mobile through captured Origin PASS'
