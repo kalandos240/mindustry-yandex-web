@@ -8,6 +8,14 @@ if not RUNTIME.is_file():
     raise SystemExit(f"Missing browser local-map runtime source: {RUNTIME}")
 
 text = RUNTIME.read_text(encoding="utf-8")
+if all(token in text for token in (
+    "stageTeamRules(rules, rules.defaultTeam);",
+    "if(rules.waveTeam != rules.defaultTeam) stageTeamRules(rules, rules.waveTeam);",
+    "private static void stageTeamRules(Rules rules, Team team)",
+)):
+    print("Lean local TeamRules materialization guard already present")
+    raise SystemExit(0)
+
 old = '''        for(Team team : Team.all){
             Rules.TeamRule teamRules = rules.teams.get(team);
             teamRules.fillItems = false;
