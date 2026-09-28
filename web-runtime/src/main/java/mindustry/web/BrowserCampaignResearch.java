@@ -1389,146 +1389,323 @@ public final class BrowserCampaignResearch{
         Events.fire(new ResearchEvent(node.content));
     }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-conveyor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-junction-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-router-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready','true');")
-    private static native void markProgressSmoke();
+    private static void markProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-progress-smoke", "research-ready");
+        setResearchDomAttribute("data-mindustry-campaign-conveyor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-junction-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-router-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-frozen-forest-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','crater-research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-drill-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-coal-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-combustion-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-power-node-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mender-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-ready','true');")
-    private static native void markCraterProgressSmoke();
+    private static void markCraterProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-progress-smoke", "crater-research-ready");
+        setResearchDomAttribute("data-mindustry-campaign-mechanical-drill-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-coal-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-combustion-generator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-power-node-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-mender-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-cratered-battleground-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','ruinous-research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-graphite-press-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-silicon-smelter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-kiln-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-pump-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-ready','true');")
-    private static native void markRuinousProgressSmoke();
+    private static void markRuinousProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-progress-smoke", "ruinous-research-ready");
+        setResearchDomAttribute("data-mindustry-campaign-graphite-press-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-silicon-smelter-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-kiln-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-mechanical-pump-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-ruinous-shores-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','windswept-research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-pneumatic-drill-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-duo-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-scatter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-hail-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-silicon-smelter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-steam-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-ready','true');")
-    private static native void markWindsweptProgressSmoke();
+    private static void markWindsweptProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-progress-smoke", "windswept-research-ready");
+        setResearchDomAttribute("data-mindustry-campaign-pneumatic-drill-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-duo-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-scatter-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-hail-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-silicon-smelter-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-steam-generator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-windswept-islands-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-ready','true');")
-    private static native void markBiomassReadySmoke();
+    private static void markBiomassReadySmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-biomass-facility-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-ground-factory-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-dagger-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-ready','true');")
-    private static native void markFungalProgressSmoke();
+    private static void markFungalProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-ground-factory-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-dagger-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-fungal-pass-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-air-factory-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-additive-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mace-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-flare-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mono-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-ready','true');")
-    private static native void markFrontierProgressSmoke();
+    private static void markFrontierProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-air-factory-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-additive-reconstructor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-mace-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-flare-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-mono-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-frontier-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-copper-wall-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-copper-wall-large-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-titanium-wall-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-door-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-ready','true');")
-    private static native void markSaltProgressSmoke();
+    private static void markSaltProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-copper-wall-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-copper-wall-large-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-titanium-wall-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-door-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-salt-flats-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-press-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-coal-centrifuge-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-conduit-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-arc-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-scorch-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-wave-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-ready','true');")
-    private static native void markTarProgressSmoke();
+    private static void markTarProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-spore-press-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-coal-centrifuge-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-conduit-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-arc-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-scorch-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-wave-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-tar-fields-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-laser-drill-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-thorium-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-lancer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-salvo-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-core-foundation-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-ready','true');")
-    private static native void markImpactProgressSmoke();
+    private static void markImpactProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-laser-drill-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-thorium-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-lancer-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-salvo-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-core-foundation-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-impact-0078-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-ready','true');")
-    private static native void markStainedReadySmoke();
+    private static void markStainedReadySmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-stained-mountains-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-naval-factory-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-risso-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-minke-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-ready','true');")
-    private static native void markInfestedProgressSmoke();
+    private static void markInfestedProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-naval-factory-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-risso-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-minke-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-infested-canyons-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-thermal-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-plastanium-compressor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-plastanium-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-swarmer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-ready','true');")
-    private static native void markNuclearProgressSmoke();
+    private static void markNuclearProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-thermal-generator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-plastanium-compressor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-plastanium-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-swarmer-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-nuclear-complex-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-core-nucleus-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-pulverizer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-incinerator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-melter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cryofluid-mixer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cryofluid-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-differential-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-thorium-reactor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-ready','true');")
-    private static native void markDesolateProgressSmoke();
+    private static void markDesolateProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-core-nucleus-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-pulverizer-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-incinerator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-melter-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-cryofluid-mixer-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-cryofluid-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-differential-generator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-thorium-reactor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-desolate-rift-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-facility32m-ready','true');")
-    private static native void markFacilityReadySmoke();
+    private static void markFacilityReadySmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-facility32m-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-cultivator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-retusa-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-ready','true');")
-    private static native void markPerilousProgressSmoke();
+    private static void markPerilousProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-cultivator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-retusa-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-perilous-harbor-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-multiplicative-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-fortress-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-ready','true');")
-    private static native void markExtractionProgressSmoke();
+    private static void markExtractionProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-multiplicative-reconstructor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-fortress-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-extraction-outpost-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-item-bridge-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-titanium-conveyor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-payload-conveyor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-ready','true');")
-    private static native void markCoastlineProgressSmoke();
+    private static void markCoastlineProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-item-bridge-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-titanium-conveyor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-payload-conveyor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-coastline-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-mass-driver-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-oxynoe-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-bryde-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cyclone-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-ripple-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-ready','true');")
-    private static native void markNavalFortressProgressSmoke();
+    private static void markNavalFortressProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-mass-driver-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-oxynoe-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-bryde-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-cyclone-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-ripple-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-naval-fortress-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-ready','true');")
-    private static native void markOvergrowthReadySmoke();
+    private static void markOvergrowthReadySmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-overgrowth-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-crawler-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-atrax-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-spiroct-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-arkyid-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-exponential-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-ready','true');")
-    private static native void markMycelialProgressSmoke();
+    private static void markMycelialProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-crawler-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-atrax-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-spiroct-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-arkyid-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-exponential-reconstructor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-mycelial-bastion-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-sei-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-spectre-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-ready','true');")
-    private static native void markLittoralProgressSmoke();
+    private static void markLittoralProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-sei-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-spectre-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-littoral-shipyard-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-advanced-launch-pad-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-reactor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tetrative-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-omura-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-ready','true');")
-    private static native void markTerminalProgressSmoke();
+    private static void markTerminalProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-advanced-launch-pad-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-impact-reactor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-tetrative-reconstructor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-omura-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-planetary-terminal-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-onset-research','ready'); document.documentElement.setAttribute('data-mindustry-erekir-onset-tech','ready'); document.documentElement.setAttribute('data-mindustry-erekir-silicon-arc-furnace-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-tank-fabricator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-stell-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-breach-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-beryllium-wall-unlocked','true');")
-    private static native void markOnsetResearchSmoke();
+    private static void markOnsetResearchSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-onset-research", "ready");
+        setResearchDomAttribute("data-mindustry-erekir-onset-tech", "ready");
+        setResearchDomAttribute("data-mindustry-erekir-silicon-arc-furnace-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-tank-fabricator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-stell-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-breach-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-beryllium-wall-unlocked", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-duct-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-duct-router-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-duct-bridge-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-aegis-ready','true');")
-    private static native void markAegisProgressSmoke();
+    private static void markAegisProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-duct-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-duct-router-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-duct-bridge-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-aegis-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-lake-ready','true');")
-    private static native void markLakeReadySmoke();
+    private static void markLakeReadySmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-lake-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-vent-condenser-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-ship-fabricator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-intersect-ready','true');")
-    private static native void markIntersectProgressSmoke();
+    private static void markIntersectProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-vent-condenser-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-ship-fabricator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-intersect-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-mech-fabricator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-atlas-ready','true');")
-    private static native void markAtlasProgressSmoke();
+    private static void markAtlasProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-mech-fabricator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-atlas-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-reinforced-payload-conveyor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-overflow-duct-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-reinforced-container-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-split-ready','true');")
-    private static native void markSplitProgressSmoke();
+    private static void markSplitProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-reinforced-payload-conveyor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-overflow-duct-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-reinforced-container-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-split-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-ready','true');")
-    private static native void markBasinReadySmoke();
+    private static void markBasinReadySmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-basin-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-marsh-ready','true');")
-    private static native void markMarshReadySmoke();
+    private static void markMarshReadySmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-marsh-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-electrolyzer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-oxidation-chamber-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-reinforced-pump-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-oxide-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-arkycite-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-chemical-combustion-unlocked','true');")
-    private static native void markMarshResearchSmoke();
+    private static void markMarshResearchSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-electrolyzer-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-oxidation-chamber-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-reinforced-pump-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-oxide-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-arkycite-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-chemical-combustion-unlocked", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-peaks-ready','true');")
-    private static native void markPeaksReadySmoke();
+    private static void markPeaksReadySmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-peaks-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-beam-tower-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-ship-refabricator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-avert-unlocked','true');")
-    private static native void markPeaksResearchSmoke();
+    private static void markPeaksResearchSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-beam-tower-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-ship-refabricator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-avert-unlocked", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-slag-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-ravine-ready','true');")
-    private static native void markRavineProgressSmoke();
+    private static void markRavineProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-slag-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-ravine-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-heat-redirector-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-caldera-ready','true');")
-    private static native void markCalderaProgressSmoke();
+    private static void markCalderaProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-heat-redirector-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-caldera-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-core-citadel-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-stronghold-ready','true');")
-    private static native void markStrongholdProgressSmoke();
+    private static void markStrongholdProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-core-citadel-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-stronghold-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-crevice-ready','true');")
-    private static native void markCreviceReadySmoke();
+    private static void markCreviceReadySmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-crevice-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-siege-ready','true');")
-    private static native void markSiegeReadySmoke();
+    private static void markSiegeReadySmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-siege-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-crossroads-ready','true');")
-    private static native void markCrossroadsReadySmoke();
+    private static void markCrossroadsReadySmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-crossroads-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-core-acropolis-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-karst-ready','true');")
-    private static native void markKarstProgressSmoke();
+    private static void markKarstProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-core-acropolis-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-karst-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-payload-mass-driver-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-constructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-atmospheric-concentrator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-cyanogen-synthesizer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-tank-assembler-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-vanquish-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-disrupt-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-collaris-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-malign-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-neoplasia-reactor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-basic-assembler-module-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-origin-ready','true');")
-    private static native void markOriginProgressSmoke();
+    private static void markOriginProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-payload-mass-driver-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-constructor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-atmospheric-concentrator-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-cyanogen-synthesizer-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-tank-assembler-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-vanquish-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-disrupt-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-collaris-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-malign-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-neoplasia-reactor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-basic-assembler-module-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-origin-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready','true');")
-    private static native void markTaintedProgressSmoke();
+    private static void markTaintedProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-spore-pod-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-tainted-woods-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-poly-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mega-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-atolls-ready','true');")
-    private static native void markAtollsProgressSmoke();
+    private static void markAtollsProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-poly-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-mega-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-atolls-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-water-extractor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-ready','true');")
-    private static native void markTestingGroundsProgressSmoke();
+    private static void markTestingGroundsProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-water-extractor-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-testing-grounds-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-ready','true');")
-    private static native void markSunkenPierReadySmoke();
+    private static void markSunkenPierReadySmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-sunken-pier-ready", "true");
+    }
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-surge-smelter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mend-projector-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-force-projector-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-overdrive-projector-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-ready','true');")
-    private static native void markWeatheredProgressSmoke();
+    private static void markWeatheredProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-campaign-surge-smelter-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-mend-projector-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-force-projector-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-overdrive-projector-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-campaign-weathered-channels-ready", "true");
+    }
+
+    @org.teavm.jso.JSBody(params = {"key", "value"}, script = "document.documentElement.setAttribute(key, value);")
+    private static native void setResearchDomAttribute(String key, String value);
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady", "windsweptReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
