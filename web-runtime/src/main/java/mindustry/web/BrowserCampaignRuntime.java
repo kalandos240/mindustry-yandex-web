@@ -43,6 +43,11 @@ public final class BrowserCampaignRuntime{
         return active;
     }
 
+    /** Normal production boot warms non-start campaign maps in the background. */
+    public static boolean campaignAssetsReady(){
+        return campaignAssetsReadyNative();
+    }
+
     /** True when BrowserSaves has rebound a valid persisted Ground Zero sector slot. */
     public static boolean hasGroundZeroSave(){
         return hasSectorSave(SectorPresets.groundZero);
@@ -2335,6 +2340,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(params = {"rules", "stats", "locales", "rulesChars"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-meta-rules-utf',String(rules)); document.documentElement.setAttribute('data-mindustry-campaign-meta-stats-utf',String(stats)); document.documentElement.setAttribute('data-mindustry-campaign-meta-locales-utf',String(locales)); document.documentElement.setAttribute('data-mindustry-campaign-meta-rules-chars',String(rulesChars));")
     private static native void markMetaLengths(int rules, int stats, int locales, int rulesChars);
+
+    @JSBody(script = "return document.documentElement.getAttribute('data-mindustry-campaign-assets') === 'ready';")
+    private static native boolean campaignAssetsReadyNative();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSmoke') || '';")
     private static native String requestedSector();
