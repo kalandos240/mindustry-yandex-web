@@ -140,15 +140,15 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
         Events.fire(Trigger.update);
         universe.updateGlobal();
 
-        // Permanent Web/Yandex local single-player is the authoritative simulation.
-        state.enemies = Groups.unit.count(u -> u.team() == state.rules.waveTeam && u.isEnemy());
-
         Events.fire(Trigger.beforeGameUpdate);
 
         float delta = Core.graphics.getDeltaTime();
         state.tick += Float.isNaN(delta) || Float.isInfinite(delta) ? 0f : delta * 60f;
         state.updateId ++;
+        // updateTeamStats already walks Groups.unit; the Web Teams patch folds the exact
+        // top-level wave-team/isEnemy count into that mandatory pass.
         state.teams.updateTeamStats();
+        state.enemies = state.teams.webWaveEnemies;
         MapPreviewLoader.checkPreviews();
 
         Time.update();
@@ -177,4 +177,50 @@ if marker not in text:
 text = text.replace(marker, web_methods, 1)
 
 PATH.write_text(text, encoding="utf-8")
-print("Applied Web-safe Logic menu, GameState smoke and real playing-core tick paths")
+
+# Stock Logic scans Groups.unit once for state.enemies immediately before Teams scans
+# the same group again for per-team caches. Web folds the exact top-level wave-team
+# enemy count into updateTeamStats(), avoiding a second O(total units) pass each frame.
+TEAMS = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "game" / "Teams.java"
+teams = TEAMS.read_text(encoding="utf-8")
+
+old_field = '''    /** Current boss units. */
+    public Seq<Unit> bosses = new Seq<>();
+'''
+new_field = '''    /** Current boss units. */
+    public Seq<Unit> bosses = new Seq<>();
+    /** Web: top-level wave-team units whose UnitType is marked enemy, refreshed with team stats. */
+    public int webWaveEnemies;
+'''
+if old_field not in teams:
+    raise SystemExit("Teams Web enemy-count field anchor no longer matches pinned upstream")
+teams = teams.replace(old_field, new_field, 1)
+
+old_clear = '''    public void updateTeamStats(){
+        present.clear();
+        bosses.clear();
+'''
+new_clear = '''    public void updateTeamStats(){
+        present.clear();
+        bosses.clear();
+        webWaveEnemies = 0;
+'''
+if old_clear not in teams:
+    raise SystemExit("Teams Web enemy-count reset anchor no longer matches pinned upstream")
+teams = teams.replace(old_clear, new_clear, 1)
+
+old_loop = '''        for(Unit unit : Groups.unit){
+            if(unit.type == null) continue;
+            TeamData data = unit.team.data();
+'''
+new_loop = '''        for(Unit unit : Groups.unit){
+            if(unit.type == null) continue;
+            if(unit.team == state.rules.waveTeam && unit.isEnemy()) webWaveEnemies++;
+            TeamData data = unit.team.data();
+'''
+if old_loop not in teams:
+    raise SystemExit("Teams Web enemy-count loop anchor no longer matches pinned upstream")
+teams = teams.replace(old_loop, new_loop, 1)
+TEAMS.write_text(teams, encoding="utf-8")
+
+print("Applied Web-safe Logic + single-pass Teams enemy counting")
