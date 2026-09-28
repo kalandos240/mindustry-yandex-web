@@ -245,6 +245,27 @@ public final class BrowserCampaignRuntime{
             && meta.rules.sector.id == sector.id && meta.rules.sector.planet == sector.planet;
     }
 
+    /** Shared production action for every non-root campaign preset. */
+    private static void playUnlockedPreset(SectorPreset preset, SectorPreset originPreset, String actionId){
+        diagnostics = false;
+        if(preset == null || !preset.unlocked()){
+            throw new IllegalStateException("Campaign preset is still locked: " + actionId);
+        }
+
+        boolean resume = hasSectorSave(preset);
+        markProductionAction((resume ? "continue-" : "play-") + actionId);
+        if(resume){
+            continuePreset(preset);
+            return;
+        }
+
+        Sector origin = originPreset == null ? null : originPreset.sector;
+        if(origin == null || !origin.hasBase() || !origin.isCaptured()){
+            throw new IllegalStateException("Campaign launch origin is not captured: " + actionId);
+        }
+        startPreset(preset, origin);
+    }
+
     /** Production menu action: start Ground Zero once, then resume the same sector thereafter. */
     public static void playGroundZero(){
         diagnostics = false;
@@ -259,446 +280,118 @@ public final class BrowserCampaignRuntime{
 
     /** Production progression action unlocked by the stock Serpulo tech tree. */
     public static void playFrozenForest(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.frozenForest;
-        if(preset == null || !preset.unlocked()){
-            throw new IllegalStateException("Frozen Forest is still locked by stock campaign prerequisites");
-        }
-
-        boolean resume = hasFrozenForestSave();
-        markProductionAction(resume ? "continue-frozenForest" : "play-frozenForest");
-        if(resume){
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.groundZero == null ? null : SectorPresets.groundZero.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()){
-                throw new IllegalStateException("Frozen Forest launch requires a captured Ground Zero base");
-            }
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.frozenForest, SectorPresets.groundZero, "frozenForest");
     }
 
     /** Production progression action unlocked after captured Frozen Forest + stock power research. */
     public static void playCrateredBattleground(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.crateredBattleground;
-        if(preset == null || !preset.unlocked()){
-            throw new IllegalStateException("Cratered Battleground is still locked by stock campaign prerequisites");
-        }
-
-        boolean resume = hasCrateredBattlegroundSave();
-        markProductionAction(resume ? "continue-crateredBattleground" : "play-crateredBattleground");
-        if(resume){
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.frozenForest == null ? null : SectorPresets.frozenForest.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()){
-                throw new IllegalStateException("Cratered Battleground launch requires a captured Frozen Forest base");
-            }
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.crateredBattleground, SectorPresets.frozenForest, "crateredBattleground");
     }
 
     /** Production progression action unlocked after captured Cratered Battleground + stock materials/liquid research. */
     public static void playRuinousShores(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.ruinousShores;
-        if(preset == null || !preset.unlocked()){
-            throw new IllegalStateException("Ruinous Shores is still locked by stock campaign prerequisites");
-        }
-
-        boolean resume = hasRuinousShoresSave();
-        markProductionAction(resume ? "continue-ruinousShores" : "play-ruinousShores");
-        if(resume){
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.crateredBattleground == null ? null : SectorPresets.crateredBattleground.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()){
-                throw new IllegalStateException("Ruinous Shores launch requires a captured Cratered Battleground base");
-            }
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.ruinousShores, SectorPresets.crateredBattleground, "ruinousShores");
     }
 
     /** Production progression action unlocked after captured Ruinous Shores + stock drilling/turret/power research. */
     public static void playWindsweptIslands(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.windsweptIslands;
-        if(preset == null || !preset.unlocked()){
-            throw new IllegalStateException("Windswept Islands is still locked by stock campaign prerequisites");
-        }
-
-        boolean resume = hasWindsweptIslandsSave();
-        markProductionAction(resume ? "continue-windsweptIslands" : "play-windsweptIslands");
-        if(resume){
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.ruinousShores == null ? null : SectorPresets.ruinousShores.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()){
-                throw new IllegalStateException("Windswept Islands launch requires a captured Ruinous Shores base");
-            }
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.windsweptIslands, SectorPresets.ruinousShores, "windsweptIslands");
     }
 
     public static void playBiomassFacility(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.biomassFacility;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Biomass Facility is still locked");
-        if(hasBiomassFacilitySave()){
-            markProductionAction("continue-biomassFacility");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.windsweptIslands == null ? null : SectorPresets.windsweptIslands.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Biomass Facility launch requires captured Windswept Islands");
-            markProductionAction("play-biomassFacility");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.biomassFacility, SectorPresets.windsweptIslands, "biomassFacility");
     }
 
     public static void playFungalPass(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.fungalPass;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Fungal Pass is still locked");
-        if(hasFungalPassSave()){
-            markProductionAction("continue-fungalPass");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.biomassFacility == null ? null : SectorPresets.biomassFacility.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Fungal Pass launch requires captured Biomass Facility");
-            markProductionAction("play-fungalPass");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.fungalPass, SectorPresets.biomassFacility, "fungalPass");
     }
 
     public static void playFrontier(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.frontier;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Frontier is still locked");
-        if(hasFrontierSave()){
-            markProductionAction("continue-frontier");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.fungalPass == null ? null : SectorPresets.fungalPass.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Frontier launch requires captured Fungal Pass");
-            markProductionAction("play-frontier");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.frontier, SectorPresets.fungalPass, "frontier");
     }
 
     public static void playSaltFlats(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.saltFlats;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Salt Flats is still locked");
-        if(hasSaltFlatsSave()){
-            markProductionAction("continue-saltFlats");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.frontier == null ? null : SectorPresets.frontier.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Salt Flats launch requires captured Frontier");
-            markProductionAction("play-saltFlats");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.saltFlats, SectorPresets.frontier, "saltFlats");
     }
 
     public static void playTarFields(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.tarFields;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Tar Fields is still locked");
-        if(hasTarFieldsSave()){
-            markProductionAction("continue-tarFields");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.saltFlats == null ? null : SectorPresets.saltFlats.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Tar Fields launch requires captured Salt Flats");
-            markProductionAction("play-tarFields");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.tarFields, SectorPresets.saltFlats, "tarFields");
     }
 
     public static void playImpact0078(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.impact0078;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Impact 0078 is still locked");
-        if(hasImpact0078Save()){
-            markProductionAction("continue-impact0078");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.tarFields == null ? null : SectorPresets.tarFields.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Impact 0078 launch requires captured Tar Fields");
-            markProductionAction("play-impact0078");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.impact0078, SectorPresets.tarFields, "impact0078");
     }
 
     public static void playStainedMountains(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.stainedMountains;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Stained Mountains is still locked");
-        if(hasStainedMountainsSave()){
-            markProductionAction("continue-stainedMountains");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.biomassFacility == null ? null : SectorPresets.biomassFacility.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Stained Mountains launch requires captured Biomass Facility");
-            markProductionAction("play-stainedMountains");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.stainedMountains, SectorPresets.biomassFacility, "stainedMountains");
     }
 
     public static void playInfestedCanyons(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.infestedCanyons;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Infested Canyons is still locked");
-        if(hasInfestedCanyonsSave()){
-            markProductionAction("continue-infestedCanyons");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.stainedMountains == null ? null : SectorPresets.stainedMountains.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Infested Canyons launch requires captured Stained Mountains");
-            markProductionAction("play-infestedCanyons");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.infestedCanyons, SectorPresets.stainedMountains, "infestedCanyons");
     }
 
     public static void playNuclearComplex(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.nuclearComplex;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Nuclear Complex is still locked");
-        if(hasNuclearComplexSave()){
-            markProductionAction("continue-nuclearComplex");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.infestedCanyons == null ? null : SectorPresets.infestedCanyons.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Nuclear Complex launch requires captured Infested Canyons");
-            markProductionAction("play-nuclearComplex");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.nuclearComplex, SectorPresets.infestedCanyons, "nuclearComplex");
     }
 
     public static void playDesolateRift(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.desolateRift;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Desolate Rift is still locked");
-        if(hasDesolateRiftSave()){
-            markProductionAction("continue-desolateRift");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.nuclearComplex == null ? null : SectorPresets.nuclearComplex.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Desolate Rift launch requires captured Nuclear Complex");
-            markProductionAction("play-desolateRift");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.desolateRift, SectorPresets.nuclearComplex, "desolateRift");
     }
 
     public static void playFacility32m(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.facility32m;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Facility 32M is still locked");
-        if(hasFacility32mSave()){
-            markProductionAction("continue-facility32m");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.stainedMountains == null ? null : SectorPresets.stainedMountains.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Facility 32M launch requires captured Stained Mountains");
-            markProductionAction("play-facility32m");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.facility32m, SectorPresets.stainedMountains, "facility32m");
     }
 
     public static void playPerilousHarbor(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.perilousHarbor;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Perilous Harbor is still locked");
-        if(hasPerilousHarborSave()){
-            markProductionAction("continue-perilousHarbor");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.frontier == null ? null : SectorPresets.frontier.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Perilous Harbor launch requires captured Frontier");
-            markProductionAction("play-perilousHarbor");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.perilousHarbor, SectorPresets.frontier, "perilousHarbor");
     }
 
     public static void playExtractionOutpost(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.extractionOutpost;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Extraction Outpost is still locked");
-        if(hasExtractionOutpostSave()){
-            markProductionAction("continue-extractionOutpost");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.perilousHarbor == null ? null : SectorPresets.perilousHarbor.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Extraction Outpost launch requires captured Perilous Harbor");
-            markProductionAction("play-extractionOutpost");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.extractionOutpost, SectorPresets.perilousHarbor, "extractionOutpost");
     }
 
     public static void playCoastline(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.coastline;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Coastline is still locked");
-        if(hasCoastlineSave()){
-            markProductionAction("continue-coastline");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.extractionOutpost == null ? null : SectorPresets.extractionOutpost.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Coastline launch requires captured Extraction Outpost");
-            markProductionAction("play-coastline");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.coastline, SectorPresets.extractionOutpost, "coastline");
     }
 
     public static void playNavalFortress(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.navalFortress;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Naval Fortress is still locked");
-        if(hasNavalFortressSave()){
-            markProductionAction("continue-navalFortress");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.coastline == null ? null : SectorPresets.coastline.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Naval Fortress launch requires captured Coastline");
-            markProductionAction("play-navalFortress");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.navalFortress, SectorPresets.coastline, "navalFortress");
     }
 
     public static void playOvergrowth(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.overgrowth;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Overgrowth is still locked");
-        if(hasOvergrowthSave()){
-            markProductionAction("continue-overgrowth");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.frontier == null ? null : SectorPresets.frontier.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Overgrowth launch requires captured Frontier");
-            markProductionAction("play-overgrowth");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.overgrowth, SectorPresets.frontier, "overgrowth");
     }
 
     public static void playMycelialBastion(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.mycelialBastion;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Mycelial Bastion is still locked");
-        if(hasMycelialBastionSave()){
-            markProductionAction("continue-mycelialBastion");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.overgrowth == null ? null : SectorPresets.overgrowth.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Mycelial Bastion launch requires captured Overgrowth");
-            markProductionAction("play-mycelialBastion");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.mycelialBastion, SectorPresets.overgrowth, "mycelialBastion");
     }
 
     public static void playLittoralShipyard(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.littoralShipyard;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Littoral Shipyard is still locked");
-        if(hasLittoralShipyardSave()){
-            markProductionAction("continue-littoralShipyard");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.mycelialBastion == null ? null : SectorPresets.mycelialBastion.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Littoral Shipyard launch requires captured Mycelial Bastion");
-            markProductionAction("play-littoralShipyard");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.littoralShipyard, SectorPresets.mycelialBastion, "littoralShipyard");
     }
 
     public static void playPlanetaryTerminal(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.planetaryTerminal;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Planetary Launch Terminal is still locked");
-        if(hasPlanetaryTerminalSave()){
-            markProductionAction("continue-planetaryTerminal");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.littoralShipyard == null ? null : SectorPresets.littoralShipyard.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Planetary Terminal launch requires captured Littoral Shipyard");
-            markProductionAction("play-planetaryTerminal");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.planetaryTerminal, SectorPresets.littoralShipyard, "planetaryTerminal");
     }
 
     public static void playTaintedWoods(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.taintedWoods;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Tainted Woods is still locked");
-        if(hasTaintedWoodsSave()){
-            markProductionAction("continue-taintedWoods");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.infestedCanyons == null ? null : SectorPresets.infestedCanyons.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Tainted Woods launch requires captured Infested Canyons");
-            markProductionAction("play-taintedWoods");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.taintedWoods, SectorPresets.infestedCanyons, "taintedWoods");
     }
 
     public static void playAtolls(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.atolls;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Atolls is still locked");
-        if(hasAtollsSave()){
-            markProductionAction("continue-atolls");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.extractionOutpost == null ? null : SectorPresets.extractionOutpost.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Atolls launch requires captured Extraction Outpost");
-            markProductionAction("play-atolls");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.atolls, SectorPresets.extractionOutpost, "atolls");
     }
 
     public static void playTestingGrounds(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.testingGrounds;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Testing Grounds is still locked");
-        if(hasTestingGroundsSave()){
-            markProductionAction("continue-testingGrounds");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.coastline == null ? null : SectorPresets.coastline.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Testing Grounds launch requires captured Coastline");
-            markProductionAction("play-testingGrounds");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.testingGrounds, SectorPresets.coastline, "testingGrounds");
     }
 
     public static void playSunkenPier(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.sunkenPier;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Sunken Pier is still locked");
-        if(hasSunkenPierSave()){
-            markProductionAction("continue-sunkenPier");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.navalFortress == null ? null : SectorPresets.navalFortress.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Sunken Pier launch requires captured Naval Fortress");
-            markProductionAction("play-sunkenPier");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.sunkenPier, SectorPresets.navalFortress, "sunkenPier");
     }
 
     public static void playWeatheredChannels(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.weatheredChannels;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Weathered Channels is still locked");
-        if(hasWeatheredChannelsSave()){
-            markProductionAction("continue-weatheredChannels");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.navalFortress == null ? null : SectorPresets.navalFortress.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Weathered Channels launch requires captured Naval Fortress");
-            markProductionAction("play-weatheredChannels");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.weatheredChannels, SectorPresets.navalFortress, "weatheredChannels");
     }
 
     public static void maybeStartTestSector(){
@@ -753,243 +446,67 @@ public final class BrowserCampaignRuntime{
     }
 
     public static void playAegis(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.aegis;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Aegis is still locked");
-        if(hasAegisSave()){
-            markProductionAction("continue-aegis");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.onset == null ? null : SectorPresets.onset.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Aegis launch requires captured Onset");
-            markProductionAction("play-aegis");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.aegis, SectorPresets.onset, "aegis");
     }
 
     public static void playLake(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.lake;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Lake is still locked");
-        if(hasLakeSave()){
-            markProductionAction("continue-lake");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.aegis == null ? null : SectorPresets.aegis.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Lake launch requires captured Aegis");
-            markProductionAction("play-lake");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.lake, SectorPresets.aegis, "lake");
     }
 
     public static void playIntersect(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.intersect;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Intersect is still locked");
-        if(hasIntersectSave()){
-            markProductionAction("continue-intersect");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.lake == null ? null : SectorPresets.lake.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Intersect launch requires captured Lake");
-            markProductionAction("play-intersect");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.intersect, SectorPresets.lake, "intersect");
     }
 
     public static void playAtlas(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.atlas;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Atlas is still locked");
-        if(hasAtlasSave()){
-            markProductionAction("continue-atlas");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.intersect == null ? null : SectorPresets.intersect.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Atlas launch requires captured Intersect");
-            markProductionAction("play-atlas");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.atlas, SectorPresets.intersect, "atlas");
     }
 
     public static void playSplit(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.split;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Split is still locked");
-        if(hasSplitSave()){
-            markProductionAction("continue-split");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.atlas == null ? null : SectorPresets.atlas.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Split launch requires captured Atlas");
-            markProductionAction("play-split");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.split, SectorPresets.atlas, "split");
     }
 
     public static void playBasin(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.basin;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Basin is still locked");
-        if(hasBasinSave()){
-            markProductionAction("continue-basin");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.atlas == null ? null : SectorPresets.atlas.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Basin launch requires captured Atlas");
-            markProductionAction("play-basin");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.basin, SectorPresets.atlas, "basin");
     }
 
     public static void playMarsh(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.marsh;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Marsh is still locked");
-        if(hasMarshSave()){
-            markProductionAction("continue-marsh");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.basin == null ? null : SectorPresets.basin.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Marsh launch requires captured Basin");
-            markProductionAction("play-marsh");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.marsh, SectorPresets.basin, "marsh");
     }
 
     public static void playPeaks(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.peaks;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Peaks is still locked");
-        if(hasPeaksSave()){
-            markProductionAction("continue-peaks");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.marsh == null ? null : SectorPresets.marsh.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Peaks launch requires captured Marsh");
-            markProductionAction("play-peaks");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.peaks, SectorPresets.marsh, "peaks");
     }
 
     public static void playRavine(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.ravine;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Ravine is still locked");
-        if(hasRavineSave()){
-            markProductionAction("continue-ravine");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.marsh == null ? null : SectorPresets.marsh.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Ravine launch requires captured Marsh");
-            markProductionAction("play-ravine");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.ravine, SectorPresets.marsh, "ravine");
     }
 
     public static void playCaldera(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.caldera;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Caldera is still locked");
-        if(hasCalderaSave()){
-            markProductionAction("continue-caldera");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.ravine == null ? null : SectorPresets.ravine.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Caldera launch requires captured Ravine");
-            markProductionAction("play-caldera");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.caldera, SectorPresets.ravine, "caldera");
     }
 
     public static void playStronghold(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.stronghold;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Stronghold is still locked");
-        if(hasStrongholdSave()){
-            markProductionAction("continue-stronghold");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.caldera == null ? null : SectorPresets.caldera.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Stronghold launch requires captured Caldera");
-            markProductionAction("play-stronghold");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.stronghold, SectorPresets.caldera, "stronghold");
     }
 
     public static void playCrevice(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.crevice;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Crevice is still locked");
-        if(hasCreviceSave()){
-            markProductionAction("continue-crevice");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.stronghold == null ? null : SectorPresets.stronghold.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Crevice launch requires captured Stronghold");
-            markProductionAction("play-crevice");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.crevice, SectorPresets.stronghold, "crevice");
     }
 
     public static void playSiege(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.siege;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Siege is still locked");
-        if(hasSiegeSave()){
-            markProductionAction("continue-siege");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.crevice == null ? null : SectorPresets.crevice.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Siege launch requires captured Crevice");
-            markProductionAction("play-siege");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.siege, SectorPresets.crevice, "siege");
     }
 
     public static void playCrossroads(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.crossroads;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Crossroads is still locked");
-        if(hasCrossroadsSave()){
-            markProductionAction("continue-crossroads");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.siege == null ? null : SectorPresets.siege.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Crossroads launch requires captured Siege");
-            markProductionAction("play-crossroads");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.crossroads, SectorPresets.siege, "crossroads");
     }
 
     public static void playKarst(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.karst;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Karst is still locked");
-        if(hasKarstSave()){
-            markProductionAction("continue-karst");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.crossroads == null ? null : SectorPresets.crossroads.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Karst launch requires captured Crossroads");
-            markProductionAction("play-karst");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.karst, SectorPresets.crossroads, "karst");
     }
 
     public static void playOrigin(){
-        diagnostics = false;
-        SectorPreset preset = SectorPresets.origin;
-        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Origin is still locked");
-        if(hasOriginSave()){
-            markProductionAction("continue-origin");
-            continuePreset(preset);
-        }else{
-            Sector origin = SectorPresets.karst == null ? null : SectorPresets.karst.sector;
-            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Origin launch requires captured Karst");
-            markProductionAction("play-origin");
-            startPreset(preset, origin);
-        }
+        playUnlockedPreset(SectorPresets.origin, SectorPresets.karst, "origin");
     }
 
     private static void startPreset(SectorPreset preset, Sector origin){
