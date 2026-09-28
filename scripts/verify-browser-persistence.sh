@@ -109,5 +109,6 @@ grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$GAME_DOM"
 echo 'Browser persistence smoke: explicit CI mode + Java BrowserFi write -> IndexedDB flush -> Chrome restart -> Java byte[] recovery + stock local UI + 3-frame continuous play + BrowserAudio + real WorldLoadEvent recovery PASS'
 bash "$ROOT_DIR/scripts/verify-browser-local-save-resume.sh"
 bash "$ROOT_DIR/scripts/verify-browser-local-autosave.sh"
+bash "$ROOT_DIR/scripts/verify-browser-local-periodic-autosave.sh"
 bash "$ROOT_DIR/scripts/verify-browser-local-mobile-autosave.sh"
 bash "$ROOT_DIR/scripts/verify-browser-campaign-save-resume.sh"
