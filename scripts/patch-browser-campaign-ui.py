@@ -809,6 +809,22 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.intersectReady()
             && !BrowserCampaignResearch.intersectCaptured()){
                 BrowserCampaignRuntime.playIntersect();
+            }else if(BrowserCampaignResearch.intersectCaptured()
+            && !BrowserCampaignResearch.atlasReady()){
+                BrowserCampaignResearch.spendNextAtlasResearch();
+            }else if(BrowserCampaignResearch.atlasReady()
+            && !BrowserCampaignResearch.atlasCaptured()){
+                BrowserCampaignRuntime.playAtlas();
+            }else if(BrowserCampaignResearch.atlasCaptured()
+            && !BrowserCampaignResearch.splitReady()){
+                BrowserCampaignResearch.spendNextSplitResearch();
+            }else if(BrowserCampaignResearch.splitReady()
+            && !BrowserCampaignResearch.splitCaptured()){
+                BrowserCampaignRuntime.playSplit();
+            }else if(BrowserCampaignResearch.splitCaptured()
+            && BrowserCampaignResearch.basinReady()
+            && !BrowserCampaignResearch.basinCaptured()){
+                BrowserCampaignRuntime.playBasin();
             }
         });
         erekirProgress.setDisabled(() -> {
@@ -827,7 +843,22 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextIntersectResearch();
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
-            return BrowserCampaignResearch.intersectCaptured();
+            if(!BrowserCampaignResearch.intersectCaptured()) return false;
+
+            if(!BrowserCampaignResearch.atlasReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAtlasResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.atlasCaptured()) return false;
+
+            if(!BrowserCampaignResearch.splitReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextSplitResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.splitCaptured()) return false;
+
+            if(!BrowserCampaignResearch.basinReady()) return true;
+            return BrowserCampaignResearch.basinCaptured();
         });
         erekirProgress.update(() -> {
             if(!BrowserCampaignResearch.onsetCaptured()){
@@ -866,8 +897,34 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 boolean saved = BrowserCampaignRuntime.hasIntersectSave();
                 erekirProgress.setText(Core.bundle.get("sector.intersect.name", "Intersect") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.atlasReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAtlasResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.atlasCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasAtlasSave();
+                erekirProgress.setText(Core.bundle.get("sector.atlas.name", "Atlas") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.splitReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextSplitResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.splitCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasSplitSave();
+                erekirProgress.setText(Core.bundle.get("sector.split.name", "Split") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.basinCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasBasinSave();
+                erekirProgress.setText(Core.bundle.get("sector.basin.name", "Basin") + " — " +
+                    (BrowserCampaignResearch.basinReady()
+                        ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
             }else{
-                erekirProgress.setText(Core.bundle.get("sector.intersect.name", "Intersect") + " — " +
+                erekirProgress.setText(Core.bundle.get("sector.basin.name", "Basin") + " — " +
                     Core.bundle.get("complete", "Complete"));
             }
 
@@ -883,6 +940,17 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.intersectReady(),
                 BrowserCampaignResearch.intersectCaptured(),
                 BrowserCampaignRuntime.hasIntersectSave()
+            );
+            markCampaignErekirMidState(
+                BrowserCampaignResearch.atlasReady(),
+                BrowserCampaignResearch.atlasCaptured(),
+                BrowserCampaignRuntime.hasAtlasSave(),
+                BrowserCampaignResearch.splitReady(),
+                BrowserCampaignResearch.splitCaptured(),
+                BrowserCampaignRuntime.hasSplitSave(),
+                BrowserCampaignResearch.basinReady(),
+                BrowserCampaignResearch.basinCaptured(),
+                BrowserCampaignRuntime.hasBasinSave()
             );
         });
         root.add(erekirProgress).width(campaignWidth).height(mobile ? 54f : 44f).padBottom(8f);
@@ -1021,6 +1089,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"onsetCaptured", "onsetSaved", "aegisReady", "aegisCaptured", "aegisSaved", "lakeReady", "lakeCaptured", "lakeSaved", "intersectReady", "intersectCaptured", "intersectSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-onset-captured',onsetCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-onset-save',onsetSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-aegis-ready',aegisReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-aegis-captured',aegisCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-aegis-save',aegisSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-lake-ready',lakeReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-lake-captured',lakeCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-lake-save',lakeSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-intersect-ready',intersectReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-intersect-captured',intersectCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-intersect-save',intersectSaved ? 'true' : 'false');")
     private static native void markCampaignErekirState(boolean onsetCaptured, boolean onsetSaved, boolean aegisReady, boolean aegisCaptured, boolean aegisSaved, boolean lakeReady, boolean lakeCaptured, boolean lakeSaved, boolean intersectReady, boolean intersectCaptured, boolean intersectSaved);
+
+    @JSBody(params = {"atlasReady", "atlasCaptured", "atlasSaved", "splitReady", "splitCaptured", "splitSaved", "basinReady", "basinCaptured", "basinSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-mid-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-atlas-ready',atlasReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-atlas-captured',atlasCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-atlas-save',atlasSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-split-ready',splitReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-split-captured',splitCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-split-save',splitSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-basin-ready',basinReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-basin-captured',basinCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-basin-save',basinSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirMidState(boolean atlasReady, boolean atlasCaptured, boolean atlasSaved, boolean splitReady, boolean splitCaptured, boolean splitSaved, boolean basinReady, boolean basinCaptured, boolean basinSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
