@@ -128,6 +128,8 @@
             root.setAttribute('data-mindustry-assets-eager', String(eagerManifest.length));
             root.setAttribute('data-mindustry-assets-streamed', String(streamedAudio.length));
             root.setAttribute('data-mindustry-assets-deferred-campaign', String(deferredCampaignManifest.length));
+            root.setAttribute('data-mindustry-campaign-assets-policy',
+                deferredCampaignManifest.length ? 'idle-background' : 'eager');
             root.setAttribute('data-mindustry-campaign-assets', deferredCampaignManifest.length ? 'pending' : 'ready');
 
             let next = 0, loaded = 0, loadedBytes = 0;
@@ -195,10 +197,18 @@
             }
 
             if(deferredCampaignManifest.length){
-                warmCampaignMaps().catch(error => {
-                    root.setAttribute('data-mindustry-campaign-assets', 'error');
-                    console.error(error);
-                });
+                const startCampaignWarmup = () => {
+                    root.setAttribute('data-mindustry-campaign-assets', 'loading');
+                    warmCampaignMaps().catch(error => {
+                        root.setAttribute('data-mindustry-campaign-assets', 'error');
+                        console.error(error);
+                    });
+                };
+                if(typeof globalThis.requestIdleCallback === 'function'){
+                    globalThis.requestIdleCallback(startCampaignWarmup, {timeout: 1500});
+                }else{
+                    setTimeout(startCampaignWarmup, 250);
+                }
             }
 
             main();
