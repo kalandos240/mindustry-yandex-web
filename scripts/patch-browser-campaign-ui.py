@@ -51,6 +51,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         // but presents them in a compact Yandex-friendly surface instead of constructing
         // the heavyweight desktop ResearchDialog tree.
         Table campaignProgress = new Table();
+        campaignProgress.update(BrowserCampaignResearch::refreshUnlocks);
         campaignProgress.defaults().pad(2f);
         campaignProgress.add(Core.bundle.get("research", "Research")).colspan(2).padBottom(2f);
         campaignProgress.row();
