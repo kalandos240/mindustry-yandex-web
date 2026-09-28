@@ -56,11 +56,12 @@ tasks.register("stageWeb", Copy) {
         // was separated from normal production startup.
         include "maps/default/**"
 
-        // Campaign progression milestone: package only the three proven Serpulo presets.
+        // Campaign progression milestone: package only the four proven Serpulo presets.
         // Later sectors remain excluded until their runtime/UI gates are added.
         include "maps/serpulo/groundZero.msav"
         include "maps/serpulo/frozenForest.msav"
         include "maps/serpulo/crateredBattleground.msav"
+        include "maps/serpulo/ruinousShores.msav"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
