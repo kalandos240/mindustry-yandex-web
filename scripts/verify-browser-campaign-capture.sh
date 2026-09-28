@@ -56,8 +56,10 @@ run_capture(){
     --require 'data-mindustry-campaign-frozen-forest-capture-wave="15"' \
     --require 'data-mindustry-campaign-cratered-battleground-captured="true"' \
     --require 'data-mindustry-campaign-cratered-battleground-capture-wave="20"' \
+    --require 'data-mindustry-campaign-ruinous-shores-captured="true"' \
+    --require 'data-mindustry-campaign-ruinous-shores-capture-wave="30"' \
     --require 'data-mindustry-campaign-progress-smoke="stable"' \
-    --require 'data-mindustry-campaign-progress-preset="ruinousShores"' \
+    --require 'data-mindustry-campaign-progress-preset="windsweptIslands"' \
     --require 'data-mindustry-campaign-frozen-forest-ready="true"' \
     --require 'data-mindustry-campaign-conveyor-unlocked="true"' \
     --require 'data-mindustry-campaign-junction-unlocked="true"' \
@@ -73,7 +75,13 @@ run_capture(){
     --require 'data-mindustry-campaign-kiln-unlocked="true"' \
     --require 'data-mindustry-campaign-mechanical-pump-unlocked="true"' \
     --require 'data-mindustry-campaign-ruinous-shores-ready="true"' \
-    --require 'data-mindustry-campaign-preset="ruinousShores"' \
+    --require 'data-mindustry-campaign-pneumatic-drill-unlocked="true"' \
+    --require 'data-mindustry-campaign-duo-unlocked="true"' \
+    --require 'data-mindustry-campaign-scatter-unlocked="true"' \
+    --require 'data-mindustry-campaign-hail-unlocked="true"' \
+    --require 'data-mindustry-campaign-steam-generator-unlocked="true"' \
+    --require 'data-mindustry-campaign-windswept-islands-ready="true"' \
+    --require 'data-mindustry-campaign-preset="windsweptIslands"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
@@ -81,15 +89,15 @@ run_capture(){
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
   grep -Eq 'data-mindustry-campaign-captured-bytes="[1-9][0-9]{2,}"' "$dom"
-  grep -q 'data-mindustry-campaign-capture-win-wave="20"' "$dom"
+  grep -q 'data-mindustry-campaign-capture-win-wave="30"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-sector-id="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-update-id="[1-9][0-9]*"' "$dom"
-  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/ruinousShores.msav"' "$dom"
-  echo "Stock campaign progression ($label): Ground Zero 10 -> Frozen Forest 15 -> Cratered Battleground 20 -> Graphite Press/Silicon Smelter/Kiln/Mechanical Pump -> Ruinous Shores stable play PASS"
+  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/windsweptIslands.msav"' "$dom"
+  echo "Stock campaign progression ($label): Ground Zero 10 -> Frozen Forest 15 -> Cratered Battleground 20 -> Ruinous Shores 30 -> Pneumatic Drill/Duo/Scatter/Hail/Steam Generator -> Windswept Islands stable play PASS"
 }
 
 run_capture desktop desktop 0 /tmp/mindustry-campaign-capture-desktop /tmp/mindustry-campaign-capture-desktop.html 9263
 run_capture mobile mobile 1 /tmp/mindustry-campaign-capture-mobile /tmp/mindustry-campaign-capture-mobile.html 9264
 
-echo 'Browser campaign progression matrix: desktop + auto-detected mobile Ground Zero -> Frozen Forest -> Cratered Battleground -> Ruinous Shores PASS'
+echo 'Browser campaign progression matrix: desktop + auto-detected mobile Ground Zero -> Frozen Forest -> Cratered Battleground -> Ruinous Shores -> Windswept Islands PASS'
