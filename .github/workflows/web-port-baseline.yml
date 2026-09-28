@@ -331,6 +331,9 @@ jobs:
       - name: Verify Erekir Onset boot and cold resume
         run: bash scripts/verify-browser-erekir-onset.sh
 
+      - name: Verify Erekir progression through Intersect
+        run: bash scripts/verify-browser-erekir-progression.sh
+
       - name: Upload localization report
         if: always()
         uses: actions/upload-artifact@v4
