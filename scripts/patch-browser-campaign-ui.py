@@ -789,7 +789,13 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         TextButton erekirProgress = new TextButton("");
         erekirProgress.clicked(() -> {
             if(!BrowserCampaignResearch.onsetCaptured()){
-                BrowserCampaignRuntime.playOnset();
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOnsetResearch();
+                if(BrowserCampaignRuntime.hasOnsetSave() && next != null
+                && BrowserCampaignResearch.canSpend(next)){
+                    BrowserCampaignResearch.spendNextOnsetResearch();
+                }else{
+                    BrowserCampaignRuntime.playOnset();
+                }
             }else if(!BrowserCampaignResearch.aegisReady()){
                 BrowserCampaignResearch.spendNextAegisResearch();
             }else if(!BrowserCampaignResearch.aegisCaptured()){
@@ -826,8 +832,14 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         erekirProgress.update(() -> {
             if(!BrowserCampaignResearch.onsetCaptured()){
                 boolean saved = BrowserCampaignRuntime.hasOnsetSave();
-                erekirProgress.setText(Core.bundle.get("sector.onset.name", "Onset") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOnsetResearch();
+                if(saved && next != null && BrowserCampaignResearch.canSpend(next)){
+                    erekirProgress.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }else{
+                    erekirProgress.setText(Core.bundle.get("sector.onset.name", "Onset") + " — " +
+                        Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                }
             }else if(!BrowserCampaignResearch.aegisReady()){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAegisResearch();
                 erekirProgress.setText(next == null
