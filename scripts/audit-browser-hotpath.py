@@ -14,6 +14,7 @@ WEB_LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "
 GAMEPLAY = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserGameplayRuntime.java").read_text(encoding="utf-8")
 PATHFINDER_PATCH = (ROOT / "scripts" / "patch-mindustry-pathfinder-web.py").read_text(encoding="utf-8")
 CONTROL_PATH_PATCH = (ROOT / "scripts" / "patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")
+ASYNC_CORE_PATCH = (ROOT / "scripts" / "patch-mindustry-async-core-web.py").read_text(encoding="utf-8")
 
 failures = []
 
@@ -98,6 +99,14 @@ for source, label, update_marker in [
 
 forbid(PATHFINDER_PATCH, "updateFrontier(data, maxUpdate);", "Pathfinder Web patch")
 forbid(CONTROL_PATH_PATCH, "updateFields(cache, maxUpdate);", "ControlPathfinder Web patch")
+
+# Physics remains full-rate, while the expensive AI avoidance tile buffer is rebuilt
+# every other Web frame (30 Hz at 60 fps) instead of blocking the main thread at 60 Hz.
+require(ASYNC_CORE_PATCH, "private int webFrame;", "AsyncCore Web cadence")
+require(ASYNC_CORE_PATCH, "if(p == avoidance && (webFrame & 1) != 0) continue;", "AsyncCore Web cadence")
+if ASYNC_CORE_PATCH.count("webFrame = 0;") < 2:
+    failures.append("AsyncCore Web cadence: expected lifecycle resets for webFrame")
+forbid(ASYNC_CORE_PATCH, "for(AsyncProcess p : processes){\n                p.begin();\n            }", "AsyncCore Web cadence")
 
 # Lean Web UI never constructs the stock Settings dialog, so renderer defaults must
 # be installed explicitly. Mobile keeps real effects but disables the heaviest purely
