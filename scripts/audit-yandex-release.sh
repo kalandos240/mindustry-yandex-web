@@ -20,9 +20,13 @@ fail(){
 [ -s "$MANIFEST" ] || fail "assets-manifest.js is missing"
 [ -s "$WEB_DIR/assets/logicids.dat" ] || fail "processor logic ID mapping is missing"
 [ -s "$WEB_DIR/assets/planets/erekir.json" ] || fail "Erekir planet definition missing"
-[ -s "$WEB_DIR/assets/maps/erekir/onset.msav" ] || fail "Erekir Onset campaign map missing"
+for preset in onset aegis lake intersect; do
+  [ -s "$WEB_DIR/assets/maps/erekir/$preset.msav" ] || fail "Erekir campaign map missing: $preset.msav"
+done
 grep -Fq 'planets/erekir.json' "$MANIFEST" || fail "Erekir planet definition missing from asset manifest"
-grep -Fq 'maps/erekir/onset.msav' "$MANIFEST" || fail "Erekir Onset missing from asset manifest"
+for preset in onset aegis lake intersect; do
+  grep -Fq "maps/erekir/$preset.msav" "$MANIFEST" || fail "Erekir campaign map missing from asset manifest: $preset.msav"
+done
 
 # Original builtin local skirmish maps from the pinned release must be available inside
 # the archive before the next user-controlled map-selection/start milestone is enabled.
