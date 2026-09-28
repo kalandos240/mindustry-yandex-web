@@ -38,6 +38,9 @@ public final class BrowserLocalMapRuntime{
     private static boolean initialized;
     private static boolean active;
     private static boolean testStartChecked;
+    private static boolean testWaveExpected;
+    private static boolean testWaveFired;
+    private static int testWaveStart;
     private static Map current;
     private static int frames;
     private static boolean perfSmoke;
@@ -168,12 +171,29 @@ public final class BrowserLocalMapRuntime{
         perfSmoke = perfSmokeRequested();
         perfReady = false;
         perfUnits = 0;
+        testWaveExpected = false;
+        testWaveFired = false;
+        testWaveStart = state.wave;
         active = true;
 
         try{
             markPhase("play-event");
             logic.play();
             Events.fire(Trigger.newGame);
+
+            // Test-only acceleration for the existing packaged-map smoke. Normal
+            // production preserves the selected map's stock survival countdown.
+            String testMap = requestedTestMap();
+            if(testMap != null && !testMap.isEmpty()){
+                if(!state.rules.waves || state.rules.spawns.isEmpty()){
+                    throw new IllegalStateException("Packaged-map smoke requires enabled survival waves and spawn groups");
+                }
+                testWaveExpected = true;
+                testWaveFired = false;
+                testWaveStart = state.wave;
+                state.wavetime = 0f;
+                markWaveSmokeArmed(testWaveStart, state.rules.spawns.size);
+            }
         }catch(Throwable error){
             active = false;
             current = null;
@@ -220,9 +240,14 @@ public final class BrowserLocalMapRuntime{
         }
 
         long beforeUpdateId = state.updateId;
+        int beforeWave = state.wave;
 
         markPhase("logic");
         logic.updateWebPlayingCore();
+        if(state.wave > beforeWave){
+            testWaveFired = true;
+            markWaveFired(state.wave);
+        }
         markPhase("logic-ready");
 
         pathfinder.updateWeb();
@@ -250,8 +275,17 @@ public final class BrowserLocalMapRuntime{
         }
 
         frames++;
-        markFrame(frames, state.updateId, player.unit() == null ? "spawning" : player.unit().type.name);
-        if(frames >= 3) markLive(frames);
+        markFrame(frames, state.updateId, player.unit() == null ? "spawning" : player.unit().type.name,
+            state.wave, state.enemies, state.wavetime);
+        if(frames >= 3){
+            if(testWaveExpected && (!testWaveFired || state.wave <= testWaveStart)){
+                throw new IllegalStateException("Packaged-map smoke did not execute a real survival wave");
+            }
+            if(testWaveExpected && state.enemies <= 0){
+                throw new IllegalStateException("Packaged-map smoke wave produced no live enemy units");
+            }
+            markLive(frames);
+        }
         if(perfSmoke && !perfReady && frames >= perfTargetFrames){
             perfReady = true;
             markPerfReady(frames, perfUnits);
@@ -268,6 +302,9 @@ public final class BrowserLocalMapRuntime{
         perfSmoke = false;
         perfReady = false;
         perfUnits = 0;
+        testWaveExpected = false;
+        testWaveFired = false;
+        testWaveStart = 0;
         logic.reset();
         markReturned(previous);
     }
@@ -310,13 +347,11 @@ public final class BrowserLocalMapRuntime{
     }
 
     /**
-     * Keep only gameplay branches already proven on TeaVM. This is an explicit staged
-     * porting gate, not a replacement rule set; waves/AI/weather are enabled in later
-     * milestones by expanding Logic.updateWebPlayingCore().
+     * Keep only gameplay branches already proven on TeaVM. Stock survival waves are
+     * enabled; fog/weather/PvP and builder/RTS/prebuild AI remain explicit later gates.
      */
     private static void stageCoreRules(Rules rules){
-        rules.waves = false;
-        rules.waveTimer = false;
+        // Preserve the selected built-in map's stock waves/waveTimer values.
         rules.fog = false;
         rules.staticFog = false;
         rules.canGameOver = false;
@@ -353,8 +388,14 @@ public final class BrowserLocalMapRuntime{
     @JSBody(params = {"slug", "name", "width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-state', 'playing'); document.documentElement.setAttribute('data-mindustry-local-map-slug', slug); document.documentElement.setAttribute('data-mindustry-local-map-name', name); document.documentElement.setAttribute('data-mindustry-local-map-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-player', 'added'); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'starting');")
     private static native void markStarted(String slug, String name, int width, int height);
 
-    @JSBody(params = {"frames", "updateId", "unit"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-local-map-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-map-unit', unit); document.documentElement.setAttribute('data-mindustry-local-map-module-order', 'logic-pathfinding-control-renderer-ui');")
-    private static native void markFrame(int frames, long updateId, String unit);
+    @JSBody(params = {"frames", "updateId", "unit", "wave", "enemies", "wavetime"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-local-map-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-map-unit', unit); document.documentElement.setAttribute('data-mindustry-local-map-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-map-wave-enemies', String(enemies)); document.documentElement.setAttribute('data-mindustry-local-map-wavetime', String(wavetime)); document.documentElement.setAttribute('data-mindustry-local-map-module-order', 'logic-pathfinding-control-renderer-ui');")
+    private static native void markFrame(int frames, long updateId, String unit, int wave, int enemies, float wavetime);
+
+    @JSBody(params = {"wave", "groups"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-wave-smoke', 'armed'); document.documentElement.setAttribute('data-mindustry-local-map-wave-start', String(wave)); document.documentElement.setAttribute('data-mindustry-local-map-wave-groups', String(groups));")
+    private static native void markWaveSmokeArmed(int wave, int groups);
+
+    @JSBody(params = {"wave"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-wave-fired', 'yes'); document.documentElement.setAttribute('data-mindustry-local-map-wave-fired-index', String(wave));")
+    private static native void markWaveFired(int wave);
 
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-loop', 'live'); document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames));")
     private static native void markLive(int frames);
