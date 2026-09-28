@@ -64,8 +64,9 @@ run_capture(){
     --require 'data-mindustry-campaign-biomass-facility-capture-wave="20"' \
     --require 'data-mindustry-campaign-fungal-pass-captured="true"' \
     --require 'data-mindustry-campaign-frontier-captured="true"' \
+    --require 'data-mindustry-campaign-salt-flats-captured="true"' \
     --require 'data-mindustry-campaign-progress-smoke="stable"' \
-    --require 'data-mindustry-campaign-progress-preset="saltFlats"' \
+    --require 'data-mindustry-campaign-progress-preset="tarFields"' \
     --require 'data-mindustry-campaign-frozen-forest-ready="true"' \
     --require 'data-mindustry-campaign-conveyor-unlocked="true"' \
     --require 'data-mindustry-campaign-junction-unlocked="true"' \
@@ -102,7 +103,14 @@ run_capture(){
     --require 'data-mindustry-campaign-titanium-wall-unlocked="true"' \
     --require 'data-mindustry-campaign-door-unlocked="true"' \
     --require 'data-mindustry-campaign-salt-flats-ready="true"' \
-    --require 'data-mindustry-campaign-preset="saltFlats"' \
+    --require 'data-mindustry-campaign-spore-press-unlocked="true"' \
+    --require 'data-mindustry-campaign-coal-centrifuge-unlocked="true"' \
+    --require 'data-mindustry-campaign-conduit-unlocked="true"' \
+    --require 'data-mindustry-campaign-arc-unlocked="true"' \
+    --require 'data-mindustry-campaign-scorch-unlocked="true"' \
+    --require 'data-mindustry-campaign-wave-unlocked="true"' \
+    --require 'data-mindustry-campaign-tar-fields-ready="true"' \
+    --require 'data-mindustry-campaign-preset="tarFields"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
@@ -114,11 +122,11 @@ run_capture(){
   grep -Eq 'data-mindustry-campaign-progress-sector-id="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-update-id="[1-9][0-9]*"' "$dom"
-  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/saltFlats.msav"' "$dom"
-  echo "Stock campaign progression ($label): wave sectors -> Windswept 30 -> Biomass 20 -> Fungal/Frontier attack-core capture -> Salt Flats stable play PASS"
+  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/tarFields.msav"' "$dom"
+  echo "Stock campaign progression ($label): attack branch through Salt Flats -> Spore/Coal/Conduit/Arc/Scorch/Wave -> Tar Fields stable play PASS"
 }
 
 run_capture desktop desktop 0 /tmp/mindustry-campaign-capture-desktop /tmp/mindustry-campaign-capture-desktop.html 9263
 run_capture mobile mobile 1 /tmp/mindustry-campaign-capture-mobile /tmp/mindustry-campaign-capture-mobile.html 9264
 
-echo 'Browser campaign progression matrix: desktop + auto-detected mobile through Biomass Facility -> Fungal Pass -> Frontier -> Salt Flats PASS'
+echo 'Browser campaign progression matrix: desktop + auto-detected mobile through Biomass Facility -> Fungal Pass -> Frontier -> Salt Flats -> Tar Fields PASS'
