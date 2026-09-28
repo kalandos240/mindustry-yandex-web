@@ -67,8 +67,15 @@ run_capture(){
     --require 'data-mindustry-campaign-salt-flats-captured="true"' \
     --require 'data-mindustry-campaign-tar-fields-captured="true"' \
     --require 'data-mindustry-campaign-tar-fields-capture-wave="40"' \
+    --require 'data-mindustry-campaign-impact-0078-captured="true"' \
+    --require 'data-mindustry-campaign-impact-0078-capture-wave="45"' \
+    --require 'data-mindustry-campaign-stained-mountains-captured="true"' \
+    --require 'data-mindustry-campaign-stained-mountains-capture-wave="30"' \
+    --require 'data-mindustry-campaign-infested-canyons-captured="true"' \
+    --require 'data-mindustry-campaign-nuclear-complex-captured="true"' \
+    --require 'data-mindustry-campaign-nuclear-complex-capture-wave="50"' \
     --require 'data-mindustry-campaign-progress-smoke="stable"' \
-    --require 'data-mindustry-campaign-progress-preset="impact0078"' \
+    --require 'data-mindustry-campaign-progress-preset="desolateRift"' \
     --require 'data-mindustry-campaign-frozen-forest-ready="true"' \
     --require 'data-mindustry-campaign-conveyor-unlocked="true"' \
     --require 'data-mindustry-campaign-junction-unlocked="true"' \
@@ -118,7 +125,26 @@ run_capture(){
     --require 'data-mindustry-campaign-salvo-unlocked="true"' \
     --require 'data-mindustry-campaign-core-foundation-unlocked="true"' \
     --require 'data-mindustry-campaign-impact-0078-ready="true"' \
-    --require 'data-mindustry-campaign-preset="impact0078"' \
+    --require 'data-mindustry-campaign-stained-mountains-ready="true"' \
+    --require 'data-mindustry-campaign-naval-factory-unlocked="true"' \
+    --require 'data-mindustry-campaign-risso-unlocked="true"' \
+    --require 'data-mindustry-campaign-minke-unlocked="true"' \
+    --require 'data-mindustry-campaign-infested-canyons-ready="true"' \
+    --require 'data-mindustry-campaign-thermal-generator-unlocked="true"' \
+    --require 'data-mindustry-campaign-plastanium-compressor-unlocked="true"' \
+    --require 'data-mindustry-campaign-plastanium-unlocked="true"' \
+    --require 'data-mindustry-campaign-swarmer-unlocked="true"' \
+    --require 'data-mindustry-campaign-nuclear-complex-ready="true"' \
+    --require 'data-mindustry-campaign-core-nucleus-unlocked="true"' \
+    --require 'data-mindustry-campaign-pulverizer-unlocked="true"' \
+    --require 'data-mindustry-campaign-incinerator-unlocked="true"' \
+    --require 'data-mindustry-campaign-melter-unlocked="true"' \
+    --require 'data-mindustry-campaign-cryofluid-mixer-unlocked="true"' \
+    --require 'data-mindustry-campaign-cryofluid-unlocked="true"' \
+    --require 'data-mindustry-campaign-differential-generator-unlocked="true"' \
+    --require 'data-mindustry-campaign-thorium-reactor-unlocked="true"' \
+    --require 'data-mindustry-campaign-desolate-rift-ready="true"' \
+    --require 'data-mindustry-campaign-preset="desolateRift"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
@@ -126,15 +152,15 @@ run_capture(){
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
   grep -Eq 'data-mindustry-campaign-captured-bytes="[1-9][0-9]{2,}"' "$dom"
-  grep -q 'data-mindustry-campaign-capture-win-wave="40"' "$dom"
+  grep -q 'data-mindustry-campaign-capture-win-wave="50"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-sector-id="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-update-id="[1-9][0-9]*"' "$dom"
-  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/impact0078.msav"' "$dom"
-  echo "Stock campaign progression ($label): Tar Fields wave 40 -> Laser Drill/Thorium/Lancer/Salvo/Core Foundation -> Impact 0078 stable play PASS"
+  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/desolateRift.msav"' "$dom"
+  echo "Stock campaign progression ($label): Impact 45 -> Stained 30 -> Infested attack -> Nuclear 50 -> Cryofluid/Thorium Reactor -> Desolate Rift stable play PASS"
 }
 
 run_capture desktop desktop 0 /tmp/mindustry-campaign-capture-desktop /tmp/mindustry-campaign-capture-desktop.html 9263
 run_capture mobile mobile 1 /tmp/mindustry-campaign-capture-mobile /tmp/mindustry-campaign-capture-mobile.html 9264
 
-echo 'Browser campaign progression matrix: desktop + auto-detected mobile through Biomass Facility -> Fungal Pass -> Frontier -> Salt Flats -> Tar Fields -> Impact 0078 PASS'
+echo 'Browser campaign progression matrix: desktop + auto-detected mobile through Impact 0078 -> Stained Mountains -> Infested Canyons -> Nuclear Complex -> Desolate Rift PASS'
