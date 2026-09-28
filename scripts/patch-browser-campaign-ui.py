@@ -132,8 +132,30 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.ruinousShoresCaptured()
             && !BrowserCampaignResearch.windsweptIslandsReady()){
                 BrowserCampaignResearch.spendNextWindsweptResearch();
-            }else if(BrowserCampaignResearch.windsweptIslandsReady()){
+            }else if(BrowserCampaignResearch.windsweptIslandsReady()
+            && !BrowserCampaignResearch.windsweptIslandsCaptured()){
                 BrowserCampaignRuntime.playWindsweptIslands();
+            }else if(BrowserCampaignResearch.windsweptIslandsCaptured()
+            && BrowserCampaignResearch.biomassFacilityReady()
+            && !BrowserCampaignResearch.biomassFacilityCaptured()){
+                BrowserCampaignRuntime.playBiomassFacility();
+            }else if(BrowserCampaignResearch.biomassFacilityCaptured()
+            && !BrowserCampaignResearch.fungalPassReady()){
+                BrowserCampaignResearch.spendNextFungalResearch();
+            }else if(BrowserCampaignResearch.fungalPassReady()
+            && !BrowserCampaignResearch.fungalPassCaptured()){
+                BrowserCampaignRuntime.playFungalPass();
+            }else if(BrowserCampaignResearch.fungalPassCaptured()
+            && !BrowserCampaignResearch.frontierReady()){
+                BrowserCampaignResearch.spendNextFrontierResearch();
+            }else if(BrowserCampaignResearch.frontierReady()
+            && !BrowserCampaignResearch.frontierCaptured()){
+                BrowserCampaignRuntime.playFrontier();
+            }else if(BrowserCampaignResearch.frontierCaptured()
+            && !BrowserCampaignResearch.saltFlatsReady()){
+                BrowserCampaignResearch.spendNextSaltResearch();
+            }else if(BrowserCampaignResearch.saltFlatsReady()){
+                BrowserCampaignRuntime.playSaltFlats();
             }
         });
         craterResearch.setDisabled(() -> {
@@ -147,12 +169,34 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextRuinousResearch();
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
-
             if(!BrowserCampaignResearch.ruinousShoresCaptured()) return false;
-            if(BrowserCampaignResearch.windsweptIslandsReady()) return false;
 
-            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWindsweptResearch();
-            return next == null || !BrowserCampaignResearch.canSpend(next);
+            if(!BrowserCampaignResearch.windsweptIslandsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWindsweptResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.windsweptIslandsCaptured()) return false;
+
+            if(!BrowserCampaignResearch.biomassFacilityReady()) return true;
+            if(!BrowserCampaignResearch.biomassFacilityCaptured()) return false;
+
+            if(!BrowserCampaignResearch.fungalPassReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextFungalResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.fungalPassCaptured()) return false;
+
+            if(!BrowserCampaignResearch.frontierReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextFrontierResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.frontierCaptured()) return false;
+
+            if(!BrowserCampaignResearch.saltFlatsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextSaltResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            return false;
         });
         craterResearch.update(() -> {
             if(!BrowserCampaignResearch.crateredBattlegroundReady()){
@@ -185,9 +229,45 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                     ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
                     : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
                         BrowserCampaignResearch.remaining(next));
-            }else{
+            }else if(!BrowserCampaignResearch.windsweptIslandsCaptured()){
                 boolean saved = BrowserCampaignRuntime.hasWindsweptIslandsSave();
                 craterResearch.setText(Core.bundle.get("sector.windsweptIslands.name", "Windswept Islands") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.biomassFacilityCaptured()){
+                boolean ready = BrowserCampaignResearch.biomassFacilityReady();
+                boolean saved = BrowserCampaignRuntime.hasBiomassFacilitySave();
+                craterResearch.setText(Core.bundle.get("sector.biomassFacility.name", "Biomass Synthesis Facility") + " — " +
+                    (ready ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.fungalPassReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextFungalResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.fungalPassCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasFungalPassSave();
+                craterResearch.setText(Core.bundle.get("sector.fungalPass.name", "Fungal Pass") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.frontierReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextFrontierResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.frontierCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasFrontierSave();
+                craterResearch.setText(Core.bundle.get("sector.frontier.name", "Frontier") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.saltFlatsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextSaltResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else{
+                boolean saved = BrowserCampaignRuntime.hasSaltFlatsSave();
+                craterResearch.setText(Core.bundle.get("sector.saltFlats.name", "Salt Flats") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }
 
@@ -207,6 +287,16 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 mindustry.content.Blocks.steamGenerator.unlocked(),
                 BrowserCampaignResearch.windsweptIslandsReady(),
                 BrowserCampaignRuntime.hasWindsweptIslandsSave()
+            );
+            markCampaignSaltBranchState(
+                BrowserCampaignResearch.biomassFacilityReady(),
+                BrowserCampaignResearch.biomassFacilityCaptured(),
+                BrowserCampaignResearch.fungalPassReady(),
+                BrowserCampaignResearch.fungalPassCaptured(),
+                BrowserCampaignResearch.frontierReady(),
+                BrowserCampaignResearch.frontierCaptured(),
+                BrowserCampaignResearch.saltFlatsReady(),
+                BrowserCampaignRuntime.hasSaltFlatsSave()
             );
         });
 
@@ -349,6 +439,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"pneumaticDrill", "duo", "scatter", "hail", "steamGenerator", "windsweptReady", "windsweptSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-windswept-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-pneumatic-drill-unlocked',pneumaticDrill ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-duo-unlocked',duo ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-scatter-unlocked',scatter ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-hail-unlocked',hail ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-steam-generator-unlocked',steamGenerator ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-ready',windsweptReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-save',windsweptSaved ? 'true' : 'false');")
     private static native void markCampaignWindsweptState(boolean pneumaticDrill, boolean duo, boolean scatter, boolean hail, boolean steamGenerator, boolean windsweptReady, boolean windsweptSaved);
+
+    @JSBody(params = {"biomassReady", "biomassCaptured", "fungalReady", "fungalCaptured", "frontierReady", "frontierCaptured", "saltReady", "saltSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-salt-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-ready',biomassReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured',biomassCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-ready',fungalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured',fungalCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-ready',frontierReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured',frontierCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-ready',saltReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-save',saltSaved ? 'true' : 'false');")
+    private static native void markCampaignSaltBranchState(boolean biomassReady, boolean biomassCaptured, boolean fungalReady, boolean fungalCaptured, boolean frontierReady, boolean frontierCaptured, boolean saltReady, boolean saltSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
