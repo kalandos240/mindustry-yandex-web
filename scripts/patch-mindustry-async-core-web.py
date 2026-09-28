@@ -44,6 +44,7 @@ public class AsyncCore{
         new PhysicsProcess(),
         avoidance = new AvoidanceProcess()
     );
+    private int webFrame;
 
     public AsyncCore(){
         Events.on(WorldLoadEvent.class, e -> {
@@ -63,15 +64,13 @@ public class AsyncCore{
 
     public void begin(){
         if(state.isPlaying()){
+            webFrame++;
             for(AsyncProcess p : processes){
+                // Physics remains full-rate. Avoidance is a steering helper; on the Web
+                // main thread, rebuilding its tile buffer at 30 Hz is sufficient and cuts
+                // its O(units * radius^2) cost in half without disabling avoidance.
+                if(p == avoidance && (webFrame & 1) != 0) continue;
                 p.begin();
-            }
-
-            // Stock runs these workers concurrently until end(). Web has one event loop,
-            // so compute them immediately from the same begin() snapshot. Buffered async
-            // processes (including unit avoidance) still expose their previous completed
-            // buffer to gameplay and publish the newly computed one on a later frame.
-            for(AsyncProcess p : processes){
                 if(p.shouldProcess()){
                     p.process();
                 }
