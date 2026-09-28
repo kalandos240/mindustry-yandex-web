@@ -80,6 +80,22 @@ public final class BrowserCampaignRuntime{
         return hasSectorSave(SectorPresets.impact0078);
     }
 
+    public static boolean hasStainedMountainsSave(){
+        return hasSectorSave(SectorPresets.stainedMountains);
+    }
+
+    public static boolean hasInfestedCanyonsSave(){
+        return hasSectorSave(SectorPresets.infestedCanyons);
+    }
+
+    public static boolean hasNuclearComplexSave(){
+        return hasSectorSave(SectorPresets.nuclearComplex);
+    }
+
+    public static boolean hasDesolateRiftSave(){
+        return hasSectorSave(SectorPresets.desolateRift);
+    }
+
     private static boolean hasSectorSave(SectorPreset preset){
         Sector sector = preset == null ? null : preset.sector;
         if(sector == null || sector.save == null || sector.save.file == null
@@ -274,6 +290,66 @@ public final class BrowserCampaignRuntime{
             Sector origin = SectorPresets.tarFields == null ? null : SectorPresets.tarFields.sector;
             if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Impact 0078 launch requires captured Tar Fields");
             markProductionAction("play-impact0078");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playStainedMountains(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.stainedMountains;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Stained Mountains is still locked");
+        if(hasStainedMountainsSave()){
+            markProductionAction("continue-stainedMountains");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.biomassFacility == null ? null : SectorPresets.biomassFacility.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Stained Mountains launch requires captured Biomass Facility");
+            markProductionAction("play-stainedMountains");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playInfestedCanyons(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.infestedCanyons;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Infested Canyons is still locked");
+        if(hasInfestedCanyonsSave()){
+            markProductionAction("continue-infestedCanyons");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.stainedMountains == null ? null : SectorPresets.stainedMountains.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Infested Canyons launch requires captured Stained Mountains");
+            markProductionAction("play-infestedCanyons");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playNuclearComplex(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.nuclearComplex;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Nuclear Complex is still locked");
+        if(hasNuclearComplexSave()){
+            markProductionAction("continue-nuclearComplex");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.infestedCanyons == null ? null : SectorPresets.infestedCanyons.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Nuclear Complex launch requires captured Infested Canyons");
+            markProductionAction("play-nuclearComplex");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playDesolateRift(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.desolateRift;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Desolate Rift is still locked");
+        if(hasDesolateRiftSave()){
+            markProductionAction("continue-desolateRift");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.nuclearComplex == null ? null : SectorPresets.nuclearComplex.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Desolate Rift launch requires captured Nuclear Complex");
+            markProductionAction("play-desolateRift");
             startPreset(preset, origin);
         }
     }
@@ -560,7 +636,11 @@ public final class BrowserCampaignRuntime{
             || current.preset == SectorPresets.fungalPass
             || current.preset == SectorPresets.frontier
             || current.preset == SectorPresets.saltFlats
-            || current.preset == SectorPresets.tarFields;
+            || current.preset == SectorPresets.tarFields
+            || current.preset == SectorPresets.impact0078
+            || current.preset == SectorPresets.stainedMountains
+            || current.preset == SectorPresets.infestedCanyons
+            || current.preset == SectorPresets.nuclearComplex;
         if(captureSmokeRequested() && progressionCapture && !captureSmokeStaged && frames >= 3){
             if(state.rules.attackMode){
                 int enemyCores = state.rules.waveTeam.cores().size;
@@ -624,7 +704,11 @@ public final class BrowserCampaignRuntime{
             || current.preset == SectorPresets.frontier
             || current.preset == SectorPresets.saltFlats
             || current.preset == SectorPresets.tarFields
-            || current.preset == SectorPresets.impact0078)
+            || current.preset == SectorPresets.impact0078
+            || current.preset == SectorPresets.stainedMountains
+            || current.preset == SectorPresets.infestedCanyons
+            || current.preset == SectorPresets.nuclearComplex
+            || current.preset == SectorPresets.desolateRift)
         && frames >= 3){
             markProgressStable(current.id, current.preset.name, frames, state.updateId, state.wave);
         }
@@ -723,6 +807,38 @@ public final class BrowserCampaignRuntime{
                     markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
                     return;
                 }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.impact0078){
+                    BrowserCampaignResearch.verifyStainedReadyAfterImpact(current);
+                    returnToMenu();
+                    playStainedMountains();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.stainedMountains){
+                    BrowserCampaignResearch.runInfestedProgressSmoke(current);
+                    returnToMenu();
+                    playInfestedCanyons();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.infestedCanyons){
+                    BrowserCampaignResearch.runNuclearProgressSmoke(current);
+                    returnToMenu();
+                    playNuclearComplex();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.nuclearComplex){
+                    BrowserCampaignResearch.runDesolateProgressSmoke(current);
+                    returnToMenu();
+                    playDesolateRift();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
             }else if(frames > 8){
                 throw new IllegalStateException("Stock campaign victory predicate did not dispatch sector capture for " + current.preset.name);
             }
@@ -791,7 +907,7 @@ public final class BrowserCampaignRuntime{
     @JSBody(params = {"preset", "wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
     private static native void markCaptureStaged(String preset, int wave, int winWave);
 
-    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));} if(preset === 'ruinousShores'){document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-capture-wave',String(wave));} if(preset === 'windsweptIslands'){document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-capture-wave',String(wave));} if(preset === 'biomassFacility'){document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-capture-wave',String(wave));} if(preset === 'fungalPass'){document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured','true');} if(preset === 'frontier'){document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured','true');} if(preset === 'saltFlats'){document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-captured','true');} if(preset === 'tarFields'){document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-capture-wave',String(wave));}")
+    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));} if(preset === 'ruinousShores'){document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-capture-wave',String(wave));} if(preset === 'windsweptIslands'){document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-capture-wave',String(wave));} if(preset === 'biomassFacility'){document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-capture-wave',String(wave));} if(preset === 'fungalPass'){document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured','true');} if(preset === 'frontier'){document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured','true');} if(preset === 'saltFlats'){document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-captured','true');} if(preset === 'tarFields'){document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-capture-wave',String(wave));} if(preset === 'impact0078'){document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-capture-wave',String(wave));} if(preset === 'stainedMountains'){document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-capture-wave',String(wave));} if(preset === 'infestedCanyons'){document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-captured','true');} if(preset === 'nuclearComplex'){document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-capture-wave',String(wave));}")
     private static native void markCaptureComplete(String preset, int sectorId, int wave, long bytes);
 
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
