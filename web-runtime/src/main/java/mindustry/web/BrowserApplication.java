@@ -17,6 +17,7 @@ public final class BrowserApplication extends WebApplicationBase{
         void run();
     }
 
+    private boolean resizePending = true;
     private final FrameCallback frameCallback = this::onAnimationFrame;
     private final BrowserCanvas.ResizeCallback resizeCallback = () -> resizePending = true;
     private final LifecycleCallback platformPauseCallback = () -> setPlatformPaused(true);
@@ -30,7 +31,6 @@ public final class BrowserApplication extends WebApplicationBase{
     private boolean lastPlatformPaused;
     private boolean lastGameplayActive;
     private boolean awaitingPlatformResumeFrame;
-    private boolean resizePending = true;
     private int browserFrameCallbacks;
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
@@ -61,6 +61,7 @@ public final class BrowserApplication extends WebApplicationBase{
         lastPlatformPaused = platformPaused;
         if(platformPaused) BrowserYandex.markPauseState("paused");
         installPlatformLifecycle(platformPauseCallback, platformResumeCallback);
+        markFramePolicies();
 
         initialize();
         requestAnimationFrame(frameCallback);
@@ -250,6 +251,9 @@ public final class BrowserApplication extends WebApplicationBase{
 
     @JSBody(params = {"phase", "index"}, script = "document.documentElement.setAttribute('data-mindustry-frame-stage', phase); document.documentElement.setAttribute('data-mindustry-frame-callbacks', String(index));")
     private static native void markFrameStage(String phase, int index);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-policy','event-driven-64-frame-fallback'); document.documentElement.setAttribute('data-mindustry-frame-resize-policy','event-driven-64-frame-fallback');")
+    private static native void markFramePolicies();
 
     @JSBody(params = {"pauseCallback", "resumeCallback"}, script = """
         window.addEventListener('mindustry:yandex-pause', pauseCallback);
