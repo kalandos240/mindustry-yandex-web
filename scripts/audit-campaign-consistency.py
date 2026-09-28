@@ -59,14 +59,20 @@ if actual_erekir != expected_erekir:
 def kebab(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "-", name).lower()
 
+def smoke_tokens(name: str) -> set[str]:
+    base = kebab(name)
+    numeric = re.sub(r"(?<=[A-Za-z])(?=[0-9])", "-", base)
+    return {name, base, numeric}
+
 for field in SERPULO:
     path = f"maps/serpulo/{field}.msav"
     require(AUDIT, field, "Yandex audit Serpulo")
     require(RESEARCH, f"SectorPresets.{field}", "campaign research Serpulo")
     require(RUNTIME, f"SectorPresets.{field}", "campaign runtime Serpulo")
-    if field not in SERPULO_TEST and kebab(field) not in SERPULO_TEST:
+    tokens = smoke_tokens(field)
+    if not any(token in SERPULO_TEST for token in tokens):
         failures.append(
-            f"campaign smoke Serpulo: missing {field} / {kebab(field)}"
+            f"campaign smoke Serpulo: missing one of {sorted(tokens)}"
         )
     require(BUILD, path, "build.gradle Serpulo")
 
