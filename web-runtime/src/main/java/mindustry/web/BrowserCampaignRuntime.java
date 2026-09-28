@@ -1849,6 +1849,7 @@ public final class BrowserCampaignRuntime{
 
     private static String captureDomSlug(String preset){
         if("caldera-erekir".equals(preset)) return "caldera";
+        if("impact0078".equals(preset)) return "impact-0078";
         StringBuilder out = new StringBuilder(preset.length() + 8);
         for(int i = 0; i < preset.length(); i++){
             char ch = preset.charAt(i);
