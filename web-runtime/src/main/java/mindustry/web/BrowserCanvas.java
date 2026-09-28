@@ -5,6 +5,11 @@ import org.teavm.jso.webgl.*;
 
 /** Minimal DOM/WebGL bridge used while Arc's GL20 adapter is being migrated. */
 public final class BrowserCanvas{
+    @JSFunctor
+    public interface ResizeCallback extends JSObject{
+        void run();
+    }
+
     private BrowserCanvas(){}
 
     @JSBody(params = {"canvasId", "alpha", "stencil", "antialias", "premultipliedAlpha", "preserveDrawingBuffer"}, script = """
@@ -26,7 +31,11 @@ public final class BrowserCanvas{
         canvas.__mindustryResizeDirty = true;
         canvas.__mindustryLastDpr = 0;
         canvas.__mindustryResizeCount = 0;
-        const markResizeDirty = () => { canvas.__mindustryResizeDirty = true; };
+        const markResizeDirty = () => {
+            canvas.__mindustryResizeDirty = true;
+            const signal = canvas.__mindustryResizeSignal;
+            if (typeof signal === 'function') signal();
+        };
         if (typeof ResizeObserver !== 'undefined') {
             canvas.__mindustryResizeObserver = new ResizeObserver(markResizeDirty);
             canvas.__mindustryResizeObserver.observe(canvas);
@@ -34,7 +43,7 @@ public final class BrowserCanvas{
         window.addEventListener('resize', markResizeDirty, {passive: true});
         window.addEventListener('orientationchange', markResizeDirty, {passive: true});
         document.addEventListener('fullscreenchange', () => {
-            canvas.__mindustryResizeDirty = true;
+            markResizeDirty();
             document.documentElement.setAttribute('data-mindustry-fullscreen-state',
                 document.fullscreenElement ? 'fullscreen' : 'windowed');
         }, {passive: true});
@@ -49,6 +58,14 @@ public final class BrowserCanvas{
         """)
     public static native boolean initialize(String canvasId, boolean alpha, boolean stencil, boolean antialias,
                                              boolean premultipliedAlpha, boolean preserveDrawingBuffer);
+
+    @JSBody(params = {"canvasId", "callback"}, script = """
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) throw new Error('Canvas #' + canvasId + ' not found');
+        canvas.__mindustryResizeSignal = callback;
+        document.documentElement.setAttribute('data-mindustry-resize-policy', 'event-driven');
+        """)
+    public static native void installResizeSignal(String canvasId, ResizeCallback callback);
 
     @JSBody(params = {"canvasId"}, script = "return document.getElementById(canvasId).__mindustryGL;")
     public static native WebGLRenderingContext getContext(String canvasId);
