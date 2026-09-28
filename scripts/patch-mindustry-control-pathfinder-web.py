@@ -22,7 +22,7 @@ replacements = [
     ),
     (
         "    /** Current pathfinding thread */\n    @Nullable Thread thread;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
-        "    /** Web: true while this pathfinder accepts browser-frame worker steps. */\n    boolean webRunning;\n    /** Preserves the stock periodic invalidation cadence without a sleeping JVM thread. */\n    long webLastInvalidCheck;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
+        "    /** Web: true while this pathfinder accepts browser-frame worker steps. */\n    boolean webRunning;\n    /** Preserves the stock periodic invalidation cadence without a sleeping JVM thread. */\n    long webLastInvalidCheck;\n    /** Round-robin field cursor for the main-thread Web budget. */\n    int webFieldCursor;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
         "worker fields",
     ),
 ]
@@ -66,6 +66,7 @@ new_start_stop = '''    /** Starts or restarts browser-frame control pathfinding
     private void stop(){
         webRunning = false;
         invalidated = true;
+        webFieldCursor = 0;
         queue.clear();
     }
 
@@ -252,12 +253,26 @@ new_run = '''    /**
                 }
             }
 
-            //each update time (not total!) no longer than maxUpdate
-            fields.eachValue(cache -> {
-                if(cache != null){
-                    updateFields(cache, maxUpdate);
+            // Desktop gives every cache up to 12 ms on a worker thread. Web must
+            // share one event loop with rendering/input, so spend a bounded TOTAL slice and
+            // resume round-robin next frame. updateFields() itself remains stock.
+            int fieldCount = fieldList.size;
+            if(fieldCount > 0){
+                long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);
+                long frameStart = Time.nanos();
+                int visited = 0;
+
+                while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget){
+                    if(webFieldCursor >= fieldList.size) webFieldCursor = 0;
+                    FieldCache cache = fieldList.get(webFieldCursor++);
+                    visited++;
+                    if(cache == null || fields.get(cache.mapKey) != cache) continue;
+
+                    long remaining = frameBudget - Time.timeSinceNanos(frameStart);
+                    if(remaining <= 0L) break;
+                    updateFields(cache, Math.min(maxUpdate, remaining));
                 }
-            });
+            }
         }catch(Throwable e){
             if(!invalidated){
                 Log.err(e);
@@ -286,7 +301,9 @@ for required in (
     "public boolean webActive()",
     "updateClustersComplete(cluster);",
     "updateClustersInner(cluster);",
-    "updateFields(cache, maxUpdate);",
+    "long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);",
+    "while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget)",
+    "updateFields(cache, Math.min(maxUpdate, remaining));",
     "recalculatePath(request)",
 ):
     if required not in text:
