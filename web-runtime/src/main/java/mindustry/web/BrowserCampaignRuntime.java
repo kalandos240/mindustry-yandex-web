@@ -676,6 +676,17 @@ public final class BrowserCampaignRuntime{
         startPreset(SectorPresets.onset, SectorPresets.onset == null ? null : SectorPresets.onset.sector);
     }
 
+    public static void playOnset(){
+        diagnostics = false;
+        if(hasOnsetSave()){
+            markProductionAction("continue-onset");
+            continueOnset();
+        }else{
+            markProductionAction("play-onset");
+            startOnset();
+        }
+    }
+
     public static void playAegis(){
         diagnostics = false;
         SectorPreset preset = SectorPresets.aegis;
