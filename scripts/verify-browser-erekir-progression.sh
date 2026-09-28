@@ -7,7 +7,7 @@ PORT=8088
 
 command -v google-chrome >/dev/null
 [ -s "$WEB_DIR/index.html" ]
-for preset in onset aegis lake intersect; do
+for preset in onset aegis lake intersect atlas split basin; do
   [ -s "$WEB_DIR/assets/maps/erekir/$preset.msav" ]
 done
 
@@ -75,26 +75,41 @@ run_progression(){
     --require 'data-mindustry-erekir-intersect-attack-stage="ready"' \
     --require 'data-mindustry-erekir-intersect-captured="true"' \
     --require 'data-mindustry-erekir-intersect-capture-wave="9"' \
+    --require 'data-mindustry-erekir-mech-fabricator-unlocked="true"' \
+    --require 'data-mindustry-erekir-atlas-ready="true"' \
+    --require 'data-mindustry-erekir-atlas-captured="true"' \
+    --require 'data-mindustry-erekir-reinforced-payload-conveyor-unlocked="true"' \
+    --require 'data-mindustry-erekir-overflow-duct-unlocked="true"' \
+    --require 'data-mindustry-erekir-reinforced-container-unlocked="true"' \
+    --require 'data-mindustry-erekir-split-ready="true"' \
+    --require 'data-mindustry-erekir-split-objectives="staged"' \
+    --require 'data-mindustry-erekir-split-captured="true"' \
+    --require 'data-mindustry-erekir-basin-ready="true"' \
+    --require 'data-mindustry-erekir-basin-objectives="staged"' \
+    --require 'data-mindustry-erekir-basin-nuclear-targets="2"' \
+    --require 'data-mindustry-erekir-basin-nuclear-flags="ready"' \
+    --require 'data-mindustry-erekir-basin-captured="true"' \
     --require 'data-mindustry-campaign-capture="ready"' \
     --require 'data-mindustry-campaign-captured="true"' \
-    --require 'data-mindustry-campaign-captured-preset="intersect"' \
-    --require 'data-mindustry-campaign-capture-win-wave="9"' \
-    --require 'data-mindustry-campaign-progress-preset="intersect"' \
+    --require 'data-mindustry-campaign-captured-preset="basin"' \
+    --require 'data-mindustry-campaign-capture-win-wave="0"' \
+    --require 'data-mindustry-campaign-progress-preset="basin"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-planet="erekir"' \
-    --require 'data-mindustry-campaign-preset="intersect"' \
+    --require 'data-mindustry-campaign-preset="basin"' \
     --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
-  grep -q 'data-mindustry-campaign-map-path="maps/erekir/intersect.msav"' "$dom"
+  grep -q 'data-mindustry-campaign-map-path="maps/erekir/basin.msav"' "$dom"
   grep -Eq 'data-mindustry-erekir-onset-enemy-cores="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-erekir-intersect-enemy-cores="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-erekir-split-enemy-cores="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-campaign-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-campaign-update-id="[1-9][0-9]*"' "$dom"
 
-  echo "Erekir progression ($label): Onset objectives -> Aegis tungsten -> Lake Elude -> Intersect wave 9 + attack capture PASS"
+  echo "Erekir progression ($label): Onset -> Aegis -> Lake -> Intersect 9+attack -> Atlas -> Split objectives -> Basin nuclear objectives PASS"
 }
 
 run_progression desktop desktop 0 \
@@ -107,4 +122,4 @@ run_progression mobile mobile 1 \
   /tmp/mindustry-erekir-progress-mobile.html \
   9275
 
-echo 'Erekir progression matrix: desktop + auto-detected mobile through captured Intersect PASS'
+echo 'Erekir progression matrix: desktop + auto-detected mobile through captured Basin PASS'
