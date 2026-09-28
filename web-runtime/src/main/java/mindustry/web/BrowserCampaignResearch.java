@@ -143,6 +143,10 @@ public final class BrowserCampaignResearch{
         return SectorPresets.desolateRift != null && SectorPresets.desolateRift.unlocked();
     }
 
+    public static boolean desolateRiftCaptured(){
+        return captured(SectorPresets.desolateRift);
+    }
+
     /**
      * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
      * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
