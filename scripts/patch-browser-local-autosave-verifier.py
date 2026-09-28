@@ -8,6 +8,10 @@ if not PERSIST.is_file():
     raise SystemExit(f"Missing browser persistence verifier: {PERSIST}")
 
 text = PERSIST.read_text(encoding="utf-8")
+if 'verify-browser-local-autosave.sh' in text:
+    print("Back autosave persistence gate already present")
+    raise SystemExit(0)
+
 anchor = 'bash "$ROOT_DIR/scripts/verify-browser-local-save-resume.sh"\n'
 replacement = anchor + 'bash "$ROOT_DIR/scripts/verify-browser-local-autosave.sh"\n'
 
