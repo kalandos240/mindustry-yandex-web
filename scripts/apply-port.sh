@@ -230,6 +230,10 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-logic-web.py"
 # multiplayer Call transport.
 python3 "$ROOT_DIR/scripts/patch-mindustry-waves-web.py"
 
+# Restore the proven local survival core-loss path without desktop restart/network
+# transport. BrowserLocalMapRuntime owns the lean Game Over overlay.
+python3 "$ROOT_DIR/scripts/patch-mindustry-gameover-web.py"
+
 # Fog visibility/exploration keeps its stock data, save chunk, rasterizer and
 # double-buffer logic, but executes on the browser frame instead of JVM daemon threads.
 python3 "$ROOT_DIR/scripts/patch-mindustry-fog-web.py"
