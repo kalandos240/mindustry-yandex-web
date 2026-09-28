@@ -238,8 +238,33 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.littoralShipyardCaptured()
             && !BrowserCampaignResearch.planetaryTerminalReady()){
                 BrowserCampaignResearch.spendNextTerminalResearch();
-            }else if(BrowserCampaignResearch.planetaryTerminalReady()){
+            }else if(BrowserCampaignResearch.planetaryTerminalReady()
+            && !BrowserCampaignResearch.planetaryTerminalCaptured()){
                 BrowserCampaignRuntime.playPlanetaryTerminal();
+            }else if(BrowserCampaignResearch.taintedWoodsReady()
+            && !BrowserCampaignResearch.taintedWoodsCaptured()){
+                BrowserCampaignRuntime.playTaintedWoods();
+            }else if(BrowserCampaignResearch.taintedWoodsCaptured()
+            && !BrowserCampaignResearch.atollsReady()){
+                BrowserCampaignResearch.spendNextAtollsResearch();
+            }else if(BrowserCampaignResearch.atollsReady()
+            && !BrowserCampaignResearch.atollsCaptured()){
+                BrowserCampaignRuntime.playAtolls();
+            }else if(BrowserCampaignResearch.atollsCaptured()
+            && !BrowserCampaignResearch.testingGroundsReady()){
+                BrowserCampaignResearch.spendNextTestingGroundsResearch();
+            }else if(BrowserCampaignResearch.testingGroundsReady()
+            && !BrowserCampaignResearch.testingGroundsCaptured()){
+                BrowserCampaignRuntime.playTestingGrounds();
+            }else if(BrowserCampaignResearch.sunkenPierReady()
+            && !BrowserCampaignResearch.sunkenPierCaptured()){
+                BrowserCampaignRuntime.playSunkenPier();
+            }else if(BrowserCampaignResearch.sunkenPierCaptured()
+            && !BrowserCampaignResearch.weatheredChannelsReady()){
+                BrowserCampaignResearch.spendNextWeatheredResearch();
+            }else if(BrowserCampaignResearch.weatheredChannelsReady()
+            && !BrowserCampaignResearch.weatheredChannelsCaptured()){
+                BrowserCampaignRuntime.playWeatheredChannels();
             }
         });
         craterResearch.setDisabled(() -> {
@@ -361,7 +386,31 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTerminalResearch();
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
-            return false;
+            if(!BrowserCampaignResearch.planetaryTerminalCaptured()) return false;
+
+            if(!BrowserCampaignResearch.taintedWoodsReady()) return true;
+            if(!BrowserCampaignResearch.taintedWoodsCaptured()) return false;
+
+            if(!BrowserCampaignResearch.atollsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAtollsResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.atollsCaptured()) return false;
+
+            if(!BrowserCampaignResearch.testingGroundsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTestingGroundsResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.testingGroundsCaptured()) return false;
+
+            if(!BrowserCampaignResearch.sunkenPierReady()) return true;
+            if(!BrowserCampaignResearch.sunkenPierCaptured()) return false;
+
+            if(!BrowserCampaignResearch.weatheredChannelsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWeatheredResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            return BrowserCampaignResearch.weatheredChannelsCaptured();
         });
         craterResearch.update(() -> {
             if(!BrowserCampaignResearch.crateredBattlegroundReady()){
@@ -574,10 +623,53 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                     ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
                     : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
                         BrowserCampaignResearch.remaining(next));
-            }else{
+            }else if(!BrowserCampaignResearch.planetaryTerminalCaptured()){
                 boolean saved = BrowserCampaignRuntime.hasPlanetaryTerminalSave();
                 craterResearch.setText(Core.bundle.get("sector.planetaryTerminal.name", "Planetary Launch Terminal") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.taintedWoodsReady()){
+                craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.sporePod.localizedName));
+            }else if(!BrowserCampaignResearch.taintedWoodsCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasTaintedWoodsSave();
+                craterResearch.setText(Core.bundle.get("sector.taintedWoods.name", "Tainted Woods") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.atollsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAtollsResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.atollsCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasAtollsSave();
+                craterResearch.setText(Core.bundle.get("sector.atolls.name", "Atolls") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.testingGroundsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTestingGroundsResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.testingGroundsCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasTestingGroundsSave();
+                craterResearch.setText(Core.bundle.get("sector.testingGrounds.name", "Testing Grounds") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.sunkenPierCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasSunkenPierSave();
+                craterResearch.setText(Core.bundle.get("sector.sunkenPier.name", "Sunken Pier") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.weatheredChannelsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWeatheredResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.weatheredChannelsCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasWeatheredChannelsSave();
+                craterResearch.setText(Core.bundle.get("sector.weatheredChannels.name", "Weathered Channels") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else{
+                craterResearch.setText(Core.bundle.get("planet.serpulo.name", "Serpulo") + " — " +
+                    Core.bundle.get("complete", "Complete"));
             }
 
             markCampaignRuinousState(
@@ -649,6 +741,19 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.littoralShipyardCaptured(),
                 BrowserCampaignResearch.planetaryTerminalReady(),
                 BrowserCampaignRuntime.hasPlanetaryTerminalSave()
+            );
+            markCampaignOptionalState(
+                mindustry.content.Items.sporePod.unlocked(),
+                BrowserCampaignResearch.taintedWoodsReady(),
+                BrowserCampaignResearch.taintedWoodsCaptured(),
+                BrowserCampaignResearch.atollsReady(),
+                BrowserCampaignResearch.atollsCaptured(),
+                BrowserCampaignResearch.testingGroundsReady(),
+                BrowserCampaignResearch.testingGroundsCaptured(),
+                BrowserCampaignResearch.sunkenPierReady(),
+                BrowserCampaignResearch.sunkenPierCaptured(),
+                BrowserCampaignResearch.weatheredChannelsReady(),
+                BrowserCampaignResearch.weatheredChannelsCaptured()
             );
         });
 
@@ -806,6 +911,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"overgrowthReady", "overgrowthCaptured", "mycelialReady", "mycelialCaptured", "littoralReady", "littoralCaptured", "terminalReady", "terminalSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-terminal-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-ready',overgrowthReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-captured',overgrowthCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-ready',mycelialReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-captured',mycelialCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-ready',littoralReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-captured',littoralCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-ready',terminalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-save',terminalSaved ? 'true' : 'false');")
     private static native void markCampaignTerminalState(boolean overgrowthReady, boolean overgrowthCaptured, boolean mycelialReady, boolean mycelialCaptured, boolean littoralReady, boolean littoralCaptured, boolean terminalReady, boolean terminalSaved);
+
+    @JSBody(params = {"sporePod", "taintedReady", "taintedCaptured", "atollsReady", "atollsCaptured", "testingReady", "testingCaptured", "sunkenReady", "sunkenCaptured", "weatheredReady", "weatheredCaptured"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-optional-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked',sporePod ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready',taintedReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-captured',taintedCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-atolls-ready',atollsReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-atolls-captured',atollsCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-ready',testingReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-captured',testingCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-ready',sunkenReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-captured',sunkenCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-ready',weatheredReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-captured',weatheredCaptured ? 'true' : 'false');")
+    private static native void markCampaignOptionalState(boolean sporePod, boolean taintedReady, boolean taintedCaptured, boolean atollsReady, boolean atollsCaptured, boolean testingReady, boolean testingCaptured, boolean sunkenReady, boolean sunkenCaptured, boolean weatheredReady, boolean weatheredCaptured);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
