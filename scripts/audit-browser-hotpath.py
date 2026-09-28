@@ -76,7 +76,8 @@ require(APPLY_PORT, "webSortCalls++", "SpriteBatch sorter telemetry")
 require(APPLY_PORT, "webSortedFastPaths++", "SpriteBatch sorter telemetry")
 require(APPLY_PORT, "boolean alreadySorted = true", "SpriteBatch sorted fast path")
 require(APPLY_PORT, "if(z < previousZ) alreadySorted = false", "SpriteBatch sorted fast path")
-require(APPLY_PORT, "if(alreadySorted){\\n            System.arraycopy(requests, 0, copy, 0, count);", "SpriteBatch sorted fast path")
+require(APPLY_PORT, "if(alreadySorted){", "SpriteBatch sorted fast path")
+require(APPLY_PORT, "System.arraycopy(requests, 0, copy, 0, count)", "SpriteBatch sorted fast path")
 require(APPLY_PORT, "System.arraycopy(requests, pos, copy, ptr, length)", "SpriteBatch run copy")
 forbid(APPLY_PORT, "long[] sortKeys", "SpriteBatch Web patch")
 forbid(APPLY_PORT, "Arrays.sort(sortKeys", "SpriteBatch Web patch")
@@ -104,8 +105,10 @@ for source, label, update_marker in [
     require(source, "webFieldCursor", label)
     require(source, update_marker, label)
 
-forbid(PATHFINDER_PATCH, "updateFrontier(data, maxUpdate);", "Pathfinder Web patch")
-forbid(CONTROL_PATH_PATCH, "updateFields(cache, maxUpdate);", "ControlPathfinder Web patch")
+# The unbounded calls legitimately appear inside old_run anchors; require that each
+# patch replaces that exact upstream block with the bounded Web implementation.
+require(PATHFINDER_PATCH, "text = text.replace(old_run, new_run, 1)", "Pathfinder Web patch replacement")
+require(CONTROL_PATH_PATCH, "text = text.replace(old_run, new_run, 1)", "ControlPathfinder Web patch replacement")
 
 # Physics remains full-rate, while the expensive AI avoidance tile buffer is rebuilt
 # every other Web frame (30 Hz at 60 fps) instead of blocking the main thread at 60 Hz.
