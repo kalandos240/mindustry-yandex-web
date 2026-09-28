@@ -90,6 +90,7 @@ run_load(){
     --require 'data-mindustry-frame-resize-policy="event-driven-64-frame-fallback"' \
     --require 'data-mindustry-pause-policy="event-driven-64-frame-fallback"' \
     --require 'data-mindustry-input-coordinates="offset-cached"' \
+    --require 'data-mindustry-input-move-policy="raf-coalesced"' \
     --require 'data-mindustry-assets-status-policy="batch-16"' \
     --require 'data-mindustry-assets-deferred-campaign="44"' \
     --require 'data-mindustry-campaign-assets-policy="idle-background"' \
