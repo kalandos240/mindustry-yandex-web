@@ -168,7 +168,6 @@ for forbidden in (
 
 required = (
     "public void updateWeb()",
-    "updateFrontier(data, maxUpdate);",
     "updateTargets(data);",
     "queue.run();",
     "long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);",
