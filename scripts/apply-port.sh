@@ -112,8 +112,9 @@ PY
 
 # The desktop SpriteBatch uses ForkJoinPool for sorting and requests a client-side
 # VertexArray. WebGL has no client-side vertex arrays, so the Web target must use
-# Arc's VBO path. Sorting stays serial on the browser event loop and reuses its key
-# buffer so busy scenes do not allocate a new long[] every sorted frame.
+# Arc's VBO path. Sorting stays serial on the browser event loop, groups contiguous
+# same-z requests and stable-sorts reusable int run indices: no ForkJoinPool, long
+# key arithmetic or per-frame sort-array allocation in particle-heavy scenes.
 python3 - "$ARC_DIR/arc-core/src/arc/graphics/g2d/SpriteBatch.java" <<'PY'
 from pathlib import Path
 import sys
