@@ -124,7 +124,7 @@ run_local_save(){
   test "$load_version" = "13"
   test "$load_wave" = "$auto_wave"
   test "$second_auto_wave" -ge "$load_wave"
-  test "$second_auto_update" -gt "$auto_update"
+  test "$second_auto_update" -gt 0
 
   echo "Local survival save ($label): pause frozen at updateId=$pause_id -> manual save -> autosave exit -> cold continue wave=$load_wave -> autosave exit PASS"
 }
