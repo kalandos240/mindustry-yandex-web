@@ -9,6 +9,7 @@ INPUT = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / 
 APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
 LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 CAMPAIGN_UI = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
+CAMPAIGN_RUNTIME = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
 WEB_LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "WebClientLauncher.java").read_text(encoding="utf-8")
 GAMEPLAY = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserGameplayRuntime.java").read_text(encoding="utf-8")
 
@@ -117,6 +118,20 @@ require(GAMEPLAY, "boolean trace = smokeMode || moduleLoopFrames < 3", "menu tel
 require(GAMEPLAY, 'if(trace) markModulePhase("logic")', "menu telemetry gate")
 require(GAMEPLAY, 'if(trace) markModulePhase("renderer")', "menu telemetry gate")
 require(GAMEPLAY, 'if(trace) markModulePhase("ui-ready")', "menu telemetry gate")
+
+# Campaign smoke/query state is cached once per sector; production frames must not
+# cross into JavaScript just to discover that CI flags are absent.
+require(CAMPAIGN_RUNTIME, "private static void cacheSmokeFlags()", "campaign smoke flag cache")
+require(CAMPAIGN_RUNTIME, "diagnosticsQueryCached", "campaign diagnostics query cache")
+for name in [
+    "saveSmokeRequested",
+    "captureSmokeRequested",
+    "progressSmokeRequested",
+    "diagnosticsRequested",
+]:
+    calls = CAMPAIGN_RUNTIME.count(name + "()")
+    if calls != 2:
+        failures.append(f"campaign smoke/query cache: expected 2 {name}() occurrences, found {calls}")
 
 # Campaign menu telemetry and auto-unlock scans must not return to 60Hz production work.
 require(CAMPAIGN_UI, "if(BrowserCampaignRuntime.diagnosticsEnabled()){", "campaign diagnostic telemetry gate")
