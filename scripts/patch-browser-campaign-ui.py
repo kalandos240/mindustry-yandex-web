@@ -160,8 +160,14 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.saltFlatsCaptured()
             && !BrowserCampaignResearch.tarFieldsReady()){
                 BrowserCampaignResearch.spendNextTarResearch();
-            }else if(BrowserCampaignResearch.tarFieldsReady()){
+            }else if(BrowserCampaignResearch.tarFieldsReady()
+            && !BrowserCampaignResearch.tarFieldsCaptured()){
                 BrowserCampaignRuntime.playTarFields();
+            }else if(BrowserCampaignResearch.tarFieldsCaptured()
+            && !BrowserCampaignResearch.impact0078Ready()){
+                BrowserCampaignResearch.spendNextImpactResearch();
+            }else if(BrowserCampaignResearch.impact0078Ready()){
+                BrowserCampaignRuntime.playImpact0078();
             }
         });
         craterResearch.setDisabled(() -> {
@@ -206,6 +212,12 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
             if(!BrowserCampaignResearch.tarFieldsReady()){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTarResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.tarFieldsCaptured()) return false;
+
+            if(!BrowserCampaignResearch.impact0078Ready()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextImpactResearch();
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
             return false;
@@ -287,9 +299,23 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                     ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
                     : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
                         BrowserCampaignResearch.remaining(next));
-            }else{
+            }else if(!BrowserCampaignResearch.tarFieldsCaptured()){
                 boolean saved = BrowserCampaignRuntime.hasTarFieldsSave();
                 craterResearch.setText(Core.bundle.get("sector.tarFields.name", "Tar Fields") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.impact0078Ready()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextImpactResearch();
+                if(BrowserCampaignResearch.waitingForImpactThorium()){
+                    craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.thorium.localizedName));
+                }else{
+                    craterResearch.setText(next == null
+                        ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                        : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                            BrowserCampaignResearch.remaining(next));
+                }
+            }else{
+                boolean saved = BrowserCampaignRuntime.hasImpact0078Save();
+                craterResearch.setText(Core.bundle.get("sector.impact0078.name", "Impact 0078") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }
 
@@ -321,6 +347,15 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.saltFlatsCaptured(),
                 BrowserCampaignResearch.tarFieldsReady(),
                 BrowserCampaignRuntime.hasTarFieldsSave()
+            );
+            markCampaignImpactState(
+                mindustry.content.Blocks.laserDrill.unlocked(),
+                mindustry.content.Items.thorium.unlocked(),
+                mindustry.content.Blocks.lancer.unlocked(),
+                mindustry.content.Blocks.salvo.unlocked(),
+                mindustry.content.Blocks.coreFoundation.unlocked(),
+                BrowserCampaignResearch.impact0078Ready(),
+                BrowserCampaignRuntime.hasImpact0078Save()
             );
         });
 
@@ -466,6 +501,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"biomassReady", "biomassCaptured", "fungalReady", "fungalCaptured", "frontierReady", "frontierCaptured", "saltReady", "saltCaptured", "tarReady", "tarSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-salt-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-ready',biomassReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured',biomassCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-ready',fungalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured',fungalCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-ready',frontierReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured',frontierCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-ready',saltReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-captured',saltCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-ready',tarReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-save',tarSaved ? 'true' : 'false');")
     private static native void markCampaignSaltBranchState(boolean biomassReady, boolean biomassCaptured, boolean fungalReady, boolean fungalCaptured, boolean frontierReady, boolean frontierCaptured, boolean saltReady, boolean saltCaptured, boolean tarReady, boolean tarSaved);
+
+    @JSBody(params = {"laserDrill", "thorium", "lancer", "salvo", "foundation", "impactReady", "impactSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-impact-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-laser-drill-unlocked',laserDrill ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-thorium-unlocked',thorium ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-lancer-unlocked',lancer ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salvo-unlocked',salvo ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-core-foundation-unlocked',foundation ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-ready',impactReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-save',impactSaved ? 'true' : 'false');")
+    private static native void markCampaignImpactState(boolean laserDrill, boolean thorium, boolean lancer, boolean salvo, boolean foundation, boolean impactReady, boolean impactSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
