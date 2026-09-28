@@ -891,7 +891,8 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.karstCaptured()
             && !BrowserCampaignResearch.originReady()){
                 BrowserCampaignResearch.spendNextOriginResearch();
-            }else if(BrowserCampaignResearch.originReady()){
+            }else if(BrowserCampaignResearch.originReady()
+            && !BrowserCampaignResearch.originCaptured()){
                 BrowserCampaignRuntime.playOrigin();
             }
         });
@@ -961,7 +962,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOriginResearch();
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
-            return false;
+            return BrowserCampaignResearch.originCaptured();
         });
         erekirProgress.update(() -> {
             if(!BrowserCampaignResearch.onsetCaptured()){
@@ -1118,10 +1119,13 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                     ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
                     : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
                         BrowserCampaignResearch.remaining(next));
-            }else{
+            }else if(!BrowserCampaignResearch.originCaptured()){
                 boolean saved = BrowserCampaignRuntime.hasOriginSave();
                 erekirProgress.setText(Core.bundle.get("sector.origin.name", "Origin") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else{
+                erekirProgress.setText(Core.bundle.get("planet.erekir.name", "Erekir") + " — " +
+                    Core.bundle.get("complete", "Complete"));
             }
 
             markCampaignErekirState(
@@ -1181,6 +1185,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.karstCaptured(),
                 BrowserCampaignRuntime.hasKarstSave(),
                 BrowserCampaignResearch.originReady(),
+                BrowserCampaignResearch.originCaptured(),
                 BrowserCampaignRuntime.hasOriginSave()
             );
         });
@@ -1330,8 +1335,8 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
     @JSBody(params = {"strongholdReady", "strongholdCaptured", "strongholdSaved", "creviceReady", "creviceCaptured", "creviceSaved", "siegeReady", "siegeCaptured", "siegeSaved", "crossroadsReady", "crossroadsCaptured", "crossroadsSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-late-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-ready',strongholdReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-captured',strongholdCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-save',strongholdSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-ready',creviceReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-captured',creviceCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-save',creviceSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-ready',siegeReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-captured',siegeCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-save',siegeSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-ready',crossroadsReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-captured',crossroadsCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-save',crossroadsSaved ? 'true' : 'false');")
     private static native void markCampaignErekirLateState(boolean strongholdReady, boolean strongholdCaptured, boolean strongholdSaved, boolean creviceReady, boolean creviceCaptured, boolean creviceSaved, boolean siegeReady, boolean siegeCaptured, boolean siegeSaved, boolean crossroadsReady, boolean crossroadsCaptured, boolean crossroadsSaved);
 
-    @JSBody(params = {"karstReady", "karstCaptured", "karstSaved", "originReady", "originSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-final-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-ready',karstReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-captured',karstCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-save',karstSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-origin-ready',originReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-origin-save',originSaved ? 'true' : 'false');")
-    private static native void markCampaignErekirFinalState(boolean karstReady, boolean karstCaptured, boolean karstSaved, boolean originReady, boolean originSaved);
+    @JSBody(params = {"karstReady", "karstCaptured", "karstSaved", "originReady", "originCaptured", "originSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-final-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-ready',karstReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-captured',karstCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-save',karstSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-origin-ready',originReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-origin-captured',originCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-origin-save',originSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirFinalState(boolean karstReady, boolean karstCaptured, boolean karstSaved, boolean originReady, boolean originCaptured, boolean originSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
