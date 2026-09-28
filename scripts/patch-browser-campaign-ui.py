@@ -139,13 +139,13 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.spendNextCraterResearch();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crateredBattleground)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ruinousShores)){
-                BrowserCampaignResearch.spendNextRuinousResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextRuinousResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ruinousShores)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.ruinousShores)){
                 BrowserCampaignRuntime.playRuinousShores();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.ruinousShores)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.windsweptIslands)){
-                BrowserCampaignResearch.spendNextWindsweptResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextWindsweptResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.windsweptIslands)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.windsweptIslands)){
                 BrowserCampaignRuntime.playWindsweptIslands();
@@ -155,25 +155,25 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignRuntime.playBiomassFacility();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.biomassFacility)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.fungalPass)){
-                BrowserCampaignResearch.spendNextFungalResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextFungalResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.fungalPass)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.fungalPass)){
                 BrowserCampaignRuntime.playFungalPass();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.fungalPass)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frontier)){
-                BrowserCampaignResearch.spendNextFrontierResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextFrontierResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frontier)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.frontier)){
                 BrowserCampaignRuntime.playFrontier();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.frontier)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.saltFlats)){
-                BrowserCampaignResearch.spendNextSaltResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextSaltResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.saltFlats)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.saltFlats)){
                 BrowserCampaignRuntime.playSaltFlats();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.saltFlats)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.tarFields)){
-                BrowserCampaignResearch.spendNextTarResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextTarResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.tarFields)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.tarFields)){
                 BrowserCampaignRuntime.playTarFields();
@@ -189,7 +189,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignRuntime.playStainedMountains();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stainedMountains)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.infestedCanyons)){
-                BrowserCampaignResearch.spendNextInfestedResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextInfestedResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.infestedCanyons)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.infestedCanyons)){
                 BrowserCampaignRuntime.playInfestedCanyons();
@@ -211,25 +211,25 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignRuntime.playFacility32m();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.facility32m)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.perilousHarbor)){
-                BrowserCampaignResearch.spendNextPerilousResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextPerilousResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.perilousHarbor)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.perilousHarbor)){
                 BrowserCampaignRuntime.playPerilousHarbor();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.perilousHarbor)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.extractionOutpost)){
-                BrowserCampaignResearch.spendNextExtractionResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextExtractionResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.extractionOutpost)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.extractionOutpost)){
                 BrowserCampaignRuntime.playExtractionOutpost();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.extractionOutpost)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.coastline)){
-                BrowserCampaignResearch.spendNextCoastlineResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextCoastlineResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.coastline)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.coastline)){
                 BrowserCampaignRuntime.playCoastline();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.coastline)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.navalFortress)){
-                BrowserCampaignResearch.spendNextNavalFortressResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextNavalFortressResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.navalFortress)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.navalFortress)){
                 BrowserCampaignRuntime.playNavalFortress();
@@ -239,19 +239,19 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignRuntime.playOvergrowth();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.overgrowth)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.mycelialBastion)){
-                BrowserCampaignResearch.spendNextMycelialResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextMycelialResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.mycelialBastion)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.mycelialBastion)){
                 BrowserCampaignRuntime.playMycelialBastion();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.mycelialBastion)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.littoralShipyard)){
-                BrowserCampaignResearch.spendNextLittoralResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextLittoralResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.littoralShipyard)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.littoralShipyard)){
                 BrowserCampaignRuntime.playLittoralShipyard();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.littoralShipyard)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.planetaryTerminal)){
-                BrowserCampaignResearch.spendNextTerminalResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextTerminalResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.planetaryTerminal)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.planetaryTerminal)){
                 BrowserCampaignRuntime.playPlanetaryTerminal();
@@ -260,13 +260,13 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignRuntime.playTaintedWoods();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.taintedWoods)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atolls)){
-                BrowserCampaignResearch.spendNextAtollsResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextAtollsResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atolls)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atolls)){
                 BrowserCampaignRuntime.playAtolls();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atolls)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.testingGrounds)){
-                BrowserCampaignResearch.spendNextTestingGroundsResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextTestingGroundsResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.testingGrounds)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.testingGrounds)){
                 BrowserCampaignRuntime.playTestingGrounds();
@@ -275,7 +275,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignRuntime.playSunkenPier();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.sunkenPier)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.weatheredChannels)){
-                BrowserCampaignResearch.spendNextWeatheredResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextWeatheredResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.weatheredChannels)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.weatheredChannels)){
                 BrowserCampaignRuntime.playWeatheredChannels();
@@ -811,12 +811,12 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOnsetResearch();
                 if(BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.onset) && next != null
                 && BrowserCampaignResearch.canSpend(next)){
-                    BrowserCampaignResearch.spendNextOnsetResearch();
+                    BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextOnsetResearch());
                 }else{
                     BrowserCampaignRuntime.playOnset();
                 }
             }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.aegis)){
-                BrowserCampaignResearch.spendNextAegisResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextAegisResearch());
             }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.aegis)){
                 BrowserCampaignRuntime.playAegis();
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.lake)
@@ -824,19 +824,19 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignRuntime.playLake();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.lake)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.intersect)){
-                BrowserCampaignResearch.spendNextIntersectResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextIntersectResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.intersect)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.intersect)){
                 BrowserCampaignRuntime.playIntersect();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.intersect)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atlas)){
-                BrowserCampaignResearch.spendNextAtlasResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextAtlasResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atlas)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atlas)){
                 BrowserCampaignRuntime.playAtlas();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atlas)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.split)){
-                BrowserCampaignResearch.spendNextSplitResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextSplitResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.split)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.split)){
                 BrowserCampaignRuntime.playSplit();
@@ -850,7 +850,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextMarshResearch();
                 if(BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.marsh) && next != null
                 && BrowserCampaignResearch.canSpend(next)){
-                    BrowserCampaignResearch.spendNextMarshResearch();
+                    BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextMarshResearch());
                 }else{
                     BrowserCampaignRuntime.playMarsh();
                 }
@@ -860,7 +860,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextPeaksResearch();
                 if(BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.peaks) && next != null
                 && BrowserCampaignResearch.canSpend(next)){
-                    BrowserCampaignResearch.spendNextPeaksResearch();
+                    BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextPeaksResearch());
                 }else{
                     BrowserCampaignRuntime.playPeaks();
                 }
@@ -874,7 +874,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.caldera)){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCalderaResearch();
                 if(next != null && BrowserCampaignResearch.canSpend(next)){
-                    BrowserCampaignResearch.spendNextCalderaResearch();
+                    BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextCalderaResearch());
                 }else{
                     BrowserCampaignRuntime.playRavine();
                 }
@@ -885,7 +885,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.stronghold)){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextStrongholdResearch();
                 if(next != null && BrowserCampaignResearch.canSpend(next)){
-                    BrowserCampaignResearch.spendNextStrongholdResearch();
+                    BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextStrongholdResearch());
                 }else{
                     BrowserCampaignRuntime.playCaldera();
                 }
@@ -903,13 +903,13 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignRuntime.playCrossroads();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crossroads)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.karst)){
-                BrowserCampaignResearch.spendNextKarstResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextKarstResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.karst)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.karst)){
                 BrowserCampaignRuntime.playKarst();
             }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.karst)
             && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.origin)){
-                BrowserCampaignResearch.spendNextOriginResearch();
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextOriginResearch());
             }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.origin)
             && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin)){
                 BrowserCampaignRuntime.playOrigin();
