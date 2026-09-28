@@ -84,9 +84,20 @@ campaign_map_files = sorted(
     list((WEB / "assets" / "maps" / "serpulo").glob("*.msav"))
     + list((WEB / "assets" / "maps" / "erekir").glob("*.msav"))
 )
+startup_campaign_maps = {
+    WEB / "assets" / "maps" / "serpulo" / "groundZero.msav",
+    WEB / "assets" / "maps" / "erekir" / "onset.msav",
+}
+deferred_campaign_maps = [
+    path for path in campaign_map_files if path not in startup_campaign_maps
+]
 audio_bytes = sum(path.stat().st_size for path in audio_files)
 campaign_map_bytes = sum(path.stat().st_size for path in campaign_map_files)
-eager_asset_files = [path for path in asset_files if path not in audio_files]
+deferred_campaign_map_bytes = sum(path.stat().st_size for path in deferred_campaign_maps)
+eager_asset_files = [
+    path for path in asset_files
+    if path not in audio_files and path not in deferred_campaign_maps
+]
 eager_asset_bytes = sum(path.stat().st_size for path in eager_asset_files)
 
 forbidden_found = [marker for marker in FORBIDDEN_JS_MARKERS if marker in js_text]
@@ -110,6 +121,9 @@ lines = [
     f"Streamed audio bytes: {audio_bytes}",
     f"Campaign map files: {len(campaign_map_files)}",
     f"Campaign map bytes: {campaign_map_bytes}",
+    f"Startup campaign maps: {len(startup_campaign_maps)}",
+    f"Deferred campaign maps: {len(deferred_campaign_maps)}",
+    f"Deferred campaign map bytes: {deferred_campaign_map_bytes}",
     f"Atlas PNG pages: {len(atlas_pngs)}",
     f"Atlas estimated RGBA GPU bytes: {atlas_rgba}",
     f"Baked font PNG pages: {len(font_pngs)}",
@@ -121,6 +135,18 @@ REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
 print(REPORT.read_text(encoding="utf-8"), end="")
 
 failed = False
+if len(campaign_map_files) != 46:
+    print(
+        f"ERROR: expected 46 packaged campaign maps, found {len(campaign_map_files)}.",
+        file=sys.stderr,
+    )
+    failed = True
+if len(deferred_campaign_maps) != 44:
+    print(
+        f"ERROR: expected 44 campaign maps off the critical preload path, found {len(deferred_campaign_maps)}.",
+        file=sys.stderr,
+    )
+    failed = True
 if js_bytes > JS_LIMIT:
     print(
         f"ERROR: TeaVM JavaScript grew beyond real-playing performance budget: {js_bytes} > {JS_LIMIT}. "
