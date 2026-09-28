@@ -73,6 +73,26 @@ if missing:
 if len(names) != len(set(names)):
     fail("duplicate archive paths detected")
 
+serpulo_campaign = [
+    name for name in names
+    if name.startswith("assets/maps/serpulo/") and name.endswith(".msav")
+]
+erekir_campaign = [
+    name for name in names
+    if name.startswith("assets/maps/erekir/") and name.endswith(".msav")
+]
+if len(serpulo_campaign) != 29:
+    fail(f"expected 29 Serpulo campaign maps, found {len(serpulo_campaign)}")
+if len(erekir_campaign) != 17:
+    fail(f"expected 17 Erekir campaign maps, found {len(erekir_campaign)}")
+
+campaign_map_names = set(serpulo_campaign + erekir_campaign)
+campaign_map_bytes = sum(
+    path.stat().st_size
+    for path, name in zip(files, names)
+    if name in campaign_map_names
+)
+
 if unpacked > MAX_UNPACKED:
     fail(f"unpacked package is {unpacked} bytes; limit is {MAX_UNPACKED}")
 
@@ -121,6 +141,9 @@ report = [
     f"Release ZIP: {ZIP}",
     f"SHA-256: {digest}",
     f"Files: {len(names)}",
+    f"Serpulo campaign maps: {len(serpulo_campaign)}",
+    f"Erekir campaign maps: {len(erekir_campaign)}",
+    f"Campaign map bytes: {campaign_map_bytes}",
     f"Unpacked bytes: {unpacked}",
     f"Yandex unpacked limit bytes: {MAX_UNPACKED}",
     f"Headroom bytes: {MAX_UNPACKED - unpacked}",
