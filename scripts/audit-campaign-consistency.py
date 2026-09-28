@@ -56,12 +56,18 @@ if actual_erekir != expected_erekir:
         f"extra={sorted(actual_erekir - expected_erekir)}"
     )
 
+def kebab(name: str) -> str:
+    return re.sub(r"(?<!^)(?=[A-Z])", "-", name).lower()
+
 for field in SERPULO:
     path = f"maps/serpulo/{field}.msav"
     require(AUDIT, field, "Yandex audit Serpulo")
     require(RESEARCH, f"SectorPresets.{field}", "campaign research Serpulo")
     require(RUNTIME, f"SectorPresets.{field}", "campaign runtime Serpulo")
-    require(SERPULO_TEST, field, "campaign smoke Serpulo")
+    if field not in SERPULO_TEST and kebab(field) not in SERPULO_TEST:
+        failures.append(
+            f"campaign smoke Serpulo: missing {field} / {kebab(field)}"
+        )
     require(BUILD, path, "build.gradle Serpulo")
 
 for field, file_name in EREKIR:
