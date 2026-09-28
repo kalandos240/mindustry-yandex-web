@@ -228,6 +228,51 @@ public final class BrowserCampaignResearch{
         return captured(SectorPresets.planetaryTerminal);
     }
 
+    public static boolean taintedWoodsReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.taintedWoods != null && SectorPresets.taintedWoods.unlocked();
+    }
+
+    public static boolean taintedWoodsCaptured(){
+        return captured(SectorPresets.taintedWoods);
+    }
+
+    public static boolean atollsReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.atolls != null && SectorPresets.atolls.unlocked();
+    }
+
+    public static boolean atollsCaptured(){
+        return captured(SectorPresets.atolls);
+    }
+
+    public static boolean testingGroundsReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.testingGrounds != null && SectorPresets.testingGrounds.unlocked();
+    }
+
+    public static boolean testingGroundsCaptured(){
+        return captured(SectorPresets.testingGrounds);
+    }
+
+    public static boolean sunkenPierReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.sunkenPier != null && SectorPresets.sunkenPier.unlocked();
+    }
+
+    public static boolean sunkenPierCaptured(){
+        return captured(SectorPresets.sunkenPier);
+    }
+
+    public static boolean weatheredChannelsReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.weatheredChannels != null && SectorPresets.weatheredChannels.unlocked();
+    }
+
+    public static boolean weatheredChannelsCaptured(){
+        return captured(SectorPresets.weatheredChannels);
+    }
+
     /**
      * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
      * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
@@ -523,6 +568,44 @@ public final class BrowserCampaignResearch{
 
     public static void spendNextTerminalResearch(){
         UnlockableContent next = nextTerminalResearch();
+        if(next != null) spend(next);
+    }
+
+    public static boolean waitingForTaintedSporePod(){
+        return Blocks.cultivator.unlocked() && !Items.sporePod.unlocked();
+    }
+
+    public static UnlockableContent nextAtollsResearch(){
+        if(!UnitTypes.poly.unlocked()) return UnitTypes.poly;
+        if(!UnitTypes.mega.unlocked()) return UnitTypes.mega;
+        return null;
+    }
+
+    public static void spendNextAtollsResearch(){
+        UnlockableContent next = nextAtollsResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextTestingGroundsResearch(){
+        if(!Blocks.waterExtractor.unlocked()) return Blocks.waterExtractor;
+        return null;
+    }
+
+    public static void spendNextTestingGroundsResearch(){
+        UnlockableContent next = nextTestingGroundsResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextWeatheredResearch(){
+        if(!Blocks.surgeSmelter.unlocked()) return Blocks.surgeSmelter;
+        if(!Blocks.mendProjector.unlocked()) return Blocks.mendProjector;
+        if(!Blocks.forceProjector.unlocked()) return Blocks.forceProjector;
+        if(!Blocks.overdriveProjector.unlocked()) return Blocks.overdriveProjector;
+        return null;
+    }
+
+    public static void spendNextWeatheredResearch(){
+        UnlockableContent next = nextWeatheredResearch();
         if(next != null) spend(next);
     }
 
@@ -1034,6 +1117,86 @@ public final class BrowserCampaignResearch{
         markTerminalProgressSmoke();
     }
 
+    public static void runTaintedProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.planetaryTerminal.sector || !planetaryTerminalCaptured()){
+            throw new IllegalStateException("Tainted Woods progression requires captured Planetary Launch Terminal");
+        }
+
+        if(!Items.sporePod.unlocked()){
+            ItemSeq produced = new ItemSeq();
+            produced.add(Items.sporePod, 1);
+            source.addItems(produced);
+            Items.sporePod.unlock();
+        }
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!taintedWoodsReady()){
+            throw new IllegalStateException("Tainted Woods did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markTaintedProgressSmoke();
+    }
+
+    public static void runAtollsProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.taintedWoods.sector || !taintedWoodsCaptured()){
+            throw new IllegalStateException("Atolls progression requires captured Tainted Woods in optional smoke order");
+        }
+
+        stageAndSpend(source, UnitTypes.poly);
+        stageAndSpend(source, UnitTypes.mega);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!atollsReady()){
+            throw new IllegalStateException("Atolls did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markAtollsProgressSmoke();
+    }
+
+    public static void runTestingGroundsProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.atolls.sector || !atollsCaptured()){
+            throw new IllegalStateException("Testing Grounds progression requires captured Atolls in optional smoke order");
+        }
+
+        stageAndSpend(source, Blocks.waterExtractor);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!testingGroundsReady()){
+            throw new IllegalStateException("Testing Grounds did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markTestingGroundsProgressSmoke();
+    }
+
+    public static void verifySunkenPierReady(Sector source){
+        if(source == null || source != SectorPresets.testingGrounds.sector || !testingGroundsCaptured()){
+            throw new IllegalStateException("Sunken Pier smoke order requires captured Testing Grounds");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!sunkenPierReady()){
+            throw new IllegalStateException("Sunken Pier did not auto-unlock from stock prerequisites");
+        }
+        markSunkenPierReadySmoke();
+    }
+
+    public static void runWeatheredProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.sunkenPier.sector || !sunkenPierCaptured()){
+            throw new IllegalStateException("Weathered Channels smoke order requires captured Sunken Pier");
+        }
+
+        stageAndSpend(source, Blocks.surgeSmelter);
+        stageAndSpend(source, Blocks.mendProjector);
+        stageAndSpend(source, Blocks.forceProjector);
+        stageAndSpend(source, Blocks.overdriveProjector);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!weatheredChannelsReady()){
+            throw new IllegalStateException("Weathered Channels did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markWeatheredProgressSmoke();
+    }
+
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
         stageMissing(source, content);
@@ -1224,6 +1387,21 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-advanced-launch-pad-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-reactor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tetrative-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-omura-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-ready','true');")
     private static native void markTerminalProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready','true');")
+    private static native void markTaintedProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-poly-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mega-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-atolls-ready','true');")
+    private static native void markAtollsProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-water-extractor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-ready','true');")
+    private static native void markTestingGroundsProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-ready','true');")
+    private static native void markSunkenPierReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-surge-smelter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mend-projector-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-force-projector-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-overdrive-projector-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-ready','true');")
+    private static native void markWeatheredProgressSmoke();
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady", "windsweptReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
