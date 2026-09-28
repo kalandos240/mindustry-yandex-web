@@ -15,8 +15,8 @@ import static mindustry.Vars.*;
  *
  * This keeps the stock TechNode requirements/objectives/unlock persistence semantics,
  * but avoids pulling the desktop ResearchDialog tree/layout graph into the Yandex build.
- * Research resources are consumed from live Serpulo sector storage through Sector.removeItem(),
- * matching the campaign's shared research inventory model.
+ * Research resources are consumed from live sector storage on the TechNode's owning planet
+ * through Sector.removeItem(), matching the stock ResearchDialog inventory model.
  */
 public final class BrowserCampaignResearch{
     private BrowserCampaignResearch(){}
@@ -619,7 +619,7 @@ public final class BrowserCampaignResearch{
         for(int i = 0; i < node.requirements.length; i++){
             ItemStack req = node.requirements[i];
             ItemStack done = node.finishedRequirements[i];
-            if(done.amount < req.amount && available(req.item) > 0) return true;
+            if(done.amount < req.amount && available(node, req.item) > 0) return true;
         }
         return false;
     }
@@ -1233,10 +1233,10 @@ public final class BrowserCampaignResearch{
             ItemStack req = node.requirements[i];
             ItemStack done = node.finishedRequirements[i];
             int missing = Math.max(0, req.amount - done.amount);
-            int used = Math.min(missing, available(req.item));
+            int used = Math.min(missing, available(node, req.item));
 
             if(used > 0){
-                removeFromSerpulo(req.item, used);
+                removeFromResearchPlanet(node, req.item, used);
                 done.amount += used;
                 spent += used;
             }
@@ -1275,11 +1275,27 @@ public final class BrowserCampaignResearch{
         return sector != null && sector.save != null && sector.hasBase() && sector.isCaptured();
     }
 
-    private static int available(Item item){
-        int total = 0;
-        if(Planets.serpulo == null) return 0;
+    private static Planet researchPlanet(TechNode node){
+        if(node == null) return Planets.serpulo;
 
-        for(Sector sector : Planets.serpulo.sectors){
+        TechNode root = node.rootNode == null ? node : node.rootNode;
+        if(root.planet != null) return root.planet;
+
+        if(content != null){
+            for(Planet planet : content.planets()){
+                if(planet.techTree == root) return planet;
+            }
+        }
+
+        return Planets.serpulo;
+    }
+
+    private static int available(TechNode node, Item item){
+        int total = 0;
+        Planet planet = researchPlanet(node);
+        if(planet == null) return 0;
+
+        for(Sector sector : planet.sectors){
             if(sector.hasBase() && !sector.isFrozen()){
                 total += Math.max(0, sector.items().get(item));
             }
@@ -1287,12 +1303,18 @@ public final class BrowserCampaignResearch{
         return total;
     }
 
-    private static void removeFromSerpulo(Item item, int amount){
-        int remaining = amount;
+    private static void removeFromResearchPlanet(TechNode node, Item item, int amount){
+        Planet planet = researchPlanet(node);
+        if(planet == null){
+            throw new IllegalStateException("Campaign research has no owning planet for " + node.content.name);
+        }
 
-        for(Sector sector : Planets.serpulo.sectors){
+        int remaining = amount;
+        Sector active = state != null && state.isCampaign() ? state.rules.sector : null;
+
+        for(Sector sector : planet.sectors){
             if(remaining <= 0) break;
-            if(!sector.hasBase() || sector.isFrozen()) continue;
+            if(sector == active || !sector.hasBase() || sector.isFrozen()) continue;
 
             int stored = Math.max(0, sector.items().get(item));
             if(stored <= 0) continue;
@@ -1302,8 +1324,20 @@ public final class BrowserCampaignResearch{
             remaining -= used;
         }
 
+        if(remaining > 0 && active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
+            int stored = Math.max(0, active.items().get(item));
+            int used = Math.min(stored, remaining);
+            if(used > 0){
+                active.removeItem(item, used);
+                remaining -= used;
+            }
+        }
+
         if(remaining != 0){
-            throw new IllegalStateException("Campaign research resource accounting changed while spending " + item.name);
+            throw new IllegalStateException(
+                "Campaign research resource accounting changed while spending " + item.name +
+                " on " + planet.name
+            );
         }
     }
 
