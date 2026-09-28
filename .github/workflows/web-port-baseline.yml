@@ -325,7 +325,7 @@ jobs:
 
       # verify-browser-persistence already chains campaign cold save/resume, and
       # verify-browser-locales already chains the Yandex SDK desktop/mobile lifecycle.
-      - name: Verify campaign progression through Nuclear Complex to Desolate Rift
+      - name: Verify campaign progression through Extraction Outpost to Naval Fortress
         run: bash scripts/verify-browser-campaign-capture.sh
 
       - name: Upload localization report
