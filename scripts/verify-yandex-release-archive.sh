@@ -149,4 +149,43 @@ grep -Eq 'data-mindustry-assets-preload-ms="[1-9][0-9]*"' /tmp/mindustry-release
 grep -Eq 'data-mindustry-assets-eager-bytes="[1-9][0-9]*"' /tmp/mindustry-release-archive-mobile.html
 grep -Eq 'data-mindustry-assets-preload-ms="[1-9][0-9]*"' /tmp/mindustry-release-archive-mobile.html
 
-echo 'Yandex release ZIP smoke: SHA-256 + exact 29 Serpulo/17 Erekir map sets + root layout + desktop boot + mobile boot/canvas geometry PASS'
+# Prove that campaign assets remain loadable after ZIP packaging/extraction, not merely
+# present by filename. Cover both planets and both desktop/mobile input paths.
+rm -rf /tmp/mindustry-release-archive-serpulo /tmp/mindustry-release-archive-erekir
+
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1" \
+  --profile /tmp/mindustry-release-archive-serpulo \
+  --port 9286 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-campaign-test="groundZero"' \
+  --require 'data-mindustry-campaign-planet="serpulo"' \
+  --require 'data-mindustry-campaign-preset="groundZero"' \
+  --require 'data-mindustry-campaign-state="playing"' \
+  --require 'data-mindustry-campaign-save="valid"' \
+  --require 'data-mindustry-network="local-only"' > /tmp/mindustry-release-archive-serpulo.html
+
+grep -q 'data-mindustry-campaign-map-path="maps/serpulo/groundZero.msav"' /tmp/mindustry-release-archive-serpulo.html
+grep -Eq 'data-mindustry-campaign-frames="([3-9]|[1-9][0-9]+)"' /tmp/mindustry-release-archive-serpulo.html
+
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --emulate-mobile \
+  --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryCampaignSmoke=onset&mindustryCampaignSaveSmoke=1" \
+  --profile /tmp/mindustry-release-archive-erekir \
+  --port 9287 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-input-mode="mobile"' \
+  --require 'data-mindustry-stock-input="mobile"' \
+  --require 'data-mindustry-campaign-test="onset"' \
+  --require 'data-mindustry-campaign-planet="erekir"' \
+  --require 'data-mindustry-campaign-preset="onset"' \
+  --require 'data-mindustry-campaign-state="playing"' \
+  --require 'data-mindustry-campaign-save="valid"' \
+  --require 'data-mindustry-network="local-only"' > /tmp/mindustry-release-archive-erekir.html
+
+grep -q 'data-mindustry-campaign-map-path="maps/erekir/onset.msav"' /tmp/mindustry-release-archive-erekir.html
+grep -Eq 'data-mindustry-campaign-frames="([3-9]|[1-9][0-9]+)"' /tmp/mindustry-release-archive-erekir.html
+
+echo 'Yandex release ZIP smoke: SHA-256 + exact 29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir sector loads PASS'
