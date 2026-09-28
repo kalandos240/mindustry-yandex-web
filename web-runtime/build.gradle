@@ -41,7 +41,11 @@ teavm {
 tasks.register("stageWeb", Copy) {
     dependsOn "generateJavaScript"
     from "src/web"
-    from "$buildDir/generated/teavm/js"
+    from("$buildDir/generated/teavm/js") {
+        // Keep source maps available in the build tree for debugging, but never ship
+        // them to Yandex. They are not runtime assets and can consume substantial space.
+        exclude "**/*.map"
+    }
     from("../work/Mindustry/core/assets") {
         include "bundles/bundle.properties"
         include "bundles/bundle_ru.properties"
