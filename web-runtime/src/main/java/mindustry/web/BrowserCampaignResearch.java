@@ -33,6 +33,10 @@ public final class BrowserCampaignResearch{
         return captured(preset);
     }
 
+    public static void spendNext(UnlockableContent next){
+        if(next != null) spend(next);
+    }
+
     public static boolean groundZeroCaptured(){
         return captured(SectorPresets.groundZero);
     }
@@ -84,11 +88,6 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextRuinousResearch(){
-        UnlockableContent next = nextRuinousResearch();
-        if(next != null) spend(next);
-    }
-
     /**
      * Stock path from captured Ruinous Shores to Windswept Islands. Hail is nested
      * below Duo -> Scatter, so those parent nodes are included explicitly instead of
@@ -104,20 +103,10 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextWindsweptResearch(){
-        UnlockableContent next = nextWindsweptResearch();
-        if(next != null) spend(next);
-    }
-
     public static UnlockableContent nextFungalResearch(){
         if(!Blocks.groundFactory.unlocked()) return Blocks.groundFactory;
         if(!UnitTypes.dagger.unlocked()) return UnitTypes.dagger;
         return null;
-    }
-
-    public static void spendNextFungalResearch(){
-        UnlockableContent next = nextFungalResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextFrontierResearch(){
@@ -129,22 +118,12 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextFrontierResearch(){
-        UnlockableContent next = nextFrontierResearch();
-        if(next != null) spend(next);
-    }
-
     public static UnlockableContent nextSaltResearch(){
         if(!Blocks.copperWall.unlocked()) return Blocks.copperWall;
         if(!Blocks.copperWallLarge.unlocked()) return Blocks.copperWallLarge;
         if(!Blocks.titaniumWall.unlocked()) return Blocks.titaniumWall;
         if(!Blocks.door.unlocked()) return Blocks.door;
         return null;
-    }
-
-    public static void spendNextSaltResearch(){
-        UnlockableContent next = nextSaltResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextTarResearch(){
@@ -155,11 +134,6 @@ public final class BrowserCampaignResearch{
         if(!Blocks.scorch.unlocked()) return Blocks.scorch;
         if(!Blocks.wave.unlocked()) return Blocks.wave;
         return null;
-    }
-
-    public static void spendNextTarResearch(){
-        UnlockableContent next = nextTarResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextImpactResearch(){
@@ -191,11 +165,6 @@ public final class BrowserCampaignResearch{
         if(!UnitTypes.risso.unlocked()) return UnitTypes.risso;
         if(!UnitTypes.minke.unlocked()) return UnitTypes.minke;
         return null;
-    }
-
-    public static void spendNextInfestedResearch(){
-        UnlockableContent next = nextInfestedResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextNuclearResearch(){
@@ -257,20 +226,10 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextPerilousResearch(){
-        UnlockableContent next = nextPerilousResearch();
-        if(next != null) spend(next);
-    }
-
     public static UnlockableContent nextExtractionResearch(){
         if(!Blocks.multiplicativeReconstructor.unlocked()) return Blocks.multiplicativeReconstructor;
         if(!UnitTypes.fortress.unlocked()) return UnitTypes.fortress;
         return null;
-    }
-
-    public static void spendNextExtractionResearch(){
-        UnlockableContent next = nextExtractionResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextCoastlineResearch(){
@@ -278,11 +237,6 @@ public final class BrowserCampaignResearch{
         if(!Blocks.titaniumConveyor.unlocked()) return Blocks.titaniumConveyor;
         if(!Blocks.payloadConveyor.unlocked()) return Blocks.payloadConveyor;
         return null;
-    }
-
-    public static void spendNextCoastlineResearch(){
-        UnlockableContent next = nextCoastlineResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextNavalFortressResearch(){
@@ -295,11 +249,6 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextNavalFortressResearch(){
-        UnlockableContent next = nextNavalFortressResearch();
-        if(next != null) spend(next);
-    }
-
     public static UnlockableContent nextMycelialResearch(){
         if(!UnitTypes.crawler.unlocked()) return UnitTypes.crawler;
         if(!UnitTypes.atrax.unlocked()) return UnitTypes.atrax;
@@ -309,20 +258,10 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextMycelialResearch(){
-        UnlockableContent next = nextMycelialResearch();
-        if(next != null) spend(next);
-    }
-
     public static UnlockableContent nextLittoralResearch(){
         if(!UnitTypes.sei.unlocked()) return UnitTypes.sei;
         if(!Blocks.spectre.unlocked()) return Blocks.spectre;
         return null;
-    }
-
-    public static void spendNextLittoralResearch(){
-        UnlockableContent next = nextLittoralResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextTerminalResearch(){
@@ -332,11 +271,6 @@ public final class BrowserCampaignResearch{
         if(!Blocks.tetrativeReconstructor.unlocked()) return Blocks.tetrativeReconstructor;
         if(!UnitTypes.omura.unlocked()) return UnitTypes.omura;
         return null;
-    }
-
-    public static void spendNextTerminalResearch(){
-        UnlockableContent next = nextTerminalResearch();
-        if(next != null) spend(next);
     }
 
     public static boolean waitingForTaintedSporePod(){
@@ -349,19 +283,9 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextAtollsResearch(){
-        UnlockableContent next = nextAtollsResearch();
-        if(next != null) spend(next);
-    }
-
     public static UnlockableContent nextTestingGroundsResearch(){
         if(!Blocks.waterExtractor.unlocked()) return Blocks.waterExtractor;
         return null;
-    }
-
-    public static void spendNextTestingGroundsResearch(){
-        UnlockableContent next = nextTestingGroundsResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextWeatheredResearch(){
@@ -370,11 +294,6 @@ public final class BrowserCampaignResearch{
         if(!Blocks.forceProjector.unlocked()) return Blocks.forceProjector;
         if(!Blocks.overdriveProjector.unlocked()) return Blocks.overdriveProjector;
         return null;
-    }
-
-    public static void spendNextWeatheredResearch(){
-        UnlockableContent next = nextWeatheredResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextOnsetResearch(){
@@ -391,21 +310,11 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextOnsetResearch(){
-        UnlockableContent next = nextOnsetResearch();
-        if(next != null) spend(next);
-    }
-
     public static UnlockableContent nextAegisResearch(){
         if(!Blocks.duct.unlocked()) return Blocks.duct;
         if(!Blocks.ductRouter.unlocked()) return Blocks.ductRouter;
         if(!Blocks.ductBridge.unlocked()) return Blocks.ductBridge;
         return null;
-    }
-
-    public static void spendNextAegisResearch(){
-        UnlockableContent next = nextAegisResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextIntersectResearch(){
@@ -417,19 +326,9 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextIntersectResearch(){
-        UnlockableContent next = nextIntersectResearch();
-        if(next != null) spend(next);
-    }
-
     public static UnlockableContent nextAtlasResearch(){
         if(!Blocks.mechFabricator.unlocked()) return Blocks.mechFabricator;
         return null;
-    }
-
-    public static void spendNextAtlasResearch(){
-        UnlockableContent next = nextAtlasResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextSplitResearch(){
@@ -437,11 +336,6 @@ public final class BrowserCampaignResearch{
         if(!Blocks.overflowDuct.unlocked()) return Blocks.overflowDuct;
         if(!Blocks.reinforcedContainer.unlocked()) return Blocks.reinforcedContainer;
         return null;
-    }
-
-    public static void spendNextSplitResearch(){
-        UnlockableContent next = nextSplitResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextMarshResearch(){
@@ -453,11 +347,6 @@ public final class BrowserCampaignResearch{
         if(!Items.oxide.unlocked() || !Liquids.arkycite.unlocked()) return null;
         if(!Blocks.chemicalCombustionChamber.unlocked()) return Blocks.chemicalCombustionChamber;
         return null;
-    }
-
-    public static void spendNextMarshResearch(){
-        UnlockableContent next = nextMarshResearch();
-        if(next != null) spend(next);
     }
 
     public static boolean waitingForMarshProduction(){
@@ -474,11 +363,6 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextPeaksResearch(){
-        UnlockableContent next = nextPeaksResearch();
-        if(next != null) spend(next);
-    }
-
     public static boolean waitingForRavineSlag(){
         return !Liquids.slag.unlocked();
     }
@@ -488,29 +372,14 @@ public final class BrowserCampaignResearch{
         return null;
     }
 
-    public static void spendNextCalderaResearch(){
-        UnlockableContent next = nextCalderaResearch();
-        if(next != null) spend(next);
-    }
-
     public static UnlockableContent nextStrongholdResearch(){
         if(!Blocks.coreCitadel.unlocked()) return Blocks.coreCitadel;
         return null;
     }
 
-    public static void spendNextStrongholdResearch(){
-        UnlockableContent next = nextStrongholdResearch();
-        if(next != null) spend(next);
-    }
-
     public static UnlockableContent nextKarstResearch(){
         if(!Blocks.coreAcropolis.unlocked()) return Blocks.coreAcropolis;
         return null;
-    }
-
-    public static void spendNextKarstResearch(){
-        UnlockableContent next = nextKarstResearch();
-        if(next != null) spend(next);
     }
 
     public static UnlockableContent nextOriginResearch(){
@@ -545,11 +414,6 @@ public final class BrowserCampaignResearch{
 
         if(!Blocks.basicAssemblerModule.unlocked()) return Blocks.basicAssemblerModule;
         return null;
-    }
-
-    public static void spendNextOriginResearch(){
-        UnlockableContent next = nextOriginResearch();
-        if(next != null) spend(next);
     }
 
     public static boolean canSpend(UnlockableContent content){
