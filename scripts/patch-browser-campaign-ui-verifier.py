@@ -39,6 +39,7 @@ mobile_function = '''run_campaign_mobile_ui(){
     --require 'data-mindustry-campaign-ui="ready"' \
     --require 'data-mindustry-campaign-ui-layout="mobile"' \
     --require 'data-mindustry-campaign-crater-ui="ready"' \
+    --require 'data-mindustry-campaign-ruinous-ui="ready"' \
     --require 'data-mindustry-campaign-test="groundZero"' \
     --require 'data-mindustry-campaign-core="ready"' \
     --require 'data-mindustry-campaign-ui-back-smoke="triggered"' \
