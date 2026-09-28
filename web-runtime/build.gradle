@@ -56,8 +56,8 @@ tasks.register("stageWeb", Copy) {
         // was separated from normal production startup.
         include "maps/default/**"
 
-        // Campaign progression milestone: package only the proven Serpulo presets.
-        // The Salt Flats branch includes Biomass Facility plus attack sectors Fungal Pass/Frontier.
+        // Complete verified Serpulo campaign surface through Planetary Launch Terminal.
+        // Only locally staged stock presets are packaged; browser runtime remains server-free.
         include "maps/serpulo/groundZero.msav"
         include "maps/serpulo/frozenForest.msav"
         include "maps/serpulo/crateredBattleground.msav"
