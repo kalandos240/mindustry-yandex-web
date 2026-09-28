@@ -41,7 +41,13 @@ run_load(){
   local dom="$5"
   local cdp="$6"
   local mobile_args=()
-  if [ "$emulate_mobile" = "1" ]; then mobile_args+=(--emulate-mobile); fi
+  local pixel_policy="desktop-config"
+  local pixel_cap=""
+  if [ "$emulate_mobile" = "1" ]; then
+    mobile_args+=(--emulate-mobile)
+    pixel_policy="mobile-1.5x"
+    pixel_cap="1.5"
+  fi
 
   rm -rf "$profile"
 
@@ -55,6 +61,7 @@ run_load(){
     --require 'data-mindustry-smoke-mode="production"' \
     --require "data-mindustry-input-mode=\"${input_mode}\"" \
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
+    --require "data-mindustry-pixel-ratio-policy=\"${pixel_policy}\"" \
     --require 'data-mindustry-local-map-test="maze"' \
     --require 'data-mindustry-local-map-state="playing"' \
     --require 'data-mindustry-local-map-loop="live"' \
@@ -76,6 +83,10 @@ run_load(){
     --require 'data-mindustry-canvas-viewport-match="true"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
+
+  if [ -n "$pixel_cap" ]; then
+    grep -q "data-mindustry-pixel-ratio-cap=\"$pixel_cap\"" "$dom"
+  fi
 
   grep -Eq 'data-mindustry-perf-frames="(12[0-9]|1[3-9][0-9]|[2-9][0-9]{2,})"' "$dom"
   grep -Eq 'data-mindustry-perf-elapsed-ms="[1-9][0-9]*"' "$dom"
