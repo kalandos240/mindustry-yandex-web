@@ -33,6 +33,7 @@ jobs:
         run: |
           python3 -m py_compile scripts/*.py
           python3 scripts/audit-campaign-consistency.py
+          python3 scripts/audit-browser-hotpath.py
           for script in scripts/*.sh; do
             bash -n "$script"
           done
@@ -84,6 +85,7 @@ jobs:
         run: |
           python3 -m py_compile scripts/*.py
           python3 scripts/audit-campaign-consistency.py
+          python3 scripts/audit-browser-hotpath.py
           for script in scripts/*.sh; do
             bash -n "$script"
           done
