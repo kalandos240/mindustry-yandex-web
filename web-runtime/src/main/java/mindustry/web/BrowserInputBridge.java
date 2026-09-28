@@ -84,9 +84,15 @@ public final class BrowserInputBridge{
         const pointerSlots = new Map();
 
         const coords = event => {
-            const rect = canvas.getBoundingClientRect();
-            const x = Math.max(0, Math.min(canvas.clientWidth, Math.floor(event.clientX - rect.left)));
-            const y = Math.max(0, Math.min(canvas.clientHeight, Math.floor(canvas.clientHeight - (event.clientY - rect.top))));
+            // The game canvas is fixed to the viewport. PointerEvent offset coordinates are
+            // already target-relative, so avoid getBoundingClientRect()/layout reads on every
+            // pointermove. BrowserCanvas keeps CSS dimensions cached on resize.
+            const width = Math.max(1, (canvas.__mindustryClientWidth || canvas.clientWidth) | 0);
+            const height = Math.max(1, (canvas.__mindustryClientHeight || canvas.clientHeight) | 0);
+            const ox = Number.isFinite(event.offsetX) ? event.offsetX : event.clientX;
+            const oy = Number.isFinite(event.offsetY) ? event.offsetY : event.clientY;
+            const x = Math.max(0, Math.min(width, Math.floor(ox)));
+            const y = Math.max(0, Math.min(height, Math.floor(height - oy)));
             return [x, y];
         };
 
@@ -179,6 +185,7 @@ public final class BrowserInputBridge{
 
         canvas.addEventListener('contextmenu', event => event.preventDefault());
         document.documentElement.dataset.mindustryInput = 'ready';
+        document.documentElement.setAttribute('data-mindustry-input-coordinates', 'offset-cached');
         """)
     private static native void installNative(String canvasId, KeyDownCallback keyDown, KeyUpCallback keyUp,
                                               PointerCallback pointerDown, PointerCallback pointerUp,
