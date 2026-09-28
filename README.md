@@ -6,7 +6,7 @@ Browser port workspace for Mindustry, targeting a standalone Web build first and
 
 **Playable Web/Yandex port in active campaign expansion.** The browser target now boots the pinned Mindustry v159.7 core through TeaVM, runs the stock renderer/game loop in permanent single-player mode, supports desktop and touch-first mobile input, browser-persistent saves, English/Russian localization, packaged audio/assets, Yandex lifecycle integration, and a compact campaign surface.
 
-The verified Serpulo campaign path currently reaches **Ground Zero → Frozen Forest → Cratered Battleground → Ruinous Shores** using the stock sector saves, capture events, TechTree objectives and research costs. Later sectors remain gated until their runtime/UI/assets are added and covered by the desktop/mobile progression test.
+The verified Serpulo campaign path currently reaches **Ground Zero → Frozen Forest → Cratered Battleground → Ruinous Shores → Windswept Islands** using the stock sector saves, capture events, TechTree objectives and research costs. The Windswept gate also preserves the implicit Duo → Scatter → Hail parent path required by the stock tree. Later sectors remain gated until their runtime/UI/assets are added and covered by the desktop/mobile progression test.
 
 ## Upstream baseline
 
