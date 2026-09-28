@@ -1300,11 +1300,15 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Pinned Origin objective graph changed");
         }
         String[] flags = {"u1", "u2", "u3", "u4", "u5"};
+        float[] durations = {36000f, 72000f, 108000f, 108000f, 72000f};
         for(int i = 0; i < 5; i++){
             if(!(state.rules.objectives.get(i) instanceof MapObjectives.TimerObjective timer)
             || timer.flagsAdded == null || timer.flagsAdded.length != 1
-            || !flags[i].equals(timer.flagsAdded[0])){
-                throw new IllegalStateException("Pinned Origin timer/flag objective changed at " + i);
+            || !flags[i].equals(timer.flagsAdded[0])
+            || timer.duration != durations[i]
+            || timer.parents.size != (i == 0 ? 0 : 1)
+            || (i > 0 && timer.parents.first() != state.rules.objectives.get(i - 1))){
+                throw new IllegalStateException("Pinned Origin timer/flag/parent objective changed at " + i);
             }
         }
         if(!state.rules.attackMode){
