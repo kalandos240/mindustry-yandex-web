@@ -985,11 +985,20 @@ public final class BrowserCampaignRuntime{
 
     private static void completeOnsetObjective(int index, String expectedClass, boolean requireCondition){
         var objective = state.rules.objectives.get(index);
-        if(objective == null || !objective.getClass().getSimpleName().equals(expectedClass)){
-            throw new IllegalStateException(
-                "Pinned Onset objective " + index + " changed: expected " + expectedClass +
-                ", got " + (objective == null ? "null" : objective.getClass().getSimpleName())
-            );
+        boolean typeMatches =
+            "ItemObjective".equals(expectedClass) && objective instanceof MapObjectives.ItemObjective ||
+            "BuildCountObjective".equals(expectedClass) && objective instanceof MapObjectives.BuildCountObjective ||
+            "CoreItemObjective".equals(expectedClass) && objective instanceof MapObjectives.CoreItemObjective ||
+            "ResearchObjective".equals(expectedClass) && objective instanceof MapObjectives.ResearchObjective ||
+            "UnitCountObjective".equals(expectedClass) && objective instanceof MapObjectives.UnitCountObjective ||
+            "CommandModeObjective".equals(expectedClass) && objective instanceof MapObjectives.CommandModeObjective ||
+            "FlagObjective".equals(expectedClass) && objective instanceof MapObjectives.FlagObjective ||
+            "TimerObjective".equals(expectedClass) && objective instanceof MapObjectives.TimerObjective ||
+            "DestroyUnitsObjective".equals(expectedClass) && objective instanceof MapObjectives.DestroyUnitsObjective ||
+            "DestroyBlockObjective".equals(expectedClass) && objective instanceof MapObjectives.DestroyBlockObjective;
+
+        if(objective == null || !typeMatches){
+            throw new IllegalStateException("Pinned Onset objective " + index + " changed: expected " + expectedClass);
         }
         if(!objective.qualified()){
             throw new IllegalStateException("Onset objective dependency order changed at index " + index);
