@@ -8,12 +8,12 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Ground Zero -> Frozen Forest -> Cratered Battleground progression measurement
-# after the third real Serpulo preset and its stock Mechanical Drill -> Coal ->
-# Combustion Generator -> Power Node -> Mender prerequisite path became reachable.
-# Relative to the two-sector baseline this adds 30,865 raw / 2,195 gzip bytes.
-# Forbidden desktop/network markers remain absent and the staged Yandex package is
-# ~75 MB, still comfortably below the 100 MiB unpacked limit.
+# Performance baseline is intentionally anchored at the proven three-sector
+# Ground Zero -> Frozen Forest -> Cratered Battleground milestone. Later campaign
+# expansion (currently through Ruinous Shores -> Windswept Islands) must still fit
+# this existing TeaVM budget; do not rebaseline merely because campaign code grew.
+# Forbidden desktop/network markers and the 100 MiB unpacked Yandex limit remain
+# hard release gates.
 JS_BASELINE = 23_155_354
 JS_LIMIT = 23_178_000
 JS_GZIP_BASELINE = 2_649_677
