@@ -83,8 +83,12 @@ run_capture(){
     --require 'data-mindustry-campaign-coastline-captured="true"' \
     --require 'data-mindustry-campaign-coastline-capture-wave="30"' \
     --require 'data-mindustry-campaign-naval-fortress-captured="true"' \
+    --require 'data-mindustry-campaign-overgrowth-captured="true"' \
+    --require 'data-mindustry-campaign-mycelial-bastion-captured="true"' \
+    --require 'data-mindustry-campaign-littoral-shipyard-captured="true"' \
+    --require 'data-mindustry-campaign-planetary-terminal-captured="true"' \
     --require 'data-mindustry-campaign-progress-smoke="stable"' \
-    --require 'data-mindustry-campaign-progress-preset="navalFortress"' \
+    --require 'data-mindustry-campaign-progress-preset="planetaryTerminal"' \
     --require 'data-mindustry-campaign-frozen-forest-ready="true"' \
     --require 'data-mindustry-campaign-conveyor-unlocked="true"' \
     --require 'data-mindustry-campaign-junction-unlocked="true"' \
@@ -170,7 +174,22 @@ run_capture(){
     --require 'data-mindustry-campaign-cyclone-unlocked="true"' \
     --require 'data-mindustry-campaign-ripple-unlocked="true"' \
     --require 'data-mindustry-campaign-naval-fortress-ready="true"' \
-    --require 'data-mindustry-campaign-preset="navalFortress"' \
+    --require 'data-mindustry-campaign-overgrowth-ready="true"' \
+    --require 'data-mindustry-campaign-crawler-unlocked="true"' \
+    --require 'data-mindustry-campaign-atrax-unlocked="true"' \
+    --require 'data-mindustry-campaign-spiroct-unlocked="true"' \
+    --require 'data-mindustry-campaign-arkyid-unlocked="true"' \
+    --require 'data-mindustry-campaign-exponential-reconstructor-unlocked="true"' \
+    --require 'data-mindustry-campaign-mycelial-bastion-ready="true"' \
+    --require 'data-mindustry-campaign-sei-unlocked="true"' \
+    --require 'data-mindustry-campaign-spectre-unlocked="true"' \
+    --require 'data-mindustry-campaign-littoral-shipyard-ready="true"' \
+    --require 'data-mindustry-campaign-advanced-launch-pad-unlocked="true"' \
+    --require 'data-mindustry-campaign-impact-reactor-unlocked="true"' \
+    --require 'data-mindustry-campaign-tetrative-reconstructor-unlocked="true"' \
+    --require 'data-mindustry-campaign-omura-unlocked="true"' \
+    --require 'data-mindustry-campaign-planetary-terminal-ready="true"' \
+    --require 'data-mindustry-campaign-preset="planetaryTerminal"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
@@ -182,11 +201,11 @@ run_capture(){
   grep -Eq 'data-mindustry-campaign-progress-sector-id="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-update-id="[1-9][0-9]*"' "$dom"
-  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/navalFortress.msav"' "$dom"
-  echo "Stock campaign progression ($label): Desolate 18 -> Facility 25 -> Perilous/Extraction attacks -> Coastline 30 -> Naval Fortress attack capture PASS"
+  grep -q 'data-mindustry-campaign-map-path="maps/serpulo/planetaryTerminal.msav"' "$dom"
+  echo "Stock campaign progression ($label): Naval Fortress -> Overgrowth -> Mycelial Bastion -> Littoral Shipyard -> Planetary Launch Terminal capture PASS"
 }
 
 run_capture desktop desktop 0 /tmp/mindustry-campaign-capture-desktop /tmp/mindustry-campaign-capture-desktop.html 9263
 run_capture mobile mobile 1 /tmp/mindustry-campaign-capture-mobile /tmp/mindustry-campaign-capture-mobile.html 9264
 
-echo 'Browser campaign progression matrix: desktop + auto-detected mobile through Desolate Rift -> Facility 32M -> Perilous Harbor -> Extraction Outpost -> Coastline -> Naval Fortress capture PASS'
+echo 'Browser campaign progression matrix: desktop + auto-detected mobile complete Serpulo path through Planetary Launch Terminal capture PASS'
