@@ -21,8 +21,11 @@ import static mindustry.Vars.*;
 public final class BrowserCampaignResearch{
     private BrowserCampaignResearch(){}
 
-    public static boolean ready(SectorPreset preset){
+    public static void refreshUnlocks(){
         if(control != null) control.checkAutoUnlocks();
+    }
+
+    public static boolean ready(SectorPreset preset){
         return preset != null && preset.unlocked();
     }
 
