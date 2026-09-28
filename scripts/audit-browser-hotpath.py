@@ -131,6 +131,9 @@ require(APPLY_PORT, "patch-mindustry-renderer-web.py", "Renderer Web patch invoc
 RENDERER_PATCH = (ROOT / "scripts" / "patch-mindustry-renderer-web.py").read_text(encoding="utf-8")
 require(RENDERER_PATCH, "webSettingsPoll++ == 0 || (webSettingsPoll & 31) == 0", "Renderer Web patch")
 require(RENDERER_PATCH, "graphics.getFrameId() % 120 == 0", "Renderer Web patch")
+require(RENDERER_PATCH, 'preview_calls = "        MapPreviewLoader.checkPreviews();\\n"', "Renderer Web preview pruning")
+require(RENDERER_PATCH, 'if text.count(preview_calls) != 2:', "Renderer Web preview pruning")
+require(RENDERER_PATCH, 'if "MapPreviewLoader.checkPreviews()" in text:', "Renderer Web preview pruning")
 
 # Web Logic must not walk Groups.unit twice per frame. Teams.updateTeamStats()
 # owns the single full entity pass and publishes the exact top-level wave enemy count.
