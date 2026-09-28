@@ -33,7 +33,9 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         boolean[] campaignContinue = {BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.groundZero)};
         campaignButton.setText(Core.bundle.get(campaignContinue[0] ? "continue" : "play",
             campaignContinue[0] ? "Continue" : "Play"));
-        markCampaignUiAction(campaignContinue[0] ? "continue" : "play");
+        if(BrowserCampaignRuntime.diagnosticsEnabled()){
+            markCampaignUiAction(campaignContinue[0] ? "continue" : "play");
+        }
         campaignButton.clicked(BrowserCampaignRuntime::playGroundZero);
         campaignButton.update(() -> {
             boolean hasSave = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.groundZero);
@@ -41,7 +43,9 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 campaignContinue[0] = hasSave;
                 campaignButton.setText(Core.bundle.get(hasSave ? "continue" : "play",
                     hasSave ? "Continue" : "Play"));
-                markCampaignUiAction(hasSave ? "continue" : "play");
+                if(BrowserCampaignRuntime.diagnosticsEnabled()){
+                    markCampaignUiAction(hasSave ? "continue" : "play");
+                }
             }
         });
         root.add(campaignButton).width(campaignWidth).height(campaignHeight).padBottom(8f);
@@ -50,8 +54,14 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         // Early Serpulo progression uses the exact stock TechNode requirements/objectives,
         // but presents them in a compact Yandex-friendly surface instead of constructing
         // the heavyweight desktop ResearchDialog tree.
+        BrowserCampaignResearch.refreshUnlocks();
+        final int[] campaignUnlockRefreshFrame = {0};
         Table campaignProgress = new Table();
-        campaignProgress.update(BrowserCampaignResearch::refreshUnlocks);
+        campaignProgress.update(() -> {
+            if((++campaignUnlockRefreshFrame[0] & 31) == 0){
+                BrowserCampaignResearch.refreshUnlocks();
+            }
+        });
         campaignProgress.defaults().pad(2f);
         campaignProgress.add(Core.bundle.get("research", "Research")).colspan(2).padBottom(2f);
         campaignProgress.row();
