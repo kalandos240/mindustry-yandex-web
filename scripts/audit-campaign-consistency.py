@@ -87,10 +87,10 @@ for field, file_name in EREKIR:
 
 
 def declared_static_methods(source: str) -> set[str]:
-    return set(re.findall(r"public static [^{;\\n]+?\\s+(\\w+)\\s*\\(", source))
+    return set(re.findall(r"public static [^{;\n]+?\s+(\w+)\s*\(", source))
 
 def referenced_methods(source: str, owner: str) -> set[str]:
-    return set(re.findall(rf"{re.escape(owner)}\\.(\\w+)\\s*\\(", source))
+    return set(re.findall(rf"{re.escape(owner)}\.(\w+)\s*\(", source))
 
 research_declared = declared_static_methods(RESEARCH)
 research_referenced = (
