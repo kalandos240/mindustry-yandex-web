@@ -342,6 +342,25 @@ jobs:
           path: work/web-i18n-report.txt
           if-no-files-found: warn
 
+      - name: Build deterministic Yandex release archive
+        if: success()
+        run: |
+          python3 scripts/package-yandex-release.py
+          cat work/release/mindustry-yandex-release-report.txt
+          test -s work/release/mindustry-yandex-release.zip
+          test -s work/release/mindustry-yandex-release.zip.sha256
+
+      - name: Upload Yandex release archive
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-yandex-release
+          path: |
+            work/release/mindustry-yandex-release.zip
+            work/release/mindustry-yandex-release.zip.sha256
+            work/release/mindustry-yandex-release-report.txt
+          if-no-files-found: error
+
       - name: Upload browser smoke package
         if: success()
         uses: actions/upload-artifact@v4
