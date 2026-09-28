@@ -55,10 +55,11 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         // but presents them in a compact Yandex-friendly surface instead of constructing
         // the heavyweight desktop ResearchDialog tree.
         BrowserCampaignResearch.refreshUnlocks();
-        final int[] campaignUnlockRefreshFrame = {0};
+        final int[] campaignUiRefreshFrame = {7};
         Table campaignProgress = new Table();
         campaignProgress.update(() -> {
-            if((++campaignUnlockRefreshFrame[0] & 31) == 0){
+            int frame = ++campaignUiRefreshFrame[0];
+            if((frame & 31) == 0){
                 BrowserCampaignResearch.refreshUnlocks();
             }
         });
@@ -70,13 +71,16 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         conveyorResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.conveyor));
         conveyorResearch.setDisabled(() -> mindustry.content.Blocks.conveyor.unlocked()
             || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.conveyor));
-        conveyorResearch.update(() -> conveyorResearch.setText(
-            mindustry.content.Blocks.conveyor.localizedName + " — " +
-            (mindustry.content.Blocks.conveyor.unlocked()
-                ? Core.bundle.get("unlocked", "Unlocked")
-                : Core.bundle.get("research", "Research") + " " +
-                    BrowserCampaignResearch.remaining(mindustry.content.Blocks.conveyor))
-        ));
+        conveyorResearch.update(() -> {
+            if((campaignUiRefreshFrame[0] & 7) != 0) return;
+            conveyorResearch.setText(
+                mindustry.content.Blocks.conveyor.localizedName + " — " +
+                (mindustry.content.Blocks.conveyor.unlocked()
+                    ? Core.bundle.get("unlocked", "Unlocked")
+                    : Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(mindustry.content.Blocks.conveyor))
+            );
+        });
         campaignProgress.add(conveyorResearch).colspan(2).width(campaignWidth).height(mobile ? 48f : 40f);
         campaignProgress.row();
 
@@ -84,26 +88,32 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         junctionResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.junction));
         junctionResearch.setDisabled(() -> mindustry.content.Blocks.junction.unlocked()
             || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.junction));
-        junctionResearch.update(() -> junctionResearch.setText(
-            mindustry.content.Blocks.junction.localizedName + " — " +
-            (mindustry.content.Blocks.junction.unlocked()
-                ? Core.bundle.get("unlocked", "Unlocked")
-                : Core.bundle.get("research", "Research") + " " +
-                    BrowserCampaignResearch.remaining(mindustry.content.Blocks.junction))
-        ));
+        junctionResearch.update(() -> {
+            if((campaignUiRefreshFrame[0] & 7) != 0) return;
+            junctionResearch.setText(
+                mindustry.content.Blocks.junction.localizedName + " — " +
+                (mindustry.content.Blocks.junction.unlocked()
+                    ? Core.bundle.get("unlocked", "Unlocked")
+                    : Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(mindustry.content.Blocks.junction))
+            );
+        });
         campaignProgress.add(junctionResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f);
 
         TextButton routerResearch = new TextButton("");
         routerResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.router));
         routerResearch.setDisabled(() -> mindustry.content.Blocks.router.unlocked()
             || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.router));
-        routerResearch.update(() -> routerResearch.setText(
-            mindustry.content.Blocks.router.localizedName + " — " +
-            (mindustry.content.Blocks.router.unlocked()
-                ? Core.bundle.get("unlocked", "Unlocked")
-                : Core.bundle.get("research", "Research") + " " +
-                    BrowserCampaignResearch.remaining(mindustry.content.Blocks.router))
-        ));
+        routerResearch.update(() -> {
+            if((campaignUiRefreshFrame[0] & 7) != 0) return;
+            routerResearch.setText(
+                mindustry.content.Blocks.router.localizedName + " — " +
+                (mindustry.content.Blocks.router.unlocked()
+                    ? Core.bundle.get("unlocked", "Unlocked")
+                    : Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(mindustry.content.Blocks.router))
+            );
+        });
         campaignProgress.add(routerResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f);
         campaignProgress.row();
 
@@ -112,6 +122,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         frozenForestButton.setDisabled(() -> !BrowserCampaignRuntime.campaignAssetsReady()
             || !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frozenForest));
         frozenForestButton.update(() -> {
+            if((campaignUiRefreshFrame[0] & 7) != 0) return;
             boolean ready = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frozenForest);
             boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.frozenForest);
             frozenForestButton.setText(Core.bundle.get("sector.frozenForest.name", "Frozen Forest") + " — " +
@@ -428,6 +439,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             return BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.weatheredChannels);
         });
         craterResearch.update(() -> {
+            if((campaignUiRefreshFrame[0] & 7) != 0) return;
             if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground)){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCraterResearch();
                 if(BrowserCampaignResearch.waitingForCraterCoal()){
@@ -778,6 +790,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         craterButton.clicked(BrowserCampaignRuntime::playCrateredBattleground);
         craterButton.setDisabled(() -> !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground));
         craterButton.update(() -> {
+            if((campaignUiRefreshFrame[0] & 7) != 0) return;
             boolean ready = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground);
             boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.crateredBattleground);
             craterButton.setText(Core.bundle.get("sector.crateredBattleground.name", "Cratered Battleground") + " — " +
@@ -985,6 +998,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             return BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin);
         });
         erekirProgress.update(() -> {
+            if((campaignUiRefreshFrame[0] & 7) != 0) return;
             if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.onset)){
                 boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.onset);
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOnsetResearch();
