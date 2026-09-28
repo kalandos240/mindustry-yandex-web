@@ -267,6 +267,7 @@ run_ad_lifecycle(){
     --require 'data-mindustry-audio-resume-observed="yes"' \
     --require 'data-mindustry-audio-platform="running"' \
     --require 'data-yandex-game-state="playing"' \
+    --require 'data-mindustry-canvas-viewport-match="true"' \
     --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
 
   grep -Eq 'data-mindustry-input-reset-count="[1-9][0-9]*"' "$dom"
@@ -274,7 +275,7 @@ run_ad_lifecycle(){
   grep -Eq 'data-yandex-test-gameplay-start-count="([2-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-yandex-test-gameplay-stop-count="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-platform-resume-frame-index="[1-9][0-9]*"' "$dom"
-  echo "Yandex fullscreen ad lifecycle ($device): held input -> pause/audio stop -> close-before-resume race -> input reset -> real Ground Zero frame after gameplay/audio resume PASS"
+  echo "Yandex fullscreen ad lifecycle ($device): held input -> pause/audio stop -> close-before-resume race -> input reset -> viewport-aligned real Ground Zero frame after gameplay/audio resume PASS"
 }
 
 run_ad_lifecycle desktop 9266
