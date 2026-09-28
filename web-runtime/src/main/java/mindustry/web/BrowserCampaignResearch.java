@@ -44,6 +44,15 @@ public final class BrowserCampaignResearch{
         return SectorPresets.ruinousShores != null && SectorPresets.ruinousShores.unlocked();
     }
 
+    public static boolean ruinousShoresCaptured(){
+        return captured(SectorPresets.ruinousShores);
+    }
+
+    public static boolean windsweptIslandsReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.windsweptIslands != null && SectorPresets.windsweptIslands.unlocked();
+    }
+
     /**
      * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
      * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
@@ -89,6 +98,26 @@ public final class BrowserCampaignResearch{
 
     public static void spendNextRuinousResearch(){
         UnlockableContent next = nextRuinousResearch();
+        if(next != null) spend(next);
+    }
+
+    /**
+     * Stock path from captured Ruinous Shores to Windswept Islands. Hail is nested
+     * below Duo -> Scatter, so those parent nodes are included explicitly instead of
+     * relying on unlock() to silently backfill them.
+     */
+    public static UnlockableContent nextWindsweptResearch(){
+        if(!Blocks.pneumaticDrill.unlocked()) return Blocks.pneumaticDrill;
+        if(!Blocks.duo.unlocked()) return Blocks.duo;
+        if(!Blocks.scatter.unlocked()) return Blocks.scatter;
+        if(!Blocks.hail.unlocked()) return Blocks.hail;
+        if(!Blocks.siliconSmelter.unlocked()) return Blocks.siliconSmelter;
+        if(!Blocks.steamGenerator.unlocked()) return Blocks.steamGenerator;
+        return null;
+    }
+
+    public static void spendNextWindsweptResearch(){
+        UnlockableContent next = nextWindsweptResearch();
         if(next != null) spend(next);
     }
 
@@ -209,6 +238,29 @@ public final class BrowserCampaignResearch{
         markRuinousProgressSmoke();
     }
 
+    /** CI-only continuation through stock Ruinous Shores prerequisites to Windswept Islands. */
+    public static void runWindsweptProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.ruinousShores.sector
+        || !captured(SectorPresets.ruinousShores)){
+            throw new IllegalStateException("Windswept Islands progression smoke requires captured Ruinous Shores");
+        }
+
+        stageAndSpend(source, Blocks.pneumaticDrill);
+        stageAndSpend(source, Blocks.duo);
+        stageAndSpend(source, Blocks.scatter);
+        stageAndSpend(source, Blocks.hail);
+        stageAndSpend(source, Blocks.siliconSmelter);
+        stageAndSpend(source, Blocks.steamGenerator);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!windsweptIslandsReady()){
+            throw new IllegalStateException("Windswept Islands did not auto-unlock after stock prerequisites completed");
+        }
+
+        Core.settings.forceSave();
+        markWindsweptProgressSmoke();
+    }
+
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
         stageMissing(source, content);
@@ -267,7 +319,8 @@ public final class BrowserCampaignResearch{
         markResearch(content.name, spent, remaining(content), content.unlocked(),
             SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked(),
             SectorPresets.crateredBattleground != null && SectorPresets.crateredBattleground.unlocked(),
-            SectorPresets.ruinousShores != null && SectorPresets.ruinousShores.unlocked());
+            SectorPresets.ruinousShores != null && SectorPresets.ruinousShores.unlocked(),
+            SectorPresets.windsweptIslands != null && SectorPresets.windsweptIslands.unlocked());
     }
 
     private static TechNode node(UnlockableContent content){
@@ -339,7 +392,10 @@ public final class BrowserCampaignResearch{
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','ruinous-research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-graphite-press-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-silicon-smelter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-kiln-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-pump-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-ready','true');")
     private static native void markRuinousProgressSmoke();
 
-    @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady"},
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','windswept-research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-pneumatic-drill-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-duo-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-scatter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-hail-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-silicon-smelter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-steam-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-ready','true');")
+    private static native void markWindsweptProgressSmoke();
+
+    @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady", "windsweptReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
             "document.documentElement.setAttribute('data-mindustry-campaign-research-content',name);" +
             "document.documentElement.setAttribute('data-mindustry-campaign-research-spent',String(spent));" +
@@ -347,6 +403,7 @@ public final class BrowserCampaignResearch{
             "document.documentElement.setAttribute('data-mindustry-campaign-research-unlocked',unlocked ? 'true' : 'false');" +
             "document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready',frozenReady ? 'true' : 'false');" +
             "document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-ready',craterReady ? 'true' : 'false');" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-ready',ruinousReady ? 'true' : 'false');")
-    private static native void markResearch(String name, int spent, int remaining, boolean unlocked, boolean frozenReady, boolean craterReady, boolean ruinousReady);
+            "document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-ready',ruinousReady ? 'true' : 'false');" +
+            "document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-ready',windsweptReady ? 'true' : 'false');")
+    private static native void markResearch(String name, int spent, int remaining, boolean unlocked, boolean frozenReady, boolean craterReady, boolean ruinousReady, boolean windsweptReady);
 }
