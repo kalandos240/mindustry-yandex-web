@@ -65,6 +65,7 @@ run_load(){
     --require 'data-mindustry-frame-resize-policy="event-driven-64-frame-fallback"' \
     --require 'data-mindustry-pause-policy="event-driven-64-frame-fallback"' \
     --require 'data-mindustry-input-coordinates="offset-cached"' \
+    --require 'data-mindustry-assets-status-policy="batch-16"' \
     --require 'data-mindustry-canvas-viewport-match="true"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
@@ -74,15 +75,22 @@ run_load(){
   grep -Eq 'data-mindustry-perf-fps="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-local-map-update-id="[1-9][0-9]{2,}"' "$dom"
 
-  local elapsed fps
+  local elapsed fps eager status_updates max_status_updates
   elapsed="$(attr "$dom" data-mindustry-perf-elapsed-ms)"
   fps="$(attr "$dom" data-mindustry-perf-fps)"
+  eager="$(attr "$dom" data-mindustry-assets-eager)"
+  status_updates="$(attr "$dom" data-mindustry-assets-status-updates)"
+  max_status_updates=$(( (eager + 15) / 16 ))
   if [ -z "$elapsed" ] || [ "$elapsed" -gt "$MAX_ELAPSED_MS" ]; then
     echo "Runtime load smoke ($label) exceeded catastrophic frame budget: ${elapsed:-missing}ms > ${MAX_ELAPSED_MS}ms for 120 frames" >&2
     exit 1
   fi
+  if [ -z "$eager" ] || [ -z "$status_updates" ] || [ "$status_updates" -gt "$max_status_updates" ]; then
+    echo "Asset preload status batching regressed ($label): ${status_updates:-missing} updates for ${eager:-missing} eager assets (max $max_status_updates)" >&2
+    exit 1
+  fi
 
-  echo "Runtime load smoke ($label): 64 vanilla units + 120 Logic/Pathfinding/Control/Renderer/UI frames in ${elapsed}ms (~${fps} fps) PASS" | tee -a "$REPORT"
+  echo "Runtime load smoke ($label): 64 vanilla units + 120 frames in ${elapsed}ms (~${fps} fps); preload status ${status_updates}/${eager} assets PASS" | tee -a "$REPORT"
 }
 
 run_load desktop desktop 0 \
