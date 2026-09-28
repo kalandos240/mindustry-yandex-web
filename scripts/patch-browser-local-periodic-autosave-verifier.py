@@ -9,8 +9,12 @@ if not PERSIST.is_file():
 
 text = PERSIST.read_text(encoding="utf-8")
 anchor = 'bash "$ROOT_DIR/scripts/verify-browser-local-autosave.sh"\n'
-replacement = anchor + 'bash "$ROOT_DIR/scripts/verify-browser-local-periodic-autosave.sh"\n'
+periodic = 'bash "$ROOT_DIR/scripts/verify-browser-local-periodic-autosave.sh"\n'
+replacement = anchor + periodic
 
+if periodic in text:
+    print("Periodic autosave persistence gate already present")
+    raise SystemExit(0)
 if text.count(anchor) != 1:
     raise SystemExit("Browser periodic autosave verifier integration anchor no longer matches Back-autosave gate")
 
