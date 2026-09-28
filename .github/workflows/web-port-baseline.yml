@@ -29,6 +29,13 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      - name: Static-check release and browser test harness
+        run: |
+          python3 -m py_compile scripts/*.py
+          for script in scripts/*.sh; do
+            bash -n "$script"
+          done
+
       - name: Bootstrap pinned upstream sources
         run: bash scripts/bootstrap.sh
 
@@ -71,6 +78,13 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
+
+      - name: Static-check release and browser test harness
+        run: |
+          python3 -m py_compile scripts/*.py
+          for script in scripts/*.sh; do
+            bash -n "$script"
+          done
 
       - name: Bootstrap pinned upstream sources
         run: bash scripts/bootstrap.sh
