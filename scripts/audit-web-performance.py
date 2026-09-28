@@ -17,7 +17,7 @@ REPORT = ROOT / "work" / "web-performance-report.txt"
 # -> Littoral Shipyard -> Planetary Terminal plus Tainted Woods, Atolls, Testing Grounds,
 # Sunken Pier and Weathered Channels, plus Erekir through Onset -> Aegis -> Lake -> Intersect
 # -> Atlas -> Split/Basin -> Marsh -> Peaks/Ravine -> Caldera -> Stronghold -> Crevice -> Siege
-# -> Crossroads -> Karst -> Origin boot) must still fit this existing TeaVM budget;
+# -> Crossroads -> Karst -> captured Origin) must still fit this existing TeaVM budget;
 # do not rebaseline merely because campaign code grew.
 # Forbidden desktop/network markers and the 100 MiB unpacked Yandex limit remain
 # hard release gates.
