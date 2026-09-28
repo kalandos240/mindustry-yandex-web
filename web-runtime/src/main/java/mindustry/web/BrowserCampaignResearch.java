@@ -98,6 +98,15 @@ public final class BrowserCampaignResearch{
         return SectorPresets.tarFields != null && SectorPresets.tarFields.unlocked();
     }
 
+    public static boolean tarFieldsCaptured(){
+        return captured(SectorPresets.tarFields);
+    }
+
+    public static boolean impact0078Ready(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.impact0078 != null && SectorPresets.impact0078.unlocked();
+    }
+
     /**
      * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
      * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
@@ -217,6 +226,30 @@ public final class BrowserCampaignResearch{
     public static void spendNextTarResearch(){
         UnlockableContent next = nextTarResearch();
         if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextImpactResearch(){
+        if(!Blocks.laserDrill.unlocked()) return Blocks.laserDrill;
+        if(!Items.thorium.unlocked()) return null;
+        if(!Blocks.lancer.unlocked()) return Blocks.lancer;
+        if(!Blocks.salvo.unlocked()) return Blocks.salvo;
+        if(!Blocks.coreFoundation.unlocked()) return Blocks.coreFoundation;
+        return null;
+    }
+
+    public static boolean waitingForImpactThorium(){
+        return Blocks.laserDrill.unlocked() && !Items.thorium.unlocked();
+    }
+
+    public static void spendNextImpactResearch(){
+        UnlockableContent next = nextImpactResearch();
+        if(next == null){
+            if(waitingForImpactThorium()){
+                throw new IllegalStateException("Impact 0078 progression is waiting for thorium production");
+            }
+            return;
+        }
+        spend(next);
     }
 
     public static boolean canSpend(UnlockableContent content){
@@ -453,6 +486,35 @@ public final class BrowserCampaignResearch{
         markTarProgressSmoke();
     }
 
+    public static void runImpactProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.tarFields.sector
+        || !captured(SectorPresets.tarFields)){
+            throw new IllegalStateException("Impact 0078 progression requires captured Tar Fields");
+        }
+
+        stageAndSpend(source, Blocks.laserDrill);
+
+        // Production unlocks items when they reach a campaign core. CI supplies one
+        // mined thorium deterministically, preserving the Research(thorium) objective.
+        if(!Items.thorium.unlocked()){
+            ItemSeq produced = new ItemSeq();
+            produced.add(Items.thorium, 1);
+            source.addItems(produced);
+            Items.thorium.unlock();
+        }
+
+        stageAndSpend(source, Blocks.lancer);
+        stageAndSpend(source, Blocks.salvo);
+        stageAndSpend(source, Blocks.coreFoundation);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!impact0078Ready()){
+            throw new IllegalStateException("Impact 0078 did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markImpactProgressSmoke();
+    }
+
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
         stageMissing(source, content);
@@ -601,6 +663,9 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-press-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-coal-centrifuge-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-conduit-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-arc-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-scorch-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-wave-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-ready','true');")
     private static native void markTarProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-laser-drill-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-thorium-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-lancer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-salvo-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-core-foundation-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-ready','true');")
+    private static native void markImpactProgressSmoke();
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady", "windsweptReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
