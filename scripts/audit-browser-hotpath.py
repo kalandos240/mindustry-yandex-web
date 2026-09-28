@@ -152,8 +152,11 @@ require(save_hint, "SaveMeta meta =", "campaign save hint hot path")
 require(CAMPAIGN_UI, "if(BrowserCampaignRuntime.diagnosticsEnabled()){", "campaign diagnostic telemetry gate")
 if CAMPAIGN_UI.count("if(BrowserCampaignRuntime.diagnosticsEnabled()){") < 6:
     failures.append("campaign UI: expected diagnostics gates around action/state telemetry")
-require(CAMPAIGN_UI, "final int[] campaignUnlockRefreshFrame = {0};", "campaign unlock refresh throttle")
-require(CAMPAIGN_UI, "if((++campaignUnlockRefreshFrame[0] & 31) == 0)", "campaign unlock refresh throttle")
+require(CAMPAIGN_UI, "final int[] campaignUiRefreshFrame = {7};", "campaign UI refresh throttle")
+require(CAMPAIGN_UI, "int frame = ++campaignUiRefreshFrame[0];", "campaign unlock refresh throttle")
+require(CAMPAIGN_UI, "if((frame & 31) == 0)", "campaign unlock refresh throttle")
+if CAMPAIGN_UI.count("if((campaignUiRefreshFrame[0] & 7) != 0) return;") < 7:
+    failures.append("campaign UI: expected at least seven 8-frame text refresh guards")
 forbid(CAMPAIGN_UI, "campaignProgress.update(BrowserCampaignResearch::refreshUnlocks)", "campaign UI")
 
 if failures:
