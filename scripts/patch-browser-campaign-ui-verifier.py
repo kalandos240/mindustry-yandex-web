@@ -44,6 +44,7 @@ mobile_function = '''run_campaign_mobile_ui(){
     --require 'data-mindustry-campaign-salt-ui="ready"' \
     --require 'data-mindustry-campaign-impact-ui="ready"' \
     --require 'data-mindustry-campaign-late-ui="ready"' \
+    --require 'data-mindustry-campaign-final-infra-ui="ready"' \
     --require 'data-mindustry-campaign-test="groundZero"' \
     --require 'data-mindustry-campaign-core="ready"' \
     --require 'data-mindustry-campaign-ui-back-smoke="triggered"' \
