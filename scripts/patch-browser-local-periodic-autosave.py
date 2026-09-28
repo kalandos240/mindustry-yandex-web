@@ -8,6 +8,14 @@ if not RUNTIME.is_file():
     raise SystemExit(f"Missing browser local-map runtime source: {RUNTIME}")
 
 text = RUNTIME.read_text(encoding="utf-8")
+if all(marker in text for marker in (
+    "private static final double periodicSaveIntervalTicks = 180.0 * 60.0;",
+    "private static void maybePeriodicSave()",
+    "private static native boolean periodicSaveSmokeRequested();",
+    "private static native void markPeriodicSaved(",
+)):
+    print("Periodic local autosave milestone already present in committed Web overlay")
+    raise SystemExit(0)
 
 old_fields = '''    private static boolean saveSmokeArmed;
     private static Map current;
