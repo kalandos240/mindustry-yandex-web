@@ -50,6 +50,7 @@ mobile_function = '''run_campaign_mobile_ui(){
     --require 'data-mindustry-campaign-erekir-ui="ready"' \
     --require 'data-mindustry-campaign-erekir-mid-ui="ready"' \
     --require 'data-mindustry-campaign-erekir-branch-ui="ready"' \
+    --require 'data-mindustry-campaign-erekir-late-ui="ready"' \
     --require 'data-mindustry-campaign-test="groundZero"' \
     --require 'data-mindustry-campaign-core="ready"' \
     --require 'data-mindustry-campaign-ui-back-smoke="triggered"' \
