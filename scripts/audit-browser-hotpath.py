@@ -10,6 +10,7 @@ APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
 LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 CAMPAIGN_UI = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
 WEB_LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "WebClientLauncher.java").read_text(encoding="utf-8")
+GAMEPLAY = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserGameplayRuntime.java").read_text(encoding="utf-8")
 
 failures = []
 
@@ -81,6 +82,23 @@ require(WEB_LAUNCHER, '"animatedshields", !mobileMode', "renderer defaults")
 require(WEB_LAUNCHER, 'if(mobileMode && !Core.settings.has("bloom"))', "renderer defaults")
 require(WEB_LAUNCHER, 'Core.settings.put("bloom", false)', "renderer defaults")
 require(WEB_LAUNCHER, "data-mindustry-renderer-profile", "renderer defaults")
+
+# Production local gameplay must not write DOM frame/phase telemetry at 60Hz.
+require(LOCAL_MAP, "private static boolean telemetry;", "local gameplay telemetry gate")
+require(LOCAL_MAP, "telemetry = smokeTelemetryRequested();", "local gameplay telemetry gate")
+require(LOCAL_MAP, "private static void diagPhase(String phase)", "local gameplay telemetry gate")
+require(LOCAL_MAP, "if(telemetry){\n            markFrame(", "local gameplay telemetry gate")
+require(LOCAL_MAP, "if(telemetry) markLive(frames);", "local gameplay telemetry gate")
+require(LOCAL_MAP, "if(telemetry) markPauseFrame(", "local gameplay telemetry gate")
+require(LOCAL_MAP, "key.toLowerCase().endsWith('smoke')", "local gameplay telemetry gate")
+forbid(LOCAL_MAP, 'markPhase("logic")', "local gameplay telemetry gate")
+forbid(LOCAL_MAP, 'markPhase("renderer")', "local gameplay telemetry gate")
+
+# Stable production menu keeps the first boot trace only; CI smoke retains full tracing.
+require(GAMEPLAY, "boolean trace = smokeMode || moduleLoopFrames < 3", "menu telemetry gate")
+require(GAMEPLAY, 'if(trace) markModulePhase("logic")', "menu telemetry gate")
+require(GAMEPLAY, 'if(trace) markModulePhase("renderer")', "menu telemetry gate")
+require(GAMEPLAY, 'if(trace) markModulePhase("ui-ready")', "menu telemetry gate")
 
 # Campaign menu telemetry and auto-unlock scans must not return to 60Hz production work.
 require(CAMPAIGN_UI, "if(BrowserCampaignRuntime.diagnosticsEnabled()){", "campaign diagnostic telemetry gate")
