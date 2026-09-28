@@ -73,6 +73,11 @@ tasks.register("stageWeb", Copy) {
         include "maps/serpulo/infestedCanyons.msav"
         include "maps/serpulo/nuclearComplex.msav"
         include "maps/serpulo/desolateRift.msav"
+        include "maps/serpulo/facility32m.msav"
+        include "maps/serpulo/perilousHarbor.msav"
+        include "maps/serpulo/extractionOutpost.msav"
+        include "maps/serpulo/coastline.msav"
+        include "maps/serpulo/navalFortress.msav"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
