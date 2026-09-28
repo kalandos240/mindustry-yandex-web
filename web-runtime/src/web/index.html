@@ -117,6 +117,8 @@
             const workers = Math.max(1, Math.min(8, eagerManifest.length));
             const preloadStarted = performance.now();
             root.setAttribute('data-mindustry-assets-preload-workers', String(workers));
+            root.setAttribute('data-mindustry-assets-status-policy', 'batch-16');
+            let statusUpdates = 0;
 
             async function preloadWorker(){
                 while(true){
@@ -130,7 +132,10 @@
                     cache[url] = bytes;
                     loadedBytes += bytes.byteLength;
                     loaded++;
-                    status.textContent = 'Preloading Mindustry assets ' + loaded + '/' + eagerManifest.length + '...';
+                    if((loaded & 15) === 0 || loaded === eagerManifest.length){
+                        status.textContent = 'Preloading Mindustry assets ' + loaded + '/' + eagerManifest.length + '...';
+                        statusUpdates++;
+                    }
                 }
             }
 
@@ -139,6 +144,7 @@
             await Promise.all(tasks);
             root.setAttribute('data-mindustry-assets-eager-bytes', String(loadedBytes));
             root.setAttribute('data-mindustry-assets-preload-ms', String(Math.max(1, Math.round(performance.now() - preloadStarted))));
+            root.setAttribute('data-mindustry-assets-status-updates', String(statusUpdates));
             root.setAttribute('data-mindustry-assets-preload', 'ready');
             status.textContent = 'Starting Mindustry...';
             main();
