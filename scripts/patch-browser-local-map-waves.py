@@ -9,6 +9,21 @@ if not RUNTIME.is_file():
 
 text = RUNTIME.read_text(encoding="utf-8")
 
+# The current overlay may already contain this milestone. Build assembly still invokes
+# this historical patch script after applying upstream overlays, so treat an exact
+# already-patched source as success instead of trying to match obsolete pre-wave anchors.
+already = [
+    "private static boolean testWaveExpected;",
+    "private static boolean testWaveFired;",
+    "private static int testWaveStart;",
+    "markWaveSmokeArmed(testWaveStart, state.rules.spawns.size);",
+    "private static native void markWaveFired(int wave);",
+    "// Preserve the selected built-in map's stock waves/waveTimer values.",
+]
+if all(marker in text for marker in already):
+    print("BrowserLocalMapRuntime already contains the proven local survival wave milestone")
+    raise SystemExit(0)
+
 old_fields = '''    private static boolean testStartChecked;
     private static Map current;
     private static int frames;
