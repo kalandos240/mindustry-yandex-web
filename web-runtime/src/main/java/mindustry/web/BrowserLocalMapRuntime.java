@@ -253,6 +253,9 @@ public final class BrowserLocalMapRuntime{
 
         perfUnits = ground + air;
         perfEffects = 0;
+        if(!Fx.drillSteam.shouldCreate()){
+            throw new IllegalStateException("Browser particle perf smoke requires live renderer effects");
+        }
         markPerfStarted(perfUnits, perfTargetFrames, perfTargetEffects);
     }
 
