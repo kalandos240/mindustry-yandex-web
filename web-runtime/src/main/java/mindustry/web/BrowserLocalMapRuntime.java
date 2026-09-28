@@ -48,6 +48,9 @@ public final class BrowserLocalMapRuntime{
     private static long pauseUpdateId;
     private static int pausedFrames;
     private static boolean saveSmokeArmed;
+    private static final double periodicSaveIntervalTicks = 180.0 * 60.0;
+    private static double periodicSaveTick;
+    private static boolean periodicSaveSmokeDone;
     private static Map current;
     private static int frames;
     private static boolean perfSmoke;
@@ -187,6 +190,8 @@ public final class BrowserLocalMapRuntime{
         pauseUpdateId = 0L;
         pausedFrames = 0;
         saveSmokeArmed = false;
+        periodicSaveTick = state.tick;
+        periodicSaveSmokeDone = false;
         active = true;
 
         try{
@@ -334,7 +339,10 @@ public final class BrowserLocalMapRuntime{
                 markGameOverSmokeArmed();
             }
 
-            if(!gameOverFreeze) markLive(frames);
+            if(!gameOverFreeze){
+                markLive(frames);
+                maybePeriodicSave();
+            }
 
             if(autoSaveExitSmokeRequested()){
                 markAutoSaveExitSmokeArmed();
@@ -353,6 +361,7 @@ public final class BrowserLocalMapRuntime{
             throw new IllegalStateException("Browser local save requires an active playing or paused session");
         }
         SaveMeta meta = BrowserSaveRuntime.saveLocalSession();
+        periodicSaveTick = state.tick;
         markSessionSaved(slug(current), meta.wave, meta.version, world.width(), world.height());
     }
 
@@ -404,6 +413,8 @@ public final class BrowserLocalMapRuntime{
         pauseUpdateId = 0L;
         pausedFrames = 0;
         saveSmokeArmed = false;
+        periodicSaveTick = state.tick;
+        periodicSaveSmokeDone = false;
 
         state.set(mindustry.core.GameState.State.playing);
         markContinued(slug(builtin), meta.wave, meta.version, world.width(), world.height());
@@ -470,6 +481,25 @@ public final class BrowserLocalMapRuntime{
         }
     }
 
+    /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
+    private static void maybePeriodicSave(){
+        if(!active || current == null || !state.isPlaying() || state.gameOver) return;
+
+        boolean smoke = periodicSaveSmokeRequested();
+        if(smoke){
+            if(periodicSaveSmokeDone || frames < 3) return;
+        }else if(state.tick - periodicSaveTick < periodicSaveIntervalTicks){
+            return;
+        }
+
+        int savedWave = state.wave;
+        double savedTick = state.tick;
+        long savedUpdateId = state.updateId;
+        saveLocalSession();
+        periodicSaveSmokeDone = smoke;
+        markPeriodicSaved(slug(current), savedWave, savedTick, savedUpdateId, smoke ? "smoke" : "interval");
+    }
+
     private static void updateGameOverFrame(){
         markPhase("gameover-control");
         control.update();
@@ -507,6 +537,8 @@ public final class BrowserLocalMapRuntime{
         pauseUpdateId = 0L;
         pausedFrames = 0;
         saveSmokeArmed = false;
+        periodicSaveTick = 0.0;
+        periodicSaveSmokeDone = false;
         logic.reset();
         markReturned(previous);
     }
@@ -592,6 +624,9 @@ public final class BrowserLocalMapRuntime{
         teamRules.prebuildAi = false;
     }
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPeriodicSaveSmoke') === '1';")
+    private static native boolean periodicSaveSmokeRequested();
+
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryAutoSaveExitSmoke') === '1';")
     private static native boolean autoSaveExitSmokeRequested();
 
@@ -663,6 +698,9 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(params = {"slug", "wave", "version", "width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-local-continue', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slug', slug); document.documentElement.setAttribute('data-mindustry-local-continue-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-continue-version', String(version)); document.documentElement.setAttribute('data-mindustry-local-continue-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-state', 'playing'); document.documentElement.setAttribute('data-mindustry-local-map-slug', slug); document.documentElement.setAttribute('data-mindustry-local-map-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-player', 'added'); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'starting');")
     private static native void markContinued(String slug, int wave, int version, int width, int height);
+
+    @JSBody(params = {"slug", "wave", "tick", "updateId", "reason"}, script = "document.documentElement.setAttribute('data-mindustry-local-periodic-save', 'ready'); document.documentElement.setAttribute('data-mindustry-local-periodic-save-slug', slug); document.documentElement.setAttribute('data-mindustry-local-periodic-save-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-periodic-save-tick', String(tick)); document.documentElement.setAttribute('data-mindustry-local-periodic-save-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-periodic-save-reason', reason);")
+    private static native void markPeriodicSaved(String slug, int wave, double tick, long updateId, String reason);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-autosave-smoke', 'armed');")
     private static native void markAutoSaveExitSmokeArmed();
