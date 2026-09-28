@@ -7,7 +7,7 @@ PORT=8088
 
 command -v google-chrome >/dev/null
 [ -s "$WEB_DIR/index.html" ]
-for preset in onset aegis lake intersect atlas split basin marsh peaks ravine caldera-erekir stronghold crevice siege crossroads; do
+for preset in onset aegis lake intersect atlas split basin marsh peaks ravine caldera-erekir stronghold crevice siege crossroads karst origin; do
   [ -s "$WEB_DIR/assets/maps/erekir/$preset.msav" ]
 done
 
@@ -131,27 +131,44 @@ run_progression(){
     --require 'data-mindustry-erekir-crossroads-objectives="staged"' \
     --require 'data-mindustry-erekir-crossroads-objective-flags="ready"' \
     --require 'data-mindustry-erekir-crossroads-captured="true"' \
+    --require 'data-mindustry-erekir-core-acropolis-unlocked="true"' \
+    --require 'data-mindustry-erekir-karst-ready="true"' \
+    --require 'data-mindustry-erekir-karst-captured="true"' \
+    --require 'data-mindustry-erekir-karst-capture-wave="10"' \
+    --require 'data-mindustry-erekir-payload-mass-driver-unlocked="true"' \
+    --require 'data-mindustry-erekir-constructor-unlocked="true"' \
+    --require 'data-mindustry-erekir-atmospheric-concentrator-unlocked="true"' \
+    --require 'data-mindustry-erekir-cyanogen-synthesizer-unlocked="true"' \
+    --require 'data-mindustry-erekir-tank-assembler-unlocked="true"' \
+    --require 'data-mindustry-erekir-vanquish-unlocked="true"' \
+    --require 'data-mindustry-erekir-disrupt-unlocked="true"' \
+    --require 'data-mindustry-erekir-collaris-unlocked="true"' \
+    --require 'data-mindustry-erekir-malign-unlocked="true"' \
+    --require 'data-mindustry-erekir-neoplasia-reactor-unlocked="true"' \
+    --require 'data-mindustry-erekir-basic-assembler-module-unlocked="true"' \
+    --require 'data-mindustry-erekir-origin-ready="true"' \
     --require 'data-mindustry-campaign-capture="ready"' \
     --require 'data-mindustry-campaign-captured="true"' \
-    --require 'data-mindustry-campaign-captured-preset="crossroads"' \
-    --require 'data-mindustry-campaign-capture-win-wave="0"' \
-    --require 'data-mindustry-campaign-progress-preset="crossroads"' \
+    --require 'data-mindustry-campaign-captured-preset="karst"' \
+    --require 'data-mindustry-campaign-capture-win-wave="10"' \
+    --require 'data-mindustry-campaign-progress-smoke="stable"' \
+    --require 'data-mindustry-campaign-progress-preset="origin"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-planet="erekir"' \
-    --require 'data-mindustry-campaign-preset="crossroads"' \
+    --require 'data-mindustry-campaign-preset="origin"' \
     --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
-  grep -q 'data-mindustry-campaign-map-path="maps/erekir/crossroads.msav"' "$dom"
+  grep -q 'data-mindustry-campaign-map-path="maps/erekir/origin.msav"' "$dom"
   grep -Eq 'data-mindustry-erekir-onset-enemy-cores="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-erekir-intersect-enemy-cores="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-erekir-split-enemy-cores="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-campaign-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-campaign-update-id="[1-9][0-9]*"' "$dom"
 
-  echo "Erekir progression ($label): Caldera -> Stronghold objectives -> Crevice wave 46 -> Siege/Crossroads objectives and attack capture PASS"
+  echo "Erekir progression ($label): Crossroads -> Core Acropolis -> Karst wave 10 -> full late-game research -> Origin stable boot PASS"
 }
 
 run_progression desktop desktop 0 \
@@ -164,4 +181,4 @@ run_progression mobile mobile 1 \
   /tmp/mindustry-erekir-progress-mobile.html \
   9275
 
-echo 'Erekir progression matrix: desktop + auto-detected mobile through captured Crossroads PASS'
+echo 'Erekir progression matrix: desktop + auto-detected mobile through captured Karst and stable Origin boot PASS'
