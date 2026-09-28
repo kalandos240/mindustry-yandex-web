@@ -32,6 +32,7 @@ jobs:
       - name: Static-check release and browser test harness
         run: |
           python3 -m py_compile scripts/*.py
+          python3 scripts/audit-campaign-consistency.py
           for script in scripts/*.sh; do
             bash -n "$script"
           done
@@ -82,6 +83,7 @@ jobs:
       - name: Static-check release and browser test harness
         run: |
           python3 -m py_compile scripts/*.py
+          python3 scripts/audit-campaign-consistency.py
           for script in scripts/*.sh; do
             bash -n "$script"
           done
