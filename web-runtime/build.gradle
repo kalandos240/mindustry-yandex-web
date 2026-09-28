@@ -68,6 +68,7 @@ tasks.register("stageWeb", Copy) {
         include "maps/serpulo/frontier.msav"
         include "maps/serpulo/saltFlats.msav"
         include "maps/serpulo/tarFields.msav"
+        include "maps/serpulo/impact0078.msav"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
