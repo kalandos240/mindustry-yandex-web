@@ -41,6 +41,8 @@ require(CANVAS, "markResizeDirty();", "BrowserCanvas fullscreen path")
 require(CANVAS, "data-mindustry-resize-policy', 'event-driven", "BrowserCanvas")
 
 forbid(INPUT, "getBoundingClientRect()", "BrowserInputBridge")
+forbid(INPUT, "canvas.clientWidth", "BrowserInputBridge")
+forbid(INPUT, "canvas.clientHeight", "BrowserInputBridge")
 require(INPUT, "event.offsetX", "BrowserInputBridge")
 require(INPUT, "event.offsetY", "BrowserInputBridge")
 require(INPUT, "__mindustryClientWidth", "BrowserInputBridge")
