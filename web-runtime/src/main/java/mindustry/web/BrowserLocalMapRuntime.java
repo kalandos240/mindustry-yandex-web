@@ -455,6 +455,15 @@ public final class BrowserLocalMapRuntime{
 
         pausedFrames++;
         markPauseFrame(pausedFrames, state.updateId);
+
+        if(pauseSmokeArmed && pauseSmokeRequested() && saveSmokeRequested()
+        && !saveSmokeArmed && pausedFrames == 1){
+            saveSmokeArmed = true;
+            saveLocalSession();
+            markSaveSmokeArmed();
+            markPauseSaved(state.updateId);
+        }
+
         if(pauseSmokeArmed && pauseSmokeRequested() && pausedFrames >= 2){
             markPauseClockFrozen(state.updateId);
             resume();
@@ -636,6 +645,9 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-pause-clock', 'frozen'); document.documentElement.setAttribute('data-mindustry-local-map-pause-frozen-update-id', String(updateId));")
     private static native void markPauseClockFrozen(long updateId);
+
+    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-save-during-pause', 'true'); document.documentElement.setAttribute('data-mindustry-local-map-save-during-pause-update-id', String(updateId));")
+    private static native void markPauseSaved(long updateId);
 
     @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-pause-resumed', 'yes'); document.documentElement.setAttribute('data-mindustry-local-map-resume-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-map-pause-state', 'resumed');")
     private static native void markResumed(long updateId);
