@@ -12,6 +12,8 @@ CAMPAIGN_UI = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(enco
 CAMPAIGN_RUNTIME = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
 WEB_LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "WebClientLauncher.java").read_text(encoding="utf-8")
 GAMEPLAY = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserGameplayRuntime.java").read_text(encoding="utf-8")
+PATHFINDER_PATCH = (ROOT / "scripts" / "patch-mindustry-pathfinder-web.py").read_text(encoding="utf-8")
+CONTROL_PATH_PATCH = (ROOT / "scripts" / "patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")
 
 failures = []
 
@@ -82,6 +84,20 @@ require(LOCAL_MAP, "Fx.drillSteam.at(x, y)", "particle perf workload")
 require(LOCAL_MAP, "Fx.drillSteam.shouldCreate()", "particle perf workload")
 require(LOCAL_MAP, "data-mindustry-perf-effect-kind','drillSteam", "particle perf workload")
 require(LOCAL_MAP, "perfEffects != perfTargetEffects", "particle perf workload")
+
+# Desktop pathfinding budgets are worker-thread budgets. Web must bound the TOTAL
+# main-thread slice per frame and resume fields round-robin.
+for source, label, update_marker in [
+    (PATHFINDER_PATCH, "Pathfinder Web patch", "updateFrontier(data, Math.min(maxUpdate, remaining));"),
+    (CONTROL_PATH_PATCH, "ControlPathfinder Web patch", "updateFields(cache, Math.min(maxUpdate, remaining));"),
+]:
+    require(source, "Core.app != null && Core.app.isMobile() ? 2 : 3", label)
+    require(source, "Time.timeSinceNanos(frameStart) < frameBudget", label)
+    require(source, "webFieldCursor", label)
+    require(source, update_marker, label)
+
+forbid(PATHFINDER_PATCH, "updateFrontier(data, maxUpdate);", "Pathfinder Web patch")
+forbid(CONTROL_PATH_PATCH, "updateFields(cache, maxUpdate);", "ControlPathfinder Web patch")
 
 # Lean Web UI never constructs the stock Settings dialog, so renderer defaults must
 # be installed explicitly. Mobile keeps real effects but disables the heaviest purely
