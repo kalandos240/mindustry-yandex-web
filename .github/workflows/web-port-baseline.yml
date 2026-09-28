@@ -133,6 +133,22 @@ jobs:
           python3 scripts/patch-mindustry-no-links-web.py
           python3 scripts/patch-mindustry-external-urls-web.py
 
+      - name: Verify applied Web renderer hot-path patch
+        run: |
+          sprite='work/Arc/arc-core/src/arc/graphics/g2d/SpriteBatch.java'
+          grep -Fq 'int[] sortOrder = new int[0], sortScratch = new int[0];' "$sprite"
+          grep -Fq 'int[] runs = contiguous;' "$sprite"
+          grep -Fq 'dst[out++] = za <= zb ? src[a++] : src[b++];' "$sprite"
+          grep -Fq 'System.arraycopy(requests, pos, copy, ptr, length);' "$sprite"
+          if grep -Fq 'long[] sortKeys' "$sprite"; then
+            echo 'Web SpriteBatch regressed to TeaVM long-key sorting.' >&2
+            exit 1
+          fi
+          if grep -Fq 'commonPool = new ForkJoinHolder();' "$sprite"; then
+            echo 'Web SpriteBatch unexpectedly initializes the JVM ForkJoin sorter.' >&2
+            exit 1
+          fi
+
       - name: Compile Arc Web backend
         working-directory: work/Arc
         run: |
