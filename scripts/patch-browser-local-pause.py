@@ -12,6 +12,18 @@ for path in (RUNTIME, GAMEPLAY, UI, VERIFY):
         raise SystemExit(f"Missing browser source for local pause patch: {path}")
 
 text = RUNTIME.read_text(encoding="utf-8")
+gameplay_now = GAMEPLAY.read_text(encoding="utf-8")
+ui_now = UI.read_text(encoding="utf-8")
+verify_now = VERIFY.read_text(encoding="utf-8")
+if all(marker in text for marker in (
+    "public static void updatePausedFrame()",
+    "private static native void markPauseClockFrozen(long updateId);",
+    "private static native boolean pauseSmokeRequested();",
+)) and "BrowserLocalMapRuntime.updatePausedFrame();" in gameplay_now \
+and "private static void buildLocalPauseOverlay()" in ui_now \
+and "mindustryPauseSmoke=1" in verify_now:
+    print("Local pause/resume milestone already present in committed Web overlay")
+    raise SystemExit(0)
 
 old_fields = '''    private static boolean gameOverFreeze;
     private static boolean gameOverSmokeArmed;
