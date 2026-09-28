@@ -74,10 +74,13 @@ public final class BrowserUiRuntime{
 
         buildLocalMapMenu();
         buildLocalHudControls();
+        buildLocalPauseOverlay();
+        buildLocalGameOverOverlay();
 
         initialized = true;
         markReady();
         markLocalMapUiReady();
+        markLocalSaveUiReady(BrowserSaveRuntime.hasLocalSession() ? "available" : "empty");
     }
 
     private static void buildLocalMapMenu(){
@@ -85,6 +88,12 @@ public final class BrowserUiRuntime{
         root.setFillParent(true);
         root.defaults().pad(4f);
         root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
+        root.row();
+        root.button(Core.bundle.get("continue", "Continue"), BrowserLocalMapRuntime::continueSaved)
+            .width(mobile ? 320f : 380f)
+            .height(mobile ? 54f : 46f)
+            .disabled(button -> !BrowserSaveRuntime.hasLocalSession())
+            .padBottom(8f);
         root.row();
 
         Table mapButtons = new Table();
@@ -108,7 +117,44 @@ public final class BrowserUiRuntime{
         controls.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
+        controls.button(Core.bundle.get("pause", "Pause"), BrowserLocalMapRuntime::pause)
+            .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
+            .pad(8f);
         ui.hudGroup.addChild(controls);
+    }
+
+    private static void buildLocalPauseOverlay(){
+        Table overlay = new Table();
+        overlay.setFillParent(true);
+        overlay.touchable = Touchable.enabled;
+        overlay.visible(() -> state.isPaused() && !state.gameOver);
+        overlay.add(Core.bundle.get("pause", "Paused")).padBottom(12f);
+        overlay.row();
+        overlay.button(Core.bundle.get("resume", "Resume"), BrowserLocalMapRuntime::resume)
+            .size(mobile ? 180f : 156f, mobile ? 58f : 48f);
+        overlay.row();
+        overlay.button(Core.bundle.get("savegame", "Save Game"), BrowserLocalMapRuntime::saveLocalSession)
+            .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
+            .padTop(8f);
+        overlay.row();
+        overlay.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
+            .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
+            .padTop(8f);
+        ui.hudGroup.addChild(overlay);
+        markPauseUiReady();
+    }
+
+    private static void buildLocalGameOverOverlay(){
+        Table overlay = new Table();
+        overlay.setFillParent(true);
+        overlay.touchable = Touchable.enabled;
+        overlay.visible(() -> state.isGame() && state.gameOver);
+        overlay.add(Core.bundle.get("gameover", "Game Over")).padBottom(12f);
+        overlay.row();
+        overlay.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
+            .size(mobile ? 180f : 156f, mobile ? 58f : 48f);
+        ui.hudGroup.addChild(overlay);
+        markGameOverUiReady();
     }
 
     public static boolean initialized(){
@@ -120,4 +166,13 @@ public final class BrowserUiRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-menu', 'builtin-selector'); document.documentElement.setAttribute('data-mindustry-local-map-back', 'ready');")
     private static native void markLocalMapUiReady();
+
+    @JSBody(params = {"slot"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slot', slot);")
+    private static native void markLocalSaveUiReady(String slot);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-pause-ui', 'ready');")
+    private static native void markPauseUiReady();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-gameover-ui', 'ready');")
+    private static native void markGameOverUiReady();
 }
