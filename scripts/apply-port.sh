@@ -127,7 +127,7 @@ old_mesh = '            mesh = new Mesh(true, false, size * 4, size * 6,'
 old_sort = '''    protected void sortRequests(){\n        if(multithreaded){\n            sortRequestsThreaded();\n        }else{\n            sortRequestsStandard();\n        }\n    }\n'''
 new_sort = '''    protected void sortRequests(){\n        final int count = numRequests;\n        if(count <= 0) return;\n        if(copy.length < count) copy = new DrawRequest[count + (count >> 3) + 1];\n\n        // Preserve contiguous same-z runs, then stable-sort only those runs. Particle-heavy\n        // scenes often contain many adjacent draws at one layer, so this sorts far fewer\n        // keys than one key per request and avoids TeaVM's comparatively expensive long math.\n        int[] runs = contiguous;\n        int runCount = 0;\n        int z = requestZ[0], start = 0;\n        for(int i = 1; i < count; i++){\n            if(requestZ[i] != z){\n                int base = runCount * 3;\n                if(base + 3 > runs.length){\n                    runs = Arrays.copyOf(runs, Math.max(runs.length << 1, base + 3));\n                }\n                runs[base] = z;\n                runs[base + 1] = start;\n                runs[base + 2] = i - start;\n                runCount++;\n                z = requestZ[i];\n                start = i;\n            }\n        }\n        int base = runCount * 3;\n        if(base + 3 > runs.length){\n            runs = Arrays.copyOf(runs, Math.max(runs.length << 1, base + 3));\n        }\n        runs[base] = z;\n        runs[base + 1] = start;\n        runs[base + 2] = count - start;\n        runCount++;\n        contiguous = runs;\n\n        if(sortOrder.length < runCount){\n            int size = runCount + (runCount >> 3) + 1;\n            sortOrder = new int[size];\n            sortScratch = new int[size];\n        }\n        for(int i = 0; i < runCount; i++) sortOrder[i] = i;\n\n        int[] src = sortOrder, dst = sortScratch;\n        for(int width = 1; width < runCount; width <<= 1){\n            for(int left = 0; left < runCount; left += width << 1){\n                int mid = Math.min(left + width, runCount);\n                int right = Math.min(left + (width << 1), runCount);\n                int a = left, b = mid, out = left;\n                while(a < mid && b < right){\n                    int za = runs[src[a] * 3];\n                    int zb = runs[src[b] * 3];\n                    // <= keeps insertion order stable for equal z layers.\n                    dst[out++] = za <= zb ? src[a++] : src[b++];\n                }\n                while(a < mid) dst[out++] = src[a++];\n                while(b < right) dst[out++] = src[b++];\n            }\n            int[] swap = src; src = dst; dst = swap;\n        }\n\n        int ptr = 0;\n        for(int i = 0; i < runCount; i++){\n            int run = src[i] * 3;\n            int pos = runs[run + 1], length = runs[run + 2];\n            System.arraycopy(requests, pos, copy, ptr, length);\n            ptr += length;\n        }\n\n        // Keep whichever reusable buffer finished as the sorted source for next frame.\n        sortOrder = src;\n        sortScratch = dst;\n    }\n'''
 for old, new, name in [
-    (old_fields, '    static ForkJoinHolder commonPool;\n    int[] sortOrder = new int[0], sortScratch = new int[0];\n', 'fields'),
+    (old_fields, '    int[] sortOrder = new int[0], sortScratch = new int[0];\n', 'fields'),
     (old_ctor, '        // Web: serial request sorting; no ForkJoinPool is initialized.\n', 'constructor'),
     (old_mesh, '            mesh = new Mesh(false, false, size * 4, size * 6,', 'VBO mesh storage'),
     (old_sort, new_sort, 'sortRequests'),
@@ -135,6 +135,31 @@ for old, new, name in [
     if old not in text:
         raise SystemExit(f'Arc SpriteBatch Web patch no longer matches pinned upstream ({name}).')
     text = text.replace(old, new, 1)
+
+# The custom Web sorter above is the only sorting implementation we need. Remove
+# the desktop threaded/counting-sort region entirely so TeaVM never sees
+# ForkJoinHolder/Future/RecursiveAction through SpriteBatch class metadata.
+threaded_start = text.find('    protected void sortRequestsThreaded(){')
+region_end = text.find('    //endregion', threaded_start)
+if threaded_start < 0 or region_end < 0:
+    raise SystemExit('Arc SpriteBatch threaded sort region no longer matches pinned upstream.')
+text = text[:threaded_start] + (
+    '    // Web: desktop threaded/counting sort implementation removed.\n\n'
+) + text[region_end:]
+
+text = text.replace('import java.util.concurrent.*;\n', '')
+
+for forbidden in (
+    'ForkJoinHolder',
+    'sortRequestsThreaded',
+    'CountingSort',
+    'PopulateTask',
+    'RecursiveAction',
+    'Future<?>',
+):
+    if forbidden in text:
+        raise SystemExit(f'Arc SpriteBatch Web patch left desktop sorter marker reachable: {forbidden}')
+
 path.write_text(text)
 PY
 
