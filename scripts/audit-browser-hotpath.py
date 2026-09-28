@@ -71,6 +71,9 @@ forbid(INPUT, "pointerMove(slot, p[0], p[1]);\n            event.preventDefault(
 require(APPLY_PORT, "int[] sortOrder = new int[0], sortScratch = new int[0]", "SpriteBatch Web patch")
 require(APPLY_PORT, "int[] runs = contiguous", "SpriteBatch Web patch")
 require(APPLY_PORT, "dst[out++] = za <= zb ? src[a++] : src[b++]", "SpriteBatch stable merge")
+require(APPLY_PORT, "public static int webSortCalls, webMaxSortRequests, webMaxSortRuns, webSortedFastPaths", "SpriteBatch sorter telemetry")
+require(APPLY_PORT, "webSortCalls++", "SpriteBatch sorter telemetry")
+require(APPLY_PORT, "webSortedFastPaths++", "SpriteBatch sorter telemetry")
 require(APPLY_PORT, "boolean alreadySorted = true", "SpriteBatch sorted fast path")
 require(APPLY_PORT, "if(z < previousZ) alreadySorted = false", "SpriteBatch sorted fast path")
 require(APPLY_PORT, "if(alreadySorted){\\n            System.arraycopy(requests, 0, copy, 0, count);", "SpriteBatch sorted fast path")
@@ -86,6 +89,9 @@ require(LOCAL_MAP, "Fx.drillSteam.at(x, y)", "particle perf workload")
 require(LOCAL_MAP, "Fx.drillSteam.shouldCreate()", "particle perf workload")
 require(LOCAL_MAP, "data-mindustry-perf-effect-kind','drillSteam", "particle perf workload")
 require(LOCAL_MAP, "perfEffects != perfTargetEffects", "particle perf workload")
+require(LOCAL_MAP, "SpriteBatch.webSortCalls = 0", "particle sorter telemetry reset")
+require(LOCAL_MAP, "SpriteBatch.webSortedFastPaths <= 0", "particle sorter telemetry gate")
+require(LOCAL_MAP, "data-mindustry-perf-sort-fast-paths", "particle sorter telemetry DOM")
 
 # Desktop pathfinding budgets are worker-thread budgets. Web must bound the TOTAL
 # main-thread slice per frame and resume fields round-robin.
