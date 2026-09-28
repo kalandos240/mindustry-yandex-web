@@ -98,6 +98,17 @@ require(LOCAL_MAP, "if(telemetry){\n            markFrame(", "local gameplay tel
 require(LOCAL_MAP, "if(telemetry) markLive(frames);", "local gameplay telemetry gate")
 require(LOCAL_MAP, "if(telemetry) markPauseFrame(", "local gameplay telemetry gate")
 require(LOCAL_MAP, "key.toLowerCase().endsWith('smoke')", "local gameplay telemetry gate")
+require(LOCAL_MAP, "private static void cacheSessionSmokeFlags()", "local smoke flag cache")
+for name in [
+    "pauseSmokeRequested",
+    "saveSmokeRequested",
+    "gameOverSmokeRequested",
+    "autoSaveExitSmokeRequested",
+    "periodicSaveSmokeRequested",
+]:
+    calls = LOCAL_MAP.count(name + "()")
+    if calls != 2:
+        failures.append(f"local smoke flag cache: expected 2 {name}() occurrences, found {calls}")
 forbid(LOCAL_MAP, 'markPhase("logic")', "local gameplay telemetry gate")
 forbid(LOCAL_MAP, 'markPhase("renderer")', "local gameplay telemetry gate")
 
