@@ -152,6 +152,22 @@ for method in sorted(research_referenced - research_declared):
 for method in sorted(runtime_referenced - runtime_declared):
     failures.append(f"campaign Java surface: missing BrowserCampaignRuntime.{method} declaration")
 
+ready_aliases = set(re.findall(r"public static boolean ([A-Za-z0-9]+Ready)\(\)", RESEARCH))
+if ready_aliases:
+    failures.append(f"campaign ready-query dedup regression: {sorted(ready_aliases)}")
+require(RESEARCH, "public static boolean ready(SectorPreset preset)", "generic campaign ready query")
+require(UI_PATCH, "BrowserCampaignResearch.ready(", "campaign UI generic ready query")
+
+captured_aliases = set(re.findall(r"public static boolean ([A-Za-z0-9]+Captured)\(\)", RESEARCH))
+expected_captured_aliases = {"groundZeroCaptured", "onsetCaptured"}
+if captured_aliases != expected_captured_aliases:
+    failures.append(
+        "campaign capture-query dedup regression: "
+        f"expected={sorted(expected_captured_aliases)} actual={sorted(captured_aliases)}"
+    )
+require(RESEARCH, "public static boolean isCaptured(SectorPreset preset)", "generic campaign capture query")
+require(UI_PATCH, "BrowserCampaignResearch.isCaptured(", "campaign UI generic capture query")
+
 save_aliases = set(re.findall(r"public static boolean (has[A-Za-z0-9]+Save)\(\)", RUNTIME))
 expected_save_aliases = {"hasGroundZeroSave", "hasOnsetSave"}
 if save_aliases != expected_save_aliases:
@@ -197,7 +213,11 @@ for needle in [
 ]:
     require(EREKIR_TEST, needle, "Origin browser smoke contract")
 
-require(UI_PATCH, "BrowserCampaignResearch.originCaptured()", "Origin UI completion state")
+require(
+    UI_PATCH,
+    "BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin)",
+    "Origin UI completion state",
+)
 require(UI_PATCH, 'Core.bundle.get("planet.erekir.name", "Erekir")', "Origin UI completion label")
 
 if failures:
