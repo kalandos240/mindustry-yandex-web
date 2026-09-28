@@ -1722,8 +1722,12 @@ public final class BrowserCampaignRuntime{
         return bytes;
     }
 
-    @JSBody(params = {"rules", "stats", "locales", "rulesChars"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-meta-rules-utf',String(rules)); document.documentElement.setAttribute('data-mindustry-campaign-meta-stats-utf',String(stats)); document.documentElement.setAttribute('data-mindustry-campaign-meta-locales-utf',String(locales)); document.documentElement.setAttribute('data-mindustry-campaign-meta-rules-chars',String(rulesChars));")
-    private static native void markMetaLengths(int rules, int stats, int locales, int rulesChars);
+    private static void markMetaLengths(int rules, int stats, int locales, int rulesChars){
+        setRuntimeDomAttribute("data-mindustry-campaign-meta-rules-utf", String.valueOf(rules));
+        setRuntimeDomAttribute("data-mindustry-campaign-meta-stats-utf", String.valueOf(stats));
+        setRuntimeDomAttribute("data-mindustry-campaign-meta-locales-utf", String.valueOf(locales));
+        setRuntimeDomAttribute("data-mindustry-campaign-meta-rules-chars", String.valueOf(rulesChars));
+    }
 
     @JSBody(script = "return document.documentElement.getAttribute('data-mindustry-campaign-assets') === 'ready';")
     private static native boolean campaignAssetsReadyNative();
@@ -1746,17 +1750,31 @@ public final class BrowserCampaignRuntime{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignProgressSmoke') === '1';")
     private static native boolean progressSmokeRequested();
 
-    @JSBody(params = {"sectorId", "preset"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','sector-started'); document.documentElement.setAttribute('data-mindustry-campaign-progress-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-progress-preset',preset);")
-    private static native void markProgressSectorStarted(int sectorId, String preset);
+    private static void markProgressSectorStarted(int sectorId, String preset){
+        setRuntimeDomAttribute("data-mindustry-campaign-progress-smoke", "sector-started");
+        setRuntimeDomAttribute("data-mindustry-campaign-progress-sector-id", String.valueOf(sectorId));
+        setRuntimeDomAttribute("data-mindustry-campaign-progress-preset", preset);
+    }
 
-    @JSBody(params = {"sectorId", "preset", "frames", "updateId", "wave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','stable'); document.documentElement.setAttribute('data-mindustry-campaign-progress-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-progress-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-progress-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-campaign-progress-update-id',String(updateId)); document.documentElement.setAttribute('data-mindustry-campaign-progress-wave',String(wave));")
-    private static native void markProgressStable(int sectorId, String preset, int frames, long updateId, int wave);
+    private static void markProgressStable(int sectorId, String preset, int frames, long updateId, int wave){
+        setRuntimeDomAttribute("data-mindustry-campaign-progress-smoke", "stable");
+        setRuntimeDomAttribute("data-mindustry-campaign-progress-sector-id", String.valueOf(sectorId));
+        setRuntimeDomAttribute("data-mindustry-campaign-progress-preset", preset);
+        setRuntimeDomAttribute("data-mindustry-campaign-progress-frames", String.valueOf(frames));
+        setRuntimeDomAttribute("data-mindustry-campaign-progress-update-id", String.valueOf(updateId));
+        setRuntimeDomAttribute("data-mindustry-campaign-progress-wave", String.valueOf(wave));
+    }
 
-    @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-onset-objectives','ready'); document.documentElement.setAttribute('data-mindustry-erekir-onset-objective-count',String(count)); document.documentElement.setAttribute('data-mindustry-erekir-onset-open-map','true');")
-    private static native void markOnsetObjectivesReady(int count);
+    private static void markOnsetObjectivesReady(int count){
+        setRuntimeDomAttribute("data-mindustry-erekir-onset-objectives", "ready");
+        setRuntimeDomAttribute("data-mindustry-erekir-onset-objective-count", String.valueOf(count));
+        setRuntimeDomAttribute("data-mindustry-erekir-onset-open-map", "true");
+    }
 
-    @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-onset-capture-stage','objectives-then-attack'); document.documentElement.setAttribute('data-mindustry-erekir-onset-enemy-cores',String(enemyCores));")
-    private static native void markOnsetObjectiveCaptureStaged(int enemyCores);
+    private static void markOnsetObjectiveCaptureStaged(int enemyCores){
+        setRuntimeDomAttribute("data-mindustry-erekir-onset-capture-stage", "objectives-then-attack");
+        setRuntimeDomAttribute("data-mindustry-erekir-onset-enemy-cores", String.valueOf(enemyCores));
+    }
 
     private static void markAegisObjectivesReady(){
         setRuntimeDomAttribute("data-mindustry-erekir-aegis-objectives", "ready");
@@ -1767,25 +1785,33 @@ public final class BrowserCampaignRuntime{
         setRuntimeDomAttribute("data-mindustry-erekir-lake-objectives", "ready");
     }
 
-    @JSBody(params = {"preset", "enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-attack-objectives',preset); document.documentElement.setAttribute('data-mindustry-erekir-attack-enemy-cores',String(enemyCores));")
-    private static native void markErekirAttackObjectiveStage(String preset, int enemyCores);
+    private static void markErekirAttackObjectiveStage(String preset, int enemyCores){
+        setRuntimeDomAttribute("data-mindustry-erekir-attack-objectives", preset);
+        setRuntimeDomAttribute("data-mindustry-erekir-attack-enemy-cores", String.valueOf(enemyCores));
+    }
 
     private static void markIntersectWaveStage(){
         setRuntimeDomAttribute("data-mindustry-erekir-intersect-wave-stage", "9");
     }
 
-    @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-split-objectives','staged'); document.documentElement.setAttribute('data-mindustry-erekir-split-enemy-cores',String(enemyCores));")
-    private static native void markSplitObjectiveStage(int enemyCores);
+    private static void markSplitObjectiveStage(int enemyCores){
+        setRuntimeDomAttribute("data-mindustry-erekir-split-objectives", "staged");
+        setRuntimeDomAttribute("data-mindustry-erekir-split-enemy-cores", String.valueOf(enemyCores));
+    }
 
-    @JSBody(params = {"targets"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-objectives','staged'); document.documentElement.setAttribute('data-mindustry-erekir-basin-nuclear-targets',String(targets));")
-    private static native void markBasinObjectiveStage(int targets);
+    private static void markBasinObjectiveStage(int targets){
+        setRuntimeDomAttribute("data-mindustry-erekir-basin-objectives", "staged");
+        setRuntimeDomAttribute("data-mindustry-erekir-basin-nuclear-targets", String.valueOf(targets));
+    }
 
     private static void markBasinObjectiveFlagsReady(){
         setRuntimeDomAttribute("data-mindustry-erekir-basin-nuclear-flags", "ready");
     }
 
-    @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-attack-stage','ready'); document.documentElement.setAttribute('data-mindustry-erekir-basin-enemy-cores',String(enemyCores));")
-    private static native void markBasinAttackStage(int enemyCores);
+    private static void markBasinAttackStage(int enemyCores){
+        setRuntimeDomAttribute("data-mindustry-erekir-basin-attack-stage", "ready");
+        setRuntimeDomAttribute("data-mindustry-erekir-basin-enemy-cores", String.valueOf(enemyCores));
+    }
 
     private static void markMarshObjectivesStaged(){
         setRuntimeDomAttribute("data-mindustry-erekir-marsh-objectives", "staged");
@@ -1807,8 +1833,10 @@ public final class BrowserCampaignRuntime{
         setRuntimeDomAttribute("data-mindustry-erekir-stronghold-objectives", "staged");
     }
 
-    @JSBody(params = {"targets"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-stronghold-targets','destroyed'); document.documentElement.setAttribute('data-mindustry-erekir-stronghold-target-count',String(targets));")
-    private static native void markStrongholdTargetsDestroyed(int targets);
+    private static void markStrongholdTargetsDestroyed(int targets){
+        setRuntimeDomAttribute("data-mindustry-erekir-stronghold-targets", "destroyed");
+        setRuntimeDomAttribute("data-mindustry-erekir-stronghold-target-count", String.valueOf(targets));
+    }
 
     private static void markStrongholdObjectiveFlagsReady(){
         setRuntimeDomAttribute("data-mindustry-erekir-stronghold-objective-flags", "ready");
@@ -1839,14 +1867,22 @@ public final class BrowserCampaignRuntime{
         setRuntimeDomAttribute("data-mindustry-erekir-origin-objective-flags", "ready");
     }
 
-    @JSBody(params = {"preset", "enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-scenario-attack',preset); document.documentElement.setAttribute('data-mindustry-erekir-scenario-enemy-cores',String(enemyCores));")
-    private static native void markErekirScenarioAttackArmed(String preset, int enemyCores);
+    private static void markErekirScenarioAttackArmed(String preset, int enemyCores){
+        setRuntimeDomAttribute("data-mindustry-erekir-scenario-attack", preset);
+        setRuntimeDomAttribute("data-mindustry-erekir-scenario-enemy-cores", String.valueOf(enemyCores));
+    }
 
-    @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-intersect-attack-stage','ready'); document.documentElement.setAttribute('data-mindustry-erekir-intersect-enemy-cores',String(enemyCores));")
-    private static native void markIntersectAttackStage(int enemyCores);
+    private static void markIntersectAttackStage(int enemyCores){
+        setRuntimeDomAttribute("data-mindustry-erekir-intersect-attack-stage", "ready");
+        setRuntimeDomAttribute("data-mindustry-erekir-intersect-enemy-cores", String.valueOf(enemyCores));
+    }
 
-    @JSBody(params = {"preset", "wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
-    private static native void markCaptureStaged(String preset, int wave, int winWave);
+    private static void markCaptureStaged(String preset, int wave, int winWave){
+        setRuntimeDomAttribute("data-mindustry-campaign-capture", "staged");
+        setRuntimeDomAttribute("data-mindustry-campaign-capture-preset", preset);
+        setRuntimeDomAttribute("data-mindustry-campaign-capture-wave", String.valueOf(wave));
+        setRuntimeDomAttribute("data-mindustry-campaign-capture-win-wave", String.valueOf(winWave));
+    }
 
     private static void markCaptureComplete(String preset, int sectorId, int wave, long bytes){
         setRuntimeDomAttribute("data-mindustry-campaign-capture", "ready");
@@ -1895,14 +1931,20 @@ public final class BrowserCampaignRuntime{
     @JSBody(params = {"key", "value"}, script = "document.documentElement.setAttribute(key, value);")
     private static native void setRuntimeDomAttribute(String key, String value);
 
-    @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
-    private static native void markRequested(String name);
+    private static void markRequested(String name){
+        setRuntimeDomAttribute("data-mindustry-campaign-test", name);
+    }
 
-    @JSBody(params = {"action"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-production-action', action);")
-    private static native void markProductionAction(String action);
+    private static void markProductionAction(String action){
+        setRuntimeDomAttribute("data-mindustry-campaign-production-action", action);
+    }
 
-    @JSBody(params = {"wave", "tickMillis", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-back-autosave','ready'); document.documentElement.setAttribute('data-mindustry-campaign-back-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-back-tick-ms',String(tickMillis)); document.documentElement.setAttribute('data-mindustry-campaign-back-bytes',String(bytes));")
-    private static native void markBackAutoSaved(int wave, long tickMillis, long bytes);
+    private static void markBackAutoSaved(int wave, long tickMillis, long bytes){
+        setRuntimeDomAttribute("data-mindustry-campaign-back-autosave", "ready");
+        setRuntimeDomAttribute("data-mindustry-campaign-back-wave", String.valueOf(wave));
+        setRuntimeDomAttribute("data-mindustry-campaign-back-tick-ms", String.valueOf(tickMillis));
+        setRuntimeDomAttribute("data-mindustry-campaign-back-bytes", String.valueOf(bytes));
+    }
 
     private static void markReturnedToMenu(){
         setRuntimeDomAttribute("data-mindustry-campaign-return", "menu");
@@ -1913,27 +1955,62 @@ public final class BrowserCampaignRuntime{
         setRuntimeDomAttribute("data-mindustry-campaign-resume-smoke", "requested");
     }
 
-    @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-phase', phase);")
-    private static native void markPhase(String phase);
+    private static void markPhase(String phase){
+        setRuntimeDomAttribute("data-mindustry-campaign-phase", phase);
+    }
 
-    @JSBody(params = {"path"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-generator','ready'); document.documentElement.setAttribute('data-mindustry-campaign-map-path',path);")
-    private static native void markGeneratorReady(String path);
+    private static void markGeneratorReady(String path){
+        setRuntimeDomAttribute("data-mindustry-campaign-generator", "ready");
+        setRuntimeDomAttribute("data-mindustry-campaign-map-path", path);
+    }
 
-    @JSBody(params = {"sectorId", "planet", "preset", "width", "height", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-state','playing'); document.documentElement.setAttribute('data-mindustry-campaign-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-planet',planet); document.documentElement.setAttribute('data-mindustry-campaign-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-world',String(width)+'x'+String(height)); document.documentElement.setAttribute('data-mindustry-campaign-save','valid'); document.documentElement.setAttribute('data-mindustry-campaign-save-bytes',String(bytes));")
-    private static native void markStarted(int sectorId, String planet, String preset, int width, int height, long bytes);
+    private static void markStarted(int sectorId, String planet, String preset, int width, int height, long bytes){
+        setRuntimeDomAttribute("data-mindustry-campaign-state", "playing");
+        setRuntimeDomAttribute("data-mindustry-campaign-sector-id", String.valueOf(sectorId));
+        setRuntimeDomAttribute("data-mindustry-campaign-planet", planet);
+        setRuntimeDomAttribute("data-mindustry-campaign-preset", preset);
+        setRuntimeDomAttribute("data-mindustry-campaign-world", String.valueOf(width) + "x" + height);
+        setRuntimeDomAttribute("data-mindustry-campaign-save", "valid");
+        setRuntimeDomAttribute("data-mindustry-campaign-save-bytes", String.valueOf(bytes));
+    }
 
-    @JSBody(params = {"frames", "updateId", "wave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-campaign-update-id',String(updateId)); document.documentElement.setAttribute('data-mindustry-campaign-wave',String(wave));")
-    private static native void markFrame(int frames, long updateId, int wave);
+    private static void markFrame(int frames, long updateId, int wave){
+        setRuntimeDomAttribute("data-mindustry-campaign-frames", String.valueOf(frames));
+        setRuntimeDomAttribute("data-mindustry-campaign-update-id", String.valueOf(updateId));
+        setRuntimeDomAttribute("data-mindustry-campaign-wave", String.valueOf(wave));
+    }
 
-    @JSBody(params = {"wave", "tickMillis", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-checkpoint','ready'); document.documentElement.setAttribute('data-mindustry-campaign-checkpoint-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-checkpoint-tick-ms',String(tickMillis)); document.documentElement.setAttribute('data-mindustry-campaign-checkpoint-bytes',String(bytes)); document.documentElement.setAttribute('data-mindustry-campaign-save-flush','pending');")
-    private static native void markCheckpoint(int wave, long tickMillis, long bytes);
+    private static void markCheckpoint(int wave, long tickMillis, long bytes){
+        setRuntimeDomAttribute("data-mindustry-campaign-checkpoint", "ready");
+        setRuntimeDomAttribute("data-mindustry-campaign-checkpoint-wave", String.valueOf(wave));
+        setRuntimeDomAttribute("data-mindustry-campaign-checkpoint-tick-ms", String.valueOf(tickMillis));
+        setRuntimeDomAttribute("data-mindustry-campaign-checkpoint-bytes", String.valueOf(bytes));
+        setRuntimeDomAttribute("data-mindustry-campaign-save-flush", "pending");
+    }
 
     @JSBody(script = "globalThis.__mindustryStorage.flush().then(function(){document.documentElement.setAttribute('data-mindustry-campaign-save-flush','ready');}).catch(function(e){document.documentElement.setAttribute('data-mindustry-campaign-save-flush','error');});")
     private static native void flushCampaignStorage();
 
-    @JSBody(params = {"sectorId", "planet", "preset", "width", "height", "bytes", "wave", "tickMillis"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-resume','ready'); document.documentElement.setAttribute('data-mindustry-campaign-resume-source','indexed-sector-save'); document.documentElement.setAttribute('data-mindustry-campaign-resume-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-resume-tick-ms',String(tickMillis)); document.documentElement.setAttribute('data-mindustry-campaign-resume-bytes',String(bytes)); document.documentElement.setAttribute('data-mindustry-campaign-state','playing'); document.documentElement.setAttribute('data-mindustry-campaign-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-planet',planet); document.documentElement.setAttribute('data-mindustry-campaign-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-world',String(width)+'x'+String(height)); document.documentElement.setAttribute('data-mindustry-campaign-save','valid'); document.documentElement.setAttribute('data-mindustry-campaign-save-bytes',String(bytes));")
-    private static native void markResumed(int sectorId, String planet, String preset, int width, int height, long bytes, int wave, long tickMillis);
+    private static void markResumed(int sectorId, String planet, String preset, int width, int height, long bytes, int wave, long tickMillis){
+        setRuntimeDomAttribute("data-mindustry-campaign-resume", "ready");
+        setRuntimeDomAttribute("data-mindustry-campaign-resume-source", "indexed-sector-save");
+        setRuntimeDomAttribute("data-mindustry-campaign-resume-wave", String.valueOf(wave));
+        setRuntimeDomAttribute("data-mindustry-campaign-resume-tick-ms", String.valueOf(tickMillis));
+        setRuntimeDomAttribute("data-mindustry-campaign-resume-bytes", String.valueOf(bytes));
+        setRuntimeDomAttribute("data-mindustry-campaign-state", "playing");
+        setRuntimeDomAttribute("data-mindustry-campaign-sector-id", String.valueOf(sectorId));
+        setRuntimeDomAttribute("data-mindustry-campaign-planet", planet);
+        setRuntimeDomAttribute("data-mindustry-campaign-preset", preset);
+        setRuntimeDomAttribute("data-mindustry-campaign-world", String.valueOf(width) + "x" + height);
+        setRuntimeDomAttribute("data-mindustry-campaign-save", "valid");
+        setRuntimeDomAttribute("data-mindustry-campaign-save-bytes", String.valueOf(bytes));
+    }
 
-    @JSBody(params = {"frames", "wave", "attempts", "saveValid"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-core','ready'); document.documentElement.setAttribute('data-mindustry-campaign-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-campaign-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-attempts',String(attempts)); document.documentElement.setAttribute('data-mindustry-campaign-save',saveValid ? 'valid' : 'invalid');")
-    private static native void markReady(int frames, int wave, int attempts, boolean saveValid);
+    private static void markReady(int frames, int wave, int attempts, boolean saveValid){
+        setRuntimeDomAttribute("data-mindustry-campaign-core", "ready");
+        setRuntimeDomAttribute("data-mindustry-campaign-frames", String.valueOf(frames));
+        setRuntimeDomAttribute("data-mindustry-campaign-wave", String.valueOf(wave));
+        setRuntimeDomAttribute("data-mindustry-campaign-attempts", String.valueOf(attempts));
+        setRuntimeDomAttribute("data-mindustry-campaign-save", saveValid ? "valid" : "invalid");
+    }
 }
