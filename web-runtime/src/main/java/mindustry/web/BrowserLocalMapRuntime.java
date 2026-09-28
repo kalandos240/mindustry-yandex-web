@@ -562,7 +562,8 @@ public final class BrowserLocalMapRuntime{
         // Preserve the selected built-in map's stock waves/waveTimer values.
         rules.fog = false;
         rules.staticFog = false;
-        rules.canGameOver = false;
+        // Preserve stock survival canGameOver; the lean Web Logic path resolves
+        // default-team core loss locally without desktop restart/network transport.
         rules.attackMode = false;
         rules.pvp = false;
         rules.weather.clear();
