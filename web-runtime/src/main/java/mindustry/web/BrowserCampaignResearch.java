@@ -107,6 +107,42 @@ public final class BrowserCampaignResearch{
         return SectorPresets.impact0078 != null && SectorPresets.impact0078.unlocked();
     }
 
+    public static boolean impact0078Captured(){
+        return captured(SectorPresets.impact0078);
+    }
+
+    public static boolean stainedMountainsReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.stainedMountains != null && SectorPresets.stainedMountains.unlocked();
+    }
+
+    public static boolean stainedMountainsCaptured(){
+        return captured(SectorPresets.stainedMountains);
+    }
+
+    public static boolean infestedCanyonsReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.infestedCanyons != null && SectorPresets.infestedCanyons.unlocked();
+    }
+
+    public static boolean infestedCanyonsCaptured(){
+        return captured(SectorPresets.infestedCanyons);
+    }
+
+    public static boolean nuclearComplexReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.nuclearComplex != null && SectorPresets.nuclearComplex.unlocked();
+    }
+
+    public static boolean nuclearComplexCaptured(){
+        return captured(SectorPresets.nuclearComplex);
+    }
+
+    public static boolean desolateRiftReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.desolateRift != null && SectorPresets.desolateRift.unlocked();
+    }
+
     /**
      * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
      * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
@@ -246,6 +282,71 @@ public final class BrowserCampaignResearch{
         if(next == null){
             if(waitingForImpactThorium()){
                 throw new IllegalStateException("Impact 0078 progression is waiting for thorium production");
+            }
+            return;
+        }
+        spend(next);
+    }
+
+    public static UnlockableContent nextInfestedResearch(){
+        if(!Blocks.navalFactory.unlocked()) return Blocks.navalFactory;
+        if(!UnitTypes.risso.unlocked()) return UnitTypes.risso;
+        if(!UnitTypes.minke.unlocked()) return UnitTypes.minke;
+        return null;
+    }
+
+    public static void spendNextInfestedResearch(){
+        UnlockableContent next = nextInfestedResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextNuclearResearch(){
+        if(!Blocks.thermalGenerator.unlocked()) return Blocks.thermalGenerator;
+        if(!Blocks.laserDrill.unlocked()) return Blocks.laserDrill;
+        if(!Blocks.plastaniumCompressor.unlocked()) return Blocks.plastaniumCompressor;
+        if(!Items.plastanium.unlocked()) return null;
+        if(!Blocks.salvo.unlocked()) return Blocks.salvo;
+        if(!Blocks.swarmer.unlocked()) return Blocks.swarmer;
+        return null;
+    }
+
+    public static boolean waitingForNuclearPlastanium(){
+        return Blocks.plastaniumCompressor.unlocked() && !Items.plastanium.unlocked();
+    }
+
+    public static void spendNextNuclearResearch(){
+        UnlockableContent next = nextNuclearResearch();
+        if(next == null){
+            if(waitingForNuclearPlastanium()){
+                throw new IllegalStateException("Nuclear Complex progression is waiting for plastanium production");
+            }
+            return;
+        }
+        spend(next);
+    }
+
+    public static UnlockableContent nextDesolateResearch(){
+        if(!Blocks.coreNucleus.unlocked()) return Blocks.coreNucleus;
+        if(!Blocks.pulverizer.unlocked()) return Blocks.pulverizer;
+        if(!Blocks.incinerator.unlocked()) return Blocks.incinerator;
+        if(!Blocks.melter.unlocked()) return Blocks.melter;
+        if(!Blocks.cryofluidMixer.unlocked()) return Blocks.cryofluidMixer;
+        if(!Liquids.cryofluid.unlocked()) return null;
+        if(!Blocks.thermalGenerator.unlocked()) return Blocks.thermalGenerator;
+        if(!Blocks.differentialGenerator.unlocked()) return Blocks.differentialGenerator;
+        if(!Blocks.thoriumReactor.unlocked()) return Blocks.thoriumReactor;
+        return null;
+    }
+
+    public static boolean waitingForDesolateCryofluid(){
+        return Blocks.cryofluidMixer.unlocked() && !Liquids.cryofluid.unlocked();
+    }
+
+    public static void spendNextDesolateResearch(){
+        UnlockableContent next = nextDesolateResearch();
+        if(next == null){
+            if(waitingForDesolateCryofluid()){
+                throw new IllegalStateException("Desolate Rift progression is waiting for cryofluid production");
             }
             return;
         }
@@ -515,6 +616,99 @@ public final class BrowserCampaignResearch{
         markImpactProgressSmoke();
     }
 
+    public static void verifyStainedReadyAfterImpact(Sector source){
+        if(source == null || source != SectorPresets.impact0078.sector || !captured(SectorPresets.impact0078)){
+            throw new IllegalStateException("Stained Mountains smoke requires captured Impact 0078");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!stainedMountainsReady()){
+            throw new IllegalStateException("Stained Mountains did not auto-unlock from stock prerequisites");
+        }
+        markStainedReadySmoke();
+    }
+
+    public static void runInfestedProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.stainedMountains.sector
+        || !captured(SectorPresets.stainedMountains)){
+            throw new IllegalStateException("Infested Canyons progression requires captured Stained Mountains");
+        }
+        if(!fungalPassCaptured() || !frontierCaptured()){
+            throw new IllegalStateException("Infested Canyons also requires captured Fungal Pass and Frontier");
+        }
+
+        stageAndSpend(source, Blocks.navalFactory);
+        stageAndSpend(source, UnitTypes.risso);
+        stageAndSpend(source, UnitTypes.minke);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!infestedCanyonsReady()){
+            throw new IllegalStateException("Infested Canyons did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markInfestedProgressSmoke();
+    }
+
+    public static void runNuclearProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.infestedCanyons.sector
+        || !captured(SectorPresets.infestedCanyons)){
+            throw new IllegalStateException("Nuclear Complex progression requires captured Infested Canyons");
+        }
+
+        stageAndSpend(source, Blocks.thermalGenerator);
+        stageAndSpend(source, Blocks.laserDrill);
+        stageAndSpend(source, Blocks.plastaniumCompressor);
+
+        if(!Items.plastanium.unlocked()){
+            ItemSeq produced = new ItemSeq();
+            produced.add(Items.plastanium, 1);
+            source.addItems(produced);
+            Items.plastanium.unlock();
+        }
+
+        stageAndSpend(source, Blocks.salvo);
+        stageAndSpend(source, Blocks.swarmer);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!nuclearComplexReady()){
+            throw new IllegalStateException("Nuclear Complex did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markNuclearProgressSmoke();
+    }
+
+    public static void runDesolateProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.nuclearComplex.sector
+        || !captured(SectorPresets.nuclearComplex)){
+            throw new IllegalStateException("Desolate Rift progression requires captured Nuclear Complex");
+        }
+        if(!impact0078Captured()){
+            throw new IllegalStateException("Desolate Rift also requires captured Impact 0078");
+        }
+
+        stageAndSpend(source, Blocks.coreNucleus);
+        stageAndSpend(source, Blocks.pulverizer);
+        stageAndSpend(source, Blocks.incinerator);
+        stageAndSpend(source, Blocks.melter);
+        stageAndSpend(source, Blocks.cryofluidMixer);
+
+        if(!Liquids.cryofluid.unlocked()){
+            // CI models one produced cryofluid batch; production UI waits for the
+            // real content unlock instead of silently bypassing Research(cryofluid).
+            Liquids.cryofluid.unlock();
+        }
+
+        stageAndSpend(source, Blocks.thermalGenerator);
+        stageAndSpend(source, Blocks.differentialGenerator);
+        stageAndSpend(source, Blocks.thoriumReactor);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!desolateRiftReady()){
+            throw new IllegalStateException("Desolate Rift did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markDesolateProgressSmoke();
+    }
+
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
         stageMissing(source, content);
@@ -666,6 +860,18 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-laser-drill-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-thorium-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-lancer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-salvo-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-core-foundation-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-ready','true');")
     private static native void markImpactProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-ready','true');")
+    private static native void markStainedReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-naval-factory-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-risso-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-minke-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-ready','true');")
+    private static native void markInfestedProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-thermal-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-plastanium-compressor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-plastanium-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-swarmer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-ready','true');")
+    private static native void markNuclearProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-core-nucleus-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-pulverizer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-incinerator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-melter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cryofluid-mixer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cryofluid-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-differential-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-thorium-reactor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-ready','true');")
+    private static native void markDesolateProgressSmoke();
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady", "windsweptReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
