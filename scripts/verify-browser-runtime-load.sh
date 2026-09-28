@@ -61,6 +61,10 @@ run_load(){
     --require 'data-mindustry-perf-smoke="ready"' \
     --require 'data-mindustry-perf-units="64"' \
     --require 'data-mindustry-perf-target-frames="120"' \
+    --require 'data-mindustry-resize-policy="event-driven"' \
+    --require 'data-mindustry-frame-resize-policy="event-driven-64-frame-fallback"' \
+    --require 'data-mindustry-pause-policy="event-driven-64-frame-fallback"' \
+    --require 'data-mindustry-input-coordinates="offset-cached"' \
     --require 'data-mindustry-canvas-viewport-match="true"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
