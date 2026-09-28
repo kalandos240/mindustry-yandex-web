@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.files.*;
+import arc.graphics.g2d.*;
 import arc.struct.*;
 import mindustry.content.*;
 import mindustry.game.*;
@@ -261,6 +262,10 @@ public final class BrowserLocalMapRuntime{
 
         perfUnits = ground + air;
         perfEffects = 0;
+        SpriteBatch.webSortCalls = 0;
+        SpriteBatch.webMaxSortRequests = 0;
+        SpriteBatch.webMaxSortRuns = 0;
+        SpriteBatch.webSortedFastPaths = 0;
         if(!Fx.drillSteam.shouldCreate()){
             throw new IllegalStateException("Browser particle perf smoke requires live renderer effects");
         }
@@ -389,8 +394,13 @@ public final class BrowserLocalMapRuntime{
             if(perfEffects != perfTargetEffects){
                 throw new IllegalStateException("Browser perf effect workload count mismatch: " + perfEffects);
             }
+            if(SpriteBatch.webSortCalls <= 0 || SpriteBatch.webSortedFastPaths <= 0){
+                throw new IllegalStateException("Browser perf smoke did not exercise optimized SpriteBatch sorting");
+            }
             perfReady = true;
-            markPerfReady(frames, perfUnits, perfEffects);
+            markPerfReady(frames, perfUnits, perfEffects,
+                SpriteBatch.webSortCalls, SpriteBatch.webMaxSortRequests,
+                SpriteBatch.webMaxSortRuns, SpriteBatch.webSortedFastPaths);
         }
     }
 
@@ -781,8 +791,8 @@ public final class BrowserLocalMapRuntime{
     @JSBody(params = {"units", "targetFrames", "targetEffects"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames)); root.setAttribute('data-mindustry-perf-effects-target',String(targetEffects)); root.setAttribute('data-mindustry-perf-effect-kind','drillSteam');")
     private static native void markPerfStarted(int units, int targetFrames, int targetEffects);
 
-    @JSBody(params = {"frames", "units", "effects"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-effects',String(effects)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
-    private static native void markPerfReady(int frames, int units, int effects);
+    @JSBody(params = {"frames", "units", "effects", "sortCalls", "maxRequests", "maxRuns", "fastPaths"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-effects',String(effects)); root.setAttribute('data-mindustry-perf-sort-calls',String(sortCalls)); root.setAttribute('data-mindustry-perf-sort-max-requests',String(maxRequests)); root.setAttribute('data-mindustry-perf-sort-max-runs',String(maxRuns)); root.setAttribute('data-mindustry-perf-sort-fast-paths',String(fastPaths)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
+    private static native void markPerfReady(int frames, int units, int effects, int sortCalls, int maxRequests, int maxRuns, int fastPaths);
 
     @JSBody(params = {"slug"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-state', 'menu'); document.documentElement.setAttribute('data-mindustry-local-map-returned-from', slug); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'stopped');")
     private static native void markReturned(String slug);
