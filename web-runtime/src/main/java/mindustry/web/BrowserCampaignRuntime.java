@@ -57,6 +57,18 @@ public final class BrowserCampaignRuntime{
         return hasSectorSave(SectorPresets.intersect);
     }
 
+    public static boolean hasAtlasSave(){
+        return hasSectorSave(SectorPresets.atlas);
+    }
+
+    public static boolean hasSplitSave(){
+        return hasSectorSave(SectorPresets.split);
+    }
+
+    public static boolean hasBasinSave(){
+        return hasSectorSave(SectorPresets.basin);
+    }
+
     public static boolean hasFrozenForestSave(){
         return hasSectorSave(SectorPresets.frozenForest);
     }
@@ -733,6 +745,51 @@ public final class BrowserCampaignRuntime{
         }
     }
 
+    public static void playAtlas(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.atlas;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Atlas is still locked");
+        if(hasAtlasSave()){
+            markProductionAction("continue-atlas");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.intersect == null ? null : SectorPresets.intersect.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Atlas launch requires captured Intersect");
+            markProductionAction("play-atlas");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playSplit(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.split;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Split is still locked");
+        if(hasSplitSave()){
+            markProductionAction("continue-split");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.atlas == null ? null : SectorPresets.atlas.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Split launch requires captured Atlas");
+            markProductionAction("play-split");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playBasin(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.basin;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Basin is still locked");
+        if(hasBasinSave()){
+            markProductionAction("continue-basin");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.atlas == null ? null : SectorPresets.atlas.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Basin launch requires captured Atlas");
+            markProductionAction("play-basin");
+            startPreset(preset, origin);
+        }
+    }
+
     private static void startPreset(SectorPreset preset, Sector origin){
         if(active) throw new IllegalStateException("A browser campaign sector is already active");
         saveSmokeArmed = false;
@@ -950,6 +1007,69 @@ public final class BrowserCampaignRuntime{
         markReturnedToMenu();
     }
 
+    private static void stageSplitObjectivesForCapture(){
+        if(state.rules.objectives == null || state.rules.objectives.all.size != 3){
+            throw new IllegalStateException("Pinned Split objective graph changed");
+        }
+
+        var tungsten = state.rules.objectives.get(0);
+        var drivers = state.rules.objectives.get(1);
+        var destroyCore = state.rules.objectives.get(2);
+        if(!(tungsten instanceof MapObjectives.CoreItemObjective)
+        || !(drivers instanceof MapObjectives.BuildCountObjective)
+        || !(destroyCore instanceof MapObjectives.DestroyCoreObjective)){
+            throw new IllegalStateException("Pinned Split objective types changed");
+        }
+
+        state.stats.coreItemCount.put(Items.tungsten, 100);
+        state.stats.placedBlockCount.put(Blocks.payloadMassDriver, 2);
+
+        int enemyCores = state.rules.waveTeam.cores().size;
+        if(enemyCores <= 0){
+            throw new IllegalStateException("Split objective smoke expected enemy cores");
+        }
+        var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
+        enemyCoresSnapshot.each(core -> core.kill());
+
+        captureSmokeStaged = true;
+        markCaptureStaged(current.preset.name, state.wave, 0);
+        markSplitObjectiveStage(enemyCores);
+    }
+
+    private static void stageBasinObjectivesForCapture(){
+        if(state.rules.objectives == null || state.rules.objectives.all.size != 2){
+            throw new IllegalStateException("Pinned Basin objective graph changed");
+        }
+
+        var destroy = state.rules.objectives.get(0);
+        var timer = state.rules.objectives.get(1);
+        if(!(destroy instanceof MapObjectives.DestroyBlocksObjective blocks)
+        || !(timer instanceof MapObjectives.TimerObjective)){
+            throw new IllegalStateException("Pinned Basin objective types changed");
+        }
+        if(blocks.positions.length != 2
+        || blocks.positions[0].x != 290 || blocks.positions[0].y != 501
+        || blocks.positions[1].x != 158 || blocks.positions[1].y != 496
+        || blocks.team != state.rules.waveTeam || blocks.block != Blocks.coreBastion){
+            throw new IllegalStateException("Pinned Basin nuclear target coordinates changed");
+        }
+
+        // Preserve the real DestroyBlocks -> Timer dependency. The timer is accelerated
+        // only for CI, then MapObjectives.update() itself applies nukeannounce/nuke1.
+        state.rules.objectiveTimerMultiplier = 0f;
+        for(var pos : blocks.positions){
+            var build = world.build(pos.x, pos.y);
+            if(build == null || build.team != state.rules.waveTeam || build.block != Blocks.coreBastion){
+                throw new IllegalStateException("Pinned Basin Core Bastion target is missing at " + pos.x + "," + pos.y);
+            }
+            build.kill();
+        }
+
+        captureSmokeStaged = true;
+        markCaptureStaged(current.preset.name, state.wave, 0);
+        markBasinObjectiveStage(blocks.positions.length);
+    }
+
     private static void stageAttackCoresForCapture(String preset){
         int enemyCores = state.rules.waveTeam.cores().size;
         if(enemyCores <= 0){
@@ -1153,6 +1273,8 @@ public final class BrowserCampaignRuntime{
         boolean aegisObjectiveCapture = current.preset == SectorPresets.aegis;
         boolean lakeObjectiveCapture = current.preset == SectorPresets.lake;
         boolean intersectHybridCapture = current.preset == SectorPresets.intersect;
+        boolean splitObjectiveCapture = current.preset == SectorPresets.split;
+        boolean basinObjectiveCapture = current.preset == SectorPresets.basin;
 
         boolean progressionCapture = current.preset == SectorPresets.groundZero
             || current.preset == SectorPresets.frozenForest
@@ -1182,7 +1304,8 @@ public final class BrowserCampaignRuntime{
             || current.preset == SectorPresets.atolls
             || current.preset == SectorPresets.testingGrounds
             || current.preset == SectorPresets.sunkenPier
-            || current.preset == SectorPresets.weatheredChannels;
+            || current.preset == SectorPresets.weatheredChannels
+            || current.preset == SectorPresets.atlas;
         if(captureSmokeRequested() && onsetObjectiveCapture && !onsetObjectivesStaged && frames >= 3){
             stageOnsetObjectivesForCapture();
             onsetObjectivesStaged = true;
@@ -1215,6 +1338,10 @@ public final class BrowserCampaignRuntime{
             captureSmokeStaged = true;
             markCaptureStaged(current.preset.name, state.wave, state.rules.winWave);
             markIntersectWaveStage();
+        }else if(captureSmokeRequested() && splitObjectiveCapture && !captureSmokeStaged && frames >= 3){
+            stageSplitObjectivesForCapture();
+        }else if(captureSmokeRequested() && basinObjectiveCapture && !captureSmokeStaged && frames >= 3){
+            stageBasinObjectivesForCapture();
         }else if(captureSmokeRequested() && progressionCapture && !captureSmokeStaged && frames >= 3){
             if(state.rules.attackMode){
                 int enemyCores = state.rules.waveTeam.cores().size;
@@ -1322,6 +1449,14 @@ public final class BrowserCampaignRuntime{
                 if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
                     throw new IllegalStateException("Captured Ground Zero save metadata lost the active sector");
                 }
+                if(current.preset == SectorPresets.basin){
+                    if(!state.rules.objectiveFlags.contains("nukeannounce")
+                    || !state.rules.objectiveFlags.contains("nuke1")){
+                        throw new IllegalStateException("Basin capture occurred before stock nuclear objective flags completed");
+                    }
+                    markBasinObjectiveFlagsReady();
+                }
+
                 captureSmokeComplete = true;
                 flushCampaignStorage();
                 markCaptureComplete(current.preset == null ? "unknown" : current.preset.name,
@@ -1347,6 +1482,30 @@ public final class BrowserCampaignRuntime{
                     BrowserCampaignResearch.runIntersectProgressSmoke(current);
                     returnToMenu();
                     playIntersect();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.intersect){
+                    BrowserCampaignResearch.runAtlasProgressSmoke(current);
+                    returnToMenu();
+                    playAtlas();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.atlas){
+                    BrowserCampaignResearch.runSplitProgressSmoke(current);
+                    returnToMenu();
+                    playSplit();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.split){
+                    BrowserCampaignResearch.verifyBasinReadyAfterAtlas(current);
+                    returnToMenu();
+                    playBasin();
                     markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
                     return;
                 }
@@ -1657,13 +1816,22 @@ public final class BrowserCampaignRuntime{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-intersect-wave-stage','9');")
     private static native void markIntersectWaveStage();
 
+    @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-split-objectives','staged'); document.documentElement.setAttribute('data-mindustry-erekir-split-enemy-cores',String(enemyCores));")
+    private static native void markSplitObjectiveStage(int enemyCores);
+
+    @JSBody(params = {"targets"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-objectives','staged'); document.documentElement.setAttribute('data-mindustry-erekir-basin-nuclear-targets',String(targets));")
+    private static native void markBasinObjectiveStage(int targets);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-nuclear-flags','ready');")
+    private static native void markBasinObjectiveFlagsReady();
+
     @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-intersect-attack-stage','ready'); document.documentElement.setAttribute('data-mindustry-erekir-intersect-enemy-cores',String(enemyCores));")
     private static native void markIntersectAttackStage(int enemyCores);
 
     @JSBody(params = {"preset", "wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
     private static native void markCaptureStaged(String preset, int wave, int winWave);
 
-    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));} if(preset === 'ruinousShores'){document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-capture-wave',String(wave));} if(preset === 'windsweptIslands'){document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-capture-wave',String(wave));} if(preset === 'biomassFacility'){document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-capture-wave',String(wave));} if(preset === 'fungalPass'){document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured','true');} if(preset === 'frontier'){document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured','true');} if(preset === 'saltFlats'){document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-captured','true');} if(preset === 'tarFields'){document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-capture-wave',String(wave));} if(preset === 'impact0078'){document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-capture-wave',String(wave));} if(preset === 'stainedMountains'){document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-capture-wave',String(wave));} if(preset === 'infestedCanyons'){document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-captured','true');} if(preset === 'nuclearComplex'){document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-capture-wave',String(wave));} if(preset === 'desolateRift'){document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-capture-wave',String(wave));} if(preset === 'facility32m'){document.documentElement.setAttribute('data-mindustry-campaign-facility32m-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-facility32m-capture-wave',String(wave));} if(preset === 'perilousHarbor'){document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-captured','true');} if(preset === 'extractionOutpost'){document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-captured','true');} if(preset === 'coastline'){document.documentElement.setAttribute('data-mindustry-campaign-coastline-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-capture-wave',String(wave));} if(preset === 'navalFortress'){document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-captured','true');} if(preset === 'overgrowth'){document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-captured','true');} if(preset === 'mycelialBastion'){document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-captured','true');} if(preset === 'littoralShipyard'){document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-captured','true');} if(preset === 'planetaryTerminal'){document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-captured','true');} if(preset === 'taintedWoods'){document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-capture-wave',String(wave));} if(preset === 'atolls'){document.documentElement.setAttribute('data-mindustry-campaign-atolls-captured','true');} if(preset === 'testingGrounds'){document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-capture-wave',String(wave));} if(preset === 'sunkenPier'){document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-capture-wave',String(wave));} if(preset === 'weatheredChannels'){document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-capture-wave',String(wave));} if(preset === 'onset'){document.documentElement.setAttribute('data-mindustry-erekir-onset-captured','true');} if(preset === 'aegis'){document.documentElement.setAttribute('data-mindustry-erekir-aegis-captured','true');} if(preset === 'lake'){document.documentElement.setAttribute('data-mindustry-erekir-lake-captured','true');} if(preset === 'intersect'){document.documentElement.setAttribute('data-mindustry-erekir-intersect-captured','true'); document.documentElement.setAttribute('data-mindustry-erekir-intersect-capture-wave',String(wave));}")
+    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));} if(preset === 'ruinousShores'){document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-capture-wave',String(wave));} if(preset === 'windsweptIslands'){document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-capture-wave',String(wave));} if(preset === 'biomassFacility'){document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-capture-wave',String(wave));} if(preset === 'fungalPass'){document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured','true');} if(preset === 'frontier'){document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured','true');} if(preset === 'saltFlats'){document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-captured','true');} if(preset === 'tarFields'){document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-capture-wave',String(wave));} if(preset === 'impact0078'){document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-capture-wave',String(wave));} if(preset === 'stainedMountains'){document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-capture-wave',String(wave));} if(preset === 'infestedCanyons'){document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-captured','true');} if(preset === 'nuclearComplex'){document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-capture-wave',String(wave));} if(preset === 'desolateRift'){document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-capture-wave',String(wave));} if(preset === 'facility32m'){document.documentElement.setAttribute('data-mindustry-campaign-facility32m-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-facility32m-capture-wave',String(wave));} if(preset === 'perilousHarbor'){document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-captured','true');} if(preset === 'extractionOutpost'){document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-captured','true');} if(preset === 'coastline'){document.documentElement.setAttribute('data-mindustry-campaign-coastline-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-capture-wave',String(wave));} if(preset === 'navalFortress'){document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-captured','true');} if(preset === 'overgrowth'){document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-captured','true');} if(preset === 'mycelialBastion'){document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-captured','true');} if(preset === 'littoralShipyard'){document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-captured','true');} if(preset === 'planetaryTerminal'){document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-captured','true');} if(preset === 'taintedWoods'){document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-capture-wave',String(wave));} if(preset === 'atolls'){document.documentElement.setAttribute('data-mindustry-campaign-atolls-captured','true');} if(preset === 'testingGrounds'){document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-capture-wave',String(wave));} if(preset === 'sunkenPier'){document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-capture-wave',String(wave));} if(preset === 'weatheredChannels'){document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-capture-wave',String(wave));} if(preset === 'onset'){document.documentElement.setAttribute('data-mindustry-erekir-onset-captured','true');} if(preset === 'aegis'){document.documentElement.setAttribute('data-mindustry-erekir-aegis-captured','true');} if(preset === 'lake'){document.documentElement.setAttribute('data-mindustry-erekir-lake-captured','true');} if(preset === 'intersect'){document.documentElement.setAttribute('data-mindustry-erekir-intersect-captured','true'); document.documentElement.setAttribute('data-mindustry-erekir-intersect-capture-wave',String(wave));} if(preset === 'atlas'){document.documentElement.setAttribute('data-mindustry-erekir-atlas-captured','true');} if(preset === 'split'){document.documentElement.setAttribute('data-mindustry-erekir-split-captured','true');} if(preset === 'basin'){document.documentElement.setAttribute('data-mindustry-erekir-basin-captured','true');}")
     private static native void markCaptureComplete(String preset, int sectorId, int wave, long bytes);
 
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
