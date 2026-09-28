@@ -38,3 +38,5 @@ This repository is a **port overlay**, not a vendored copy of all upstream sourc
 ## Licensing
 
 Mindustry is GPL-3.0 licensed. Changes derived from Mindustry must remain compatible with GPL-3.0 obligations. Arc is Apache-2.0 licensed. Keep notices and corresponding source available for distributed Web builds.
+
+<!-- CI validation branch: runtime-identical to main HEAD 4268e9ec; documentation-only trigger. -->
