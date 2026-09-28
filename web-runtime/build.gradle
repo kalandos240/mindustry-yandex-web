@@ -97,6 +97,10 @@ tasks.register("stageWeb", Copy) {
         include "maps/erekir/atlas.msav"
         include "maps/erekir/split.msav"
         include "maps/erekir/basin.msav"
+        include "maps/erekir/marsh.msav"
+        include "maps/erekir/peaks.msav"
+        include "maps/erekir/ravine.msav"
+        include "maps/erekir/caldera-erekir.msav"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
