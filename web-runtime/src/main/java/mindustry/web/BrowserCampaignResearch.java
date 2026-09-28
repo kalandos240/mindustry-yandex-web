@@ -188,6 +188,46 @@ public final class BrowserCampaignResearch{
         return SectorPresets.navalFortress != null && SectorPresets.navalFortress.unlocked();
     }
 
+    public static boolean navalFortressCaptured(){
+        return captured(SectorPresets.navalFortress);
+    }
+
+    public static boolean overgrowthReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.overgrowth != null && SectorPresets.overgrowth.unlocked();
+    }
+
+    public static boolean overgrowthCaptured(){
+        return captured(SectorPresets.overgrowth);
+    }
+
+    public static boolean mycelialBastionReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.mycelialBastion != null && SectorPresets.mycelialBastion.unlocked();
+    }
+
+    public static boolean mycelialBastionCaptured(){
+        return captured(SectorPresets.mycelialBastion);
+    }
+
+    public static boolean littoralShipyardReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.littoralShipyard != null && SectorPresets.littoralShipyard.unlocked();
+    }
+
+    public static boolean littoralShipyardCaptured(){
+        return captured(SectorPresets.littoralShipyard);
+    }
+
+    public static boolean planetaryTerminalReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.planetaryTerminal != null && SectorPresets.planetaryTerminal.unlocked();
+    }
+
+    public static boolean planetaryTerminalCaptured(){
+        return captured(SectorPresets.planetaryTerminal);
+    }
+
     /**
      * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
      * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
@@ -444,6 +484,45 @@ public final class BrowserCampaignResearch{
 
     public static void spendNextNavalFortressResearch(){
         UnlockableContent next = nextNavalFortressResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextMycelialResearch(){
+        if(!UnitTypes.crawler.unlocked()) return UnitTypes.crawler;
+        if(!UnitTypes.atrax.unlocked()) return UnitTypes.atrax;
+        if(!UnitTypes.spiroct.unlocked()) return UnitTypes.spiroct;
+        if(!UnitTypes.arkyid.unlocked()) return UnitTypes.arkyid;
+        if(!Blocks.exponentialReconstructor.unlocked()) return Blocks.exponentialReconstructor;
+        return null;
+    }
+
+    public static void spendNextMycelialResearch(){
+        UnlockableContent next = nextMycelialResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextLittoralResearch(){
+        if(!UnitTypes.sei.unlocked()) return UnitTypes.sei;
+        if(!Blocks.spectre.unlocked()) return Blocks.spectre;
+        return null;
+    }
+
+    public static void spendNextLittoralResearch(){
+        UnlockableContent next = nextLittoralResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextTerminalResearch(){
+        if(!Blocks.advancedLaunchPad.unlocked()) return Blocks.advancedLaunchPad;
+        if(!Blocks.massDriver.unlocked()) return Blocks.massDriver;
+        if(!Blocks.impactReactor.unlocked()) return Blocks.impactReactor;
+        if(!Blocks.tetrativeReconstructor.unlocked()) return Blocks.tetrativeReconstructor;
+        if(!UnitTypes.omura.unlocked()) return UnitTypes.omura;
+        return null;
+    }
+
+    public static void spendNextTerminalResearch(){
+        UnlockableContent next = nextTerminalResearch();
         if(next != null) spend(next);
     }
 
@@ -883,6 +962,78 @@ public final class BrowserCampaignResearch{
         markNavalFortressProgressSmoke();
     }
 
+    public static void verifyOvergrowthReady(Sector source){
+        if(source == null || source != SectorPresets.navalFortress.sector || !navalFortressCaptured()){
+            throw new IllegalStateException("Overgrowth progression requires captured Naval Fortress milestone");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!overgrowthReady()){
+            throw new IllegalStateException("Overgrowth did not auto-unlock from stock prerequisites");
+        }
+        markOvergrowthReadySmoke();
+    }
+
+    public static void runMycelialProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.overgrowth.sector || !overgrowthCaptured()){
+            throw new IllegalStateException("Mycelial Bastion progression requires captured Overgrowth");
+        }
+
+        stageAndSpend(source, UnitTypes.crawler);
+        stageAndSpend(source, UnitTypes.atrax);
+        stageAndSpend(source, UnitTypes.spiroct);
+        stageAndSpend(source, UnitTypes.arkyid);
+        stageAndSpend(source, Blocks.exponentialReconstructor);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!mycelialBastionReady()){
+            throw new IllegalStateException("Mycelial Bastion did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markMycelialProgressSmoke();
+    }
+
+    public static void runLittoralProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.mycelialBastion.sector || !mycelialBastionCaptured()){
+            throw new IllegalStateException("Littoral Shipyard progression requires captured Mycelial Bastion");
+        }
+        if(!desolateRiftCaptured() || !navalFortressCaptured()){
+            throw new IllegalStateException("Littoral Shipyard sector prerequisites are incomplete");
+        }
+
+        stageAndSpend(source, UnitTypes.sei);
+        stageAndSpend(source, Blocks.spectre);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!littoralShipyardReady()){
+            throw new IllegalStateException("Littoral Shipyard did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markLittoralProgressSmoke();
+    }
+
+    public static void runTerminalProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.littoralShipyard.sector || !littoralShipyardCaptured()){
+            throw new IllegalStateException("Planetary Terminal progression requires captured Littoral Shipyard");
+        }
+        if(!desolateRiftCaptured() || !nuclearComplexCaptured()
+        || !extractionOutpostCaptured() || !mycelialBastionCaptured()){
+            throw new IllegalStateException("Planetary Terminal sector prerequisites are incomplete");
+        }
+
+        stageAndSpend(source, Blocks.advancedLaunchPad);
+        stageAndSpend(source, Blocks.massDriver);
+        stageAndSpend(source, Blocks.impactReactor);
+        stageAndSpend(source, Blocks.tetrativeReconstructor);
+        stageAndSpend(source, UnitTypes.omura);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!planetaryTerminalReady()){
+            throw new IllegalStateException("Planetary Launch Terminal did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markTerminalProgressSmoke();
+    }
+
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
         stageMissing(source, content);
@@ -1061,6 +1212,18 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-mass-driver-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-oxynoe-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-bryde-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cyclone-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-ripple-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-ready','true');")
     private static native void markNavalFortressProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-ready','true');")
+    private static native void markOvergrowthReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-crawler-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-atrax-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-spiroct-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-arkyid-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-exponential-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-ready','true');")
+    private static native void markMycelialProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-sei-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-spectre-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-ready','true');")
+    private static native void markLittoralProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-advanced-launch-pad-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-reactor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tetrative-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-omura-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-ready','true');")
+    private static native void markTerminalProgressSmoke();
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady", "windsweptReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
