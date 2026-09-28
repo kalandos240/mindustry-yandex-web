@@ -640,6 +640,25 @@ public final class BrowserCampaignResearch{
         if(next != null) spend(next);
     }
 
+    public static UnlockableContent nextOnsetResearch(){
+        if(!Blocks.turbineCondenser.unlocked()) return Blocks.turbineCondenser;
+        if(!Blocks.plasmaBore.unlocked()) return Blocks.plasmaBore;
+        if(!Blocks.beamNode.unlocked()) return Blocks.beamNode;
+        if(!Blocks.duct.unlocked()) return Blocks.duct;
+        if(!Blocks.cliffCrusher.unlocked()) return Blocks.cliffCrusher;
+        if(!Blocks.siliconArcFurnace.unlocked()) return Blocks.siliconArcFurnace;
+        if(!Blocks.tankFabricator.unlocked()) return Blocks.tankFabricator;
+        if(!UnitTypes.stell.unlocked()) return UnitTypes.stell;
+        if(!Blocks.breach.unlocked()) return Blocks.breach;
+        if(!Blocks.berylliumWall.unlocked()) return Blocks.berylliumWall;
+        return null;
+    }
+
+    public static void spendNextOnsetResearch(){
+        UnlockableContent next = nextOnsetResearch();
+        if(next != null) spend(next);
+    }
+
     public static UnlockableContent nextAegisResearch(){
         if(!Blocks.duct.unlocked()) return Blocks.duct;
         if(!Blocks.ductRouter.unlocked()) return Blocks.ductRouter;
@@ -701,8 +720,15 @@ public final class BrowserCampaignResearch{
         }
 
         stageAndSpend(source, Blocks.turbineCondenser);
+        stageAndSpend(source, Blocks.plasmaBore);
+        stageAndSpend(source, Blocks.beamNode);
+        stageAndSpend(source, Blocks.duct);
         stageAndSpend(source, Blocks.cliffCrusher);
         stageAndSpend(source, Blocks.siliconArcFurnace);
+        stageAndSpend(source, Blocks.tankFabricator);
+        stageAndSpend(source, UnitTypes.stell);
+        stageAndSpend(source, Blocks.breach);
+        stageAndSpend(source, Blocks.berylliumWall);
 
         Core.settings.forceSave();
         markOnsetResearchSmoke();
@@ -1543,7 +1569,7 @@ public final class BrowserCampaignResearch{
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-advanced-launch-pad-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-reactor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tetrative-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-omura-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-ready','true');")
     private static native void markTerminalProgressSmoke();
 
-    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-onset-research','ready'); document.documentElement.setAttribute('data-mindustry-erekir-silicon-arc-furnace-unlocked','true');")
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-onset-research','ready'); document.documentElement.setAttribute('data-mindustry-erekir-onset-tech','ready'); document.documentElement.setAttribute('data-mindustry-erekir-silicon-arc-furnace-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-tank-fabricator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-stell-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-breach-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-beryllium-wall-unlocked','true');")
     private static native void markOnsetResearchSmoke();
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-duct-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-duct-router-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-duct-bridge-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-aegis-ready','true');")
