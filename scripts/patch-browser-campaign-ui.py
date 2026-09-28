@@ -784,6 +784,98 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         root.add(campaignProgress).width(campaignWidth).padBottom(8f);
         root.row();
 
+        // Erekir uses the same compact one-action-at-a-time pattern so mobile does not
+        // grow a permanent row for every Erekir prerequisite.
+        TextButton erekirProgress = new TextButton("");
+        erekirProgress.clicked(() -> {
+            if(!BrowserCampaignResearch.onsetCaptured()){
+                BrowserCampaignRuntime.playOnset();
+            }else if(!BrowserCampaignResearch.aegisReady()){
+                BrowserCampaignResearch.spendNextAegisResearch();
+            }else if(!BrowserCampaignResearch.aegisCaptured()){
+                BrowserCampaignRuntime.playAegis();
+            }else if(BrowserCampaignResearch.lakeReady()
+            && !BrowserCampaignResearch.lakeCaptured()){
+                BrowserCampaignRuntime.playLake();
+            }else if(BrowserCampaignResearch.lakeCaptured()
+            && !BrowserCampaignResearch.intersectReady()){
+                BrowserCampaignResearch.spendNextIntersectResearch();
+            }else if(BrowserCampaignResearch.intersectReady()
+            && !BrowserCampaignResearch.intersectCaptured()){
+                BrowserCampaignRuntime.playIntersect();
+            }
+        });
+        erekirProgress.setDisabled(() -> {
+            if(!BrowserCampaignResearch.onsetCaptured()) return false;
+
+            if(!BrowserCampaignResearch.aegisReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAegisResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.aegisCaptured()) return false;
+
+            if(!BrowserCampaignResearch.lakeReady()) return true;
+            if(!BrowserCampaignResearch.lakeCaptured()) return false;
+
+            if(!BrowserCampaignResearch.intersectReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextIntersectResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            return BrowserCampaignResearch.intersectCaptured();
+        });
+        erekirProgress.update(() -> {
+            if(!BrowserCampaignResearch.onsetCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasOnsetSave();
+                erekirProgress.setText(Core.bundle.get("sector.onset.name", "Onset") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.aegisReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAegisResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.aegisCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasAegisSave();
+                erekirProgress.setText(Core.bundle.get("sector.aegis.name", "Aegis") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.lakeCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasLakeSave();
+                erekirProgress.setText(Core.bundle.get("sector.lake.name", "Lake") + " — " +
+                    (BrowserCampaignResearch.lakeReady()
+                        ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.intersectReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextIntersectResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.intersectCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasIntersectSave();
+                erekirProgress.setText(Core.bundle.get("sector.intersect.name", "Intersect") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else{
+                erekirProgress.setText(Core.bundle.get("sector.intersect.name", "Intersect") + " — " +
+                    Core.bundle.get("complete", "Complete"));
+            }
+
+            markCampaignErekirState(
+                BrowserCampaignResearch.onsetCaptured(),
+                BrowserCampaignRuntime.hasOnsetSave(),
+                BrowserCampaignResearch.aegisReady(),
+                BrowserCampaignResearch.aegisCaptured(),
+                BrowserCampaignRuntime.hasAegisSave(),
+                BrowserCampaignResearch.lakeReady(),
+                BrowserCampaignResearch.lakeCaptured(),
+                BrowserCampaignRuntime.hasLakeSave(),
+                BrowserCampaignResearch.intersectReady(),
+                BrowserCampaignResearch.intersectCaptured(),
+                BrowserCampaignRuntime.hasIntersectSave()
+            );
+        });
+        root.add(erekirProgress).width(campaignWidth).height(mobile ? 54f : 44f).padBottom(8f);
+        root.row();
+
         root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
         root.row();
         root.button(Core.bundle.get("continue", "Continue"), BrowserLocalMapRuntime::continueSaved)
@@ -914,6 +1006,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"sporePod", "taintedReady", "taintedCaptured", "atollsReady", "atollsCaptured", "testingReady", "testingCaptured", "sunkenReady", "sunkenCaptured", "weatheredReady", "weatheredCaptured"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-optional-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked',sporePod ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready',taintedReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-captured',taintedCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-atolls-ready',atollsReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-atolls-captured',atollsCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-ready',testingReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-captured',testingCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-ready',sunkenReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-captured',sunkenCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-ready',weatheredReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-captured',weatheredCaptured ? 'true' : 'false');")
     private static native void markCampaignOptionalState(boolean sporePod, boolean taintedReady, boolean taintedCaptured, boolean atollsReady, boolean atollsCaptured, boolean testingReady, boolean testingCaptured, boolean sunkenReady, boolean sunkenCaptured, boolean weatheredReady, boolean weatheredCaptured);
+
+    @JSBody(params = {"onsetCaptured", "onsetSaved", "aegisReady", "aegisCaptured", "aegisSaved", "lakeReady", "lakeCaptured", "lakeSaved", "intersectReady", "intersectCaptured", "intersectSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-onset-captured',onsetCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-onset-save',onsetSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-aegis-ready',aegisReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-aegis-captured',aegisCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-aegis-save',aegisSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-lake-ready',lakeReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-lake-captured',lakeCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-lake-save',lakeSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-intersect-ready',intersectReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-intersect-captured',intersectCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-intersect-save',intersectSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirState(boolean onsetCaptured, boolean onsetSaved, boolean aegisReady, boolean aegisCaptured, boolean aegisSaved, boolean lakeReady, boolean lakeCaptured, boolean lakeSaved, boolean intersectReady, boolean intersectCaptured, boolean intersectSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
