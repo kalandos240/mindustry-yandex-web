@@ -1,0 +1,18 @@
+Mindustry Web / Yandex Games port source notice
+
+Port source repository:
+kalandos240/mindustry-yandex-web
+
+Pinned upstream sources used by this build:
+Mindustry v8 Build 159.7
+commit c9686eb5d0ae5dd47ee02c40f99f7d5018ccbc8c
+
+Arc
+commit c38f8f5ff27f47a5886d0903aadeba42e4302411
+
+The exact upstream pins used by the reproducible build are also included as
+licenses/upstream.lock in this distribution.
+
+Mindustry-derived code is distributed under the GNU GPL version 3.
+Arc is distributed under the Apache License version 2.0.
+See the accompanying license text files in this directory.
