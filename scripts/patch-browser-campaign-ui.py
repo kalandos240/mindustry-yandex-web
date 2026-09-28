@@ -154,8 +154,14 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.frontierCaptured()
             && !BrowserCampaignResearch.saltFlatsReady()){
                 BrowserCampaignResearch.spendNextSaltResearch();
-            }else if(BrowserCampaignResearch.saltFlatsReady()){
+            }else if(BrowserCampaignResearch.saltFlatsReady()
+            && !BrowserCampaignResearch.saltFlatsCaptured()){
                 BrowserCampaignRuntime.playSaltFlats();
+            }else if(BrowserCampaignResearch.saltFlatsCaptured()
+            && !BrowserCampaignResearch.tarFieldsReady()){
+                BrowserCampaignResearch.spendNextTarResearch();
+            }else if(BrowserCampaignResearch.tarFieldsReady()){
+                BrowserCampaignRuntime.playTarFields();
             }
         });
         craterResearch.setDisabled(() -> {
@@ -194,6 +200,12 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
             if(!BrowserCampaignResearch.saltFlatsReady()){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextSaltResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.saltFlatsCaptured()) return false;
+
+            if(!BrowserCampaignResearch.tarFieldsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTarResearch();
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
             return false;
@@ -265,9 +277,19 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                     ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
                     : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
                         BrowserCampaignResearch.remaining(next));
-            }else{
+            }else if(!BrowserCampaignResearch.saltFlatsCaptured()){
                 boolean saved = BrowserCampaignRuntime.hasSaltFlatsSave();
                 craterResearch.setText(Core.bundle.get("sector.saltFlats.name", "Salt Flats") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.tarFieldsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTarResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else{
+                boolean saved = BrowserCampaignRuntime.hasTarFieldsSave();
+                craterResearch.setText(Core.bundle.get("sector.tarFields.name", "Tar Fields") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }
 
@@ -296,7 +318,9 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.frontierReady(),
                 BrowserCampaignResearch.frontierCaptured(),
                 BrowserCampaignResearch.saltFlatsReady(),
-                BrowserCampaignRuntime.hasSaltFlatsSave()
+                BrowserCampaignResearch.saltFlatsCaptured(),
+                BrowserCampaignResearch.tarFieldsReady(),
+                BrowserCampaignRuntime.hasTarFieldsSave()
             );
         });
 
@@ -440,8 +464,8 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
     @JSBody(params = {"pneumaticDrill", "duo", "scatter", "hail", "steamGenerator", "windsweptReady", "windsweptSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-windswept-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-pneumatic-drill-unlocked',pneumaticDrill ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-duo-unlocked',duo ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-scatter-unlocked',scatter ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-hail-unlocked',hail ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-steam-generator-unlocked',steamGenerator ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-ready',windsweptReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-save',windsweptSaved ? 'true' : 'false');")
     private static native void markCampaignWindsweptState(boolean pneumaticDrill, boolean duo, boolean scatter, boolean hail, boolean steamGenerator, boolean windsweptReady, boolean windsweptSaved);
 
-    @JSBody(params = {"biomassReady", "biomassCaptured", "fungalReady", "fungalCaptured", "frontierReady", "frontierCaptured", "saltReady", "saltSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-salt-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-ready',biomassReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured',biomassCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-ready',fungalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured',fungalCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-ready',frontierReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured',frontierCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-ready',saltReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-save',saltSaved ? 'true' : 'false');")
-    private static native void markCampaignSaltBranchState(boolean biomassReady, boolean biomassCaptured, boolean fungalReady, boolean fungalCaptured, boolean frontierReady, boolean frontierCaptured, boolean saltReady, boolean saltSaved);
+    @JSBody(params = {"biomassReady", "biomassCaptured", "fungalReady", "fungalCaptured", "frontierReady", "frontierCaptured", "saltReady", "saltCaptured", "tarReady", "tarSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-salt-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-ready',biomassReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured',biomassCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-ready',fungalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured',fungalCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-ready',frontierReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured',frontierCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-ready',saltReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-captured',saltCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-ready',tarReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-save',tarSaved ? 'true' : 'false');")
+    private static native void markCampaignSaltBranchState(boolean biomassReady, boolean biomassCaptured, boolean fungalReady, boolean fungalCaptured, boolean frontierReady, boolean frontierCaptured, boolean saltReady, boolean saltCaptured, boolean tarReady, boolean tarSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
