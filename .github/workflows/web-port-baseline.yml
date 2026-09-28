@@ -360,6 +360,9 @@ jobs:
       - name: Verify persistent browser files across a real browser restart
         run: bash scripts/verify-browser-persistence.sh
 
+      - name: Verify local pause save continue and autosave
+        run: bash scripts/verify-browser-local-save.sh
+
       # verify-browser-persistence already chains campaign cold save/resume, and
       # verify-browser-locales already chains the Yandex SDK desktop/mobile lifecycle.
       - name: Verify all Serpulo TechTree sectors through Weathered Channels
