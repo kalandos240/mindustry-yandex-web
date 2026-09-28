@@ -29,8 +29,8 @@ fail(){
 [ -s "$WEB_DIR/assets/maps/serpulo/crateredBattleground.msav" ] || fail "Cratered Battleground campaign map missing"
 [ -s "$WEB_DIR/assets/maps/serpulo/ruinousShores.msav" ] || fail "Ruinous Shores campaign map missing"
 [ -s "$WEB_DIR/assets/maps/serpulo/windsweptIslands.msav" ] || fail "Windswept Islands campaign map missing"
-for preset in biomassFacility fungalPass frontier saltFlats tarFields impact0078; do
-  [ -s "$WEB_DIR/assets/maps/serpulo/$preset.msav" ] || fail "Salt/Tar/Impact campaign map missing: $preset.msav"
+for preset in biomassFacility fungalPass frontier saltFlats tarFields impact0078 stainedMountains infestedCanyons nuclearComplex desolateRift; do
+  [ -s "$WEB_DIR/assets/maps/serpulo/$preset.msav" ] || fail "Campaign branch map missing: $preset.msav"
 done
 grep -Fq 'maps/default/maze.msav' "$MANIFEST" || fail "builtin local map missing from asset manifest"
 grep -Fq 'maps/serpulo/groundZero.msav' "$MANIFEST" || fail "Ground Zero missing from asset manifest"
@@ -38,8 +38,8 @@ grep -Fq 'maps/serpulo/frozenForest.msav' "$MANIFEST" || fail "Frozen Forest mis
 grep -Fq 'maps/serpulo/crateredBattleground.msav' "$MANIFEST" || fail "Cratered Battleground missing from asset manifest"
 grep -Fq 'maps/serpulo/ruinousShores.msav' "$MANIFEST" || fail "Ruinous Shores missing from asset manifest"
 grep -Fq 'maps/serpulo/windsweptIslands.msav' "$MANIFEST" || fail "Windswept Islands missing from asset manifest"
-for preset in biomassFacility fungalPass frontier saltFlats tarFields impact0078; do
-  grep -Fq "maps/serpulo/$preset.msav" "$MANIFEST" || fail "Salt/Tar/Impact map missing from asset manifest: $preset.msav"
+for preset in biomassFacility fungalPass frontier saltFlats tarFields impact0078 stainedMountains infestedCanyons nuclearComplex desolateRift; do
+  grep -Fq "maps/serpulo/$preset.msav" "$MANIFEST" || fail "Campaign branch map missing from asset manifest: $preset.msav"
 done
 map_count="$(find "$WEB_DIR/assets/maps/default" -maxdepth 1 -type f -name '*.msav' | wc -l)"
 [ "$map_count" -gt 1 ] || fail "builtin local map set is unexpectedly incomplete"
@@ -47,7 +47,7 @@ echo "Builtin local maps staged: $map_count"
 
 # Campaign milestone assets: only sectors whose real TechTree progression is currently
 # exposed by the lean browser campaign UI are allowed into the Yandex package.
-for preset in groundZero frozenForest crateredBattleground ruinousShores windsweptIslands biomassFacility fungalPass frontier saltFlats tarFields impact0078; do
+for preset in groundZero frozenForest crateredBattleground ruinousShores windsweptIslands biomassFacility fungalPass frontier saltFlats tarFields impact0078 stainedMountains infestedCanyons nuclearComplex desolateRift; do
   [ -s "$WEB_DIR/assets/maps/serpulo/$preset.msav" ] || fail "campaign preset map missing: $preset.msav"
   grep -Fq "maps/serpulo/$preset.msav" "$MANIFEST" || fail "campaign preset missing from asset manifest: $preset.msav"
 done
