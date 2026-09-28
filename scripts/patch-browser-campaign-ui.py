@@ -1017,10 +1017,10 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 }
             }else if(!BrowserCampaignResearch.calderaCaptured()){
                 boolean saved = BrowserCampaignRuntime.hasCalderaSave();
-                erekirProgress.setText(Core.bundle.get("sector.caldera.name", "Caldera") + " — " +
+                erekirProgress.setText(Core.bundle.get("sector.caldera-erekir.name", "Caldera") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }else{
-                erekirProgress.setText(Core.bundle.get("sector.caldera.name", "Caldera") + " — " +
+                erekirProgress.setText(Core.bundle.get("sector.caldera-erekir.name", "Caldera") + " — " +
                     Core.bundle.get("complete", "Complete"));
             }
 
