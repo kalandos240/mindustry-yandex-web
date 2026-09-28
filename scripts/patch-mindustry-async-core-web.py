@@ -49,6 +49,7 @@ public class AsyncCore{
     public AsyncCore(){
         Events.on(WorldLoadEvent.class, e -> {
             complete();
+            webFrame = 0;
             for(AsyncProcess p : processes){
                 p.init();
             }
@@ -56,6 +57,7 @@ public class AsyncCore{
 
         Events.on(ResetEvent.class, e -> {
             complete();
+            webFrame = 0;
             for(AsyncProcess p : processes){
                 p.reset();
             }
