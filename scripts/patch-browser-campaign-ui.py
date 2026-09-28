@@ -825,6 +825,43 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             && BrowserCampaignResearch.basinReady()
             && !BrowserCampaignResearch.basinCaptured()){
                 BrowserCampaignRuntime.playBasin();
+            }else if(BrowserCampaignResearch.basinCaptured()
+            && BrowserCampaignResearch.marshReady()
+            && !BrowserCampaignResearch.marshCaptured()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextMarshResearch();
+                if(BrowserCampaignRuntime.hasMarshSave() && next != null
+                && BrowserCampaignResearch.canSpend(next)){
+                    BrowserCampaignResearch.spendNextMarshResearch();
+                }else{
+                    BrowserCampaignRuntime.playMarsh();
+                }
+            }else if(BrowserCampaignResearch.marshCaptured()
+            && BrowserCampaignResearch.peaksReady()
+            && !BrowserCampaignResearch.peaksCaptured()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextPeaksResearch();
+                if(BrowserCampaignRuntime.hasPeaksSave() && next != null
+                && BrowserCampaignResearch.canSpend(next)){
+                    BrowserCampaignResearch.spendNextPeaksResearch();
+                }else{
+                    BrowserCampaignRuntime.playPeaks();
+                }
+            }else if(BrowserCampaignResearch.peaksCaptured()
+            && !BrowserCampaignResearch.ravineReady()){
+                BrowserCampaignRuntime.playPeaks();
+            }else if(BrowserCampaignResearch.ravineReady()
+            && !BrowserCampaignResearch.ravineCaptured()){
+                BrowserCampaignRuntime.playRavine();
+            }else if(BrowserCampaignResearch.ravineCaptured()
+            && !BrowserCampaignResearch.calderaReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCalderaResearch();
+                if(next != null && BrowserCampaignResearch.canSpend(next)){
+                    BrowserCampaignResearch.spendNextCalderaResearch();
+                }else{
+                    BrowserCampaignRuntime.playRavine();
+                }
+            }else if(BrowserCampaignResearch.calderaReady()
+            && !BrowserCampaignResearch.calderaCaptured()){
+                BrowserCampaignRuntime.playCaldera();
             }
         });
         erekirProgress.setDisabled(() -> {
@@ -858,7 +895,21 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             if(!BrowserCampaignResearch.splitCaptured()) return false;
 
             if(!BrowserCampaignResearch.basinReady()) return true;
-            return BrowserCampaignResearch.basinCaptured();
+            if(!BrowserCampaignResearch.basinCaptured()) return false;
+
+            if(!BrowserCampaignResearch.marshReady()) return true;
+            if(!BrowserCampaignResearch.marshCaptured()) return false;
+
+            if(!BrowserCampaignResearch.peaksReady()) return true;
+            if(!BrowserCampaignResearch.peaksCaptured()) return false;
+
+            if(!BrowserCampaignResearch.ravineReady()){
+                return !BrowserCampaignResearch.waitingForRavineSlag();
+            }
+            if(!BrowserCampaignResearch.ravineCaptured()) return false;
+
+            if(!BrowserCampaignResearch.calderaReady()) return false;
+            return BrowserCampaignResearch.calderaCaptured();
         });
         erekirProgress.update(() -> {
             if(!BrowserCampaignResearch.onsetCaptured()){
@@ -923,8 +974,53 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                     (BrowserCampaignResearch.basinReady()
                         ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
                         : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.marshCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasMarshSave();
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextMarshResearch();
+                if(saved && next != null && BrowserCampaignResearch.canSpend(next)){
+                    erekirProgress.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }else if(saved && BrowserCampaignResearch.waitingForMarshProduction()){
+                    mindustry.ctype.UnlockableContent produce = !mindustry.content.Items.oxide.unlocked()
+                        ? mindustry.content.Items.oxide : mindustry.content.Liquids.arkycite;
+                    erekirProgress.setText(produce.localizedName + " — " +
+                        Core.bundle.get("produce", "Produce"));
+                }else{
+                    erekirProgress.setText(Core.bundle.get("sector.marsh.name", "Marsh") + " — " +
+                        Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                }
+            }else if(!BrowserCampaignResearch.peaksCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasPeaksSave();
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextPeaksResearch();
+                if(saved && next != null && BrowserCampaignResearch.canSpend(next)){
+                    erekirProgress.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }else{
+                    erekirProgress.setText(Core.bundle.get("sector.peaks.name", "Peaks") + " — " +
+                        Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                }
+            }else if(!BrowserCampaignResearch.ravineReady()){
+                erekirProgress.setText(mindustry.content.Liquids.slag.localizedName + " — " +
+                    Core.bundle.get("produce", "Produce"));
+            }else if(!BrowserCampaignResearch.ravineCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasRavineSave();
+                erekirProgress.setText(Core.bundle.get("sector.ravine.name", "Ravine") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.calderaReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCalderaResearch();
+                if(next != null && BrowserCampaignResearch.canSpend(next)){
+                    erekirProgress.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }else{
+                    erekirProgress.setText(Core.bundle.get("sector.ravine.name", "Ravine") + " — " +
+                        Core.bundle.get("continue", "Continue"));
+                }
+            }else if(!BrowserCampaignResearch.calderaCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasCalderaSave();
+                erekirProgress.setText(Core.bundle.get("sector.caldera.name", "Caldera") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }else{
-                erekirProgress.setText(Core.bundle.get("sector.basin.name", "Basin") + " — " +
+                erekirProgress.setText(Core.bundle.get("sector.caldera.name", "Caldera") + " — " +
                     Core.bundle.get("complete", "Complete"));
             }
 
@@ -951,6 +1047,20 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.basinReady(),
                 BrowserCampaignResearch.basinCaptured(),
                 BrowserCampaignRuntime.hasBasinSave()
+            );
+            markCampaignErekirBranchState(
+                BrowserCampaignResearch.marshReady(),
+                BrowserCampaignResearch.marshCaptured(),
+                BrowserCampaignRuntime.hasMarshSave(),
+                BrowserCampaignResearch.peaksReady(),
+                BrowserCampaignResearch.peaksCaptured(),
+                BrowserCampaignRuntime.hasPeaksSave(),
+                BrowserCampaignResearch.ravineReady(),
+                BrowserCampaignResearch.ravineCaptured(),
+                BrowserCampaignRuntime.hasRavineSave(),
+                BrowserCampaignResearch.calderaReady(),
+                BrowserCampaignResearch.calderaCaptured(),
+                BrowserCampaignRuntime.hasCalderaSave()
             );
         });
         root.add(erekirProgress).width(campaignWidth).height(mobile ? 54f : 44f).padBottom(8f);
@@ -1092,6 +1202,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"atlasReady", "atlasCaptured", "atlasSaved", "splitReady", "splitCaptured", "splitSaved", "basinReady", "basinCaptured", "basinSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-mid-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-atlas-ready',atlasReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-atlas-captured',atlasCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-atlas-save',atlasSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-split-ready',splitReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-split-captured',splitCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-split-save',splitSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-basin-ready',basinReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-basin-captured',basinCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-basin-save',basinSaved ? 'true' : 'false');")
     private static native void markCampaignErekirMidState(boolean atlasReady, boolean atlasCaptured, boolean atlasSaved, boolean splitReady, boolean splitCaptured, boolean splitSaved, boolean basinReady, boolean basinCaptured, boolean basinSaved);
+
+    @JSBody(params = {"marshReady", "marshCaptured", "marshSaved", "peaksReady", "peaksCaptured", "peaksSaved", "ravineReady", "ravineCaptured", "ravineSaved", "calderaReady", "calderaCaptured", "calderaSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-branch-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-marsh-ready',marshReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-marsh-captured',marshCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-marsh-save',marshSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-peaks-ready',peaksReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-peaks-captured',peaksCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-peaks-save',peaksSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-ravine-ready',ravineReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-ravine-captured',ravineCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-ravine-save',ravineSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-caldera-ready',calderaReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-caldera-captured',calderaCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-caldera-save',calderaSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirBranchState(boolean marshReady, boolean marshCaptured, boolean marshSaved, boolean peaksReady, boolean peaksCaptured, boolean peaksSaved, boolean ravineReady, boolean ravineCaptured, boolean ravineSaved, boolean calderaReady, boolean calderaCaptured, boolean calderaSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
