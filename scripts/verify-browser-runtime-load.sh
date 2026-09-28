@@ -43,10 +43,18 @@ run_load(){
   local mobile_args=()
   local pixel_policy="desktop-config"
   local pixel_cap=""
+  local renderer_profile="desktop-stock"
+  local renderer_bloom="true"
+  local renderer_water="true"
+  local renderer_shields="true"
   if [ "$emulate_mobile" = "1" ]; then
     mobile_args+=(--emulate-mobile)
     pixel_policy="mobile-1.5x"
     pixel_cap="1.5"
+    renderer_profile="mobile-performance"
+    renderer_bloom="false"
+    renderer_water="false"
+    renderer_shields="false"
   fi
 
   rm -rf "$profile"
@@ -62,6 +70,11 @@ run_load(){
     --require "data-mindustry-input-mode=\"${input_mode}\"" \
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
     --require "data-mindustry-pixel-ratio-policy=\"${pixel_policy}\"" \
+    --require "data-mindustry-renderer-profile=\"${renderer_profile}\"" \
+    --require "data-mindustry-renderer-bloom=\"${renderer_bloom}\"" \
+    --require 'data-mindustry-renderer-effects="true"' \
+    --require "data-mindustry-renderer-animated-water=\"${renderer_water}\"" \
+    --require "data-mindustry-renderer-animated-shields=\"${renderer_shields}\"" \
     --require 'data-mindustry-local-map-test="maze"' \
     --require 'data-mindustry-local-map-state="playing"' \
     --require 'data-mindustry-local-map-loop="live"' \
