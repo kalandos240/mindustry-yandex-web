@@ -155,6 +155,24 @@ public final class BrowserCampaignResearch{
         return captured(SectorPresets.crossroads);
     }
 
+    public static boolean karstReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.karst != null && SectorPresets.karst.unlocked();
+    }
+
+    public static boolean karstCaptured(){
+        return captured(SectorPresets.karst);
+    }
+
+    public static boolean originReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.origin != null && SectorPresets.origin.unlocked();
+    }
+
+    public static boolean originCaptured(){
+        return captured(SectorPresets.origin);
+    }
+
     public static boolean frozenForestReady(){
         if(control != null) control.checkAutoUnlocks();
         return SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked();
@@ -865,6 +883,55 @@ public final class BrowserCampaignResearch{
         if(next != null) spend(next);
     }
 
+    public static UnlockableContent nextKarstResearch(){
+        if(!Blocks.coreAcropolis.unlocked()) return Blocks.coreAcropolis;
+        return null;
+    }
+
+    public static void spendNextKarstResearch(){
+        UnlockableContent next = nextKarstResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextOriginResearch(){
+        if(!Blocks.payloadMassDriver.unlocked()) return Blocks.payloadMassDriver;
+        if(!Blocks.constructor.unlocked()) return Blocks.constructor;
+
+        if(!Blocks.diffuse.unlocked()) return Blocks.diffuse;
+        if(!Blocks.sublimate.unlocked()) return Blocks.sublimate;
+        if(!Blocks.afflict.unlocked()) return Blocks.afflict;
+        if(!Blocks.electricHeater.unlocked()) return Blocks.electricHeater;
+        if(!Blocks.atmosphericConcentrator.unlocked()) return Blocks.atmosphericConcentrator;
+        if(!Blocks.cyanogenSynthesizer.unlocked()) return Blocks.cyanogenSynthesizer;
+
+        if(!Blocks.tankAssembler.unlocked()) return Blocks.tankAssembler;
+        if(!UnitTypes.vanquish.unlocked()) return UnitTypes.vanquish;
+
+        if(!Blocks.shipAssembler.unlocked()) return Blocks.shipAssembler;
+        if(!UnitTypes.quell.unlocked()) return UnitTypes.quell;
+        if(!UnitTypes.disrupt.unlocked()) return UnitTypes.disrupt;
+
+        if(!Blocks.mechAssembler.unlocked()) return Blocks.mechAssembler;
+        if(!UnitTypes.tecta.unlocked()) return UnitTypes.tecta;
+        if(!UnitTypes.collaris.unlocked()) return UnitTypes.collaris;
+
+        if(!Blocks.disperse.unlocked()) return Blocks.disperse;
+        if(!Blocks.scathe.unlocked()) return Blocks.scathe;
+        if(!Blocks.malign.unlocked()) return Blocks.malign;
+
+        if(!Blocks.pyrolysisGenerator.unlocked()) return Blocks.pyrolysisGenerator;
+        if(!Blocks.fluxReactor.unlocked()) return Blocks.fluxReactor;
+        if(!Blocks.neoplasiaReactor.unlocked()) return Blocks.neoplasiaReactor;
+
+        if(!Blocks.basicAssemblerModule.unlocked()) return Blocks.basicAssemblerModule;
+        return null;
+    }
+
+    public static void spendNextOriginResearch(){
+        UnlockableContent next = nextOriginResearch();
+        if(next != null) spend(next);
+    }
+
     public static boolean canSpend(UnlockableContent content){
         TechNode node = node(content);
         if(content.unlocked() || !objectivesComplete(node)) return false;
@@ -1154,6 +1221,65 @@ public final class BrowserCampaignResearch{
             throw new IllegalStateException("Crossroads did not auto-unlock after captured Siege");
         }
         markCrossroadsReadySmoke();
+    }
+
+    public static void runKarstProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.crossroads.sector || !crossroadsCaptured()){
+            throw new IllegalStateException("Karst progression requires captured Crossroads");
+        }
+
+        stageAndSpend(source, Blocks.coreAcropolis);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!karstReady()){
+            throw new IllegalStateException("Karst did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markKarstProgressSmoke();
+    }
+
+    public static void runOriginProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.karst.sector || !karstCaptured()){
+            throw new IllegalStateException("Origin progression requires captured Karst");
+        }
+
+        stageAndSpend(source, Blocks.payloadMassDriver);
+        stageAndSpend(source, Blocks.constructor);
+
+        stageAndSpend(source, Blocks.diffuse);
+        stageAndSpend(source, Blocks.sublimate);
+        stageAndSpend(source, Blocks.afflict);
+        stageAndSpend(source, Blocks.electricHeater);
+        stageAndSpend(source, Blocks.atmosphericConcentrator);
+        stageAndSpend(source, Blocks.cyanogenSynthesizer);
+
+        stageAndSpend(source, Blocks.tankAssembler);
+        stageAndSpend(source, UnitTypes.vanquish);
+
+        stageAndSpend(source, Blocks.shipAssembler);
+        stageAndSpend(source, UnitTypes.quell);
+        stageAndSpend(source, UnitTypes.disrupt);
+
+        stageAndSpend(source, Blocks.mechAssembler);
+        stageAndSpend(source, UnitTypes.tecta);
+        stageAndSpend(source, UnitTypes.collaris);
+
+        stageAndSpend(source, Blocks.disperse);
+        stageAndSpend(source, Blocks.scathe);
+        stageAndSpend(source, Blocks.malign);
+
+        stageAndSpend(source, Blocks.pyrolysisGenerator);
+        stageAndSpend(source, Blocks.fluxReactor);
+        stageAndSpend(source, Blocks.neoplasiaReactor);
+
+        stageAndSpend(source, Blocks.basicAssemblerModule);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!originReady()){
+            throw new IllegalStateException("Origin did not auto-unlock after stock final prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markOriginProgressSmoke();
     }
 
     /** CI-only helper: supply exactly the missing early research resources, then use the production spend path. */
@@ -1991,6 +2117,12 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-crossroads-ready','true');")
     private static native void markCrossroadsReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-core-acropolis-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-karst-ready','true');")
+    private static native void markKarstProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-payload-mass-driver-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-constructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-atmospheric-concentrator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-cyanogen-synthesizer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-tank-assembler-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-vanquish-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-disrupt-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-collaris-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-malign-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-neoplasia-reactor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-basic-assembler-module-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-origin-ready','true');")
+    private static native void markOriginProgressSmoke();
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready','true');")
     private static native void markTaintedProgressSmoke();
