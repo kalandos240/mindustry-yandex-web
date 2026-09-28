@@ -862,6 +862,26 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.calderaReady()
             && !BrowserCampaignResearch.calderaCaptured()){
                 BrowserCampaignRuntime.playCaldera();
+            }else if(BrowserCampaignResearch.calderaCaptured()
+            && !BrowserCampaignResearch.strongholdReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextStrongholdResearch();
+                if(next != null && BrowserCampaignResearch.canSpend(next)){
+                    BrowserCampaignResearch.spendNextStrongholdResearch();
+                }else{
+                    BrowserCampaignRuntime.playCaldera();
+                }
+            }else if(BrowserCampaignResearch.strongholdReady()
+            && !BrowserCampaignResearch.strongholdCaptured()){
+                BrowserCampaignRuntime.playStronghold();
+            }else if(BrowserCampaignResearch.creviceReady()
+            && !BrowserCampaignResearch.creviceCaptured()){
+                BrowserCampaignRuntime.playCrevice();
+            }else if(BrowserCampaignResearch.siegeReady()
+            && !BrowserCampaignResearch.siegeCaptured()){
+                BrowserCampaignRuntime.playSiege();
+            }else if(BrowserCampaignResearch.crossroadsReady()
+            && !BrowserCampaignResearch.crossroadsCaptured()){
+                BrowserCampaignRuntime.playCrossroads();
             }
         });
         erekirProgress.setDisabled(() -> {
@@ -909,7 +929,16 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             if(!BrowserCampaignResearch.ravineCaptured()) return false;
 
             if(!BrowserCampaignResearch.calderaReady()) return false;
-            return BrowserCampaignResearch.calderaCaptured();
+            if(!BrowserCampaignResearch.calderaCaptured()) return false;
+
+            if(!BrowserCampaignResearch.strongholdReady()) return false;
+            if(!BrowserCampaignResearch.strongholdCaptured()) return false;
+            if(!BrowserCampaignResearch.creviceReady()) return true;
+            if(!BrowserCampaignResearch.creviceCaptured()) return false;
+            if(!BrowserCampaignResearch.siegeReady()) return true;
+            if(!BrowserCampaignResearch.siegeCaptured()) return false;
+            if(!BrowserCampaignResearch.crossroadsReady()) return true;
+            return BrowserCampaignResearch.crossroadsCaptured();
         });
         erekirProgress.update(() -> {
             if(!BrowserCampaignResearch.onsetCaptured()){
@@ -1019,8 +1048,39 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 boolean saved = BrowserCampaignRuntime.hasCalderaSave();
                 erekirProgress.setText(Core.bundle.get("sector.caldera-erekir.name", "Caldera") + " — " +
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.strongholdReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextStrongholdResearch();
+                if(next != null && BrowserCampaignResearch.canSpend(next)){
+                    erekirProgress.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }else{
+                    erekirProgress.setText(Core.bundle.get("sector.caldera-erekir.name", "Caldera") + " — " +
+                        Core.bundle.get("continue", "Continue"));
+                }
+            }else if(!BrowserCampaignResearch.strongholdCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasStrongholdSave();
+                erekirProgress.setText(Core.bundle.get("sector.stronghold.name", "Stronghold") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.creviceCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasCreviceSave();
+                erekirProgress.setText(Core.bundle.get("sector.crevice.name", "Crevice") + " — " +
+                    (BrowserCampaignResearch.creviceReady()
+                        ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.siegeCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasSiegeSave();
+                erekirProgress.setText(Core.bundle.get("sector.siege.name", "Siege") + " — " +
+                    (BrowserCampaignResearch.siegeReady()
+                        ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.crossroadsCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasCrossroadsSave();
+                erekirProgress.setText(Core.bundle.get("sector.crossroads.name", "Crossroads") + " — " +
+                    (BrowserCampaignResearch.crossroadsReady()
+                        ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
             }else{
-                erekirProgress.setText(Core.bundle.get("sector.caldera-erekir.name", "Caldera") + " — " +
+                erekirProgress.setText(Core.bundle.get("sector.crossroads.name", "Crossroads") + " — " +
                     Core.bundle.get("complete", "Complete"));
             }
 
@@ -1061,6 +1121,20 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignResearch.calderaReady(),
                 BrowserCampaignResearch.calderaCaptured(),
                 BrowserCampaignRuntime.hasCalderaSave()
+            );
+            markCampaignErekirLateState(
+                BrowserCampaignResearch.strongholdReady(),
+                BrowserCampaignResearch.strongholdCaptured(),
+                BrowserCampaignRuntime.hasStrongholdSave(),
+                BrowserCampaignResearch.creviceReady(),
+                BrowserCampaignResearch.creviceCaptured(),
+                BrowserCampaignRuntime.hasCreviceSave(),
+                BrowserCampaignResearch.siegeReady(),
+                BrowserCampaignResearch.siegeCaptured(),
+                BrowserCampaignRuntime.hasSiegeSave(),
+                BrowserCampaignResearch.crossroadsReady(),
+                BrowserCampaignResearch.crossroadsCaptured(),
+                BrowserCampaignRuntime.hasCrossroadsSave()
             );
         });
         root.add(erekirProgress).width(campaignWidth).height(mobile ? 54f : 44f).padBottom(8f);
@@ -1205,6 +1279,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"marshReady", "marshCaptured", "marshSaved", "peaksReady", "peaksCaptured", "peaksSaved", "ravineReady", "ravineCaptured", "ravineSaved", "calderaReady", "calderaCaptured", "calderaSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-branch-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-marsh-ready',marshReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-marsh-captured',marshCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-marsh-save',marshSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-peaks-ready',peaksReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-peaks-captured',peaksCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-peaks-save',peaksSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-ravine-ready',ravineReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-ravine-captured',ravineCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-ravine-save',ravineSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-caldera-ready',calderaReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-caldera-captured',calderaCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-caldera-save',calderaSaved ? 'true' : 'false');")
     private static native void markCampaignErekirBranchState(boolean marshReady, boolean marshCaptured, boolean marshSaved, boolean peaksReady, boolean peaksCaptured, boolean peaksSaved, boolean ravineReady, boolean ravineCaptured, boolean ravineSaved, boolean calderaReady, boolean calderaCaptured, boolean calderaSaved);
+
+    @JSBody(params = {"strongholdReady", "strongholdCaptured", "strongholdSaved", "creviceReady", "creviceCaptured", "creviceSaved", "siegeReady", "siegeCaptured", "siegeSaved", "crossroadsReady", "crossroadsCaptured", "crossroadsSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-late-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-ready',strongholdReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-captured',strongholdCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-save',strongholdSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-ready',creviceReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-captured',creviceCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-save',creviceSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-ready',siegeReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-captured',siegeCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-save',siegeSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-ready',crossroadsReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-captured',crossroadsCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-save',crossroadsSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirLateState(boolean strongholdReady, boolean strongholdCaptured, boolean strongholdSaved, boolean creviceReady, boolean creviceCaptured, boolean creviceSaved, boolean siegeReady, boolean siegeCaptured, boolean siegeSaved, boolean crossroadsReady, boolean crossroadsCaptured, boolean crossroadsSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
