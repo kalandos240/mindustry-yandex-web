@@ -55,6 +55,11 @@ public final class BrowserLocalMapRuntime{
     private static int frames;
     private static boolean perfSmoke;
     private static boolean telemetry;
+    private static boolean pauseSmoke;
+    private static boolean saveSmoke;
+    private static boolean gameOverSmoke;
+    private static boolean autoSaveExitSmoke;
+    private static boolean periodicSaveSmoke;
     private static boolean perfReady;
     private static int perfUnits;
     private static int perfEffects;
@@ -184,6 +189,7 @@ public final class BrowserLocalMapRuntime{
         current = map;
         frames = 0;
         perfSmoke = perfSmokeRequested();
+        cacheSessionSmokeFlags();
         perfReady = false;
         perfUnits = 0;
         perfEffects = 0;
@@ -338,7 +344,7 @@ public final class BrowserLocalMapRuntime{
                 state.wave, state.enemies, state.wavetime);
         }
 
-        if(pauseSmokeRequested() && !pauseSmokeArmed && frames == 1){
+        if(pauseSmoke && !pauseSmokeArmed && frames == 1){
             pauseSmokeArmed = true;
             markPauseSmokeArmed();
             pause();
@@ -353,13 +359,13 @@ public final class BrowserLocalMapRuntime{
                 throw new IllegalStateException("Packaged-map smoke wave produced no live enemy units");
             }
 
-            if(saveSmokeRequested() && !saveSmokeArmed){
+            if(saveSmoke && !saveSmokeArmed){
                 saveSmokeArmed = true;
                 saveLocalSession();
                 markSaveSmokeArmed();
             }
 
-            if(gameOverSmokeRequested() && !gameOverSmokeArmed){
+            if(gameOverSmoke && !gameOverSmokeArmed){
                 if(!state.rules.canGameOver || state.rules.defaultTeam.cores().isEmpty()){
                     throw new IllegalStateException("Game-over smoke requires canGameOver and an existing default-team core");
                 }
@@ -373,7 +379,7 @@ public final class BrowserLocalMapRuntime{
                 maybePeriodicSave();
             }
 
-            if(autoSaveExitSmokeRequested()){
+            if(autoSaveExitSmoke){
                 markAutoSaveExitSmokeArmed();
                 returnToMenu();
                 return;
@@ -435,6 +441,11 @@ public final class BrowserLocalMapRuntime{
         frames = 0;
         perfSmoke = false;
         telemetry = false;
+        pauseSmoke = false;
+        saveSmoke = false;
+        gameOverSmoke = false;
+        autoSaveExitSmoke = false;
+        periodicSaveSmoke = false;
         perfReady = false;
         perfUnits = 0;
         active = true;
@@ -501,7 +512,7 @@ public final class BrowserLocalMapRuntime{
         pausedFrames++;
         if(telemetry) markPauseFrame(pausedFrames, state.updateId);
 
-        if(pauseSmokeArmed && pauseSmokeRequested() && saveSmokeRequested()
+        if(pauseSmokeArmed && pauseSmoke && saveSmoke
         && !saveSmokeArmed && pausedFrames == 1){
             saveSmokeArmed = true;
             saveLocalSession();
@@ -509,7 +520,7 @@ public final class BrowserLocalMapRuntime{
             markPauseSaved(state.updateId);
         }
 
-        if(pauseSmokeArmed && pauseSmokeRequested() && pausedFrames >= 2){
+        if(pauseSmokeArmed && pauseSmoke && pausedFrames >= 2){
             markPauseClockFrozen(state.updateId);
             resume();
         }
@@ -519,7 +530,7 @@ public final class BrowserLocalMapRuntime{
     private static void maybePeriodicSave(){
         if(!active || current == null || !state.isPlaying() || state.gameOver) return;
 
-        boolean smoke = periodicSaveSmokeRequested();
+        boolean smoke = periodicSaveSmoke;
         if(smoke){
             if(periodicSaveSmokeDone || frames < 3) return;
         }else if(state.tick - periodicSaveTick < periodicSaveIntervalTicks){
@@ -560,6 +571,7 @@ public final class BrowserLocalMapRuntime{
         current = null;
         frames = 0;
         perfSmoke = false;
+        cacheSessionSmokeFlags();
         perfReady = false;
         perfUnits = 0;
         testWaveExpected = false;
@@ -618,6 +630,14 @@ public final class BrowserLocalMapRuntime{
 
     private static String slug(Map map){
         return map.file.nameWithoutExtension();
+    }
+
+    private static void cacheSessionSmokeFlags(){
+        pauseSmoke = pauseSmokeRequested();
+        saveSmoke = saveSmokeRequested();
+        gameOverSmoke = gameOverSmokeRequested();
+        autoSaveExitSmoke = autoSaveExitSmokeRequested();
+        periodicSaveSmoke = periodicSaveSmokeRequested();
     }
 
     private static void diagPhase(String phase){
