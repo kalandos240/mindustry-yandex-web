@@ -18,6 +18,9 @@ fail(){
 [ -s "$PLATFORM" ] || fail "yandex-platform.js is missing"
 [ -s "$WEB_DIR/mindustry.js" ] || fail "mindustry.js is missing"
 [ -s "$MANIFEST" ] || fail "assets-manifest.js is missing"
+if find "$WEB_DIR" -type f -name '*.map' -print -quit | grep -q .; then
+  fail "source map file leaked into production package"
+fi
 [ -s "$WEB_DIR/assets/logicids.dat" ] || fail "processor logic ID mapping is missing"
 [ -s "$WEB_DIR/assets/planets/erekir.json" ] || fail "Erekir planet definition missing"
 for preset in onset aegis lake intersect atlas split basin marsh peaks ravine caldera-erekir stronghold crevice siege crossroads karst origin; do
