@@ -120,22 +120,62 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         // Keep later research compact on phones: expose one true TechTree prerequisite
         // at a time instead of adding a permanent button for every early power node.
         TextButton craterResearch = new TextButton("");
-        craterResearch.clicked(BrowserCampaignResearch::spendNextCraterResearch);
+        craterResearch.clicked(() -> {
+            if(!BrowserCampaignResearch.crateredBattlegroundReady()){
+                BrowserCampaignResearch.spendNextCraterResearch();
+            }else if(BrowserCampaignResearch.crateredBattlegroundCaptured()
+            && !BrowserCampaignResearch.ruinousShoresReady()){
+                BrowserCampaignResearch.spendNextRuinousResearch();
+            }else if(BrowserCampaignResearch.ruinousShoresReady()){
+                BrowserCampaignRuntime.playRuinousShores();
+            }
+        });
         craterResearch.setDisabled(() -> {
-            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCraterResearch();
+            if(!BrowserCampaignResearch.crateredBattlegroundReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCraterResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.crateredBattlegroundCaptured()) return true;
+            if(BrowserCampaignResearch.ruinousShoresReady()) return false;
+
+            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextRuinousResearch();
             return next == null || !BrowserCampaignResearch.canSpend(next);
         });
         craterResearch.update(() -> {
-            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCraterResearch();
-            if(BrowserCampaignResearch.waitingForCraterCoal()){
-                craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.coal.localizedName));
-            }else if(next == null){
-                craterResearch.setText(Core.bundle.get("research", "Research") + " — " +
-                    Core.bundle.get("complete", "Complete"));
+            if(!BrowserCampaignResearch.crateredBattlegroundReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCraterResearch();
+                if(BrowserCampaignResearch.waitingForCraterCoal()){
+                    craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.coal.localizedName));
+                }else if(next == null){
+                    craterResearch.setText(Core.bundle.get("research", "Research") + " — " +
+                        Core.bundle.get("complete", "Complete"));
+                }else{
+                    craterResearch.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }
+            }else if(!BrowserCampaignResearch.crateredBattlegroundCaptured()){
+                craterResearch.setText(Core.bundle.get("sector.crateredBattleground.name", "Cratered Battleground") +
+                    " — " + Core.bundle.get("sector.capture", "Capture"));
+            }else if(BrowserCampaignResearch.ruinousShoresReady()){
+                boolean saved = BrowserCampaignRuntime.hasRuinousShoresSave();
+                craterResearch.setText(Core.bundle.get("sector.ruinousShores.name", "Ruinous Shores") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }else{
-                craterResearch.setText(next.localizedName + " — " +
-                    Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextRuinousResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
             }
+
+            markCampaignRuinousState(
+                mindustry.content.Blocks.graphitePress.unlocked(),
+                mindustry.content.Blocks.siliconSmelter.unlocked(),
+                mindustry.content.Blocks.kiln.unlocked(),
+                mindustry.content.Blocks.mechanicalPump.unlocked(),
+                BrowserCampaignResearch.ruinousShoresReady(),
+                BrowserCampaignRuntime.hasRuinousShoresSave()
+            );
         });
 
         TextButton craterButton = new TextButton("");
@@ -271,6 +311,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"drill", "coal", "combustion", "powerNode", "mender", "craterReady", "craterSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-crater-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-drill-unlocked',drill ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-coal-unlocked',coal ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-combustion-generator-unlocked',combustion ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-power-node-unlocked',powerNode ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mender-unlocked',mender ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-ready',craterReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-save',craterSaved ? 'true' : 'false');")
     private static native void markCampaignCraterState(boolean drill, boolean coal, boolean combustion, boolean powerNode, boolean mender, boolean craterReady, boolean craterSaved);
+
+    @JSBody(params = {"graphitePress", "siliconSmelter", "kiln", "mechanicalPump", "ruinousReady", "ruinousSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ruinous-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-graphite-press-unlocked',graphitePress ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-silicon-smelter-unlocked',siliconSmelter ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-kiln-unlocked',kiln ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-pump-unlocked',mechanicalPump ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-ready',ruinousReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-save',ruinousSaved ? 'true' : 'false');")
+    private static native void markCampaignRuinousState(boolean graphitePress, boolean siliconSmelter, boolean kiln, boolean mechanicalPump, boolean ruinousReady, boolean ruinousSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
