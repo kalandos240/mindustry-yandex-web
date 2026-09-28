@@ -56,13 +56,17 @@ tasks.register("stageWeb", Copy) {
         // was separated from normal production startup.
         include "maps/default/**"
 
-        // Campaign progression milestone: package only the five proven Serpulo presets.
-        // Later sectors remain excluded until their runtime/UI gates are added.
+        // Campaign progression milestone: package only the proven Serpulo presets.
+        // The Salt Flats branch includes Biomass Facility plus attack sectors Fungal Pass/Frontier.
         include "maps/serpulo/groundZero.msav"
         include "maps/serpulo/frozenForest.msav"
         include "maps/serpulo/crateredBattleground.msav"
         include "maps/serpulo/ruinousShores.msav"
         include "maps/serpulo/windsweptIslands.msav"
+        include "maps/serpulo/biomassFacility.msav"
+        include "maps/serpulo/fungalPass.msav"
+        include "maps/serpulo/frontier.msav"
+        include "maps/serpulo/saltFlats.msav"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
