@@ -6,6 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserApplication.java").read_text(encoding="utf-8")
 CANVAS = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCanvas.java").read_text(encoding="utf-8")
 INPUT = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserInputBridge.java").read_text(encoding="utf-8")
+APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
+LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 
 failures = []
 
@@ -48,6 +50,21 @@ require(INPUT, "event.offsetY", "BrowserInputBridge")
 require(INPUT, "__mindustryClientWidth", "BrowserInputBridge")
 require(INPUT, "__mindustryClientHeight", "BrowserInputBridge")
 require(INPUT, "data-mindustry-input-coordinates', 'offset-cached", "BrowserInputBridge")
+
+# Particle-heavy sorted rendering must use the Web-only stable int run sorter.
+require(APPLY_PORT, "int[] sortOrder = new int[0], sortScratch = new int[0]", "SpriteBatch Web patch")
+require(APPLY_PORT, "int[] runs = contiguous", "SpriteBatch Web patch")
+require(APPLY_PORT, "dst[out++] = za <= zb ? src[a++] : src[b++]", "SpriteBatch stable merge")
+require(APPLY_PORT, "System.arraycopy(requests, pos, copy, ptr, length)", "SpriteBatch run copy")
+forbid(APPLY_PORT, "long[] sortKeys", "SpriteBatch Web patch")
+forbid(APPLY_PORT, "Arrays.sort(sortKeys", "SpriteBatch Web patch")
+
+# Runtime load must actually exercise the sorted/effect path before this optimization
+# can be considered protected.
+require(LOCAL_MAP, "private static final int perfEffectsPerFrame = 4", "particle perf workload")
+require(LOCAL_MAP, "private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame", "particle perf workload")
+require(LOCAL_MAP, "Fx.unitCapKill.at(x, y)", "particle perf workload")
+require(LOCAL_MAP, "perfEffects != perfTargetEffects", "particle perf workload")
 
 if failures:
     print("Browser hot-path audit: FAIL")
