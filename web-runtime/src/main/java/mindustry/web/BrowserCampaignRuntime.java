@@ -48,6 +48,11 @@ public final class BrowserCampaignRuntime{
         return campaignAssetsReadyNative();
     }
 
+    /** DOM-heavy campaign telemetry is enabled only for explicit browser smoke runs. */
+    public static boolean diagnosticsEnabled(){
+        return diagnostics || diagnosticsRequested();
+    }
+
     /** True when BrowserSaves has rebound a valid persisted Ground Zero sector slot. */
     public static boolean hasGroundZeroSave(){
         return hasSectorSave(SectorPresets.groundZero);
@@ -1688,6 +1693,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(script = "return document.documentElement.getAttribute('data-mindustry-campaign-assets') === 'ready';")
     private static native boolean campaignAssetsReadyNative();
+
+    @JSBody(script = "var p=new URLSearchParams(location.search); return p.has('mindustryCampaignSmoke') || p.has('mindustryCampaignContinueSmoke') || p.has('mindustryCampaignSaveSmoke') || p.has('mindustryCampaignCaptureSmoke') || p.has('mindustryCampaignProgressSmoke') || p.has('mindustryCampaignUiBackSmoke');")
+    private static native boolean diagnosticsRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSmoke') || '';")
     private static native String requestedSector();
