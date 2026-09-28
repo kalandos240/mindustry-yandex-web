@@ -159,6 +159,10 @@ jobs:
           test -s web-runtime/build/web/assets-manifest.js
           test -s web-runtime/build/web/assets/sounds/ui/uiButton.ogg
           test -s web-runtime/build/web/assets/logicids.dat
+          test -s web-runtime/build/web/licenses/Mindustry-GPL-3.0.txt
+          test -s web-runtime/build/web/licenses/Arc-Apache-2.0.txt
+          test -s web-runtime/build/web/licenses/SOURCE-NOTICE.txt
+          test -s web-runtime/build/web/licenses/upstream.lock
           test -s web-runtime/build/web/assets/sprites/clouds.png
           test -s web-runtime/build/web/assets/sprites/rays.png
           test -s web-runtime/build/web/assets/sprites/distortAlpha.png
