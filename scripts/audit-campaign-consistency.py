@@ -9,6 +9,7 @@ SERPULO_TEST = (ROOT / "scripts" / "verify-browser-campaign-capture.sh").read_te
 EREKIR_TEST = (ROOT / "scripts" / "verify-browser-erekir-progression.sh").read_text(encoding="utf-8")
 RESEARCH = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignResearch.java").read_text(encoding="utf-8")
 RUNTIME = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
+UI_PATCH = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
 
 SERPULO = [
     "groundZero", "frozenForest", "crateredBattleground", "ruinousShores",
@@ -83,6 +84,53 @@ for field, file_name in EREKIR:
     require(RUNTIME, f"SectorPresets.{field}", "campaign runtime Erekir")
     require(EREKIR_TEST, file_name if field == "caldera" else field, "campaign smoke Erekir")
     require(BUILD, path, "build.gradle Erekir")
+
+
+def declared_static_methods(source: str) -> set[str]:
+    return set(re.findall(r"public static [^{;\\n]+?\\s+(\\w+)\\s*\\(", source))
+
+def referenced_methods(source: str, owner: str) -> set[str]:
+    return set(re.findall(rf"{re.escape(owner)}\\.(\\w+)\\s*\\(", source))
+
+research_declared = declared_static_methods(RESEARCH)
+research_referenced = (
+    referenced_methods(RUNTIME, "BrowserCampaignResearch")
+    | referenced_methods(UI_PATCH, "BrowserCampaignResearch")
+)
+runtime_declared = declared_static_methods(RUNTIME)
+runtime_referenced = referenced_methods(UI_PATCH, "BrowserCampaignRuntime")
+
+for method in sorted(research_referenced - research_declared):
+    failures.append(f"campaign Java surface: missing BrowserCampaignResearch.{method} declaration")
+for method in sorted(runtime_referenced - runtime_declared):
+    failures.append(f"campaign Java surface: missing BrowserCampaignRuntime.{method} declaration")
+
+# The pinned Origin finale is special: it must stay a five-stage timer graph followed
+# by the stock attack victory predicate. These markers make accidental regression
+# to a generic/forced capture fail before the expensive TeaVM compile.
+for needle in [
+    "stageOriginObjectives()",
+    'String[] flags = {"u1", "u2", "u3", "u4", "u5"}',
+    "float[] durations = {36000f, 72000f, 108000f, 108000f, 72000f}",
+    "state.rules.objectiveTimerMultiplier = 0f",
+    'armObjectiveAttackCapture("origin")',
+    "data-mindustry-erekir-origin-objective-count",
+    "data-mindustry-erekir-origin-captured",
+]:
+    require(RUNTIME, needle, "Origin runtime contract")
+
+for needle in [
+    'data-mindustry-erekir-origin-objectives="staged"',
+    'data-mindustry-erekir-origin-objective-count="5"',
+    'data-mindustry-erekir-origin-objective-flags="ready"',
+    'data-mindustry-erekir-origin-captured="true"',
+    'data-mindustry-campaign-captured-preset="origin"',
+    'data-mindustry-campaign-capture-win-wave="0"',
+]:
+    require(EREKIR_TEST, needle, "Origin browser smoke contract")
+
+require(UI_PATCH, "BrowserCampaignResearch.originCaptured()", "Origin UI completion state")
+require(UI_PATCH, 'Core.bundle.get("planet.erekir.name", "Erekir")', "Origin UI completion label")
 
 if failures:
     print("Campaign release consistency audit: FAIL")
