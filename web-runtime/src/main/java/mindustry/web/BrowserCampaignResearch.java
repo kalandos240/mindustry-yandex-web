@@ -147,6 +147,47 @@ public final class BrowserCampaignResearch{
         return captured(SectorPresets.desolateRift);
     }
 
+    public static boolean facility32mReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.facility32m != null && SectorPresets.facility32m.unlocked();
+    }
+
+    public static boolean facility32mCaptured(){
+        return captured(SectorPresets.facility32m);
+    }
+
+    public static boolean perilousHarborReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.perilousHarbor != null && SectorPresets.perilousHarbor.unlocked();
+    }
+
+    public static boolean perilousHarborCaptured(){
+        return captured(SectorPresets.perilousHarbor);
+    }
+
+    public static boolean extractionOutpostReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.extractionOutpost != null && SectorPresets.extractionOutpost.unlocked();
+    }
+
+    public static boolean extractionOutpostCaptured(){
+        return captured(SectorPresets.extractionOutpost);
+    }
+
+    public static boolean coastlineReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.coastline != null && SectorPresets.coastline.unlocked();
+    }
+
+    public static boolean coastlineCaptured(){
+        return captured(SectorPresets.coastline);
+    }
+
+    public static boolean navalFortressReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.navalFortress != null && SectorPresets.navalFortress.unlocked();
+    }
+
     /**
      * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
      * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
@@ -355,6 +396,55 @@ public final class BrowserCampaignResearch{
             return;
         }
         spend(next);
+    }
+
+    public static UnlockableContent nextPerilousResearch(){
+        if(!Blocks.cultivator.unlocked()) return Blocks.cultivator;
+        if(!UnitTypes.retusa.unlocked()) return UnitTypes.retusa;
+        return null;
+    }
+
+    public static void spendNextPerilousResearch(){
+        UnlockableContent next = nextPerilousResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextExtractionResearch(){
+        if(!Blocks.multiplicativeReconstructor.unlocked()) return Blocks.multiplicativeReconstructor;
+        if(!UnitTypes.fortress.unlocked()) return UnitTypes.fortress;
+        return null;
+    }
+
+    public static void spendNextExtractionResearch(){
+        UnlockableContent next = nextExtractionResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextCoastlineResearch(){
+        if(!Blocks.itemBridge.unlocked()) return Blocks.itemBridge;
+        if(!Blocks.titaniumConveyor.unlocked()) return Blocks.titaniumConveyor;
+        if(!Blocks.payloadConveyor.unlocked()) return Blocks.payloadConveyor;
+        return null;
+    }
+
+    public static void spendNextCoastlineResearch(){
+        UnlockableContent next = nextCoastlineResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextNavalFortressResearch(){
+        if(!Blocks.massDriver.unlocked()) return Blocks.massDriver;
+        if(!UnitTypes.retusa.unlocked()) return UnitTypes.retusa;
+        if(!UnitTypes.oxynoe.unlocked()) return UnitTypes.oxynoe;
+        if(!UnitTypes.bryde.unlocked()) return UnitTypes.bryde;
+        if(!Blocks.cyclone.unlocked()) return Blocks.cyclone;
+        if(!Blocks.ripple.unlocked()) return Blocks.ripple;
+        return null;
+    }
+
+    public static void spendNextNavalFortressResearch(){
+        UnlockableContent next = nextNavalFortressResearch();
+        if(next != null) spend(next);
     }
 
     public static boolean canSpend(UnlockableContent content){
@@ -713,6 +803,86 @@ public final class BrowserCampaignResearch{
         markDesolateProgressSmoke();
     }
 
+    public static void verifyFacility32mReady(Sector source){
+        if(source == null || source != SectorPresets.desolateRift.sector || !desolateRiftCaptured()){
+            throw new IllegalStateException("Facility 32M branch requires captured Desolate Rift");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!facility32mReady()){
+            throw new IllegalStateException("Facility 32M did not auto-unlock from stock prerequisites");
+        }
+        markFacilityReadySmoke();
+    }
+
+    public static void runPerilousProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.facility32m.sector || !facility32mCaptured()){
+            throw new IllegalStateException("Perilous Harbor progression requires captured Facility 32M");
+        }
+        stageAndSpend(source, Blocks.cultivator);
+        stageAndSpend(source, UnitTypes.retusa);
+        if(control != null) control.checkAutoUnlocks();
+        if(!perilousHarborReady()){
+            throw new IllegalStateException("Perilous Harbor did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markPerilousProgressSmoke();
+    }
+
+    public static void runExtractionProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.perilousHarbor.sector || !perilousHarborCaptured()){
+            throw new IllegalStateException("Extraction Outpost progression requires captured Perilous Harbor");
+        }
+        if(!facility32mCaptured() || !windsweptIslandsCaptured()){
+            throw new IllegalStateException("Extraction Outpost sector prerequisites are incomplete");
+        }
+        stageAndSpend(source, Blocks.multiplicativeReconstructor);
+        stageAndSpend(source, UnitTypes.fortress);
+        if(control != null) control.checkAutoUnlocks();
+        if(!extractionOutpostReady()){
+            throw new IllegalStateException("Extraction Outpost did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markExtractionProgressSmoke();
+    }
+
+    public static void runCoastlineProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.extractionOutpost.sector || !extractionOutpostCaptured()){
+            throw new IllegalStateException("Coastline progression requires captured Extraction Outpost");
+        }
+        stageAndSpend(source, Blocks.itemBridge);
+        stageAndSpend(source, Blocks.titaniumConveyor);
+        stageAndSpend(source, Blocks.payloadConveyor);
+        if(control != null) control.checkAutoUnlocks();
+        if(!coastlineReady()){
+            throw new IllegalStateException("Coastline did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markCoastlineProgressSmoke();
+    }
+
+    public static void runNavalFortressProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.coastline.sector || !coastlineCaptured()){
+            throw new IllegalStateException("Naval Fortress progression requires captured Coastline");
+        }
+        if(!extractionOutpostCaptured()){
+            throw new IllegalStateException("Naval Fortress also requires captured Extraction Outpost");
+        }
+
+        stageAndSpend(source, Blocks.massDriver);
+        stageAndSpend(source, UnitTypes.retusa);
+        stageAndSpend(source, UnitTypes.oxynoe);
+        stageAndSpend(source, UnitTypes.bryde);
+        stageAndSpend(source, Blocks.cyclone);
+        stageAndSpend(source, Blocks.ripple);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!navalFortressReady()){
+            throw new IllegalStateException("Naval Fortress did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markNavalFortressProgressSmoke();
+    }
+
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
         stageMissing(source, content);
@@ -876,6 +1046,21 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-core-nucleus-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-pulverizer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-incinerator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-melter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cryofluid-mixer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cryofluid-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-differential-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-thorium-reactor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-ready','true');")
     private static native void markDesolateProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-facility32m-ready','true');")
+    private static native void markFacilityReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-cultivator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-retusa-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-ready','true');")
+    private static native void markPerilousProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-multiplicative-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-fortress-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-ready','true');")
+    private static native void markExtractionProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-item-bridge-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-titanium-conveyor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-payload-conveyor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-ready','true');")
+    private static native void markCoastlineProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-mass-driver-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-oxynoe-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-bryde-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cyclone-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-ripple-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-ready','true');")
+    private static native void markNavalFortressProgressSmoke();
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady", "windsweptReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
