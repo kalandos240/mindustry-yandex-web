@@ -15,6 +15,7 @@ GAMEPLAY = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web"
 PATHFINDER_PATCH = (ROOT / "scripts" / "patch-mindustry-pathfinder-web.py").read_text(encoding="utf-8")
 CONTROL_PATH_PATCH = (ROOT / "scripts" / "patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")
 ASYNC_CORE_PATCH = (ROOT / "scripts" / "patch-mindustry-async-core-web.py").read_text(encoding="utf-8")
+LOGIC_PATCH = (ROOT / "scripts" / "patch-mindustry-logic-web.py").read_text(encoding="utf-8")
 
 failures = []
 
@@ -124,6 +125,18 @@ require(APPLY_PORT, "patch-mindustry-renderer-web.py", "Renderer Web patch invoc
 RENDERER_PATCH = (ROOT / "scripts" / "patch-mindustry-renderer-web.py").read_text(encoding="utf-8")
 require(RENDERER_PATCH, "webSettingsPoll++ == 0 || (webSettingsPoll & 31) == 0", "Renderer Web patch")
 require(RENDERER_PATCH, "graphics.getFrameId() % 120 == 0", "Renderer Web patch")
+
+# Web Logic must not walk Groups.unit twice per frame. Teams.updateTeamStats()
+# owns the single full entity pass and publishes the exact top-level wave enemy count.
+require(LOGIC_PATCH, "public int webWaveEnemies;", "single-pass enemy count")
+require(LOGIC_PATCH, "if(unit.team == state.rules.waveTeam && unit.isEnemy()) webWaveEnemies++;", "single-pass enemy count")
+require(LOGIC_PATCH, "state.enemies = state.teams.webWaveEnemies;", "single-pass enemy count")
+forbid(LOGIC_PATCH, "state.enemies = Groups.unit.count", "single-pass enemy count")
+
+# Desktop/network map preview reflection is not installed in the lean Web runtime.
+# Keep its no-op polling out of updateWebPlayingCore reachability.
+forbid(LOGIC_PATCH, "state.enemies = state.teams.webWaveEnemies;\n        MapPreviewLoader.checkPreviews();", "Web Logic preview hot path")
+require(LOGIC_PATCH, "do not retain or poll that no-op preview bridge", "Web Logic preview hot path")
 
 # Production local gameplay must not write DOM frame/phase telemetry at 60Hz.
 require(LOCAL_MAP, "private static boolean telemetry;", "local gameplay telemetry gate")
