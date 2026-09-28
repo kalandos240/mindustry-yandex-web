@@ -56,6 +56,12 @@ require(INPUT, "event.offsetY", "BrowserInputBridge")
 require(INPUT, "__mindustryClientWidth", "BrowserInputBridge")
 require(INPUT, "__mindustryClientHeight", "BrowserInputBridge")
 require(INPUT, "data-mindustry-input-coordinates', 'offset-cached", "BrowserInputBridge")
+require(INPUT, "const pendingMoves = new Map()", "BrowserInputBridge pointer coalescing")
+require(INPUT, "requestAnimationFrame(flushMoves)", "BrowserInputBridge pointer coalescing")
+require(INPUT, "pendingMoves.set(slot, coords(event))", "BrowserInputBridge pointer coalescing")
+require(INPUT, "pendingMoves.delete(slot)", "BrowserInputBridge pointer coalescing")
+require(INPUT, "data-mindustry-input-move-policy', 'raf-coalesced", "BrowserInputBridge pointer coalescing")
+forbid(INPUT, "pointerMove(slot, p[0], p[1]);\n            event.preventDefault();", "BrowserInputBridge raw pointermove")
 
 # Particle-heavy sorted rendering must use the Web-only stable int run sorter.
 require(APPLY_PORT, "int[] sortOrder = new int[0], sortScratch = new int[0]", "SpriteBatch Web patch")
