@@ -1015,128 +1015,131 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Browser campaign frame requires the active Ground Zero sector");
         }
 
-        // CI stages only the stock victory predicates; Logic.checkGameState() must still
-        // dispatch Call.sectorCapture(). Wave sectors use winWave, while attack sectors
-        // destroy their actual enemy cores and win through !waveTeam.isAlive().
-        boolean onsetObjectiveCapture = current.preset == SectorPresets.onset;
-        boolean aegisObjectiveCapture = current.preset == SectorPresets.aegis;
-        boolean lakeObjectiveCapture = current.preset == SectorPresets.lake;
-        boolean intersectHybridCapture = current.preset == SectorPresets.intersect;
-        boolean splitObjectiveCapture = current.preset == SectorPresets.split;
-        boolean basinObjectiveCapture = current.preset == SectorPresets.basin;
-        boolean marshObjectiveCapture = current.preset == SectorPresets.marsh;
-        boolean peaksObjectiveCapture = current.preset == SectorPresets.peaks;
-        boolean strongholdObjectiveCapture = current.preset == SectorPresets.stronghold;
-        boolean siegeObjectiveCapture = current.preset == SectorPresets.siege;
-        boolean crossroadsObjectiveCapture = current.preset == SectorPresets.crossroads;
-        boolean originObjectiveCapture = current.preset == SectorPresets.origin;
+        if(captureSmoke){
+            // CI stages only the stock victory predicates; Logic.checkGameState() must still
+            // dispatch Call.sectorCapture(). Wave sectors use winWave, while attack sectors
+            // destroy their actual enemy cores and win through !waveTeam.isAlive().
+            boolean onsetObjectiveCapture = current.preset == SectorPresets.onset;
+            boolean aegisObjectiveCapture = current.preset == SectorPresets.aegis;
+            boolean lakeObjectiveCapture = current.preset == SectorPresets.lake;
+            boolean intersectHybridCapture = current.preset == SectorPresets.intersect;
+            boolean splitObjectiveCapture = current.preset == SectorPresets.split;
+            boolean basinObjectiveCapture = current.preset == SectorPresets.basin;
+            boolean marshObjectiveCapture = current.preset == SectorPresets.marsh;
+            boolean peaksObjectiveCapture = current.preset == SectorPresets.peaks;
+            boolean strongholdObjectiveCapture = current.preset == SectorPresets.stronghold;
+            boolean siegeObjectiveCapture = current.preset == SectorPresets.siege;
+            boolean crossroadsObjectiveCapture = current.preset == SectorPresets.crossroads;
+            boolean originObjectiveCapture = current.preset == SectorPresets.origin;
 
-        boolean progressionCapture = current.preset == SectorPresets.groundZero
-            || current.preset == SectorPresets.frozenForest
-            || current.preset == SectorPresets.crateredBattleground
-            || current.preset == SectorPresets.ruinousShores
-            || current.preset == SectorPresets.windsweptIslands
-            || current.preset == SectorPresets.biomassFacility
-            || current.preset == SectorPresets.fungalPass
-            || current.preset == SectorPresets.frontier
-            || current.preset == SectorPresets.saltFlats
-            || current.preset == SectorPresets.tarFields
-            || current.preset == SectorPresets.impact0078
-            || current.preset == SectorPresets.stainedMountains
-            || current.preset == SectorPresets.infestedCanyons
-            || current.preset == SectorPresets.nuclearComplex
-            || current.preset == SectorPresets.desolateRift
-            || current.preset == SectorPresets.facility32m
-            || current.preset == SectorPresets.perilousHarbor
-            || current.preset == SectorPresets.extractionOutpost
-            || current.preset == SectorPresets.coastline
-            || current.preset == SectorPresets.navalFortress
-            || current.preset == SectorPresets.overgrowth
-            || current.preset == SectorPresets.mycelialBastion
-            || current.preset == SectorPresets.littoralShipyard
-            || current.preset == SectorPresets.planetaryTerminal
-            || current.preset == SectorPresets.taintedWoods
-            || current.preset == SectorPresets.atolls
-            || current.preset == SectorPresets.testingGrounds
-            || current.preset == SectorPresets.sunkenPier
-            || current.preset == SectorPresets.weatheredChannels
-            || current.preset == SectorPresets.atlas
-            || current.preset == SectorPresets.ravine
-            || current.preset == SectorPresets.caldera
-            || current.preset == SectorPresets.crevice
-            || current.preset == SectorPresets.karst;
-        if(captureSmoke && onsetObjectiveCapture && !onsetObjectivesStaged && frames >= 3){
-            stageOnsetObjectivesForCapture();
-            onsetObjectivesStaged = true;
-        }else if(captureSmoke && onsetObjectiveCapture && onsetObjectivesStaged
-        && !captureSmokeStaged && frames >= 4){
-            int enemyCores = state.rules.waveTeam.cores().size;
-            if(enemyCores <= 0){
-                throw new IllegalStateException("Onset objective smoke expected enemy cores after openMap world-processor frame");
-            }
-            var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
-            enemyCoresSnapshot.each(core -> core.kill());
-
-            captureSmokeStaged = true;
-            markCaptureStaged(current.preset.name, state.wave, 0);
-            markOnsetObjectiveCaptureStaged(enemyCores);
-        }else if(captureSmoke && aegisObjectiveCapture && !captureSmokeStaged && frames >= 3){
-            stageAegisObjectivesForCapture();
-            stageAttackCoresForCapture("aegis");
-        }else if(captureSmoke && lakeObjectiveCapture && !captureSmokeStaged && frames >= 3){
-            stageLakeObjectivesForCapture();
-            stageAttackCoresForCapture("lake");
-        }else if(captureSmoke && intersectHybridCapture && !captureSmokeStaged && frames >= 3){
-            if(state.rules.attackMode){
-                throw new IllegalStateException("Intersect smoke expected wave phase before attack mode");
-            }
-            if(state.rules.winWave != 9 || state.enemies != 0 || spawner == null || spawner.isSpawning()){
-                throw new IllegalStateException("Intersect smoke could not stage stock wave-9 predicate");
-            }
-            state.wave = state.rules.winWave;
-            captureSmokeStaged = true;
-            markCaptureStaged(current.preset.name, state.wave, state.rules.winWave);
-            markIntersectWaveStage();
-        }else if(captureSmoke && splitObjectiveCapture && !captureSmokeStaged && frames >= 3){
-            stageSplitObjectivesForCapture();
-        }else if(captureSmoke && basinObjectiveCapture && !captureSmokeStaged && frames >= 3){
-            stageBasinObjectivesForCapture();
-        }else if(captureSmoke && marshObjectiveCapture && !marshObjectivesStaged && frames >= 3){
-            stageMarshObjectives();
-            marshObjectivesStaged = true;
-        }else if(captureSmoke && peaksObjectiveCapture && !peaksObjectivesStaged && frames >= 3){
-            stagePeaksObjectives();
-            peaksObjectivesStaged = true;
-        }else if(captureSmoke && strongholdObjectiveCapture && !strongholdObjectivesStaged && frames >= 3){
-            stageStrongholdObjectives();
-            strongholdObjectivesStaged = true;
-        }else if(captureSmoke && siegeObjectiveCapture && !siegeObjectivesStaged && frames >= 3){
-            stageSiegeObjectives();
-            siegeObjectivesStaged = true;
-        }else if(captureSmoke && crossroadsObjectiveCapture && !crossroadsObjectivesStaged && frames >= 3){
-            stageCrossroadsObjectives();
-            crossroadsObjectivesStaged = true;
-        }else if(captureSmoke && originObjectiveCapture && !originObjectivesStaged && frames >= 3){
-            stageOriginObjectives();
-            originObjectivesStaged = true;
-        }else if(captureSmoke && progressionCapture && !captureSmokeStaged && frames >= 3){
-            if(state.rules.attackMode){
+            boolean progressionCapture = current.preset == SectorPresets.groundZero
+                || current.preset == SectorPresets.frozenForest
+                || current.preset == SectorPresets.crateredBattleground
+                || current.preset == SectorPresets.ruinousShores
+                || current.preset == SectorPresets.windsweptIslands
+                || current.preset == SectorPresets.biomassFacility
+                || current.preset == SectorPresets.fungalPass
+                || current.preset == SectorPresets.frontier
+                || current.preset == SectorPresets.saltFlats
+                || current.preset == SectorPresets.tarFields
+                || current.preset == SectorPresets.impact0078
+                || current.preset == SectorPresets.stainedMountains
+                || current.preset == SectorPresets.infestedCanyons
+                || current.preset == SectorPresets.nuclearComplex
+                || current.preset == SectorPresets.desolateRift
+                || current.preset == SectorPresets.facility32m
+                || current.preset == SectorPresets.perilousHarbor
+                || current.preset == SectorPresets.extractionOutpost
+                || current.preset == SectorPresets.coastline
+                || current.preset == SectorPresets.navalFortress
+                || current.preset == SectorPresets.overgrowth
+                || current.preset == SectorPresets.mycelialBastion
+                || current.preset == SectorPresets.littoralShipyard
+                || current.preset == SectorPresets.planetaryTerminal
+                || current.preset == SectorPresets.taintedWoods
+                || current.preset == SectorPresets.atolls
+                || current.preset == SectorPresets.testingGrounds
+                || current.preset == SectorPresets.sunkenPier
+                || current.preset == SectorPresets.weatheredChannels
+                || current.preset == SectorPresets.atlas
+                || current.preset == SectorPresets.ravine
+                || current.preset == SectorPresets.caldera
+                || current.preset == SectorPresets.crevice
+                || current.preset == SectorPresets.karst;
+            if(captureSmoke && onsetObjectiveCapture && !onsetObjectivesStaged && frames >= 3){
+                stageOnsetObjectivesForCapture();
+                onsetObjectivesStaged = true;
+            }else if(captureSmoke && onsetObjectiveCapture && onsetObjectivesStaged
+            && !captureSmokeStaged && frames >= 4){
                 int enemyCores = state.rules.waveTeam.cores().size;
                 if(enemyCores <= 0){
-                    throw new IllegalStateException("Attack campaign smoke expected at least one enemy core for " + current.preset.name);
+                    throw new IllegalStateException("Onset objective smoke expected enemy cores after openMap world-processor frame");
                 }
                 var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
                 enemyCoresSnapshot.each(core -> core.kill());
+
                 captureSmokeStaged = true;
                 markCaptureStaged(current.preset.name, state.wave, 0);
-            }else{
-                if(state.rules.winWave <= 0 || state.enemies != 0 || spawner == null || spawner.isSpawning()){
-                    throw new IllegalStateException("Campaign capture smoke could not stage the stock wave victory predicate for " + current.preset.name);
+                markOnsetObjectiveCaptureStaged(enemyCores);
+            }else if(captureSmoke && aegisObjectiveCapture && !captureSmokeStaged && frames >= 3){
+                stageAegisObjectivesForCapture();
+                stageAttackCoresForCapture("aegis");
+            }else if(captureSmoke && lakeObjectiveCapture && !captureSmokeStaged && frames >= 3){
+                stageLakeObjectivesForCapture();
+                stageAttackCoresForCapture("lake");
+            }else if(captureSmoke && intersectHybridCapture && !captureSmokeStaged && frames >= 3){
+                if(state.rules.attackMode){
+                    throw new IllegalStateException("Intersect smoke expected wave phase before attack mode");
+                }
+                if(state.rules.winWave != 9 || state.enemies != 0 || spawner == null || spawner.isSpawning()){
+                    throw new IllegalStateException("Intersect smoke could not stage stock wave-9 predicate");
                 }
                 state.wave = state.rules.winWave;
                 captureSmokeStaged = true;
                 markCaptureStaged(current.preset.name, state.wave, state.rules.winWave);
+                markIntersectWaveStage();
+            }else if(captureSmoke && splitObjectiveCapture && !captureSmokeStaged && frames >= 3){
+                stageSplitObjectivesForCapture();
+            }else if(captureSmoke && basinObjectiveCapture && !captureSmokeStaged && frames >= 3){
+                stageBasinObjectivesForCapture();
+            }else if(captureSmoke && marshObjectiveCapture && !marshObjectivesStaged && frames >= 3){
+                stageMarshObjectives();
+                marshObjectivesStaged = true;
+            }else if(captureSmoke && peaksObjectiveCapture && !peaksObjectivesStaged && frames >= 3){
+                stagePeaksObjectives();
+                peaksObjectivesStaged = true;
+            }else if(captureSmoke && strongholdObjectiveCapture && !strongholdObjectivesStaged && frames >= 3){
+                stageStrongholdObjectives();
+                strongholdObjectivesStaged = true;
+            }else if(captureSmoke && siegeObjectiveCapture && !siegeObjectivesStaged && frames >= 3){
+                stageSiegeObjectives();
+                siegeObjectivesStaged = true;
+            }else if(captureSmoke && crossroadsObjectiveCapture && !crossroadsObjectivesStaged && frames >= 3){
+                stageCrossroadsObjectives();
+                crossroadsObjectivesStaged = true;
+            }else if(captureSmoke && originObjectiveCapture && !originObjectivesStaged && frames >= 3){
+                stageOriginObjectives();
+                originObjectivesStaged = true;
+            }else if(captureSmoke && progressionCapture && !captureSmokeStaged && frames >= 3){
+                if(state.rules.attackMode){
+                    int enemyCores = state.rules.waveTeam.cores().size;
+                    if(enemyCores <= 0){
+                        throw new IllegalStateException("Attack campaign smoke expected at least one enemy core for " + current.preset.name);
+                    }
+                    var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
+                    enemyCoresSnapshot.each(core -> core.kill());
+                    captureSmokeStaged = true;
+                    markCaptureStaged(current.preset.name, state.wave, 0);
+                }else{
+                    if(state.rules.winWave <= 0 || state.enemies != 0 || spawner == null || spawner.isSpawning()){
+                        throw new IllegalStateException("Campaign capture smoke could not stage the stock wave victory predicate for " + current.preset.name);
+                    }
+                    state.wave = state.rules.winWave;
+                    captureSmokeStaged = true;
+                    markCaptureStaged(current.preset.name, state.wave, state.rules.winWave);
+                }
             }
+
         }
 
         long beforeUpdate = state.updateId;
@@ -1172,506 +1175,509 @@ public final class BrowserCampaignRuntime{
 
         frames++;
 
-        // Intersect uses SectorPreset.attackAfterWaves: the first state check at wave 9
-        // disables waves and switches to attack mode; only then may CI remove real cores.
-        if(captureSmoke && current.preset == SectorPresets.intersect
-        && captureSmokeStaged && !captureSmokeComplete && state.rules.attackMode
-        && state.rules.waveTeam.cores().size > 0){
-            int enemyCores = state.rules.waveTeam.cores().size;
-            var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
-            enemyCoresSnapshot.each(core -> core.kill());
-            markIntersectAttackStage(enemyCores);
-        }
-
-        // Basin's two scripted nuclear targets may not be the only enemy cores.
-        // Wait for the real objective executor to apply nukeannounce/nuke1, then finish
-        // any remaining attack cores through the same stock attack victory predicate.
-        if(captureSmoke && current.preset == SectorPresets.basin
-        && captureSmokeStaged && !captureSmokeComplete
-        && state.rules.objectiveFlags.contains("nukeannounce")
-        && state.rules.objectiveFlags.contains("nuke1")
-        && state.rules.waveTeam.cores().size > 0){
-            int enemyCores = state.rules.waveTeam.cores().size;
-            var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
-            enemyCoresSnapshot.each(core -> core.kill());
-            markBasinAttackStage(enemyCores);
-        }
-
-        if(captureSmoke && current.preset == SectorPresets.marsh
-        && marshObjectivesStaged && !captureSmokeStaged
-        && state.rules.objectiveFlags.contains("setupComplete")){
-            stageAttackCoresForCapture("marsh");
-            markMarshObjectiveFlagsReady();
-        }
-
-        if(captureSmoke && current.preset == SectorPresets.peaks
-        && peaksObjectivesStaged && !captureSmokeStaged
-        && state.rules.objectiveFlags.contains("openMap")
-        && state.rules.objectiveFlags.contains("setupFinished")){
-            stageAttackCoresForCapture("peaks");
-            markPeaksObjectiveFlagsReady();
-        }
-
-        if(captureSmoke && current.preset == SectorPresets.stronghold
-        && strongholdObjectivesStaged && !strongholdTargetsDestroyed
-        && state.rules.objectiveFlags.contains("units1")){
-            destroyStrongholdTargets();
-            strongholdTargetsDestroyed = true;
-        }
-
-        if(captureSmoke && current.preset == SectorPresets.stronghold
-        && strongholdTargetsDestroyed && !captureSmokeStaged
-        && strongholdFlagsComplete()){
-            state.rules.canGameOver = true;
-            armObjectiveAttackCapture("stronghold");
-            markStrongholdObjectiveFlagsReady();
-        }
-
-        if(captureSmoke && current.preset == SectorPresets.siege
-        && siegeObjectivesStaged && !captureSmokeStaged
-        && state.rules.objectiveFlags.contains("def")
-        && state.rules.objectiveFlags.contains("u1")
-        && state.rules.objectiveFlags.contains("u2")
-        && state.rules.objectiveFlags.contains("u3")){
-            armObjectiveAttackCapture("siege");
-            markSiegeObjectiveFlagsReady();
-        }
-
-        if(captureSmoke && current.preset == SectorPresets.crossroads
-        && crossroadsObjectivesStaged && !captureSmokeStaged
-        && state.rules.objectiveFlags.contains("u1")
-        && state.rules.objectiveFlags.contains("u2")
-        && state.rules.objectiveFlags.contains("u3")
-        && state.rules.objectiveFlags.contains("u4")){
-            armObjectiveAttackCapture("crossroads");
-            markCrossroadsObjectiveFlagsReady();
-        }
-
-        if(captureSmoke && current.preset == SectorPresets.origin
-        && originObjectivesStaged && !captureSmokeStaged
-        && state.rules.objectiveFlags.contains("u1")
-        && state.rules.objectiveFlags.contains("u2")
-        && state.rules.objectiveFlags.contains("u3")
-        && state.rules.objectiveFlags.contains("u4")
-        && state.rules.objectiveFlags.contains("u5")){
-            armObjectiveAttackCapture("origin");
-            markOriginObjectiveFlagsReady();
-        }
-
-        if(progressSmoke && current.preset == SectorPresets.origin && frames >= 3){
-            markProgressStable(current.id, current.preset.name, frames, state.updateId, state.wave);
-        }
-
-        if(progressSmoke
-        && (current.preset == SectorPresets.frozenForest
-            || current.preset == SectorPresets.crateredBattleground
-            || current.preset == SectorPresets.ruinousShores
-            || current.preset == SectorPresets.windsweptIslands
-            || current.preset == SectorPresets.biomassFacility
-            || current.preset == SectorPresets.fungalPass
-            || current.preset == SectorPresets.frontier
-            || current.preset == SectorPresets.saltFlats
-            || current.preset == SectorPresets.tarFields
-            || current.preset == SectorPresets.impact0078
-            || current.preset == SectorPresets.stainedMountains
-            || current.preset == SectorPresets.infestedCanyons
-            || current.preset == SectorPresets.nuclearComplex
-            || current.preset == SectorPresets.desolateRift
-            || current.preset == SectorPresets.facility32m
-            || current.preset == SectorPresets.perilousHarbor
-            || current.preset == SectorPresets.extractionOutpost
-            || current.preset == SectorPresets.coastline
-            || current.preset == SectorPresets.navalFortress
-            || current.preset == SectorPresets.overgrowth
-            || current.preset == SectorPresets.mycelialBastion
-            || current.preset == SectorPresets.littoralShipyard
-            || current.preset == SectorPresets.planetaryTerminal
-            || current.preset == SectorPresets.taintedWoods
-            || current.preset == SectorPresets.atolls
-            || current.preset == SectorPresets.testingGrounds
-            || current.preset == SectorPresets.sunkenPier
-            || current.preset == SectorPresets.weatheredChannels)
-        && frames >= 3){
-            markProgressStable(current.id, current.preset.name, frames, state.updateId, state.wave);
-        }
-
-        if(captureSmokeStaged && !captureSmokeComplete){
-            if(current.info.wasCaptured && !state.rules.waves && !state.rules.attackMode){
-                if(current.save == null || current.save.file == null || !current.save.file.exists()
-                || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
-                    throw new IllegalStateException("Stock Ground Zero capture did not persist a valid sector save");
-                }
-                SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
-                if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
-                    throw new IllegalStateException("Captured Ground Zero save metadata lost the active sector");
-                }
-                if(current.preset == SectorPresets.basin){
-                    if(!state.rules.objectiveFlags.contains("nukeannounce")
-                    || !state.rules.objectiveFlags.contains("nuke1")){
-                        throw new IllegalStateException("Basin capture occurred before stock nuclear objective flags completed");
-                    }
-                    markBasinObjectiveFlagsReady();
-                }
-
-                captureSmokeComplete = true;
-                flushCampaignStorage();
-                markCaptureComplete(current.preset == null ? "unknown" : current.preset.name,
-                    current.id, state.wave, current.save.file.length());
-
-                if(progressSmoke && current.preset == SectorPresets.onset){
-                    BrowserCampaignResearch.runAegisProgressSmoke(current);
-                    returnToMenu();
-                    playAegis();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.aegis){
-                    BrowserCampaignResearch.verifyLakeReadyAfterAegis(current);
-                    returnToMenu();
-                    playLake();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.lake){
-                    BrowserCampaignResearch.runIntersectProgressSmoke(current);
-                    returnToMenu();
-                    playIntersect();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.intersect){
-                    BrowserCampaignResearch.runAtlasProgressSmoke(current);
-                    returnToMenu();
-                    playAtlas();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.atlas){
-                    BrowserCampaignResearch.runSplitProgressSmoke(current);
-                    returnToMenu();
-                    playSplit();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.split){
-                    BrowserCampaignResearch.verifyBasinReadyAfterAtlas(current);
-                    returnToMenu();
-                    playBasin();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.basin){
-                    BrowserCampaignResearch.verifyMarshReadyAfterBasin(current);
-                    returnToMenu();
-                    playMarsh();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.marsh){
-                    BrowserCampaignResearch.verifyPeaksReadyAfterMarsh(current);
-                    returnToMenu();
-                    playPeaks();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.peaks){
-                    BrowserCampaignResearch.runRavineProgressSmoke(current);
-                    returnToMenu();
-                    playRavine();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.ravine){
-                    BrowserCampaignResearch.runCalderaProgressSmoke(current);
-                    returnToMenu();
-                    playCaldera();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.caldera){
-                    BrowserCampaignResearch.runStrongholdProgressSmoke(current);
-                    returnToMenu();
-                    playStronghold();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.stronghold){
-                    BrowserCampaignResearch.verifyCreviceReadyAfterStronghold(current);
-                    returnToMenu();
-                    playCrevice();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.crevice){
-                    BrowserCampaignResearch.verifySiegeReadyAfterCrevice(current);
-                    returnToMenu();
-                    playSiege();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.siege){
-                    BrowserCampaignResearch.verifyCrossroadsReadyAfterSiege(current);
-                    returnToMenu();
-                    playCrossroads();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.crossroads){
-                    BrowserCampaignResearch.runKarstProgressSmoke(current);
-                    returnToMenu();
-                    playKarst();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.karst){
-                    BrowserCampaignResearch.runOriginProgressSmoke(current);
-                    returnToMenu();
-                    playOrigin();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.groundZero){
-                    BrowserCampaignResearch.runEarlyProgressSmoke(current);
-                    returnToMenu();
-                    playFrozenForest();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.frozenForest){
-                    BrowserCampaignResearch.runCraterProgressSmoke(current);
-                    returnToMenu();
-                    playCrateredBattleground();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.crateredBattleground){
-                    BrowserCampaignResearch.runRuinousProgressSmoke(current);
-                    returnToMenu();
-                    playRuinousShores();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.ruinousShores){
-                    BrowserCampaignResearch.runWindsweptProgressSmoke(current);
-                    returnToMenu();
-                    playWindsweptIslands();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.windsweptIslands){
-                    BrowserCampaignResearch.verifyBiomassReadyAfterWindswept(current);
-                    returnToMenu();
-                    playBiomassFacility();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.biomassFacility){
-                    BrowserCampaignResearch.runFungalProgressSmoke(current);
-                    returnToMenu();
-                    playFungalPass();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.fungalPass){
-                    BrowserCampaignResearch.runFrontierProgressSmoke(current);
-                    returnToMenu();
-                    playFrontier();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.frontier){
-                    BrowserCampaignResearch.runSaltProgressSmoke(current);
-                    returnToMenu();
-                    playSaltFlats();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.saltFlats){
-                    BrowserCampaignResearch.runTarProgressSmoke(current);
-                    returnToMenu();
-                    playTarFields();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.tarFields){
-                    BrowserCampaignResearch.runImpactProgressSmoke(current);
-                    returnToMenu();
-                    playImpact0078();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.impact0078){
-                    BrowserCampaignResearch.verifyStainedReadyAfterImpact(current);
-                    returnToMenu();
-                    playStainedMountains();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.stainedMountains){
-                    BrowserCampaignResearch.runInfestedProgressSmoke(current);
-                    returnToMenu();
-                    playInfestedCanyons();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.infestedCanyons){
-                    BrowserCampaignResearch.runNuclearProgressSmoke(current);
-                    returnToMenu();
-                    playNuclearComplex();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.nuclearComplex){
-                    BrowserCampaignResearch.runDesolateProgressSmoke(current);
-                    returnToMenu();
-                    playDesolateRift();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.desolateRift){
-                    BrowserCampaignResearch.verifyFacility32mReady(current);
-                    returnToMenu();
-                    playFacility32m();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.facility32m){
-                    BrowserCampaignResearch.runPerilousProgressSmoke(current);
-                    returnToMenu();
-                    playPerilousHarbor();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.perilousHarbor){
-                    BrowserCampaignResearch.runExtractionProgressSmoke(current);
-                    returnToMenu();
-                    playExtractionOutpost();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.extractionOutpost){
-                    BrowserCampaignResearch.runCoastlineProgressSmoke(current);
-                    returnToMenu();
-                    playCoastline();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.coastline){
-                    BrowserCampaignResearch.runNavalFortressProgressSmoke(current);
-                    returnToMenu();
-                    playNavalFortress();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.navalFortress){
-                    BrowserCampaignResearch.verifyOvergrowthReady(current);
-                    returnToMenu();
-                    playOvergrowth();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.overgrowth){
-                    BrowserCampaignResearch.runMycelialProgressSmoke(current);
-                    returnToMenu();
-                    playMycelialBastion();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.mycelialBastion){
-                    BrowserCampaignResearch.runLittoralProgressSmoke(current);
-                    returnToMenu();
-                    playLittoralShipyard();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.littoralShipyard){
-                    BrowserCampaignResearch.runTerminalProgressSmoke(current);
-                    returnToMenu();
-                    playPlanetaryTerminal();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.planetaryTerminal){
-                    BrowserCampaignResearch.runTaintedProgressSmoke(current);
-                    returnToMenu();
-                    playTaintedWoods();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.taintedWoods){
-                    BrowserCampaignResearch.runAtollsProgressSmoke(current);
-                    returnToMenu();
-                    playAtolls();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.atolls){
-                    BrowserCampaignResearch.runTestingGroundsProgressSmoke(current);
-                    returnToMenu();
-                    playTestingGrounds();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.testingGrounds){
-                    BrowserCampaignResearch.verifySunkenPierReady(current);
-                    returnToMenu();
-                    playSunkenPier();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-
-                if(progressSmoke && current.preset == SectorPresets.sunkenPier){
-                    BrowserCampaignResearch.runWeatheredProgressSmoke(current);
-                    returnToMenu();
-                    playWeatheredChannels();
-                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                    return;
-                }
-            }else if(frames > 8){
-                throw new IllegalStateException("Stock campaign victory predicate did not dispatch sector capture for " + current.preset.name);
+        if(captureSmoke || progressSmoke){
+            // Intersect uses SectorPreset.attackAfterWaves: the first state check at wave 9
+            // disables waves and switches to attack mode; only then may CI remove real cores.
+            if(captureSmoke && current.preset == SectorPresets.intersect
+            && captureSmokeStaged && !captureSmokeComplete && state.rules.attackMode
+            && state.rules.waveTeam.cores().size > 0){
+                int enemyCores = state.rules.waveTeam.cores().size;
+                var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
+                enemyCoresSnapshot.each(core -> core.kill());
+                markIntersectAttackStage(enemyCores);
             }
+
+            // Basin's two scripted nuclear targets may not be the only enemy cores.
+            // Wait for the real objective executor to apply nukeannounce/nuke1, then finish
+            // any remaining attack cores through the same stock attack victory predicate.
+            if(captureSmoke && current.preset == SectorPresets.basin
+            && captureSmokeStaged && !captureSmokeComplete
+            && state.rules.objectiveFlags.contains("nukeannounce")
+            && state.rules.objectiveFlags.contains("nuke1")
+            && state.rules.waveTeam.cores().size > 0){
+                int enemyCores = state.rules.waveTeam.cores().size;
+                var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
+                enemyCoresSnapshot.each(core -> core.kill());
+                markBasinAttackStage(enemyCores);
+            }
+
+            if(captureSmoke && current.preset == SectorPresets.marsh
+            && marshObjectivesStaged && !captureSmokeStaged
+            && state.rules.objectiveFlags.contains("setupComplete")){
+                stageAttackCoresForCapture("marsh");
+                markMarshObjectiveFlagsReady();
+            }
+
+            if(captureSmoke && current.preset == SectorPresets.peaks
+            && peaksObjectivesStaged && !captureSmokeStaged
+            && state.rules.objectiveFlags.contains("openMap")
+            && state.rules.objectiveFlags.contains("setupFinished")){
+                stageAttackCoresForCapture("peaks");
+                markPeaksObjectiveFlagsReady();
+            }
+
+            if(captureSmoke && current.preset == SectorPresets.stronghold
+            && strongholdObjectivesStaged && !strongholdTargetsDestroyed
+            && state.rules.objectiveFlags.contains("units1")){
+                destroyStrongholdTargets();
+                strongholdTargetsDestroyed = true;
+            }
+
+            if(captureSmoke && current.preset == SectorPresets.stronghold
+            && strongholdTargetsDestroyed && !captureSmokeStaged
+            && strongholdFlagsComplete()){
+                state.rules.canGameOver = true;
+                armObjectiveAttackCapture("stronghold");
+                markStrongholdObjectiveFlagsReady();
+            }
+
+            if(captureSmoke && current.preset == SectorPresets.siege
+            && siegeObjectivesStaged && !captureSmokeStaged
+            && state.rules.objectiveFlags.contains("def")
+            && state.rules.objectiveFlags.contains("u1")
+            && state.rules.objectiveFlags.contains("u2")
+            && state.rules.objectiveFlags.contains("u3")){
+                armObjectiveAttackCapture("siege");
+                markSiegeObjectiveFlagsReady();
+            }
+
+            if(captureSmoke && current.preset == SectorPresets.crossroads
+            && crossroadsObjectivesStaged && !captureSmokeStaged
+            && state.rules.objectiveFlags.contains("u1")
+            && state.rules.objectiveFlags.contains("u2")
+            && state.rules.objectiveFlags.contains("u3")
+            && state.rules.objectiveFlags.contains("u4")){
+                armObjectiveAttackCapture("crossroads");
+                markCrossroadsObjectiveFlagsReady();
+            }
+
+            if(captureSmoke && current.preset == SectorPresets.origin
+            && originObjectivesStaged && !captureSmokeStaged
+            && state.rules.objectiveFlags.contains("u1")
+            && state.rules.objectiveFlags.contains("u2")
+            && state.rules.objectiveFlags.contains("u3")
+            && state.rules.objectiveFlags.contains("u4")
+            && state.rules.objectiveFlags.contains("u5")){
+                armObjectiveAttackCapture("origin");
+                markOriginObjectiveFlagsReady();
+            }
+
+            if(progressSmoke && current.preset == SectorPresets.origin && frames >= 3){
+                markProgressStable(current.id, current.preset.name, frames, state.updateId, state.wave);
+            }
+
+            if(progressSmoke
+            && (current.preset == SectorPresets.frozenForest
+                || current.preset == SectorPresets.crateredBattleground
+                || current.preset == SectorPresets.ruinousShores
+                || current.preset == SectorPresets.windsweptIslands
+                || current.preset == SectorPresets.biomassFacility
+                || current.preset == SectorPresets.fungalPass
+                || current.preset == SectorPresets.frontier
+                || current.preset == SectorPresets.saltFlats
+                || current.preset == SectorPresets.tarFields
+                || current.preset == SectorPresets.impact0078
+                || current.preset == SectorPresets.stainedMountains
+                || current.preset == SectorPresets.infestedCanyons
+                || current.preset == SectorPresets.nuclearComplex
+                || current.preset == SectorPresets.desolateRift
+                || current.preset == SectorPresets.facility32m
+                || current.preset == SectorPresets.perilousHarbor
+                || current.preset == SectorPresets.extractionOutpost
+                || current.preset == SectorPresets.coastline
+                || current.preset == SectorPresets.navalFortress
+                || current.preset == SectorPresets.overgrowth
+                || current.preset == SectorPresets.mycelialBastion
+                || current.preset == SectorPresets.littoralShipyard
+                || current.preset == SectorPresets.planetaryTerminal
+                || current.preset == SectorPresets.taintedWoods
+                || current.preset == SectorPresets.atolls
+                || current.preset == SectorPresets.testingGrounds
+                || current.preset == SectorPresets.sunkenPier
+                || current.preset == SectorPresets.weatheredChannels)
+            && frames >= 3){
+                markProgressStable(current.id, current.preset.name, frames, state.updateId, state.wave);
+            }
+
+            if(captureSmokeStaged && !captureSmokeComplete){
+                if(current.info.wasCaptured && !state.rules.waves && !state.rules.attackMode){
+                    if(current.save == null || current.save.file == null || !current.save.file.exists()
+                    || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
+                        throw new IllegalStateException("Stock Ground Zero capture did not persist a valid sector save");
+                    }
+                    SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
+                    if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
+                        throw new IllegalStateException("Captured Ground Zero save metadata lost the active sector");
+                    }
+                    if(current.preset == SectorPresets.basin){
+                        if(!state.rules.objectiveFlags.contains("nukeannounce")
+                        || !state.rules.objectiveFlags.contains("nuke1")){
+                            throw new IllegalStateException("Basin capture occurred before stock nuclear objective flags completed");
+                        }
+                        markBasinObjectiveFlagsReady();
+                    }
+
+                    captureSmokeComplete = true;
+                    flushCampaignStorage();
+                    markCaptureComplete(current.preset == null ? "unknown" : current.preset.name,
+                        current.id, state.wave, current.save.file.length());
+
+                    if(progressSmoke && current.preset == SectorPresets.onset){
+                        BrowserCampaignResearch.runAegisProgressSmoke(current);
+                        returnToMenu();
+                        playAegis();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.aegis){
+                        BrowserCampaignResearch.verifyLakeReadyAfterAegis(current);
+                        returnToMenu();
+                        playLake();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.lake){
+                        BrowserCampaignResearch.runIntersectProgressSmoke(current);
+                        returnToMenu();
+                        playIntersect();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.intersect){
+                        BrowserCampaignResearch.runAtlasProgressSmoke(current);
+                        returnToMenu();
+                        playAtlas();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.atlas){
+                        BrowserCampaignResearch.runSplitProgressSmoke(current);
+                        returnToMenu();
+                        playSplit();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.split){
+                        BrowserCampaignResearch.verifyBasinReadyAfterAtlas(current);
+                        returnToMenu();
+                        playBasin();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.basin){
+                        BrowserCampaignResearch.verifyMarshReadyAfterBasin(current);
+                        returnToMenu();
+                        playMarsh();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.marsh){
+                        BrowserCampaignResearch.verifyPeaksReadyAfterMarsh(current);
+                        returnToMenu();
+                        playPeaks();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.peaks){
+                        BrowserCampaignResearch.runRavineProgressSmoke(current);
+                        returnToMenu();
+                        playRavine();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.ravine){
+                        BrowserCampaignResearch.runCalderaProgressSmoke(current);
+                        returnToMenu();
+                        playCaldera();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.caldera){
+                        BrowserCampaignResearch.runStrongholdProgressSmoke(current);
+                        returnToMenu();
+                        playStronghold();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.stronghold){
+                        BrowserCampaignResearch.verifyCreviceReadyAfterStronghold(current);
+                        returnToMenu();
+                        playCrevice();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.crevice){
+                        BrowserCampaignResearch.verifySiegeReadyAfterCrevice(current);
+                        returnToMenu();
+                        playSiege();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.siege){
+                        BrowserCampaignResearch.verifyCrossroadsReadyAfterSiege(current);
+                        returnToMenu();
+                        playCrossroads();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.crossroads){
+                        BrowserCampaignResearch.runKarstProgressSmoke(current);
+                        returnToMenu();
+                        playKarst();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.karst){
+                        BrowserCampaignResearch.runOriginProgressSmoke(current);
+                        returnToMenu();
+                        playOrigin();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.groundZero){
+                        BrowserCampaignResearch.runEarlyProgressSmoke(current);
+                        returnToMenu();
+                        playFrozenForest();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.frozenForest){
+                        BrowserCampaignResearch.runCraterProgressSmoke(current);
+                        returnToMenu();
+                        playCrateredBattleground();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.crateredBattleground){
+                        BrowserCampaignResearch.runRuinousProgressSmoke(current);
+                        returnToMenu();
+                        playRuinousShores();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.ruinousShores){
+                        BrowserCampaignResearch.runWindsweptProgressSmoke(current);
+                        returnToMenu();
+                        playWindsweptIslands();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.windsweptIslands){
+                        BrowserCampaignResearch.verifyBiomassReadyAfterWindswept(current);
+                        returnToMenu();
+                        playBiomassFacility();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.biomassFacility){
+                        BrowserCampaignResearch.runFungalProgressSmoke(current);
+                        returnToMenu();
+                        playFungalPass();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.fungalPass){
+                        BrowserCampaignResearch.runFrontierProgressSmoke(current);
+                        returnToMenu();
+                        playFrontier();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.frontier){
+                        BrowserCampaignResearch.runSaltProgressSmoke(current);
+                        returnToMenu();
+                        playSaltFlats();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.saltFlats){
+                        BrowserCampaignResearch.runTarProgressSmoke(current);
+                        returnToMenu();
+                        playTarFields();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.tarFields){
+                        BrowserCampaignResearch.runImpactProgressSmoke(current);
+                        returnToMenu();
+                        playImpact0078();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.impact0078){
+                        BrowserCampaignResearch.verifyStainedReadyAfterImpact(current);
+                        returnToMenu();
+                        playStainedMountains();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.stainedMountains){
+                        BrowserCampaignResearch.runInfestedProgressSmoke(current);
+                        returnToMenu();
+                        playInfestedCanyons();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.infestedCanyons){
+                        BrowserCampaignResearch.runNuclearProgressSmoke(current);
+                        returnToMenu();
+                        playNuclearComplex();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.nuclearComplex){
+                        BrowserCampaignResearch.runDesolateProgressSmoke(current);
+                        returnToMenu();
+                        playDesolateRift();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.desolateRift){
+                        BrowserCampaignResearch.verifyFacility32mReady(current);
+                        returnToMenu();
+                        playFacility32m();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.facility32m){
+                        BrowserCampaignResearch.runPerilousProgressSmoke(current);
+                        returnToMenu();
+                        playPerilousHarbor();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.perilousHarbor){
+                        BrowserCampaignResearch.runExtractionProgressSmoke(current);
+                        returnToMenu();
+                        playExtractionOutpost();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.extractionOutpost){
+                        BrowserCampaignResearch.runCoastlineProgressSmoke(current);
+                        returnToMenu();
+                        playCoastline();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.coastline){
+                        BrowserCampaignResearch.runNavalFortressProgressSmoke(current);
+                        returnToMenu();
+                        playNavalFortress();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.navalFortress){
+                        BrowserCampaignResearch.verifyOvergrowthReady(current);
+                        returnToMenu();
+                        playOvergrowth();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.overgrowth){
+                        BrowserCampaignResearch.runMycelialProgressSmoke(current);
+                        returnToMenu();
+                        playMycelialBastion();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.mycelialBastion){
+                        BrowserCampaignResearch.runLittoralProgressSmoke(current);
+                        returnToMenu();
+                        playLittoralShipyard();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.littoralShipyard){
+                        BrowserCampaignResearch.runTerminalProgressSmoke(current);
+                        returnToMenu();
+                        playPlanetaryTerminal();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.planetaryTerminal){
+                        BrowserCampaignResearch.runTaintedProgressSmoke(current);
+                        returnToMenu();
+                        playTaintedWoods();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.taintedWoods){
+                        BrowserCampaignResearch.runAtollsProgressSmoke(current);
+                        returnToMenu();
+                        playAtolls();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.atolls){
+                        BrowserCampaignResearch.runTestingGroundsProgressSmoke(current);
+                        returnToMenu();
+                        playTestingGrounds();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.testingGrounds){
+                        BrowserCampaignResearch.verifySunkenPierReady(current);
+                        returnToMenu();
+                        playSunkenPier();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+
+                    if(progressSmoke && current.preset == SectorPresets.sunkenPier){
+                        BrowserCampaignResearch.runWeatheredProgressSmoke(current);
+                        returnToMenu();
+                        playWeatheredChannels();
+                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                        return;
+                    }
+                }else if(frames > 8){
+                    throw new IllegalStateException("Stock campaign victory predicate did not dispatch sector capture for " + current.preset.name);
+                }
+            }
+
         }
 
         if(diagnostics) markFrame(frames, state.updateId, state.wave);
