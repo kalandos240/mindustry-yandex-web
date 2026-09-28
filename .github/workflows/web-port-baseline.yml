@@ -331,7 +331,7 @@ jobs:
       - name: Verify Erekir Onset boot and cold resume
         run: bash scripts/verify-browser-erekir-onset.sh
 
-      - name: Verify Erekir progression through Karst to Origin boot
+      - name: Verify complete Erekir campaign through Origin capture
         run: bash scripts/verify-browser-erekir-progression.sh
 
       - name: Upload localization report
