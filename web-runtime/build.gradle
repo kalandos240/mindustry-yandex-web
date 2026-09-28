@@ -46,6 +46,7 @@ tasks.register("stageWeb", Copy) {
         include "bundles/bundle.properties"
         include "bundles/bundle_ru.properties"
         include "planets/serpulo.json"
+        include "planets/erekir.json"
         include "logicids.dat"
         include "sprites/error.png"
         include "sprites/block_colors.png"
@@ -87,6 +88,9 @@ tasks.register("stageWeb", Copy) {
         include "maps/serpulo/testingGrounds.msav"
         include "maps/serpulo/sunkenPier.msav"
         include "maps/serpulo/weatheredChannels.msav"
+
+        // First Erekir boot milestone. Progression/capture is gated separately.
+        include "maps/erekir/onset.msav"
 
         // Stock Renderer and Shaders must remain fully local. Shaders.init() consumes
         // shaders/** and its noise/caustics/space textures. Content.load() also queues
