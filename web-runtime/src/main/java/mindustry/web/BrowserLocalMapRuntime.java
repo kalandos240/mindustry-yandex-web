@@ -54,6 +54,7 @@ public final class BrowserLocalMapRuntime{
     private static Map current;
     private static int frames;
     private static boolean perfSmoke;
+    private static boolean telemetry;
     private static boolean perfReady;
     private static int perfUnits;
     private static int perfEffects;
@@ -137,7 +138,8 @@ public final class BrowserLocalMapRuntime{
         }
 
         String slug = slug(map);
-        markPhase("reset");
+        telemetry = smokeTelemetryRequested();
+        diagPhase("reset");
         logic.reset();
 
         Rules rules = map.applyRules(Gamemode.survival);
@@ -149,7 +151,7 @@ public final class BrowserLocalMapRuntime{
         // identical in CI. Run the same stock FilterContext/SaveIO boundary directly,
         // preserve filters and SaveLoadEvent semantics, then apply the equivalent
         // single-player core validation with an explicit diagnostic marker.
-        markPhase("world-load");
+        diagPhase("world-load");
         try{
             SaveIO.load(map.file, world.new FilterContext(map));
         }catch(Throwable error){
@@ -199,7 +201,7 @@ public final class BrowserLocalMapRuntime{
         active = true;
 
         try{
-            markPhase("play-event");
+            diagPhase("play-event");
             logic.play();
             Events.fire(Trigger.newGame);
 
@@ -287,7 +289,7 @@ public final class BrowserLocalMapRuntime{
         long beforeUpdateId = state.updateId;
         int beforeWave = state.wave;
 
-        markPhase("logic");
+        diagPhase("logic");
         logic.updateWebPlayingCore();
         if(state.wave > beforeWave){
             testWaveFired = true;
@@ -296,30 +298,30 @@ public final class BrowserLocalMapRuntime{
         if(state.gameOver){
             gameOverFreeze = true;
             markGameOver(state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
-            markPhase("logic-gameover");
+            diagPhase("logic-gameover");
             updateGameOverFrame();
             return;
         }
-        markPhase("logic-ready");
+        diagPhase("logic-ready");
 
         pathfinder.updateWeb();
         controlPath.updateWeb();
 
-        markPhase("control");
+        diagPhase("control");
         control.update();
-        markPhase("control-ready");
+        diagPhase("control-ready");
 
         if(perfSmoke && !perfReady && frames < perfTargetFrames){
             stagePerfEffects();
         }
 
-        markPhase("renderer");
+        diagPhase("renderer");
         renderer.update();
-        markPhase("renderer-ready");
+        diagPhase("renderer-ready");
 
-        markPhase("ui");
+        diagPhase("ui");
         ui.update();
-        markPhase("ui-ready");
+        diagPhase("ui-ready");
 
         // A local HUD action may intentionally return to the map menu during Scene.act().
         if(!active || state.isMenu()) return;
@@ -331,8 +333,10 @@ public final class BrowserLocalMapRuntime{
         }
 
         frames++;
-        markFrame(frames, state.updateId, player.unit() == null ? "spawning" : player.unit().type.name,
-            state.wave, state.enemies, state.wavetime);
+        if(telemetry){
+            markFrame(frames, state.updateId, player.unit() == null ? "spawning" : player.unit().type.name,
+                state.wave, state.enemies, state.wavetime);
+        }
 
         if(pauseSmokeRequested() && !pauseSmokeArmed && frames == 1){
             pauseSmokeArmed = true;
@@ -365,7 +369,7 @@ public final class BrowserLocalMapRuntime{
             }
 
             if(!gameOverFreeze){
-                markLive(frames);
+                if(telemetry) markLive(frames);
                 maybePeriodicSave();
             }
 
@@ -394,6 +398,7 @@ public final class BrowserLocalMapRuntime{
     }
 
     public static void continueSaved(){
+        telemetry = smokeTelemetryRequested();
         if(!initialized || active || state == null || !state.isMenu() || logic == null || world == null
         || control == null || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("Browser local continue requires a stable production menu runtime");
@@ -429,6 +434,7 @@ public final class BrowserLocalMapRuntime{
         current = builtin;
         frames = 0;
         perfSmoke = false;
+        telemetry = false;
         perfReady = false;
         perfUnits = 0;
         active = true;
@@ -472,11 +478,11 @@ public final class BrowserLocalMapRuntime{
         }
 
         long beforeUpdateId = state.updateId;
-        markPhase("pause-renderer");
+        diagPhase("pause-renderer");
         renderer.update();
-        markPhase("pause-ui");
+        diagPhase("pause-ui");
         ui.update();
-        markPhase("pause-ui-ready");
+        diagPhase("pause-ui-ready");
 
         if(!active || state.isMenu()) return;
         if(state.isPlaying()){
@@ -493,7 +499,7 @@ public final class BrowserLocalMapRuntime{
         }
 
         pausedFrames++;
-        markPauseFrame(pausedFrames, state.updateId);
+        if(telemetry) markPauseFrame(pausedFrames, state.updateId);
 
         if(pauseSmokeArmed && pauseSmokeRequested() && saveSmokeRequested()
         && !saveSmokeArmed && pausedFrames == 1){
@@ -529,13 +535,13 @@ public final class BrowserLocalMapRuntime{
     }
 
     private static void updateGameOverFrame(){
-        markPhase("gameover-control");
+        diagPhase("gameover-control");
         control.update();
-        markPhase("gameover-renderer");
+        diagPhase("gameover-renderer");
         renderer.update();
-        markPhase("gameover-ui");
+        diagPhase("gameover-ui");
         ui.update();
-        markPhase("gameover-ui-ready");
+        diagPhase("gameover-ui-ready");
     }
 
     /** Return to the stable local map selector without touching any remote service. */
@@ -614,6 +620,10 @@ public final class BrowserLocalMapRuntime{
         return map.file.nameWithoutExtension();
     }
 
+    private static void diagPhase(String phase){
+        if(telemetry) markPhase(phase);
+    }
+
     private static String failureReason(Throwable error){
         Throwable root = error;
         int depth = 0;
@@ -669,6 +679,9 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryGameOverSmoke') === '1';")
     private static native boolean gameOverSmokeRequested();
+
+    @JSBody(script = "const p=new URLSearchParams(location.search); for(const key of p.keys()){ if(key.startsWith('mindustry') && key.toLowerCase().endsWith('smoke')) return true; } return false;")
+    private static native boolean smokeTelemetryRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryMapSmoke') || ''; ")
     private static native String requestedTestMap();
