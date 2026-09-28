@@ -52,6 +52,10 @@ public final class BrowserCampaignResearch{
         return SectorPresets.intersect != null && SectorPresets.intersect.unlocked();
     }
 
+    public static boolean intersectCaptured(){
+        return captured(SectorPresets.intersect);
+    }
+
     public static boolean frozenForestReady(){
         if(control != null) control.checkAutoUnlocks();
         return SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked();
