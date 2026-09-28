@@ -82,6 +82,13 @@ require(WEB_LAUNCHER, '"animatedshields", !mobileMode', "renderer defaults")
 require(WEB_LAUNCHER, 'if(mobileMode && !Core.settings.has("bloom"))', "renderer defaults")
 require(WEB_LAUNCHER, 'Core.settings.put("bloom", false)', "renderer defaults")
 require(WEB_LAUNCHER, "data-mindustry-renderer-profile", "renderer defaults")
+require(WEB_LAUNCHER, "data-mindustry-renderer-settings-policy','32-frame", "renderer polling policy")
+require(WEB_LAUNCHER, "data-mindustry-renderer-gl-error-policy','120-frame", "renderer polling policy")
+require(APPLY_PORT, "patch-mindustry-renderer-web.py", "Renderer Web patch invocation")
+
+RENDERER_PATCH = (ROOT / "scripts" / "patch-mindustry-renderer-web.py").read_text(encoding="utf-8")
+require(RENDERER_PATCH, "webSettingsPoll++ == 0 || (webSettingsPoll & 31) == 0", "Renderer Web patch")
+require(RENDERER_PATCH, "graphics.getFrameId() % 120 == 0", "Renderer Web patch")
 
 # Production local gameplay must not write DOM frame/phase telemetry at 60Hz.
 require(LOCAL_MAP, "private static boolean telemetry;", "local gameplay telemetry gate")
