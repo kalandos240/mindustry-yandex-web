@@ -328,6 +328,9 @@ jobs:
       - name: Verify all Serpulo TechTree sectors through Weathered Channels
         run: bash scripts/verify-browser-campaign-capture.sh
 
+      - name: Verify Erekir Onset boot and cold resume
+        run: bash scripts/verify-browser-erekir-onset.sh
+
       - name: Upload localization report
         if: always()
         uses: actions/upload-artifact@v4
