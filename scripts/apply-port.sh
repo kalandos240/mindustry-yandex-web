@@ -225,6 +225,11 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-planet-events-web.py"
 # bookkeeping null-safe and expose the incremental single-thread Web transition paths.
 python3 "$ROOT_DIR/scripts/patch-mindustry-logic-web.py"
 
+# Re-enable the already-proven stock local survival wave timer/spawn lifecycle on top
+# of the lean Web playing-core path. WaveSpawner stays local-only and avoids generated
+# multiplayer Call transport.
+python3 "$ROOT_DIR/scripts/patch-mindustry-waves-web.py"
+
 # Fog visibility/exploration keeps its stock data, save chunk, rasterizer and
 # double-buffer logic, but executes on the browser frame instead of JVM daemon threads.
 python3 "$ROOT_DIR/scripts/patch-mindustry-fog-web.py"
