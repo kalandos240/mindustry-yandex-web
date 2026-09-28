@@ -116,6 +116,22 @@ public final class BrowserCampaignRuntime{
         return hasSectorSave(SectorPresets.navalFortress);
     }
 
+    public static boolean hasOvergrowthSave(){
+        return hasSectorSave(SectorPresets.overgrowth);
+    }
+
+    public static boolean hasMycelialBastionSave(){
+        return hasSectorSave(SectorPresets.mycelialBastion);
+    }
+
+    public static boolean hasLittoralShipyardSave(){
+        return hasSectorSave(SectorPresets.littoralShipyard);
+    }
+
+    public static boolean hasPlanetaryTerminalSave(){
+        return hasSectorSave(SectorPresets.planetaryTerminal);
+    }
+
     private static boolean hasSectorSave(SectorPreset preset){
         Sector sector = preset == null ? null : preset.sector;
         if(sector == null || sector.save == null || sector.save.file == null
@@ -449,6 +465,66 @@ public final class BrowserCampaignRuntime{
         }
     }
 
+    public static void playOvergrowth(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.overgrowth;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Overgrowth is still locked");
+        if(hasOvergrowthSave()){
+            markProductionAction("continue-overgrowth");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.frontier == null ? null : SectorPresets.frontier.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Overgrowth launch requires captured Frontier");
+            markProductionAction("play-overgrowth");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playMycelialBastion(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.mycelialBastion;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Mycelial Bastion is still locked");
+        if(hasMycelialBastionSave()){
+            markProductionAction("continue-mycelialBastion");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.overgrowth == null ? null : SectorPresets.overgrowth.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Mycelial Bastion launch requires captured Overgrowth");
+            markProductionAction("play-mycelialBastion");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playLittoralShipyard(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.littoralShipyard;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Littoral Shipyard is still locked");
+        if(hasLittoralShipyardSave()){
+            markProductionAction("continue-littoralShipyard");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.mycelialBastion == null ? null : SectorPresets.mycelialBastion.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Littoral Shipyard launch requires captured Mycelial Bastion");
+            markProductionAction("play-littoralShipyard");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playPlanetaryTerminal(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.planetaryTerminal;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Planetary Launch Terminal is still locked");
+        if(hasPlanetaryTerminalSave()){
+            markProductionAction("continue-planetaryTerminal");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.littoralShipyard == null ? null : SectorPresets.littoralShipyard.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Planetary Terminal launch requires captured Littoral Shipyard");
+            markProductionAction("play-planetaryTerminal");
+            startPreset(preset, origin);
+        }
+    }
+
     public static void maybeStartTestSector(){
         if(testChecked) return;
         testChecked = true;
@@ -741,7 +817,11 @@ public final class BrowserCampaignRuntime{
             || current.preset == SectorPresets.perilousHarbor
             || current.preset == SectorPresets.extractionOutpost
             || current.preset == SectorPresets.coastline
-            || current.preset == SectorPresets.navalFortress;
+            || current.preset == SectorPresets.navalFortress
+            || current.preset == SectorPresets.overgrowth
+            || current.preset == SectorPresets.mycelialBastion
+            || current.preset == SectorPresets.littoralShipyard
+            || current.preset == SectorPresets.planetaryTerminal;
         if(captureSmokeRequested() && progressionCapture && !captureSmokeStaged && frames >= 3){
             if(state.rules.attackMode){
                 int enemyCores = state.rules.waveTeam.cores().size;
@@ -814,7 +894,11 @@ public final class BrowserCampaignRuntime{
             || current.preset == SectorPresets.perilousHarbor
             || current.preset == SectorPresets.extractionOutpost
             || current.preset == SectorPresets.coastline
-            || current.preset == SectorPresets.navalFortress)
+            || current.preset == SectorPresets.navalFortress
+            || current.preset == SectorPresets.overgrowth
+            || current.preset == SectorPresets.mycelialBastion
+            || current.preset == SectorPresets.littoralShipyard
+            || current.preset == SectorPresets.planetaryTerminal)
         && frames >= 3){
             markProgressStable(current.id, current.preset.name, frames, state.updateId, state.wave);
         }
@@ -985,6 +1069,38 @@ public final class BrowserCampaignRuntime{
                     markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
                     return;
                 }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.navalFortress){
+                    BrowserCampaignResearch.verifyOvergrowthReady(current);
+                    returnToMenu();
+                    playOvergrowth();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.overgrowth){
+                    BrowserCampaignResearch.runMycelialProgressSmoke(current);
+                    returnToMenu();
+                    playMycelialBastion();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.mycelialBastion){
+                    BrowserCampaignResearch.runLittoralProgressSmoke(current);
+                    returnToMenu();
+                    playLittoralShipyard();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.littoralShipyard){
+                    BrowserCampaignResearch.runTerminalProgressSmoke(current);
+                    returnToMenu();
+                    playPlanetaryTerminal();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
             }else if(frames > 8){
                 throw new IllegalStateException("Stock campaign victory predicate did not dispatch sector capture for " + current.preset.name);
             }
@@ -1053,7 +1169,7 @@ public final class BrowserCampaignRuntime{
     @JSBody(params = {"preset", "wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
     private static native void markCaptureStaged(String preset, int wave, int winWave);
 
-    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));} if(preset === 'ruinousShores'){document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-capture-wave',String(wave));} if(preset === 'windsweptIslands'){document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-capture-wave',String(wave));} if(preset === 'biomassFacility'){document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-capture-wave',String(wave));} if(preset === 'fungalPass'){document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured','true');} if(preset === 'frontier'){document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured','true');} if(preset === 'saltFlats'){document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-captured','true');} if(preset === 'tarFields'){document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-capture-wave',String(wave));} if(preset === 'impact0078'){document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-capture-wave',String(wave));} if(preset === 'stainedMountains'){document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-capture-wave',String(wave));} if(preset === 'infestedCanyons'){document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-captured','true');} if(preset === 'nuclearComplex'){document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-capture-wave',String(wave));} if(preset === 'desolateRift'){document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-capture-wave',String(wave));} if(preset === 'facility32m'){document.documentElement.setAttribute('data-mindustry-campaign-facility32m-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-facility32m-capture-wave',String(wave));} if(preset === 'perilousHarbor'){document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-captured','true');} if(preset === 'extractionOutpost'){document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-captured','true');} if(preset === 'coastline'){document.documentElement.setAttribute('data-mindustry-campaign-coastline-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-capture-wave',String(wave));} if(preset === 'navalFortress'){document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-captured','true');}")
+    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));} if(preset === 'ruinousShores'){document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-capture-wave',String(wave));} if(preset === 'windsweptIslands'){document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-capture-wave',String(wave));} if(preset === 'biomassFacility'){document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-capture-wave',String(wave));} if(preset === 'fungalPass'){document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured','true');} if(preset === 'frontier'){document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured','true');} if(preset === 'saltFlats'){document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-captured','true');} if(preset === 'tarFields'){document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-capture-wave',String(wave));} if(preset === 'impact0078'){document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-capture-wave',String(wave));} if(preset === 'stainedMountains'){document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-capture-wave',String(wave));} if(preset === 'infestedCanyons'){document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-captured','true');} if(preset === 'nuclearComplex'){document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-capture-wave',String(wave));} if(preset === 'desolateRift'){document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-capture-wave',String(wave));} if(preset === 'facility32m'){document.documentElement.setAttribute('data-mindustry-campaign-facility32m-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-facility32m-capture-wave',String(wave));} if(preset === 'perilousHarbor'){document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-captured','true');} if(preset === 'extractionOutpost'){document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-captured','true');} if(preset === 'coastline'){document.documentElement.setAttribute('data-mindustry-campaign-coastline-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-capture-wave',String(wave));} if(preset === 'navalFortress'){document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-captured','true');} if(preset === 'overgrowth'){document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-captured','true');} if(preset === 'mycelialBastion'){document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-captured','true');} if(preset === 'littoralShipyard'){document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-captured','true');} if(preset === 'planetaryTerminal'){document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-captured','true');}")
     private static native void markCaptureComplete(String preset, int sectorId, int wave, long bytes);
 
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
