@@ -46,6 +46,17 @@ tasks.register("stageWeb", Copy) {
         // them to Yandex. They are not runtime assets and can consume substantial space.
         exclude "**/*.map"
     }
+    from("../work/Mindustry/LICENSE") {
+        into "licenses"
+        rename { "Mindustry-GPL-3.0.txt" }
+    }
+    from("../work/Arc/LICENSE") {
+        into "licenses"
+        rename { "Arc-Apache-2.0.txt" }
+    }
+    from("../upstream.lock") {
+        into "licenses"
+    }
     from("../work/Mindustry/core/assets") {
         include "bundles/bundle.properties"
         include "bundles/bundle_ru.properties"
