@@ -35,6 +35,15 @@ public final class BrowserCampaignResearch{
         return SectorPresets.crateredBattleground != null && SectorPresets.crateredBattleground.unlocked();
     }
 
+    public static boolean crateredBattlegroundCaptured(){
+        return captured(SectorPresets.crateredBattleground);
+    }
+
+    public static boolean ruinousShoresReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.ruinousShores != null && SectorPresets.ruinousShores.unlocked();
+    }
+
     /**
      * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
      * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
@@ -62,6 +71,25 @@ public final class BrowserCampaignResearch{
             return;
         }
         spend(next);
+    }
+
+    /**
+     * Stock path from captured Cratered Battleground to Ruinous Shores. Silicon Smelter
+     * is an implicit parent of Kiln in the Serpulo tree, so it must be researched even
+     * though the Ruinous Shores sector objective names only Graphite Press, Kiln and
+     * Mechanical Pump.
+     */
+    public static UnlockableContent nextRuinousResearch(){
+        if(!Blocks.graphitePress.unlocked()) return Blocks.graphitePress;
+        if(!Blocks.siliconSmelter.unlocked()) return Blocks.siliconSmelter;
+        if(!Blocks.kiln.unlocked()) return Blocks.kiln;
+        if(!Blocks.mechanicalPump.unlocked()) return Blocks.mechanicalPump;
+        return null;
+    }
+
+    public static void spendNextRuinousResearch(){
+        UnlockableContent next = nextRuinousResearch();
+        if(next != null) spend(next);
     }
 
     public static boolean canSpend(UnlockableContent content){
@@ -160,6 +188,27 @@ public final class BrowserCampaignResearch{
         markCraterProgressSmoke();
     }
 
+    /** CI-only continuation through the next stock Serpulo preset after Cratered Battleground. */
+    public static void runRuinousProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.crateredBattleground.sector
+        || !captured(SectorPresets.crateredBattleground)){
+            throw new IllegalStateException("Ruinous Shores progression smoke requires captured Cratered Battleground");
+        }
+
+        stageAndSpend(source, Blocks.graphitePress);
+        stageAndSpend(source, Blocks.siliconSmelter);
+        stageAndSpend(source, Blocks.kiln);
+        stageAndSpend(source, Blocks.mechanicalPump);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!ruinousShoresReady()){
+            throw new IllegalStateException("Ruinous Shores did not auto-unlock after stock prerequisites completed");
+        }
+
+        Core.settings.forceSave();
+        markRuinousProgressSmoke();
+    }
+
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
         stageMissing(source, content);
@@ -217,7 +266,8 @@ public final class BrowserCampaignResearch{
 
         markResearch(content.name, spent, remaining(content), content.unlocked(),
             SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked(),
-            SectorPresets.crateredBattleground != null && SectorPresets.crateredBattleground.unlocked());
+            SectorPresets.crateredBattleground != null && SectorPresets.crateredBattleground.unlocked(),
+            SectorPresets.ruinousShores != null && SectorPresets.ruinousShores.unlocked());
     }
 
     private static TechNode node(UnlockableContent content){
@@ -286,13 +336,17 @@ public final class BrowserCampaignResearch{
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','crater-research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-drill-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-coal-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-combustion-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-power-node-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mender-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-ready','true');")
     private static native void markCraterProgressSmoke();
 
-    @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady"},
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','ruinous-research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-graphite-press-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-silicon-smelter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-kiln-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-pump-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-ready','true');")
+    private static native void markRuinousProgressSmoke();
+
+    @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
             "document.documentElement.setAttribute('data-mindustry-campaign-research-content',name);" +
             "document.documentElement.setAttribute('data-mindustry-campaign-research-spent',String(spent));" +
             "document.documentElement.setAttribute('data-mindustry-campaign-research-remaining',String(remaining));" +
             "document.documentElement.setAttribute('data-mindustry-campaign-research-unlocked',unlocked ? 'true' : 'false');" +
             "document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready',frozenReady ? 'true' : 'false');" +
-            "document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-ready',craterReady ? 'true' : 'false');")
-    private static native void markResearch(String name, int spent, int remaining, boolean unlocked, boolean frozenReady, boolean craterReady);
+            "document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-ready',craterReady ? 'true' : 'false');" +
+            "document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-ready',ruinousReady ? 'true' : 'false');")
+    private static native void markResearch(String name, int spent, int remaining, boolean unlocked, boolean frozenReady, boolean craterReady, boolean ruinousReady);
 }
