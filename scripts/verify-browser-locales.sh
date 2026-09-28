@@ -87,7 +87,7 @@ run_production_map(){
   rm -rf "$profile"
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:8081/index.html?lang=en&mindustryMapSmoke=maze" \
+    --url "http://127.0.0.1:8081/index.html?lang=en&mindustryMapSmoke=maze&mindustryGameOverSmoke=1&mindustryPauseSmoke=1" \
     --profile "$profile" \
     --port 9231 \
     --timeout 30 \
@@ -100,9 +100,18 @@ run_production_map(){
     --require 'data-mindustry-local-map-state="playing"' \
     --require 'data-mindustry-local-map-slug="maze"' \
     --require 'data-mindustry-local-map-player="added"' \
-    --require 'data-mindustry-local-map-loop="live"' \
+    --require 'data-mindustry-local-gameover-ui="ready"' \
+    --require 'data-mindustry-local-pause-ui="ready"' \
+    --require 'data-mindustry-local-map-pause-smoke="armed"' \
+    --require 'data-mindustry-local-map-pause="ready"' \
+    --require 'data-mindustry-local-map-pause-clock="frozen"' \
+    --require 'data-mindustry-local-map-pause-resumed="yes"' \
+    --require 'data-mindustry-local-map-pause-state="resumed"' \
     --require 'data-mindustry-local-map-wave-smoke="armed"' \
     --require 'data-mindustry-local-map-wave-fired="yes"' \
+    --require 'data-mindustry-local-map-gameover-smoke="armed"' \
+    --require 'data-mindustry-local-map-gameover="ready"' \
+    --require 'data-mindustry-local-map-loop="game-over"' \
     --require 'data-mindustry-local-map-module-order="logic-pathfinding-control-renderer-ui"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' \
@@ -115,13 +124,22 @@ run_production_map(){
   grep -Eq 'data-mindustry-local-map-wave-fired-index="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-local-map-wave-enemies="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-local-map-wave-groups="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-local-map-gameover-wave="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-local-map-gameover-winner="[A-Za-z0-9_-]+"' "$dom"
+  grep -Eq 'data-mindustry-local-map-pause-frames="([2-9]|[1-9][0-9]+)"' "$dom"
+  pause_id="$(grep -o 'data-mindustry-local-map-pause-update-id="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+  frozen_id="$(grep -o 'data-mindustry-local-map-pause-frozen-update-id="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+  resume_id="$(grep -o 'data-mindustry-local-map-resume-update-id="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+  test -n "$pause_id"
+  test "$pause_id" = "$frozen_id"
+  test "$pause_id" = "$resume_id"
 
   if grep -Eq 'data-mindustry-world-load-smoke=|data-mindustry-playing-frame=|data-mindustry-playing-state=' "$dom"; then
     echo 'Packaged production-map gate unexpectedly executed deterministic CI gameplay smoke.' >&2
     grep -o '<html[^>]*>' "$dom" >&2 || true
     exit 1
   fi
-  echo 'Browser packaged map: maze.msav entered continuous local production play and fired a real stock survival wave with live enemies'
+  echo 'Browser packaged map: maze.msav ran play -> frozen pause -> resume -> real survival wave -> local core-loss Game Over'
 }
 
 run_enemy_path(){
