@@ -74,6 +74,8 @@ run_capture(){
     --require 'data-mindustry-campaign-infested-canyons-captured="true"' \
     --require 'data-mindustry-campaign-nuclear-complex-captured="true"' \
     --require 'data-mindustry-campaign-nuclear-complex-capture-wave="50"' \
+    --require 'data-mindustry-campaign-desolate-rift-captured="true"' \
+    --require 'data-mindustry-campaign-desolate-rift-capture-wave="18"' \
     --require 'data-mindustry-campaign-progress-smoke="stable"' \
     --require 'data-mindustry-campaign-progress-preset="desolateRift"' \
     --require 'data-mindustry-campaign-frozen-forest-ready="true"' \
@@ -152,15 +154,15 @@ run_capture(){
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
   grep -Eq 'data-mindustry-campaign-captured-bytes="[1-9][0-9]{2,}"' "$dom"
-  grep -q 'data-mindustry-campaign-capture-win-wave="50"' "$dom"
+  grep -q 'data-mindustry-campaign-capture-win-wave="18"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-sector-id="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-frames="([3-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-mindustry-campaign-progress-update-id="[1-9][0-9]*"' "$dom"
   grep -q 'data-mindustry-campaign-map-path="maps/serpulo/desolateRift.msav"' "$dom"
-  echo "Stock campaign progression ($label): Impact 45 -> Stained 30 -> Infested attack -> Nuclear 50 -> Cryofluid/Thorium Reactor -> Desolate Rift stable play PASS"
+  echo "Stock campaign progression ($label): Impact 45 -> Stained 30 -> Infested attack -> Nuclear 50 -> Cryofluid/Thorium Reactor -> Desolate Rift wave 18 capture PASS"
 }
 
 run_capture desktop desktop 0 /tmp/mindustry-campaign-capture-desktop /tmp/mindustry-campaign-capture-desktop.html 9263
 run_capture mobile mobile 1 /tmp/mindustry-campaign-capture-mobile /tmp/mindustry-campaign-capture-mobile.html 9264
 
-echo 'Browser campaign progression matrix: desktop + auto-detected mobile through Impact 0078 -> Stained Mountains -> Infested Canyons -> Nuclear Complex -> Desolate Rift PASS'
+echo 'Browser campaign progression matrix: desktop + auto-detected mobile through Impact 0078 -> Stained Mountains -> Infested Canyons -> Nuclear Complex -> Desolate Rift capture PASS'
