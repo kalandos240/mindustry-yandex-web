@@ -627,28 +627,37 @@ public final class BrowserCampaignRuntime{
         String resumeRequested = requestedResumeSector();
         if(resumeRequested != null && !resumeRequested.isEmpty()){
             diagnostics = true;
-            if(!"groundZero".equalsIgnoreCase(resumeRequested)){
-                throw new IllegalArgumentException("Unsupported browser campaign resume sector: " + resumeRequested);
-            }
             markRequested(resumeRequested);
             markResumeRequested();
-            continueGroundZero();
+            if("groundZero".equalsIgnoreCase(resumeRequested)){
+                continueGroundZero();
+            }else if("onset".equalsIgnoreCase(resumeRequested)){
+                continueOnset();
+            }else{
+                throw new IllegalArgumentException("Unsupported browser campaign resume sector: " + resumeRequested);
+            }
             return;
         }
 
         String requested = requestedSector();
         if(requested == null || requested.isEmpty()) return;
         diagnostics = true;
-        if(!"groundZero".equalsIgnoreCase(requested)){
+        markRequested(requested);
+        if("groundZero".equalsIgnoreCase(requested)){
+            startGroundZero();
+        }else if("onset".equalsIgnoreCase(requested)){
+            startOnset();
+        }else{
             throw new IllegalArgumentException("Unsupported browser campaign smoke sector: " + requested);
         }
-
-        markRequested(requested);
-        startGroundZero();
     }
 
     public static void startGroundZero(){
         startPreset(SectorPresets.groundZero, SectorPresets.groundZero == null ? null : SectorPresets.groundZero.sector);
+    }
+
+    public static void startOnset(){
+        startPreset(SectorPresets.onset, SectorPresets.onset == null ? null : SectorPresets.onset.sector);
     }
 
     private static void startPreset(SectorPreset preset, Sector origin){
@@ -667,14 +676,14 @@ public final class BrowserCampaignRuntime{
         }
 
         Sector sector = preset == null ? null : preset.sector;
-        if(preset == null || sector == null || sector.planet != Planets.serpulo){
+        if(preset == null || sector == null || (sector.planet != Planets.serpulo && sector.planet != Planets.erekir)){
             throw new IllegalStateException("Campaign preset metadata is incomplete");
         }
         if(preset != SectorPresets.groundZero && !preset.unlocked()){
             throw new IllegalStateException("Campaign preset is locked: " + preset.name);
         }
 
-        Fi presetFile = Core.files.internal("maps/serpulo/" + preset.name + "." + mapExtension);
+        Fi presetFile = Core.files.internal("maps/" + sector.planet.name + "/" + preset.name + "." + mapExtension);
         if(!presetFile.exists() || presetFile.length() < 128){
             throw new IllegalStateException("Packaged campaign preset map is missing: " + preset.name);
         }
@@ -693,7 +702,7 @@ public final class BrowserCampaignRuntime{
         diagPhase("reset");
         logic.reset();
 
-        if(preset == SectorPresets.groundZero) preset.quietUnlock();
+        if(preset == SectorPresets.groundZero || preset == SectorPresets.onset) preset.quietUnlock();
         sector.planet.setLastSector(sector);
 
         diagPhase("world-load-sector");
@@ -757,6 +766,10 @@ public final class BrowserCampaignRuntime{
         continuePreset(SectorPresets.groundZero);
     }
 
+    public static void continueOnset(){
+        continuePreset(SectorPresets.onset);
+    }
+
     private static void continuePreset(SectorPreset preset){
         if(active) throw new IllegalStateException("A browser campaign sector is already active");
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
@@ -768,7 +781,7 @@ public final class BrowserCampaignRuntime{
         }
 
         Sector sector = preset == null ? null : preset.sector;
-        if(preset == null || sector == null || sector.planet != Planets.serpulo){
+        if(preset == null || sector == null || (sector.planet != Planets.serpulo && sector.planet != Planets.erekir)){
             throw new IllegalStateException("Campaign preset metadata is incomplete on resume");
         }
         if(!hasSectorSave(preset) || !SaveIO.isSaveValid(sector.save.file)){
