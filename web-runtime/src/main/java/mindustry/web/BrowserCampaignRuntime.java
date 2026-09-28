@@ -1066,10 +1066,10 @@ public final class BrowserCampaignRuntime{
                 || current.preset == SectorPresets.caldera
                 || current.preset == SectorPresets.crevice
                 || current.preset == SectorPresets.karst;
-            if(captureSmoke && onsetObjectiveCapture && !onsetObjectivesStaged && frames >= 3){
+            if(onsetObjectiveCapture && !onsetObjectivesStaged && frames >= 3){
                 stageOnsetObjectivesForCapture();
                 onsetObjectivesStaged = true;
-            }else if(captureSmoke && onsetObjectiveCapture && onsetObjectivesStaged
+            }else if(onsetObjectiveCapture && onsetObjectivesStaged
             && !captureSmokeStaged && frames >= 4){
                 int enemyCores = state.rules.waveTeam.cores().size;
                 if(enemyCores <= 0){
@@ -1081,13 +1081,13 @@ public final class BrowserCampaignRuntime{
                 captureSmokeStaged = true;
                 markCaptureStaged(current.preset.name, state.wave, 0);
                 markOnsetObjectiveCaptureStaged(enemyCores);
-            }else if(captureSmoke && aegisObjectiveCapture && !captureSmokeStaged && frames >= 3){
+            }else if(aegisObjectiveCapture && !captureSmokeStaged && frames >= 3){
                 stageAegisObjectivesForCapture();
                 stageAttackCoresForCapture("aegis");
-            }else if(captureSmoke && lakeObjectiveCapture && !captureSmokeStaged && frames >= 3){
+            }else if(lakeObjectiveCapture && !captureSmokeStaged && frames >= 3){
                 stageLakeObjectivesForCapture();
                 stageAttackCoresForCapture("lake");
-            }else if(captureSmoke && intersectHybridCapture && !captureSmokeStaged && frames >= 3){
+            }else if(intersectHybridCapture && !captureSmokeStaged && frames >= 3){
                 if(state.rules.attackMode){
                     throw new IllegalStateException("Intersect smoke expected wave phase before attack mode");
                 }
@@ -1098,29 +1098,29 @@ public final class BrowserCampaignRuntime{
                 captureSmokeStaged = true;
                 markCaptureStaged(current.preset.name, state.wave, state.rules.winWave);
                 markIntersectWaveStage();
-            }else if(captureSmoke && splitObjectiveCapture && !captureSmokeStaged && frames >= 3){
+            }else if(splitObjectiveCapture && !captureSmokeStaged && frames >= 3){
                 stageSplitObjectivesForCapture();
-            }else if(captureSmoke && basinObjectiveCapture && !captureSmokeStaged && frames >= 3){
+            }else if(basinObjectiveCapture && !captureSmokeStaged && frames >= 3){
                 stageBasinObjectivesForCapture();
-            }else if(captureSmoke && marshObjectiveCapture && !marshObjectivesStaged && frames >= 3){
+            }else if(marshObjectiveCapture && !marshObjectivesStaged && frames >= 3){
                 stageMarshObjectives();
                 marshObjectivesStaged = true;
-            }else if(captureSmoke && peaksObjectiveCapture && !peaksObjectivesStaged && frames >= 3){
+            }else if(peaksObjectiveCapture && !peaksObjectivesStaged && frames >= 3){
                 stagePeaksObjectives();
                 peaksObjectivesStaged = true;
-            }else if(captureSmoke && strongholdObjectiveCapture && !strongholdObjectivesStaged && frames >= 3){
+            }else if(strongholdObjectiveCapture && !strongholdObjectivesStaged && frames >= 3){
                 stageStrongholdObjectives();
                 strongholdObjectivesStaged = true;
-            }else if(captureSmoke && siegeObjectiveCapture && !siegeObjectivesStaged && frames >= 3){
+            }else if(siegeObjectiveCapture && !siegeObjectivesStaged && frames >= 3){
                 stageSiegeObjectives();
                 siegeObjectivesStaged = true;
-            }else if(captureSmoke && crossroadsObjectiveCapture && !crossroadsObjectivesStaged && frames >= 3){
+            }else if(crossroadsObjectiveCapture && !crossroadsObjectivesStaged && frames >= 3){
                 stageCrossroadsObjectives();
                 crossroadsObjectivesStaged = true;
-            }else if(captureSmoke && originObjectiveCapture && !originObjectivesStaged && frames >= 3){
+            }else if(originObjectiveCapture && !originObjectivesStaged && frames >= 3){
                 stageOriginObjectives();
                 originObjectivesStaged = true;
-            }else if(captureSmoke && progressionCapture && !captureSmokeStaged && frames >= 3){
+            }else if(progressionCapture && !captureSmokeStaged && frames >= 3){
                 if(state.rules.attackMode){
                     int enemyCores = state.rules.waveTeam.cores().size;
                     if(enemyCores <= 0){
