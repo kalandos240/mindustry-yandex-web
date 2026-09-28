@@ -40,6 +40,14 @@ public final class BrowserCampaignRuntime{
         return hasSectorSave(SectorPresets.groundZero);
     }
 
+    public static boolean hasOnsetSave(){
+        return hasSectorSave(SectorPresets.onset);
+    }
+
+    public static boolean hasAegisSave(){
+        return hasSectorSave(SectorPresets.aegis);
+    }
+
     public static boolean hasFrozenForestSave(){
         return hasSectorSave(SectorPresets.frozenForest);
     }
@@ -660,6 +668,21 @@ public final class BrowserCampaignRuntime{
         startPreset(SectorPresets.onset, SectorPresets.onset == null ? null : SectorPresets.onset.sector);
     }
 
+    public static void playAegis(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.aegis;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Aegis is still locked");
+        if(hasAegisSave()){
+            markProductionAction("continue-aegis");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.onset == null ? null : SectorPresets.onset.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Aegis launch requires captured Onset");
+            markProductionAction("play-aegis");
+            startPreset(preset, origin);
+        }
+    }
+
     private static void startPreset(SectorPreset preset, Sector origin){
         if(active) throw new IllegalStateException("A browser campaign sector is already active");
         saveSmokeArmed = false;
@@ -874,6 +897,109 @@ public final class BrowserCampaignRuntime{
         markReturnedToMenu();
     }
 
+    private static void stageOnsetObjectivesForCapture(){
+        if(current == null || current.preset != SectorPresets.onset || state.rules.objectives == null){
+            throw new IllegalStateException("Onset objective capture requires active Onset objectives");
+        }
+        if(state.rules.objectives.all.size != 20){
+            throw new IllegalStateException("Pinned Onset objective graph changed: expected 20, got " + state.rules.objectives.all.size);
+        }
+
+        var core = state.rules.defaultTeam.core();
+        if(core == null) throw new IllegalStateException("Onset objective smoke requires a player core");
+
+        core.items.add(Items.beryllium, 60);
+        completeOnsetObjective(0, "ItemObjective", true);
+
+        state.stats.placedBlockCount.put(Blocks.turbineCondenser, 1);
+        completeOnsetObjective(1, "BuildCountObjective", true);
+
+        state.stats.placedBlockCount.put(Blocks.plasmaBore, 1);
+        completeOnsetObjective(2, "BuildCountObjective", true);
+
+        state.stats.placedBlockCount.put(Blocks.beamNode, 1);
+        completeOnsetObjective(3, "BuildCountObjective", true);
+
+        state.stats.coreItemCount.put(Items.beryllium, 5);
+        completeOnsetObjective(4, "CoreItemObjective", true);
+
+        state.stats.coreItemCount.put(Items.beryllium, 200);
+        completeOnsetObjective(5, "CoreItemObjective", true);
+
+        state.stats.coreItemCount.put(Items.graphite, 100);
+        completeOnsetObjective(6, "CoreItemObjective", true);
+
+        BrowserCampaignResearch.runOnsetResearchSmoke(current);
+        completeOnsetObjective(7, "ResearchObjective", true);
+
+        state.stats.coreItemCount.put(Items.silicon, 50);
+        completeOnsetObjective(8, "CoreItemObjective", true);
+
+        state.stats.placedBlockCount.put(Blocks.tankFabricator, 1);
+        completeOnsetObjective(9, "BuildCountObjective", true);
+
+        UnitTypes.stell.spawn(state.rules.defaultTeam, core.x, core.y);
+        completeOnsetObjective(10, "UnitCountObjective", true);
+
+        // The command-mode objective is inherently a user-input gesture. CI completes
+        // only this interaction-only node directly, equivalent to the headless shortcut
+        // in CommandModeObjective.update(); all surrounding tutorial conditions are real.
+        completeOnsetObjective(11, "CommandModeObjective", false);
+
+        state.stats.placedBlockCount.put(Blocks.breach, 1);
+        completeOnsetObjective(12, "BuildCountObjective", true);
+
+        state.rules.objectiveFlags.add("breachAmmo");
+        completeOnsetObjective(19, "FlagObjective", true);
+
+        state.stats.placedBlockCount.put(Blocks.berylliumWall, 6);
+        completeOnsetObjective(13, "BuildCountObjective", true);
+
+        // Timers are accelerated in CI; done() still applies their real flags.
+        completeOnsetObjective(14, "TimerObjective", false);
+        if(!state.rules.objectiveFlags.contains("defStart")){
+            throw new IllegalStateException("Onset defense timer did not set defStart");
+        }
+
+        state.stats.enemyUnitsDestroyed = 2;
+        completeOnsetObjective(15, "DestroyUnitsObjective", true);
+
+        var target = world.build(288, 198);
+        if(target == null || target.team != state.rules.waveTeam || target.block != Blocks.coreBastion){
+            throw new IllegalStateException("Pinned Onset tutorial Core Bastion target changed");
+        }
+        // Do not kill this core yet: doing so here can satisfy attackMode before the
+        // post-attack tutorial nodes (build core + openMap) have completed.
+        completeOnsetObjective(16, "DestroyBlockObjective", false);
+
+        state.stats.placedBlockCount.put(Blocks.coreBastion, 1);
+        completeOnsetObjective(17, "BuildCountObjective", true);
+
+        completeOnsetObjective(18, "TimerObjective", false);
+        if(!state.rules.objectiveFlags.contains("openMap")){
+            throw new IllegalStateException("Onset final tutorial timer did not set openMap");
+        }
+
+        markOnsetObjectivesReady(state.rules.objectives.all.size);
+    }
+
+    private static void completeOnsetObjective(int index, String expectedClass, boolean requireCondition){
+        var objective = state.rules.objectives.get(index);
+        if(objective == null || !objective.getClass().getSimpleName().equals(expectedClass)){
+            throw new IllegalStateException(
+                "Pinned Onset objective " + index + " changed: expected " + expectedClass +
+                ", got " + (objective == null ? "null" : objective.getClass().getSimpleName())
+            );
+        }
+        if(!objective.qualified()){
+            throw new IllegalStateException("Onset objective dependency order changed at index " + index);
+        }
+        if(requireCondition && !objective.update()){
+            throw new IllegalStateException("Onset objective condition did not become true at index " + index);
+        }
+        objective.done();
+    }
+
     private static void saveCampaignCheckpoint(){
         if(current == null || !state.isPlaying() || !state.isCampaign() || state.rules.sector != current){
             throw new IllegalStateException("Browser campaign checkpoint requires an active campaign sector");
@@ -906,6 +1032,8 @@ public final class BrowserCampaignRuntime{
         // CI stages only the stock victory predicates; Logic.checkGameState() must still
         // dispatch Call.sectorCapture(). Wave sectors use winWave, while attack sectors
         // destroy their actual enemy cores and win through !waveTeam.isAlive().
+        boolean onsetObjectiveCapture = current.preset == SectorPresets.onset;
+
         boolean progressionCapture = current.preset == SectorPresets.groundZero
             || current.preset == SectorPresets.frozenForest
             || current.preset == SectorPresets.crateredBattleground
@@ -935,7 +1063,20 @@ public final class BrowserCampaignRuntime{
             || current.preset == SectorPresets.testingGrounds
             || current.preset == SectorPresets.sunkenPier
             || current.preset == SectorPresets.weatheredChannels;
-        if(captureSmokeRequested() && progressionCapture && !captureSmokeStaged && frames >= 3){
+        if(captureSmokeRequested() && onsetObjectiveCapture && !captureSmokeStaged && frames >= 3){
+            stageOnsetObjectivesForCapture();
+
+            int enemyCores = state.rules.waveTeam.cores().size;
+            if(enemyCores <= 0){
+                throw new IllegalStateException("Onset objective smoke expected enemy cores after openMap staging");
+            }
+            var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
+            enemyCoresSnapshot.each(core -> core.kill());
+
+            captureSmokeStaged = true;
+            markCaptureStaged(current.preset.name, state.wave, 0);
+            markOnsetObjectiveCaptureStaged(enemyCores);
+        }else if(captureSmokeRequested() && progressionCapture && !captureSmokeStaged && frames >= 3){
             if(state.rules.attackMode){
                 int enemyCores = state.rules.waveTeam.cores().size;
                 if(enemyCores <= 0){
@@ -1035,6 +1176,14 @@ public final class BrowserCampaignRuntime{
                 flushCampaignStorage();
                 markCaptureComplete(current.preset == null ? "unknown" : current.preset.name,
                     current.id, state.wave, current.save.file.length());
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.onset){
+                    BrowserCampaignResearch.runAegisProgressSmoke(current);
+                    returnToMenu();
+                    playAegis();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
 
                 if(progressSmokeRequested() && current.preset == SectorPresets.groundZero){
                     BrowserCampaignResearch.runEarlyProgressSmoke(current);
@@ -1323,6 +1472,12 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(params = {"sectorId", "preset", "frames", "updateId", "wave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','stable'); document.documentElement.setAttribute('data-mindustry-campaign-progress-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-progress-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-progress-frames',String(frames)); document.documentElement.setAttribute('data-mindustry-campaign-progress-update-id',String(updateId)); document.documentElement.setAttribute('data-mindustry-campaign-progress-wave',String(wave));")
     private static native void markProgressStable(int sectorId, String preset, int frames, long updateId, int wave);
+
+    @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-onset-objectives','ready'); document.documentElement.setAttribute('data-mindustry-erekir-onset-objective-count',String(count)); document.documentElement.setAttribute('data-mindustry-erekir-onset-open-map','true');")
+    private static native void markOnsetObjectivesReady(int count);
+
+    @JSBody(params = {"enemyCores"}, script = "document.documentElement.setAttribute('data-mindustry-erekir-onset-capture-stage','objectives-then-attack'); document.documentElement.setAttribute('data-mindustry-erekir-onset-enemy-cores',String(enemyCores));")
+    private static native void markOnsetObjectiveCaptureStaged(int enemyCores);
 
     @JSBody(params = {"preset", "wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
     private static native void markCaptureStaged(String preset, int wave, int winWave);
