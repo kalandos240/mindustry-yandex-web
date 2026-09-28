@@ -133,6 +133,16 @@ for name in [
     if calls != 2:
         failures.append(f"campaign smoke/query cache: expected 2 {name}() occurrences, found {calls}")
 
+# Campaign menu save labels must stay storage-free; strict file validation belongs
+# to the actual launch/resume path, not Scene.update().
+save_hint_start = CAMPAIGN_RUNTIME.index("public static boolean hasSave(SectorPreset preset)")
+save_hint_end = CAMPAIGN_RUNTIME.index("private static boolean hasSectorSave", save_hint_start)
+save_hint = CAMPAIGN_RUNTIME[save_hint_start:save_hint_end]
+for needle in [".exists()", ".length()", "hasSectorSave("]:
+    if needle in save_hint:
+        failures.append(f"campaign save hint hot path: forbidden {needle}")
+require(save_hint, "SaveMeta meta =", "campaign save hint hot path")
+
 # Campaign menu telemetry and auto-unlock scans must not return to 60Hz production work.
 require(CAMPAIGN_UI, "if(BrowserCampaignRuntime.diagnosticsEnabled()){", "campaign diagnostic telemetry gate")
 if CAMPAIGN_UI.count("if(BrowserCampaignRuntime.diagnosticsEnabled()){") < 6:
