@@ -56,6 +56,22 @@ public final class BrowserCampaignRuntime{
         return hasSectorSave(SectorPresets.windsweptIslands);
     }
 
+    public static boolean hasBiomassFacilitySave(){
+        return hasSectorSave(SectorPresets.biomassFacility);
+    }
+
+    public static boolean hasFungalPassSave(){
+        return hasSectorSave(SectorPresets.fungalPass);
+    }
+
+    public static boolean hasFrontierSave(){
+        return hasSectorSave(SectorPresets.frontier);
+    }
+
+    public static boolean hasSaltFlatsSave(){
+        return hasSectorSave(SectorPresets.saltFlats);
+    }
+
     private static boolean hasSectorSave(SectorPreset preset){
         Sector sector = preset == null ? null : preset.sector;
         if(sector == null || sector.save == null || sector.save.file == null
@@ -160,6 +176,66 @@ public final class BrowserCampaignRuntime{
             if(origin == null || !origin.hasBase() || !origin.isCaptured()){
                 throw new IllegalStateException("Windswept Islands launch requires a captured Ruinous Shores base");
             }
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playBiomassFacility(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.biomassFacility;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Biomass Facility is still locked");
+        if(hasBiomassFacilitySave()){
+            markProductionAction("continue-biomassFacility");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.windsweptIslands == null ? null : SectorPresets.windsweptIslands.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Biomass Facility launch requires captured Windswept Islands");
+            markProductionAction("play-biomassFacility");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playFungalPass(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.fungalPass;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Fungal Pass is still locked");
+        if(hasFungalPassSave()){
+            markProductionAction("continue-fungalPass");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.biomassFacility == null ? null : SectorPresets.biomassFacility.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Fungal Pass launch requires captured Biomass Facility");
+            markProductionAction("play-fungalPass");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playFrontier(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.frontier;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Frontier is still locked");
+        if(hasFrontierSave()){
+            markProductionAction("continue-frontier");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.fungalPass == null ? null : SectorPresets.fungalPass.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Frontier launch requires captured Fungal Pass");
+            markProductionAction("play-frontier");
+            startPreset(preset, origin);
+        }
+    }
+
+    public static void playSaltFlats(){
+        diagnostics = false;
+        SectorPreset preset = SectorPresets.saltFlats;
+        if(preset == null || !preset.unlocked()) throw new IllegalStateException("Salt Flats is still locked");
+        if(hasSaltFlatsSave()){
+            markProductionAction("continue-saltFlats");
+            continuePreset(preset);
+        }else{
+            Sector origin = SectorPresets.frontier == null ? null : SectorPresets.frontier.sector;
+            if(origin == null || !origin.hasBase() || !origin.isCaptured()) throw new IllegalStateException("Salt Flats launch requires captured Frontier");
+            markProductionAction("play-saltFlats");
             startPreset(preset, origin);
         }
     }
@@ -434,20 +510,36 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Browser campaign frame requires the active Ground Zero sector");
         }
 
-        // CI deterministically stages the exact stock victory predicate for the four
-        // proven early sectors. Do not call sectorCapture() directly: Logic must take the
-        // vanilla winWave/enemies/spawner branch and dispatch Call.sectorCapture().
+        // CI stages only the stock victory predicates; Logic.checkGameState() must still
+        // dispatch Call.sectorCapture(). Wave sectors use winWave, while attack sectors
+        // destroy their actual enemy cores and win through !waveTeam.isAlive().
         boolean progressionCapture = current.preset == SectorPresets.groundZero
             || current.preset == SectorPresets.frozenForest
             || current.preset == SectorPresets.crateredBattleground
-            || current.preset == SectorPresets.ruinousShores;
+            || current.preset == SectorPresets.ruinousShores
+            || current.preset == SectorPresets.windsweptIslands
+            || current.preset == SectorPresets.biomassFacility
+            || current.preset == SectorPresets.fungalPass
+            || current.preset == SectorPresets.frontier;
         if(captureSmokeRequested() && progressionCapture && !captureSmokeStaged && frames >= 3){
-            if(state.rules.winWave <= 0 || state.enemies != 0 || spawner == null || spawner.isSpawning()){
-                throw new IllegalStateException("Campaign capture smoke could not stage the stock victory predicate for " + current.preset.name);
+            if(state.rules.attackMode){
+                int enemyCores = state.rules.waveTeam.cores().size;
+                if(enemyCores <= 0){
+                    throw new IllegalStateException("Attack campaign smoke expected at least one enemy core for " + current.preset.name);
+                }
+                while(state.rules.waveTeam.cores().size > 0){
+                    state.rules.waveTeam.cores().first().kill();
+                }
+                captureSmokeStaged = true;
+                markCaptureStaged(current.preset.name, state.wave, 0);
+            }else{
+                if(state.rules.winWave <= 0 || state.enemies != 0 || spawner == null || spawner.isSpawning()){
+                    throw new IllegalStateException("Campaign capture smoke could not stage the stock wave victory predicate for " + current.preset.name);
+                }
+                state.wave = state.rules.winWave;
+                captureSmokeStaged = true;
+                markCaptureStaged(current.preset.name, state.wave, state.rules.winWave);
             }
-            state.wave = state.rules.winWave;
-            captureSmokeStaged = true;
-            markCaptureStaged(current.preset.name, state.wave, state.rules.winWave);
         }
 
         long beforeUpdate = state.updateId;
@@ -487,7 +579,11 @@ public final class BrowserCampaignRuntime{
         && (current.preset == SectorPresets.frozenForest
             || current.preset == SectorPresets.crateredBattleground
             || current.preset == SectorPresets.ruinousShores
-            || current.preset == SectorPresets.windsweptIslands)
+            || current.preset == SectorPresets.windsweptIslands
+            || current.preset == SectorPresets.biomassFacility
+            || current.preset == SectorPresets.fungalPass
+            || current.preset == SectorPresets.frontier
+            || current.preset == SectorPresets.saltFlats)
         && frames >= 3){
             markProgressStable(current.id, current.preset.name, frames, state.updateId, state.wave);
         }
@@ -535,6 +631,38 @@ public final class BrowserCampaignRuntime{
                     BrowserCampaignResearch.runWindsweptProgressSmoke(current);
                     returnToMenu();
                     playWindsweptIslands();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.windsweptIslands){
+                    BrowserCampaignResearch.verifyBiomassReadyAfterWindswept(current);
+                    returnToMenu();
+                    playBiomassFacility();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.biomassFacility){
+                    BrowserCampaignResearch.runFungalProgressSmoke(current);
+                    returnToMenu();
+                    playFungalPass();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.fungalPass){
+                    BrowserCampaignResearch.runFrontierProgressSmoke(current);
+                    returnToMenu();
+                    playFrontier();
+                    markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                    return;
+                }
+
+                if(progressSmokeRequested() && current.preset == SectorPresets.frontier){
+                    BrowserCampaignResearch.runSaltProgressSmoke(current);
+                    returnToMenu();
+                    playSaltFlats();
                     markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
                     return;
                 }
@@ -606,7 +734,7 @@ public final class BrowserCampaignRuntime{
     @JSBody(params = {"preset", "wave", "winWave"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','staged'); document.documentElement.setAttribute('data-mindustry-campaign-capture-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-capture-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-capture-win-wave',String(winWave));")
     private static native void markCaptureStaged(String preset, int wave, int winWave);
 
-    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));} if(preset === 'ruinousShores'){document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-capture-wave',String(wave));}")
+    @JSBody(params = {"preset", "sectorId", "wave", "bytes"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-capture','ready'); document.documentElement.setAttribute('data-mindustry-campaign-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-captured-preset',preset); document.documentElement.setAttribute('data-mindustry-campaign-captured-sector-id',String(sectorId)); document.documentElement.setAttribute('data-mindustry-campaign-captured-wave',String(wave)); document.documentElement.setAttribute('data-mindustry-campaign-captured-bytes',String(bytes)); if(preset === 'groundZero'){document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ground-zero-capture-wave',String(wave));} if(preset === 'frozenForest'){document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-capture-wave',String(wave));} if(preset === 'crateredBattleground'){document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-capture-wave',String(wave));} if(preset === 'ruinousShores'){document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-capture-wave',String(wave));} if(preset === 'windsweptIslands'){document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-capture-wave',String(wave));} if(preset === 'biomassFacility'){document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured','true'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-capture-wave',String(wave));} if(preset === 'fungalPass'){document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured','true');} if(preset === 'frontier'){document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured','true');}")
     private static native void markCaptureComplete(String preset, int sectorId, int wave, long bytes);
 
     @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-test', name);")
