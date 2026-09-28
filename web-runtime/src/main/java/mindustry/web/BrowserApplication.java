@@ -18,6 +18,7 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     private final FrameCallback frameCallback = this::onAnimationFrame;
+    private final BrowserCanvas.ResizeCallback resizeCallback = () -> resizePending = true;
     private final LifecycleCallback platformPauseCallback = () -> setPlatformPaused(true);
     private final LifecycleCallback platformResumeCallback = () -> setPlatformPaused(false);
     private final WebGraphics graphics;
@@ -29,6 +30,7 @@ public final class BrowserApplication extends WebApplicationBase{
     private boolean lastPlatformPaused;
     private boolean lastGameplayActive;
     private boolean awaitingPlatformResumeFrame;
+    private boolean resizePending = true;
     private int browserFrameCallbacks;
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
@@ -48,6 +50,7 @@ public final class BrowserApplication extends WebApplicationBase{
         graphics.setGL20(gl20);
         BrowserCanvas.resizeToDisplay(config.canvasId, config.maxPixelRatio);
         updateGraphicsMetrics();
+        BrowserCanvas.installResizeSignal(config.canvasId, resizeCallback);
         Core.graphics = graphics;
 
         input = new WebInput();
@@ -78,17 +81,27 @@ public final class BrowserApplication extends WebApplicationBase{
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "resize";
-            if(BrowserCanvas.resizeToDisplay(config.canvasId, config.maxPixelRatio)){
-                updateGraphicsMetrics();
-                resize(graphics.getWidth(), graphics.getHeight());
+            // DOM resize events signal the next frame immediately. A low-frequency fallback
+            // catches rare DPR changes that do not dispatch resize/orientation events.
+            boolean resizeFallback = (callbackIndex & 63) == 0;
+            if(resizePending || resizeFallback){
+                resizePending = false;
+                if(BrowserCanvas.resizeToDisplay(config.canvasId, config.maxPixelRatio)){
+                    updateGraphicsMetrics();
+                    resize(graphics.getWidth(), graphics.getHeight());
+                }
             }
             graphics.updateFrame(timestamp);
             input.update();
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "pause-sample";
-            boolean sampledPause = BrowserYandex.paused();
-            if(sampledPause != platformPaused) setPlatformPaused(sampledPause);
+            // Yandex pause/resume events are primary. Sample the shared state only as a
+            // self-healing fallback instead of crossing the JS boundary every frame.
+            if((callbackIndex & 63) == 0){
+                boolean sampledPause = BrowserYandex.paused();
+                if(sampledPause != platformPaused) setPlatformPaused(sampledPause);
+            }
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "application-frame";
