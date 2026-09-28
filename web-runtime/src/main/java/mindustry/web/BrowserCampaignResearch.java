@@ -83,6 +83,42 @@ public final class BrowserCampaignResearch{
         return captured(SectorPresets.basin);
     }
 
+    public static boolean marshReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.marsh != null && SectorPresets.marsh.unlocked();
+    }
+
+    public static boolean marshCaptured(){
+        return captured(SectorPresets.marsh);
+    }
+
+    public static boolean peaksReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.peaks != null && SectorPresets.peaks.unlocked();
+    }
+
+    public static boolean peaksCaptured(){
+        return captured(SectorPresets.peaks);
+    }
+
+    public static boolean ravineReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.ravine != null && SectorPresets.ravine.unlocked();
+    }
+
+    public static boolean ravineCaptured(){
+        return captured(SectorPresets.ravine);
+    }
+
+    public static boolean calderaReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.caldera != null && SectorPresets.caldera.unlocked();
+    }
+
+    public static boolean calderaCaptured(){
+        return captured(SectorPresets.caldera);
+    }
+
     public static boolean frozenForestReady(){
         if(control != null) control.checkAutoUnlocks();
         return SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked();
@@ -734,6 +770,55 @@ public final class BrowserCampaignResearch{
         if(next != null) spend(next);
     }
 
+    public static UnlockableContent nextMarshResearch(){
+        if(!Blocks.electrolyzer.unlocked()) return Blocks.electrolyzer;
+        if(!Blocks.tankRefabricator.unlocked()) return Blocks.tankRefabricator;
+        if(!Blocks.oxidationChamber.unlocked()) return Blocks.oxidationChamber;
+        if(!Blocks.reinforcedConduit.unlocked()) return Blocks.reinforcedConduit;
+        if(!Blocks.reinforcedPump.unlocked()) return Blocks.reinforcedPump;
+        if(!Items.oxide.unlocked() || !Liquids.arkycite.unlocked()) return null;
+        if(!Blocks.chemicalCombustionChamber.unlocked()) return Blocks.chemicalCombustionChamber;
+        return null;
+    }
+
+    public static void spendNextMarshResearch(){
+        UnlockableContent next = nextMarshResearch();
+        if(next != null) spend(next);
+    }
+
+    public static boolean waitingForMarshProduction(){
+        return Blocks.oxidationChamber.unlocked()
+            && (!Items.oxide.unlocked() || !Liquids.arkycite.unlocked());
+    }
+
+    public static UnlockableContent nextPeaksResearch(){
+        if(!Blocks.beamTower.unlocked()) return Blocks.beamTower;
+        if(!Blocks.tankRefabricator.unlocked()) return Blocks.tankRefabricator;
+        if(!Blocks.mechRefabricator.unlocked()) return Blocks.mechRefabricator;
+        if(!Blocks.shipRefabricator.unlocked()) return Blocks.shipRefabricator;
+        if(!UnitTypes.avert.unlocked()) return UnitTypes.avert;
+        return null;
+    }
+
+    public static void spendNextPeaksResearch(){
+        UnlockableContent next = nextPeaksResearch();
+        if(next != null) spend(next);
+    }
+
+    public static boolean waitingForRavineSlag(){
+        return !Liquids.slag.unlocked();
+    }
+
+    public static UnlockableContent nextCalderaResearch(){
+        if(!Blocks.heatRedirector.unlocked()) return Blocks.heatRedirector;
+        return null;
+    }
+
+    public static void spendNextCalderaResearch(){
+        UnlockableContent next = nextCalderaResearch();
+        if(next != null) spend(next);
+    }
+
     public static boolean canSpend(UnlockableContent content){
         TechNode node = node(content);
         if(content.unlocked() || !objectivesComplete(node)) return false;
@@ -879,6 +964,102 @@ public final class BrowserCampaignResearch{
             throw new IllegalStateException("Basin did not auto-unlock after captured Atlas");
         }
         markBasinReadySmoke();
+    }
+
+    public static void verifyMarshReadyAfterBasin(Sector source){
+        if(source == null || source != SectorPresets.basin.sector || !basinCaptured()){
+            throw new IllegalStateException("Marsh progression requires captured Basin");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!marshReady()){
+            throw new IllegalStateException("Marsh did not auto-unlock after captured Basin");
+        }
+        markMarshReadySmoke();
+    }
+
+    public static void runMarshResearchSmoke(Sector source){
+        if(source == null || source != SectorPresets.marsh.sector){
+            throw new IllegalStateException("Marsh objective smoke requires active Marsh");
+        }
+
+        stageAndSpend(source, Blocks.electrolyzer);
+        stageAndSpend(source, Blocks.tankRefabricator);
+        stageAndSpend(source, Blocks.oxidationChamber);
+        stageAndSpend(source, Blocks.reinforcedConduit);
+        stageAndSpend(source, Blocks.reinforcedPump);
+
+        if(!Items.oxide.unlocked()) Items.oxide.unlock();
+        if(!Liquids.arkycite.unlocked()) Liquids.arkycite.unlock();
+
+        stageAndSpend(source, Blocks.chemicalCombustionChamber);
+
+        Core.settings.forceSave();
+        markMarshResearchSmoke();
+    }
+
+    public static void verifyPeaksReadyAfterMarsh(Sector source){
+        if(source == null || source != SectorPresets.marsh.sector || !marshCaptured()){
+            throw new IllegalStateException("Peaks progression requires captured Marsh");
+        }
+        if(!splitCaptured()){
+            throw new IllegalStateException("Peaks also requires captured Split");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!peaksReady()){
+            throw new IllegalStateException("Peaks did not auto-unlock after stock sector prerequisites completed");
+        }
+        markPeaksReadySmoke();
+    }
+
+    public static void runPeaksResearchSmoke(Sector source){
+        if(source == null || source != SectorPresets.peaks.sector){
+            throw new IllegalStateException("Peaks objective smoke requires active Peaks");
+        }
+
+        stageAndSpend(source, Blocks.beamTower);
+        stageAndSpend(source, Blocks.tankRefabricator);
+        stageAndSpend(source, Blocks.mechRefabricator);
+        stageAndSpend(source, Blocks.shipRefabricator);
+        stageAndSpend(source, UnitTypes.avert);
+
+        Core.settings.forceSave();
+        markPeaksResearchSmoke();
+    }
+
+    public static void runRavineProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.peaks.sector || !peaksCaptured()){
+            throw new IllegalStateException("Ravine smoke order requires captured Peaks");
+        }
+        if(!marshCaptured()){
+            throw new IllegalStateException("Ravine requires captured Marsh");
+        }
+
+        if(!Liquids.slag.unlocked()) Liquids.slag.unlock();
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!ravineReady()){
+            throw new IllegalStateException("Ravine did not auto-unlock after slag production objective completed");
+        }
+        Core.settings.forceSave();
+        markRavineProgressSmoke();
+    }
+
+    public static void runCalderaProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.ravine.sector || !ravineCaptured()){
+            throw new IllegalStateException("Caldera progression requires captured Ravine");
+        }
+        if(!peaksCaptured()){
+            throw new IllegalStateException("Caldera also requires captured Peaks");
+        }
+
+        stageAndSpend(source, Blocks.heatRedirector);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!calderaReady()){
+            throw new IllegalStateException("Caldera did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markCalderaProgressSmoke();
     }
 
     /** CI-only helper: supply exactly the missing early research resources, then use the production spend path. */
@@ -1686,6 +1867,24 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-basin-ready','true');")
     private static native void markBasinReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-marsh-ready','true');")
+    private static native void markMarshReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-electrolyzer-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-oxidation-chamber-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-reinforced-pump-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-oxide-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-arkycite-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-chemical-combustion-unlocked','true');")
+    private static native void markMarshResearchSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-peaks-ready','true');")
+    private static native void markPeaksReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-beam-tower-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-ship-refabricator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-avert-unlocked','true');")
+    private static native void markPeaksResearchSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-slag-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-ravine-ready','true');")
+    private static native void markRavineProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-heat-redirector-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-caldera-ready','true');")
+    private static native void markCalderaProgressSmoke();
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready','true');")
     private static native void markTaintedProgressSmoke();
