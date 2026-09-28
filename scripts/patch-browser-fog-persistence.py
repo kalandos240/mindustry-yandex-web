@@ -78,11 +78,70 @@ if text.count(old_after_fog) != 1:
     raise SystemExit("Fog persistence frame hook anchor no longer matches fog runtime")
 text = text.replace(old_after_fog, new_after_fog, 1)
 
-old_helper = '''    /**
-     * Save every three minutes of active simulation. No Timer/ExecutorService or page
+old_helper = '''    /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
+    private static void maybePeriodicSave(){
 '''
 new_helper = '''    /**
      * CI-only proof for the stock static-fog custom save chunk. The seed process marks
+     * one far, currently hidden and previously undiscovered tile as explored, writes the
+     * normal v13 slot, then exits. A new Chrome process loads the same slot and must see
+     * that exact far tile as discovered while it remains dynamically hidden. A normal
+     * core-based fog rebuild cannot create this marker, so a PASS proves static-fog-data
+     * survived SaveIO -> IndexedDB -> full process restart -> SaveIO.load.
+     */
+    private static void updateFogPersistenceSmoke(){
+        if(!active || current == null || !state.isPlaying() || state.gameOver) return;
+        if(frames < 2) return; // require at least three real playing-core ticks
+
+        var core = state.rules.defaultTeam.core();
+        if(core == null) throw new IllegalStateException("Fog persistence smoke lost the default-team core");
+        int farX = core.tile.x < world.width() / 2 ? world.width() - 1 : 0;
+        int farY = core.tile.y < world.height() / 2 ? world.height() - 1 : 0;
+        int farIndex = farX + farY * world.width();
+
+        if(fogPersistSeedRequested() && !fogPersistSeedDone){
+            if(!state.rules.fog || !state.rules.staticFog){
+                throw new IllegalStateException("Fog persistence seed requires dynamic + static fog rules");
+            }
+            if(fogControl.isVisibleTile(state.rules.defaultTeam, farX, farY)){
+                throw new IllegalStateException("Fog persistence seed tile unexpectedly visible before save");
+            }
+            if(fogControl.isDiscovered(state.rules.defaultTeam, farX, farY)){
+                throw new IllegalStateException("Fog persistence seed tile was already discovered before marker injection");
+            }
+            var discovered = fogControl.getDiscovered(state.rules.defaultTeam);
+            if(discovered == null){
+                throw new IllegalStateException("Fog persistence seed has no static discovery bitmap");
+            }
+            discovered.set(farIndex);
+            if(!fogControl.isDiscovered(state.rules.defaultTeam, farX, farY)){
+                throw new IllegalStateException("Fog persistence seed bit could not be set");
+            }
+
+            int savedWave = state.wave;
+            saveLocalSession();
+            fogPersistSeedDone = true;
+            markFogPersistSeed(slug(current), farX, farY, savedWave);
+        }
+
+        if(fogPersistRestoreRequested() && !fogPersistRestoreDone){
+            if(!state.rules.fog || !state.rules.staticFog){
+                throw new IllegalStateException("Fog persistence restore lost dynamic/static fog rules from v13 save");
+            }
+            boolean discovered = fogControl.isDiscovered(state.rules.defaultTeam, farX, farY);
+            boolean hidden = !fogControl.isVisibleTile(state.rules.defaultTeam, farX, farY);
+            markFogPersistRestoreProbe(farX, farY, discovered, hidden);
+            if(discovered && hidden){
+                fogPersistRestoreDone = true;
+                markFogPersistRestored(slug(current), farX, farY, state.wave);
+            }else{
+                throw new IllegalStateException("Browser static fog marker did not survive v13 save/restart");
+            }
+        }
+    }
+
+    /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
+    private static void maybePeriodicSave(){
      * one far, currently hidden and previously undiscovered tile as explored, writes the
      * normal v13 slot, then exits. A new Chrome process loads the same slot and must see
      * that exact far tile as discovered while it remains dynamically hidden. A normal
