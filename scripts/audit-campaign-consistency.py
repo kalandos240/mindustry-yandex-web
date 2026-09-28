@@ -152,6 +152,11 @@ for method in sorted(research_referenced - research_declared):
 for method in sorted(runtime_referenced - runtime_declared):
     failures.append(f"campaign Java surface: missing BrowserCampaignRuntime.{method} declaration")
 
+research_jsbodies = len(re.findall(r"@org\.teavm\.jso\.JSBody", RESEARCH))
+if research_jsbodies > 2:
+    failures.append(f"campaign research DOM bridge dedup regression: JSBody count={research_jsbodies} > 2")
+require(RESEARCH, 'setResearchDomAttribute(String key, String value)', "campaign research DOM bridge")
+
 ready_aliases = set(re.findall(r"public static boolean ([A-Za-z0-9]+Ready)\(\)", RESEARCH))
 if ready_aliases:
     failures.append(f"campaign ready-query dedup regression: {sorted(ready_aliases)}")
@@ -214,9 +219,20 @@ for needle in [
     "state.rules.objectiveTimerMultiplier = 0f",
     'armObjectiveAttackCapture("origin")',
     "data-mindustry-erekir-origin-objective-count",
-    "data-mindustry-erekir-origin-captured",
 ]:
     require(RUNTIME, needle, "Origin runtime contract")
+
+# Capture DOM telemetry is generated from preset/planet rather than a 46-branch JSBody.
+# Lock the two historical slug exceptions and the shared captured/wave marker algorithm.
+for needle in [
+    'setRuntimeDomAttribute(prefix + slug + "-captured", "true")',
+    'setRuntimeDomAttribute(prefix + slug + "-capture-wave", String.valueOf(wave))',
+    'if("caldera-erekir".equals(preset)) return "caldera";',
+    'if("impact0078".equals(preset)) return "impact-0078";',
+    'boolean erekir = current != null && current.planet == Planets.erekir;',
+    'private static boolean captureHasWaveMarker(String preset)',
+]:
+    require(RUNTIME, needle, "campaign capture DOM telemetry")
 
 for needle in [
     'data-mindustry-erekir-origin-objectives="staged"',
