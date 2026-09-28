@@ -53,6 +53,42 @@ public final class BrowserCampaignResearch{
         return SectorPresets.windsweptIslands != null && SectorPresets.windsweptIslands.unlocked();
     }
 
+    public static boolean windsweptIslandsCaptured(){
+        return captured(SectorPresets.windsweptIslands);
+    }
+
+    public static boolean biomassFacilityReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.biomassFacility != null && SectorPresets.biomassFacility.unlocked();
+    }
+
+    public static boolean biomassFacilityCaptured(){
+        return captured(SectorPresets.biomassFacility);
+    }
+
+    public static boolean fungalPassReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.fungalPass != null && SectorPresets.fungalPass.unlocked();
+    }
+
+    public static boolean fungalPassCaptured(){
+        return captured(SectorPresets.fungalPass);
+    }
+
+    public static boolean frontierReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.frontier != null && SectorPresets.frontier.unlocked();
+    }
+
+    public static boolean frontierCaptured(){
+        return captured(SectorPresets.frontier);
+    }
+
+    public static boolean saltFlatsReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.saltFlats != null && SectorPresets.saltFlats.unlocked();
+    }
+
     /**
      * Compact Yandex campaign UI exposes one real TechTree step at a time instead of
      * constructing ResearchDialog. A null result with waitingForCraterCoal()==true means
@@ -118,6 +154,44 @@ public final class BrowserCampaignResearch{
 
     public static void spendNextWindsweptResearch(){
         UnlockableContent next = nextWindsweptResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextFungalResearch(){
+        if(!Blocks.groundFactory.unlocked()) return Blocks.groundFactory;
+        if(!UnitTypes.dagger.unlocked()) return UnitTypes.dagger;
+        return null;
+    }
+
+    public static void spendNextFungalResearch(){
+        UnlockableContent next = nextFungalResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextFrontierResearch(){
+        if(!Blocks.airFactory.unlocked()) return Blocks.airFactory;
+        if(!Blocks.additiveReconstructor.unlocked()) return Blocks.additiveReconstructor;
+        if(!UnitTypes.mace.unlocked()) return UnitTypes.mace;
+        if(!UnitTypes.flare.unlocked()) return UnitTypes.flare;
+        if(!UnitTypes.mono.unlocked()) return UnitTypes.mono;
+        return null;
+    }
+
+    public static void spendNextFrontierResearch(){
+        UnlockableContent next = nextFrontierResearch();
+        if(next != null) spend(next);
+    }
+
+    public static UnlockableContent nextSaltResearch(){
+        if(!Blocks.copperWall.unlocked()) return Blocks.copperWall;
+        if(!Blocks.copperWallLarge.unlocked()) return Blocks.copperWallLarge;
+        if(!Blocks.titaniumWall.unlocked()) return Blocks.titaniumWall;
+        if(!Blocks.door.unlocked()) return Blocks.door;
+        return null;
+    }
+
+    public static void spendNextSaltResearch(){
+        UnlockableContent next = nextSaltResearch();
         if(next != null) spend(next);
     }
 
@@ -261,6 +335,79 @@ public final class BrowserCampaignResearch{
         markWindsweptProgressSmoke();
     }
 
+    public static void verifyBiomassReadyAfterWindswept(Sector source){
+        if(source == null || source != SectorPresets.windsweptIslands.sector
+        || !captured(SectorPresets.windsweptIslands)){
+            throw new IllegalStateException("Biomass Facility progression requires captured Windswept Islands");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!biomassFacilityReady()){
+            throw new IllegalStateException("Biomass Facility did not auto-unlock from stock prerequisites");
+        }
+        markBiomassReadySmoke();
+    }
+
+    public static void runFungalProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.biomassFacility.sector
+        || !captured(SectorPresets.biomassFacility)){
+            throw new IllegalStateException("Fungal Pass progression requires captured Biomass Facility");
+        }
+
+        stageAndSpend(source, Blocks.groundFactory);
+        stageAndSpend(source, UnitTypes.dagger);
+        if(control != null) control.checkAutoUnlocks();
+        if(!fungalPassReady()){
+            throw new IllegalStateException("Fungal Pass did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markFungalProgressSmoke();
+    }
+
+    public static void runFrontierProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.fungalPass.sector
+        || !captured(SectorPresets.fungalPass)){
+            throw new IllegalStateException("Frontier progression requires captured Fungal Pass");
+        }
+        if(!biomassFacilityCaptured()){
+            throw new IllegalStateException("Frontier progression also requires captured Biomass Facility");
+        }
+
+        stageAndSpend(source, Blocks.airFactory);
+        stageAndSpend(source, Blocks.additiveReconstructor);
+        stageAndSpend(source, UnitTypes.mace);
+        stageAndSpend(source, UnitTypes.flare);
+        stageAndSpend(source, UnitTypes.mono);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!frontierReady()){
+            throw new IllegalStateException("Frontier did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markFrontierProgressSmoke();
+    }
+
+    public static void runSaltProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.frontier.sector
+        || !captured(SectorPresets.frontier)){
+            throw new IllegalStateException("Salt Flats progression requires captured Frontier");
+        }
+        if(!windsweptIslandsCaptured() || !fungalPassCaptured()){
+            throw new IllegalStateException("Salt Flats sector capture prerequisites are incomplete");
+        }
+
+        stageAndSpend(source, Blocks.copperWall);
+        stageAndSpend(source, Blocks.copperWallLarge);
+        stageAndSpend(source, Blocks.titaniumWall);
+        stageAndSpend(source, Blocks.door);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!saltFlatsReady()){
+            throw new IllegalStateException("Salt Flats did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markSaltProgressSmoke();
+    }
+
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
         stageMissing(source, content);
@@ -394,6 +541,18 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-smoke','windswept-research-ready'); document.documentElement.setAttribute('data-mindustry-campaign-pneumatic-drill-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-duo-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-scatter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-hail-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-silicon-smelter-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-steam-generator-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-ready','true');")
     private static native void markWindsweptProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-ready','true');")
+    private static native void markBiomassReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-ground-factory-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-dagger-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-ready','true');")
+    private static native void markFungalProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-air-factory-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-additive-reconstructor-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mace-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-flare-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-mono-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-ready','true');")
+    private static native void markFrontierProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-copper-wall-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-copper-wall-large-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-titanium-wall-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-door-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-ready','true');")
+    private static native void markSaltProgressSmoke();
 
     @org.teavm.jso.JSBody(params = {"name", "spent", "remaining", "unlocked", "frozenReady", "craterReady", "ruinousReady", "windsweptReady"},
         script = "document.documentElement.setAttribute('data-mindustry-campaign-research','ready');" +
