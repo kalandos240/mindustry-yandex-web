@@ -113,6 +113,7 @@ public final class BrowserUiRuntime{
     private static void buildLocalHudControls(){
         Table controls = new Table();
         controls.setFillParent(true);
+        controls.visible(BrowserLocalMapRuntime::active);
         controls.top().left();
         controls.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
@@ -127,7 +128,7 @@ public final class BrowserUiRuntime{
         Table overlay = new Table();
         overlay.setFillParent(true);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> state.isPaused() && !state.gameOver);
+        overlay.visible(() -> BrowserLocalMapRuntime.active() && state.isPaused() && !state.gameOver);
         overlay.add(Core.bundle.get("pause", "Paused")).padBottom(12f);
         overlay.row();
         overlay.button(Core.bundle.get("resume", "Resume"), BrowserLocalMapRuntime::resume)
@@ -148,7 +149,7 @@ public final class BrowserUiRuntime{
         Table overlay = new Table();
         overlay.setFillParent(true);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> state.isGame() && state.gameOver);
+        overlay.visible(() -> BrowserLocalMapRuntime.active() && state.isGame() && state.gameOver);
         overlay.add(Core.bundle.get("gameover", "Game Over")).padBottom(12f);
         overlay.row();
         overlay.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
