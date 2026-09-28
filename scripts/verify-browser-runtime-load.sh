@@ -66,6 +66,10 @@ run_load(){
     --require 'data-mindustry-pause-policy="event-driven-64-frame-fallback"' \
     --require 'data-mindustry-input-coordinates="offset-cached"' \
     --require 'data-mindustry-assets-status-policy="batch-16"' \
+    --require 'data-mindustry-assets-deferred-campaign="44"' \
+    --require 'data-mindustry-campaign-assets-policy="idle-background"' \
+    --require 'data-mindustry-campaign-assets="ready"' \
+    --require 'data-mindustry-campaign-assets-count="44"' \
     --require 'data-mindustry-canvas-viewport-match="true"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
@@ -74,6 +78,7 @@ run_load(){
   grep -Eq 'data-mindustry-perf-elapsed-ms="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-perf-fps="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-local-map-update-id="[1-9][0-9]{2,}"' "$dom"
+  grep -Eq 'data-mindustry-campaign-assets-bytes="[1-9][0-9]*"' "$dom"
 
   local elapsed fps eager status_updates max_status_updates
   elapsed="$(attr "$dom" data-mindustry-perf-elapsed-ms)"
@@ -90,7 +95,7 @@ run_load(){
     exit 1
   fi
 
-  echo "Runtime load smoke ($label): 64 vanilla units + 120 frames in ${elapsed}ms (~${fps} fps); preload status ${status_updates}/${eager} assets PASS" | tee -a "$REPORT"
+  echo "Runtime load smoke ($label): 64 vanilla units + 120 frames in ${elapsed}ms (~${fps} fps); preload status ${status_updates}/${eager}; 44 campaign maps warmed in idle PASS" | tee -a "$REPORT"
 }
 
 run_load desktop desktop 0 \
