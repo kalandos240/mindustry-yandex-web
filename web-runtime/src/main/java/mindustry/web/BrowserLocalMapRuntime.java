@@ -41,6 +41,12 @@ public final class BrowserLocalMapRuntime{
     private static boolean testWaveExpected;
     private static boolean testWaveFired;
     private static int testWaveStart;
+    private static boolean gameOverFreeze;
+    private static boolean gameOverSmokeArmed;
+    private static boolean pauseSmokeArmed;
+    private static long pauseUpdateId;
+    private static int pausedFrames;
+    private static boolean saveSmokeArmed;
     private static Map current;
     private static int frames;
     private static boolean perfSmoke;
@@ -174,6 +180,12 @@ public final class BrowserLocalMapRuntime{
         testWaveExpected = false;
         testWaveFired = false;
         testWaveStart = state.wave;
+        gameOverFreeze = false;
+        gameOverSmokeArmed = false;
+        pauseSmokeArmed = false;
+        pauseUpdateId = 0L;
+        pausedFrames = 0;
+        saveSmokeArmed = false;
         active = true;
 
         try{
@@ -239,6 +251,12 @@ public final class BrowserLocalMapRuntime{
             throw new IllegalStateException("Browser production map frame requires an active playing session");
         }
 
+        if(gameOverFreeze || state.gameOver){
+            gameOverFreeze = true;
+            updateGameOverFrame();
+            return;
+        }
+
         long beforeUpdateId = state.updateId;
         int beforeWave = state.wave;
 
@@ -247,6 +265,13 @@ public final class BrowserLocalMapRuntime{
         if(state.wave > beforeWave){
             testWaveFired = true;
             markWaveFired(state.wave);
+        }
+        if(state.gameOver){
+            gameOverFreeze = true;
+            markGameOver(state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
+            markPhase("logic-gameover");
+            updateGameOverFrame();
+            return;
         }
         markPhase("logic-ready");
 
@@ -277,6 +302,14 @@ public final class BrowserLocalMapRuntime{
         frames++;
         markFrame(frames, state.updateId, player.unit() == null ? "spawning" : player.unit().type.name,
             state.wave, state.enemies, state.wavetime);
+
+        if(pauseSmokeRequested() && !pauseSmokeArmed && frames == 1){
+            pauseSmokeArmed = true;
+            markPauseSmokeArmed();
+            pause();
+            return;
+        }
+
         if(frames >= 3){
             if(testWaveExpected && (!testWaveFired || state.wave <= testWaveStart)){
                 throw new IllegalStateException("Packaged-map smoke did not execute a real survival wave");
@@ -284,7 +317,29 @@ public final class BrowserLocalMapRuntime{
             if(testWaveExpected && state.enemies <= 0){
                 throw new IllegalStateException("Packaged-map smoke wave produced no live enemy units");
             }
-            markLive(frames);
+
+            if(saveSmokeRequested() && !saveSmokeArmed){
+                saveSmokeArmed = true;
+                saveLocalSession();
+                markSaveSmokeArmed();
+            }
+
+            if(gameOverSmokeRequested() && !gameOverSmokeArmed){
+                if(!state.rules.canGameOver || state.rules.defaultTeam.cores().isEmpty()){
+                    throw new IllegalStateException("Game-over smoke requires canGameOver and an existing default-team core");
+                }
+                state.rules.defaultTeam.cores().clear();
+                gameOverSmokeArmed = true;
+                markGameOverSmokeArmed();
+            }
+
+            if(!gameOverFreeze) markLive(frames);
+
+            if(autoSaveExitSmokeRequested()){
+                markAutoSaveExitSmokeArmed();
+                returnToMenu();
+                return;
+            }
         }
         if(perfSmoke && !perfReady && frames >= perfTargetFrames){
             perfReady = true;
@@ -292,10 +347,141 @@ public final class BrowserLocalMapRuntime{
         }
     }
 
+    public static void saveLocalSession(){
+        if(!active || current == null || state.gameOver || (!state.isPlaying() && !state.isPaused())){
+            throw new IllegalStateException("Browser local save requires an active playing or paused session");
+        }
+        SaveMeta meta = BrowserSaveRuntime.saveLocalSession();
+        markSessionSaved(slug(current), meta.wave, meta.version, world.width(), world.height());
+    }
+
+    public static void continueSaved(){
+        if(!initialized || active || state == null || !state.isMenu() || logic == null || world == null
+        || control == null || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
+            throw new IllegalStateException("Browser local continue requires a stable production menu runtime");
+        }
+        if(net == null || net.active() || netServer != null || netClient != null){
+            throw new IllegalStateException("Browser local continue escaped permanent single-player mode");
+        }
+
+        SaveMeta meta = BrowserSaveRuntime.loadLocalSession();
+        String savedName = meta.tags.get("mapname", "");
+        Map builtin = byName(savedName);
+        if(builtin == null){
+            throw new IllegalStateException("Browser local save refers to a non-built-in map: " + savedName);
+        }
+        if(state.gameOver || state.rules == null || state.rules.pvp || state.rules.sector != null){
+            throw new IllegalStateException("Browser local save restored unsupported game state");
+        }
+
+        stageCoreRules(state.rules);
+        state.map = builtin;
+        state.rules.sector = null;
+        state.rules.editor = false;
+
+        if(state.rules.defaultTeam.core() == null){
+            throw new IllegalStateException("Browser local save restored no core for default team");
+        }
+
+        player.team(state.rules.defaultTeam);
+        if(!player.isAdded()) player.add();
+        player.set(state.rules.defaultTeam.core());
+        Core.camera.position.set(state.rules.defaultTeam.core());
+
+        current = builtin;
+        frames = 0;
+        perfSmoke = false;
+        perfReady = false;
+        perfUnits = 0;
+        active = true;
+        testWaveExpected = false;
+        testWaveFired = false;
+        testWaveStart = state.wave;
+        gameOverFreeze = false;
+        gameOverSmokeArmed = false;
+        pauseSmokeArmed = false;
+        pauseUpdateId = 0L;
+        pausedFrames = 0;
+        saveSmokeArmed = false;
+
+        state.set(mindustry.core.GameState.State.playing);
+        markContinued(slug(builtin), meta.wave, meta.version, world.width(), world.height());
+    }
+
+    public static void pause(){
+        if(!active || current == null || !state.isPlaying() || state.gameOver || state.rules.pauseDisabled) return;
+        pauseUpdateId = state.updateId;
+        pausedFrames = 0;
+        state.set(mindustry.core.GameState.State.paused);
+        markPaused(pauseUpdateId);
+    }
+
+    public static void resume(){
+        if(!active || current == null || !state.isPaused() || state.gameOver) return;
+        long frozenUpdateId = state.updateId;
+        if(pauseUpdateId != 0L && frozenUpdateId != pauseUpdateId){
+            throw new IllegalStateException("Browser local pause advanced the gameplay update clock");
+        }
+        state.set(mindustry.core.GameState.State.playing);
+        markResumed(frozenUpdateId);
+    }
+
+    public static void updatePausedFrame(){
+        if(!active || current == null || !state.isPaused() || state.gameOver){
+            throw new IllegalStateException("Browser paused frame requires an active paused local session");
+        }
+
+        long beforeUpdateId = state.updateId;
+        markPhase("pause-renderer");
+        renderer.update();
+        markPhase("pause-ui");
+        ui.update();
+        markPhase("pause-ui-ready");
+
+        if(!active || state.isMenu()) return;
+        if(state.isPlaying()){
+            if(state.updateId != beforeUpdateId){
+                throw new IllegalStateException("Browser resume changed updateId inside the paused frame");
+            }
+            return;
+        }
+        if(!state.isPaused()){
+            throw new IllegalStateException("Browser paused local session entered an unexpected state");
+        }
+        if(state.updateId != beforeUpdateId || state.updateId != pauseUpdateId){
+            throw new IllegalStateException("Browser paused frame advanced the gameplay update clock");
+        }
+
+        pausedFrames++;
+        markPauseFrame(pausedFrames, state.updateId);
+        if(pauseSmokeArmed && pauseSmokeRequested() && pausedFrames >= 2){
+            markPauseClockFrozen(state.updateId);
+            resume();
+        }
+    }
+
+    private static void updateGameOverFrame(){
+        markPhase("gameover-control");
+        control.update();
+        markPhase("gameover-renderer");
+        renderer.update();
+        markPhase("gameover-ui");
+        ui.update();
+        markPhase("gameover-ui-ready");
+    }
+
     /** Return to the stable local map selector without touching any remote service. */
     public static void returnToMenu(){
         if(!active) return;
         String previous = current == null ? "unknown" : slug(current);
+
+        if(!state.gameOver && current != null && (state.isPlaying() || state.isPaused())){
+            int savedWave = state.wave;
+            long savedUpdateId = state.updateId;
+            saveLocalSession();
+            markAutoSaved(previous, savedWave, savedUpdateId);
+        }
+
         active = false;
         current = null;
         frames = 0;
@@ -305,6 +491,12 @@ public final class BrowserLocalMapRuntime{
         testWaveExpected = false;
         testWaveFired = false;
         testWaveStart = 0;
+        gameOverFreeze = false;
+        gameOverSmokeArmed = false;
+        pauseSmokeArmed = false;
+        pauseUpdateId = 0L;
+        pausedFrames = 0;
+        saveSmokeArmed = false;
         logic.reset();
         markReturned(previous);
     }
@@ -313,6 +505,15 @@ public final class BrowserLocalMapRuntime{
     public static void maybeStartTestMap(){
         if(testStartChecked) return;
         testStartChecked = true;
+
+        if(continueSmokeRequested()){
+            if(!BrowserSaveRuntime.hasLocalSession()){
+                throw new IllegalStateException("mindustryContinueSmoke requested with no valid browser local save");
+            }
+            markContinueSmokeRequested();
+            continueSaved();
+            return;
+        }
 
         String requested = requestedTestMap();
         if(requested == null || requested.isEmpty()) return;
@@ -328,6 +529,13 @@ public final class BrowserLocalMapRuntime{
     private static Map bySlug(String requested){
         for(Map map : catalog){
             if(slug(map).equalsIgnoreCase(requested)) return map;
+        }
+        return null;
+    }
+
+    private static Map byName(String requested){
+        for(Map map : catalog){
+            if(map.name().equals(requested)) return map;
         }
         return null;
     }
@@ -361,14 +569,32 @@ public final class BrowserLocalMapRuntime{
         rules.editor = false;
         rules.sector = null;
 
-        for(Team team : Team.all){
-            Rules.TeamRule teamRules = rules.teams.get(team);
-            teamRules.fillItems = false;
-            teamRules.buildAi = false;
-            teamRules.rtsAi = false;
-            teamRules.prebuildAi = false;
-        }
+        stageTeamRules(rules, rules.defaultTeam);
+        if(rules.waveTeam != rules.defaultTeam) stageTeamRules(rules, rules.waveTeam);
     }
+
+    private static void stageTeamRules(Rules rules, Team team){
+        Rules.TeamRule teamRules = rules.teams.get(team);
+        teamRules.fillItems = false;
+        teamRules.buildAi = false;
+        teamRules.rtsAi = false;
+        teamRules.prebuildAi = false;
+    }
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryAutoSaveExitSmoke') === '1';")
+    private static native boolean autoSaveExitSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustrySaveSmoke') === '1';")
+    private static native boolean saveSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryContinueSmoke') === '1';")
+    private static native boolean continueSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPauseSmoke') === '1';")
+    private static native boolean pauseSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryGameOverSmoke') === '1';")
+    private static native boolean gameOverSmokeRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryMapSmoke') || ''; ")
     private static native String requestedTestMap();
@@ -396,6 +622,45 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(params = {"wave"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-wave-fired', 'yes'); document.documentElement.setAttribute('data-mindustry-local-map-wave-fired-index', String(wave));")
     private static native void markWaveFired(int wave);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-pause-smoke', 'armed');")
+    private static native void markPauseSmokeArmed();
+
+    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-pause', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-pause-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-map-pause-state', 'paused');")
+    private static native void markPaused(long updateId);
+
+    @JSBody(params = {"frames", "updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-pause-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-local-map-pause-frame-update-id', String(updateId));")
+    private static native void markPauseFrame(int frames, long updateId);
+
+    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-pause-clock', 'frozen'); document.documentElement.setAttribute('data-mindustry-local-map-pause-frozen-update-id', String(updateId));")
+    private static native void markPauseClockFrozen(long updateId);
+
+    @JSBody(params = {"updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-pause-resumed', 'yes'); document.documentElement.setAttribute('data-mindustry-local-map-resume-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-map-pause-state', 'resumed');")
+    private static native void markResumed(long updateId);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-save-smoke', 'armed');")
+    private static native void markSaveSmokeArmed();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-continue-smoke', 'requested');")
+    private static native void markContinueSmokeRequested();
+
+    @JSBody(params = {"slug", "wave", "version", "width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-save', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-save-slug', slug); document.documentElement.setAttribute('data-mindustry-local-map-save-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-map-save-version', String(version)); document.documentElement.setAttribute('data-mindustry-local-map-save-world', String(width) + 'x' + String(height));")
+    private static native void markSessionSaved(String slug, int wave, int version, int width, int height);
+
+    @JSBody(params = {"slug", "wave", "version", "width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-local-continue', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slug', slug); document.documentElement.setAttribute('data-mindustry-local-continue-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-continue-version', String(version)); document.documentElement.setAttribute('data-mindustry-local-continue-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-state', 'playing'); document.documentElement.setAttribute('data-mindustry-local-map-slug', slug); document.documentElement.setAttribute('data-mindustry-local-map-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-player', 'added'); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'starting');")
+    private static native void markContinued(String slug, int wave, int version, int width, int height);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-autosave-smoke', 'armed');")
+    private static native void markAutoSaveExitSmokeArmed();
+
+    @JSBody(params = {"slug", "wave", "updateId"}, script = "document.documentElement.setAttribute('data-mindustry-local-autosave', 'ready'); document.documentElement.setAttribute('data-mindustry-local-autosave-slug', slug); document.documentElement.setAttribute('data-mindustry-local-autosave-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-autosave-update-id', String(updateId));")
+    private static native void markAutoSaved(String slug, int wave, long updateId);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-gameover-smoke', 'armed');")
+    private static native void markGameOverSmokeArmed();
+
+    @JSBody(params = {"winner", "wave"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-gameover', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-gameover-winner', winner); document.documentElement.setAttribute('data-mindustry-local-map-gameover-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'game-over');")
+    private static native void markGameOver(String winner, int wave);
 
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-loop', 'live'); document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames));")
     private static native void markLive(int frames);
