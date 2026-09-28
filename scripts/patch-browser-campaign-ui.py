@@ -126,8 +126,14 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(BrowserCampaignResearch.crateredBattlegroundCaptured()
             && !BrowserCampaignResearch.ruinousShoresReady()){
                 BrowserCampaignResearch.spendNextRuinousResearch();
-            }else if(BrowserCampaignResearch.ruinousShoresReady()){
+            }else if(BrowserCampaignResearch.ruinousShoresReady()
+            && !BrowserCampaignResearch.ruinousShoresCaptured()){
                 BrowserCampaignRuntime.playRuinousShores();
+            }else if(BrowserCampaignResearch.ruinousShoresCaptured()
+            && !BrowserCampaignResearch.windsweptIslandsReady()){
+                BrowserCampaignResearch.spendNextWindsweptResearch();
+            }else if(BrowserCampaignResearch.windsweptIslandsReady()){
+                BrowserCampaignRuntime.playWindsweptIslands();
             }
         });
         craterResearch.setDisabled(() -> {
@@ -136,9 +142,16 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
             if(!BrowserCampaignResearch.crateredBattlegroundCaptured()) return true;
-            if(BrowserCampaignResearch.ruinousShoresReady()) return false;
 
-            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextRuinousResearch();
+            if(!BrowserCampaignResearch.ruinousShoresReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextRuinousResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+
+            if(!BrowserCampaignResearch.ruinousShoresCaptured()) return false;
+            if(BrowserCampaignResearch.windsweptIslandsReady()) return false;
+
+            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWindsweptResearch();
             return next == null || !BrowserCampaignResearch.canSpend(next);
         });
         craterResearch.update(() -> {
@@ -156,16 +169,26 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }else if(!BrowserCampaignResearch.crateredBattlegroundCaptured()){
                 craterResearch.setText(Core.bundle.get("sector.crateredBattleground.name", "Cratered Battleground") +
                     " — " + Core.bundle.get("locked", "Locked"));
-            }else if(BrowserCampaignResearch.ruinousShoresReady()){
-                boolean saved = BrowserCampaignRuntime.hasRuinousShoresSave();
-                craterResearch.setText(Core.bundle.get("sector.ruinousShores.name", "Ruinous Shores") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else{
+            }else if(!BrowserCampaignResearch.ruinousShoresReady()){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextRuinousResearch();
                 craterResearch.setText(next == null
                     ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
                     : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
                         BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.ruinousShoresCaptured()){
+                boolean saved = BrowserCampaignRuntime.hasRuinousShoresSave();
+                craterResearch.setText(Core.bundle.get("sector.ruinousShores.name", "Ruinous Shores") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.windsweptIslandsReady()){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWindsweptResearch();
+                craterResearch.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else{
+                boolean saved = BrowserCampaignRuntime.hasWindsweptIslandsSave();
+                craterResearch.setText(Core.bundle.get("sector.windsweptIslands.name", "Windswept Islands") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }
 
             markCampaignRuinousState(
@@ -175,6 +198,15 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 mindustry.content.Blocks.mechanicalPump.unlocked(),
                 BrowserCampaignResearch.ruinousShoresReady(),
                 BrowserCampaignRuntime.hasRuinousShoresSave()
+            );
+            markCampaignWindsweptState(
+                mindustry.content.Blocks.pneumaticDrill.unlocked(),
+                mindustry.content.Blocks.duo.unlocked(),
+                mindustry.content.Blocks.scatter.unlocked(),
+                mindustry.content.Blocks.hail.unlocked(),
+                mindustry.content.Blocks.steamGenerator.unlocked(),
+                BrowserCampaignResearch.windsweptIslandsReady(),
+                BrowserCampaignRuntime.hasWindsweptIslandsSave()
             );
         });
 
@@ -314,6 +346,9 @@ marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHe
 
     @JSBody(params = {"graphitePress", "siliconSmelter", "kiln", "mechanicalPump", "ruinousReady", "ruinousSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ruinous-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-graphite-press-unlocked',graphitePress ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-silicon-smelter-unlocked',siliconSmelter ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-kiln-unlocked',kiln ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-pump-unlocked',mechanicalPump ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-ready',ruinousReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-save',ruinousSaved ? 'true' : 'false');")
     private static native void markCampaignRuinousState(boolean graphitePress, boolean siliconSmelter, boolean kiln, boolean mechanicalPump, boolean ruinousReady, boolean ruinousSaved);
+
+    @JSBody(params = {"pneumaticDrill", "duo", "scatter", "hail", "steamGenerator", "windsweptReady", "windsweptSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-windswept-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-pneumatic-drill-unlocked',pneumaticDrill ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-duo-unlocked',duo ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-scatter-unlocked',scatter ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-hail-unlocked',hail ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-steam-generator-unlocked',steamGenerator ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-ready',windsweptReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-save',windsweptSaved ? 'true' : 'false');")
+    private static native void markCampaignWindsweptState(boolean pneumaticDrill, boolean duo, boolean scatter, boolean hail, boolean steamGenerator, boolean windsweptReady, boolean windsweptSaved);
 
     @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
     private static native void markCampaignUiResized(float paneHeight);
