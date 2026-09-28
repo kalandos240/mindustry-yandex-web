@@ -11,7 +11,8 @@ REPORT = ROOT / "work" / "web-performance-report.txt"
 # Performance baseline is intentionally anchored at the proven three-sector
 # Ground Zero -> Frozen Forest -> Cratered Battleground milestone. Later campaign
 # expansion (currently through Ruinous Shores -> Windswept Islands -> Biomass Facility
-# -> Fungal Pass -> Frontier -> Salt Flats -> Tar Fields -> Impact 0078) must still fit this existing TeaVM budget;
+# -> Fungal Pass -> Frontier -> Salt Flats -> Tar Fields -> Impact 0078 -> Stained Mountains
+# -> Infested Canyons -> Nuclear Complex -> Desolate Rift) must still fit this existing TeaVM budget;
 # do not rebaseline merely because campaign code grew.
 # Forbidden desktop/network markers and the 100 MiB unpacked Yandex limit remain
 # hard release gates.
