@@ -129,6 +129,14 @@ public final class BrowserGameplayRuntime{
             return;
         }
 
+        if(state.isPaused()){
+            if(smokeMode || !BrowserLocalMapRuntime.active()){
+                throw new IllegalStateException("Web entered paused state outside a production local-map session");
+            }
+            BrowserLocalMapRuntime.updatePausedFrame();
+            return;
+        }
+
         if(!state.isMenu()) return;
 
         runMenuModuleFrame();
