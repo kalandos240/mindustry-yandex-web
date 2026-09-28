@@ -119,6 +119,42 @@ public final class BrowserCampaignResearch{
         return captured(SectorPresets.caldera);
     }
 
+    public static boolean strongholdReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.stronghold != null && SectorPresets.stronghold.unlocked();
+    }
+
+    public static boolean strongholdCaptured(){
+        return captured(SectorPresets.stronghold);
+    }
+
+    public static boolean creviceReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.crevice != null && SectorPresets.crevice.unlocked();
+    }
+
+    public static boolean creviceCaptured(){
+        return captured(SectorPresets.crevice);
+    }
+
+    public static boolean siegeReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.siege != null && SectorPresets.siege.unlocked();
+    }
+
+    public static boolean siegeCaptured(){
+        return captured(SectorPresets.siege);
+    }
+
+    public static boolean crossroadsReady(){
+        if(control != null) control.checkAutoUnlocks();
+        return SectorPresets.crossroads != null && SectorPresets.crossroads.unlocked();
+    }
+
+    public static boolean crossroadsCaptured(){
+        return captured(SectorPresets.crossroads);
+    }
+
     public static boolean frozenForestReady(){
         if(control != null) control.checkAutoUnlocks();
         return SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked();
@@ -819,6 +855,16 @@ public final class BrowserCampaignResearch{
         if(next != null) spend(next);
     }
 
+    public static UnlockableContent nextStrongholdResearch(){
+        if(!Blocks.coreCitadel.unlocked()) return Blocks.coreCitadel;
+        return null;
+    }
+
+    public static void spendNextStrongholdResearch(){
+        UnlockableContent next = nextStrongholdResearch();
+        if(next != null) spend(next);
+    }
+
     public static boolean canSpend(UnlockableContent content){
         TechNode node = node(content);
         if(content.unlocked() || !objectivesComplete(node)) return false;
@@ -1060,6 +1106,54 @@ public final class BrowserCampaignResearch{
         }
         Core.settings.forceSave();
         markCalderaProgressSmoke();
+    }
+
+    public static void runStrongholdProgressSmoke(Sector source){
+        if(source == null || source != SectorPresets.caldera.sector || !calderaCaptured()){
+            throw new IllegalStateException("Stronghold progression requires captured Caldera");
+        }
+
+        stageAndSpend(source, Blocks.coreCitadel);
+
+        if(control != null) control.checkAutoUnlocks();
+        if(!strongholdReady()){
+            throw new IllegalStateException("Stronghold did not auto-unlock after stock prerequisites completed");
+        }
+        Core.settings.forceSave();
+        markStrongholdProgressSmoke();
+    }
+
+    public static void verifyCreviceReadyAfterStronghold(Sector source){
+        if(source == null || source != SectorPresets.stronghold.sector || !strongholdCaptured()){
+            throw new IllegalStateException("Crevice progression requires captured Stronghold");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!creviceReady()){
+            throw new IllegalStateException("Crevice did not auto-unlock after captured Stronghold");
+        }
+        markCreviceReadySmoke();
+    }
+
+    public static void verifySiegeReadyAfterCrevice(Sector source){
+        if(source == null || source != SectorPresets.crevice.sector || !creviceCaptured()){
+            throw new IllegalStateException("Siege progression requires captured Crevice");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!siegeReady()){
+            throw new IllegalStateException("Siege did not auto-unlock after captured Crevice");
+        }
+        markSiegeReadySmoke();
+    }
+
+    public static void verifyCrossroadsReadyAfterSiege(Sector source){
+        if(source == null || source != SectorPresets.siege.sector || !siegeCaptured()){
+            throw new IllegalStateException("Crossroads progression requires captured Siege");
+        }
+        if(control != null) control.checkAutoUnlocks();
+        if(!crossroadsReady()){
+            throw new IllegalStateException("Crossroads did not auto-unlock after captured Siege");
+        }
+        markCrossroadsReadySmoke();
     }
 
     /** CI-only helper: supply exactly the missing early research resources, then use the production spend path. */
@@ -1885,6 +1979,18 @@ public final class BrowserCampaignResearch{
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-heat-redirector-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-caldera-ready','true');")
     private static native void markCalderaProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-core-citadel-unlocked','true'); document.documentElement.setAttribute('data-mindustry-erekir-stronghold-ready','true');")
+    private static native void markStrongholdProgressSmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-crevice-ready','true');")
+    private static native void markCreviceReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-siege-ready','true');")
+    private static native void markSiegeReadySmoke();
+
+    @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-erekir-crossroads-ready','true');")
+    private static native void markCrossroadsReadySmoke();
 
     @org.teavm.jso.JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked','true'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready','true');")
     private static native void markTaintedProgressSmoke();
