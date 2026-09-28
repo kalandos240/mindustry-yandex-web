@@ -8,6 +8,8 @@ Browser port workspace for Mindustry, targeting a standalone Web build first and
 
 The verified browser Serpulo campaign now covers every sector wired into the stock Serpulo TechTree, including the full path to **Planetary Launch Terminal** plus the optional Tainted Woods, Atolls, Testing Grounds, Sunken Pier and Weathered Channels branches. High-tier prerequisites remain real TechTree purchases and produced-resource objectives: Spore Pod discovery for Tainted Woods, Poly → Mega for Atolls, Water Extractor for Testing Grounds, and Surge Smelter plus Mend Projector → Force Projector → Overdrive Projector for Weathered Channels. Wave sectors use their stock capture waves; attack sectors are verified through the no-enemy-core victory predicate rather than forced capture flags. Desktop and auto-detected mobile progression smoke now finish on captured Weathered Channels after traversing the complete Serpulo TechTree sector set.
 
+Erekir browser work has started with a planet-agnostic campaign runtime and packaged **Onset**. A dedicated desktop/mobile smoke boots the stock Onset map, advances real playing frames, writes a valid sector checkpoint and cold-resumes the exact same save. Erekir capture/progression remains gated until the map-specific mission victory semantics are verified rather than copied from Serpulo.
+
 ## Upstream baseline
 
 - Mindustry: v8 Build 159.7 (`c9686eb5d0ae5dd47ee02c40f99f7d5018ccbc8c`)
