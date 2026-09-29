@@ -29,6 +29,7 @@ public final class BrowserSaveRuntime{
     private static Saves saves;
     private static boolean initialized;
     private static boolean localSessionAvailable;
+    private static SaveMeta cachedLocalSessionMeta;
 
     private BrowserSaveRuntime(){}
 
@@ -70,6 +71,7 @@ public final class BrowserSaveRuntime{
             browserSaves.load();
             saves = browserSaves;
             SaveVersion.setWebPlaytime(browserSaves.getTotalPlaytime());
+            cachedLocalSessionMeta = indexedLocalSessionMeta(browserSaves);
             localSessionAvailable = validLocalSessionFile();
         });
 
@@ -101,9 +103,17 @@ public final class BrowserSaveRuntime{
         return Vars.saveDirectory.child(localSessionName);
     }
 
+    private static SaveMeta indexedLocalSessionMeta(BrowserSaves browserSaves){
+        Fi target = localSessionFile();
+        for(Saves.SaveSlot slot : browserSaves.getSaveSlots()){
+            if(slot.file.equals(target)) return slot.meta;
+        }
+        return null;
+    }
+
     private static boolean validLocalSessionFile(){
         Fi file = localSessionFile();
-        return file.exists() && SaveIO.isSaveValid(file);
+        return cachedLocalSessionMeta != null && file.exists() && file.length() >= 128;
     }
 
     public static boolean hasLocalSession(){
@@ -114,7 +124,7 @@ public final class BrowserSaveRuntime{
         if(!initialized || !localSessionAvailable){
             throw new IllegalStateException("Browser local survival save is not available");
         }
-        SaveMeta meta = SaveIO.getMeta(localSessionFile());
+        SaveMeta meta = cachedLocalSessionMeta;
         if(meta == null || meta.version != 13 || meta.rules == null || meta.rules.sector != null || meta.rules.pvp){
             throw new IllegalStateException("Browser local survival save metadata is invalid");
         }
@@ -145,6 +155,7 @@ public final class BrowserSaveRuntime{
             throw new IllegalStateException("Browser local survival save metadata failed validation");
         }
 
+        cachedLocalSessionMeta = meta;
         localSessionAvailable = true;
         markLocalSessionAvailability("available");
         BrowserUiRuntime.syncLocalSaveUiState();
@@ -180,6 +191,7 @@ public final class BrowserSaveRuntime{
         Fi file = localSessionFile();
         SaveIO.backupFileFor(file).delete();
         file.delete();
+        cachedLocalSessionMeta = null;
         localSessionAvailable = false;
         markLocalSessionAvailability("empty");
         BrowserUiRuntime.syncLocalSaveUiState();
