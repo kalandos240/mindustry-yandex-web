@@ -16,6 +16,9 @@ PATHFINDER_PATCH = (ROOT / "scripts" / "patch-mindustry-pathfinder-web.py").read
 CONTROL_PATH_PATCH = (ROOT / "scripts" / "patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")
 ASYNC_CORE_PATCH = (ROOT / "scripts" / "patch-mindustry-async-core-web.py").read_text(encoding="utf-8")
 LOGIC_PATCH = (ROOT / "scripts" / "patch-mindustry-logic-web.py").read_text(encoding="utf-8")
+BROWSER_FILES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFiles.java").read_text(encoding="utf-8")
+BROWSER_FI = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFi.java").read_text(encoding="utf-8")
+BROWSER_STORAGE = (ROOT / "web-runtime" / "src" / "web" / "browser-storage.js").read_text(encoding="utf-8")
 
 failures = []
 
@@ -169,6 +172,18 @@ forbid(LOGIC_PATCH, "state.enemies = Groups.unit.count", "single-pass enemy coun
 # Keep its no-op polling out of updateWebPlayingCore reachability.
 forbid(LOGIC_PATCH, "state.enemies = state.teams.webWaveEnemies;\n        MapPreviewLoader.checkPreviews();", "Web Logic preview hot path")
 require(LOGIC_PATCH, "do not retain or poll that no-op preview bridge", "Web Logic preview hot path")
+
+# Browser saves are buffered until stream close. Keep exactly one ownership copy at
+# the JS/IndexedDB boundary instead of cloning a full MSAV in Java and then again in JS.
+require(BROWSER_FI, "files.putLocal(path, buf, count);", "browser save zero-extra-copy commit")
+forbid(BROWSER_FI, "files.putLocal(path, toByteArray());", "browser save zero-extra-copy commit")
+require(BROWSER_FILES, "void putLocal(String path, byte[] bytes, int length)", "browser save logical length")
+require(BROWSER_FILES, "storeLocalBytes(normalized, bytes, length);", "browser save logical length")
+require(BROWSER_FILES, "return value;", "browser local read single copy")
+forbid(BROWSER_FILES, "return copy(value);", "browser local read single copy")
+require(BROWSER_STORAGE, "function put(path, bytes, logicalLength)", "browser storage logical length")
+require(BROWSER_STORAGE, "copyBytes(bytes, logicalLength)", "browser storage logical length")
+require(BROWSER_STORAGE, "raw.slice(0, length)", "browser storage ownership copy")
 
 # Production local gameplay must not write DOM frame/phase telemetry at 60Hz.
 require(LOCAL_MAP, "private static boolean telemetry;", "local gameplay telemetry gate")
