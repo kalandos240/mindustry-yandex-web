@@ -339,6 +339,7 @@ new_run = '''    /**
             }
         }
     }
+
 '''
 if old_run not in text:
     raise SystemExit("ControlPathfinder Web run-loop patch no longer matches pinned upstream")
