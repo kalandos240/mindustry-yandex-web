@@ -37,6 +37,9 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --port 9228 \
   --timeout 40 \
   --require 'data-mindustry-storage="ready"' \
+  --require 'data-mindustry-save-validation="ci-full"' \
+  --require 'data-mindustry-saveio-meta="ready"' \
+  --require 'data-mindustry-saveio-full="ready"' \
   --require 'data-mindustry-java-persistence-seed="ready"' \
   --require 'data-mindustry-smoke-mode="ci"' \
   --require 'data-mindustry-audio="ready"' \
@@ -76,6 +79,9 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --port 9229 \
   --timeout 40 \
   --require 'data-mindustry-storage="ready"' \
+  --require 'data-mindustry-save-validation="ci-full"' \
+  --require 'data-mindustry-saveio-meta="ready"' \
+  --require 'data-mindustry-saveio-full="ready"' \
   --require 'data-mindustry-file-persistence="recovered"' \
   --require 'data-mindustry-smoke-mode="ci"' \
   --require 'data-mindustry-audio="ready"' \
