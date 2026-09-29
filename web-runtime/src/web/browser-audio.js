@@ -11,6 +11,7 @@
         nextVoice: 1,
         platformPaused: false,
         unlocked: false,
+        unlocking: false,
         installed: false
     });
 
@@ -76,18 +77,32 @@
         source.start(0);
     }
 
+    const unlockEvents = ['pointerdown', 'touchstart', 'keydown'];
+
+    function removeUnlockListeners(){
+        unlockEvents.forEach(function(type){
+            global.removeEventListener(type, unlock, true);
+        });
+    }
+
     function unlock(){
-        if(!state.ctx) return;
+        if(!state.ctx || state.unlocked || state.unlocking) return;
+        state.unlocking = true;
         state.ctx.resume().then(function(){
             state.unlocked = true;
+            state.unlocking = false;
+            removeUnlockListeners();
             root.setAttribute('data-mindustry-audio-unlocked', 'true');
+            root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot');
             state.music.forEach(function(entry){
                 if(entry.pendingPlay && !state.platformPaused){
                     entry.pendingPlay = false;
                     entry.element.play().catch(function(){ entry.pendingPlay = true; });
                 }
             });
-        }).catch(function(){});
+        }).catch(function(){
+            state.unlocking = false;
+        });
     }
 
     function install(){
@@ -109,9 +124,10 @@
 
         state.decode = decode;
         state.startVoice = startVoice;
-        ['pointerdown', 'touchstart', 'keydown'].forEach(function(type){
+        unlockEvents.forEach(function(type){
             global.addEventListener(type, unlock, {passive: true, capture: true});
         });
+        root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot-pending');
 
         root.setAttribute('data-mindustry-audio', 'installed');
         root.setAttribute('data-mindustry-audio-platform', 'running');
