@@ -98,11 +98,16 @@ public final class BrowserFiles implements Files{
     }
 
     void putLocal(String path, byte[] bytes){
+        putLocal(path, bytes, bytes.length);
+    }
+
+    void putLocal(String path, byte[] bytes, int length){
         String normalized = normalize(path);
         if(normalized.isEmpty()) throw new IllegalArgumentException("Cannot write the browser local root");
         if(!persistentStorageReady()) throw new IllegalStateException("Browser persistent storage is not initialized");
+        if(length < 0 || length > bytes.length) throw new IllegalArgumentException("Invalid browser local write length: " + length);
         registerParents(normalized);
-        storeLocalBytes(normalized, bytes);
+        storeLocalBytes(normalized, bytes, length);
     }
 
     boolean mkdirLocal(String path){
@@ -216,8 +221,8 @@ public final class BrowserFiles implements Files{
     private static native boolean persistentStorageReady();
     @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage.get(path);")
     private static native byte[] requestLocalBytes(String path);
-    @JSBody(params = {"path", "bytes"}, script = "globalThis.__mindustryStorage.put(path, bytes);")
-    private static native void storeLocalBytes(String path, byte[] bytes);
+    @JSBody(params = {"path", "bytes", "length"}, script = "globalThis.__mindustryStorage.put(path, bytes, length);")
+    private static native void storeLocalBytes(String path, byte[] bytes, int length);
     @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage.remove(path);")
     private static native boolean removeLocalFile(String path);
     @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage.removeTree(path);")
