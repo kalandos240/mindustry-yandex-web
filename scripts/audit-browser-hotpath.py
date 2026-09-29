@@ -16,6 +16,7 @@ PATHFINDER_PATCH = (ROOT / "scripts" / "patch-mindustry-pathfinder-web.py").read
 CONTROL_PATH_PATCH = (ROOT / "scripts" / "patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")
 ASYNC_CORE_PATCH = (ROOT / "scripts" / "patch-mindustry-async-core-web.py").read_text(encoding="utf-8")
 LOGIC_PATCH = (ROOT / "scripts" / "patch-mindustry-logic-web.py").read_text(encoding="utf-8")
+FOG_PATCH = (ROOT / "scripts" / "patch-mindustry-fog-web.py").read_text(encoding="utf-8")
 BROWSER_FILES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFiles.java").read_text(encoding="utf-8")
 BROWSER_FI = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFi.java").read_text(encoding="utf-8")
 BROWSER_STORAGE = (ROOT / "web-runtime" / "src" / "web" / "browser-storage.js").read_text(encoding="utf-8")
@@ -169,6 +170,20 @@ require(LOGIC_PATCH, "public int webWaveEnemies;", "single-pass enemy count")
 require(LOGIC_PATCH, "if(unit.team == state.rules.waveTeam && unit.isEnemy()) webWaveEnemies++;", "single-pass enemy count")
 require(LOGIC_PATCH, "state.enemies = state.teams.webWaveEnemies;", "single-pass enemy count")
 forbid(LOGIC_PATCH, "state.enemies = Groups.unit.count", "single-pass enemy count")
+
+# Desktop FogControl uses worker threads; Web keeps the stock 25 FPS visibility
+# cadence on the main thread and must not scan every unit at render-frame frequency.
+require(FOG_PATCH, "private long webLastDynamicScanMs;", "FogControl Web cadence")
+require(FOG_PATCH, "webLastDynamicScanMs = 0L;", "FogControl Web cadence reset")
+require(FOG_PATCH, "boolean webFogScan = justLoaded || Time.timeSinceMillis(webLastDynamicScanMs) >= dynamicUpdateInterval;", "FogControl Web cadence")
+require(FOG_PATCH, "if(webFogScan){", "FogControl Web cadence")
+require(FOG_PATCH, "private final Bits webDynamicCleared = new Bits(256);", "FogControl reusable dynamic buffer")
+require(FOG_PATCH, "updateDynamic(webDynamicCleared);", "FogControl reusable dynamic buffer")
+require(FOG_PATCH, "Building fog maintenance remains chunked each render frame", "FogControl building maintenance")
+for needle in ["StaticFogThread", "DynamicFogThread", "notifyStatic", "notifyDynamic"]:
+    # These names may occur only in old upstream matcher strings / guard lists.
+    if FOG_PATCH.count(needle) < 2:
+        failures.append(f"FogControl Web patch lost pinned-thread removal guard for {needle}")
 
 # Desktop/network map preview reflection is not installed in the lean Web runtime.
 # Keep its no-op polling out of updateWebPlayingCore reachability.
