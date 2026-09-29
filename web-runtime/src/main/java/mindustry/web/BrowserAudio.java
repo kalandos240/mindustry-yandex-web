@@ -15,6 +15,7 @@ import org.teavm.jso.JSBody;
  */
 public final class BrowserAudio extends Audio{
     private static final String smokeSound = "assets/sounds/ui/uiButton.ogg";
+    private int settingsPoll;
 
     public BrowserAudio(){
         super(false);
@@ -25,7 +26,12 @@ public final class BrowserAudio extends Audio{
         Core.app.addListener(new ApplicationListener(){
             @Override
             public void update(){
-                sfxVolume = settingVolume("sfxvol", 100);
+                // Lean Web UI has no continuously dragged stock audio settings dialog.
+                // Avoid a Settings map/string lookup every render frame; refresh about
+                // twice per second so externally persisted changes still converge.
+                if((++settingsPoll & 31) == 0){
+                    sfxVolume = settingVolume("sfxvol", 100);
+                }
             }
 
             @Override
@@ -39,9 +45,16 @@ public final class BrowserAudio extends Audio{
             }
         });
 
-        // Decode one real packaged OGG without playing it. CI waits for this marker,
-        // proving both the local asset path and the browser codec path are functional.
-        verifyPackagedSound(smokeSound);
+        // Codec verification is a CI invariant, not production startup work. Normal
+        // players get a ready backend immediately; mindustrySmoke=1 still decodes a
+        // real packaged OGG and publishes audio-smoke-ms.
+        if(validationSmokeRequested()){
+            markAudioValidation("ci-full");
+            verifyPackagedSound(smokeSound);
+        }else{
+            markAudioValidation("skipped-production");
+            markAudioBackendReady();
+        }
     }
 
     private static float settingVolume(String key, int fallback){
@@ -208,6 +221,15 @@ public final class BrowserAudio extends Audio{
         if(Float.isNaN(value) || Float.isInfinite(value)) return 0f;
         return Math.max(-1f, Math.min(1f, value));
     }
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustrySmoke') === '1';")
+    private static native boolean validationSmokeRequested();
+
+    @JSBody(params = {"policy"}, script = "document.documentElement.setAttribute('data-mindustry-audio-validation', policy);")
+    private static native void markAudioValidation(String policy);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-audio','ready');")
+    private static native void markAudioBackendReady();
 
     @JSBody(script = "return window.__mindustryAudioApi.install();")
     private static native boolean installBackend();
