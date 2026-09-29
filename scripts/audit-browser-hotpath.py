@@ -199,6 +199,10 @@ forbid(
     "SaveIO.load(file, context);\n                meta = SaveIO.getMeta(file);",
     "browser sector load metadata reuse",
 )
+require(SAVE_PREVIEW_PATCH, "Skip minimap readback + PNG compression + IndexedDB writes", "browser save preview pruning")
+forbid(SAVE_PREVIEW_PATCH, "previewFile().writePng", "browser save preview pruning")
+forbid(SAVE_PREVIEW_PATCH, "Core.app.post(() ->", "browser save preview pruning")
+forbid(BROWSER_SAVE, "BrowserSavePreviewLoader", "browser save preview pruning")
 
 # Production autosave must not inflate the same metadata twice. Local save validates
 # the newly written current file in one strict pass; campaign save/resume trusts the
