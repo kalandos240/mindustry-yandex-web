@@ -83,8 +83,8 @@ run_load(){
     --require 'data-mindustry-perf-smoke="ready"' \
     --require 'data-mindustry-perf-units="64"' \
     --require 'data-mindustry-perf-target-frames="120"' \
-    --require 'data-mindustry-perf-effects-target="240"' \
-    --require 'data-mindustry-perf-effects="240"' \
+    --require 'data-mindustry-perf-effects-target="480"' \
+    --require 'data-mindustry-perf-effects="480"' \
     --require 'data-mindustry-perf-effect-kind="drillSteam"' \
     --require 'data-mindustry-resize-policy="event-driven"' \
     --require 'data-mindustry-frame-resize-policy="event-driven-64-frame-fallback"' \
@@ -107,8 +107,8 @@ run_load(){
   grep -Eq 'data-mindustry-perf-frames="(12[0-9]|1[3-9][0-9]|[2-9][0-9]{2,})"' "$dom"
   grep -Eq 'data-mindustry-perf-elapsed-ms="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-perf-fps="[1-9][0-9]*"' "$dom"
-  grep -q 'data-mindustry-perf-effects-target="240"' "$dom"
-  grep -q 'data-mindustry-perf-effects="240"' "$dom"
+  grep -q 'data-mindustry-perf-effects-target="480"' "$dom"
+  grep -q 'data-mindustry-perf-effects="480"' "$dom"
   grep -q 'data-mindustry-perf-effect-kind="drillSteam"' "$dom"
   grep -Eq 'data-mindustry-perf-sort-calls="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-perf-sort-max-requests="[1-9][0-9]*"' "$dom"
@@ -132,7 +132,7 @@ run_load(){
     exit 1
   fi
 
-  echo "Runtime load smoke ($label): 64 units + 240 drillSteam effects over 120 frames in ${elapsed}ms (~${fps} fps); SpriteBatch sorter/fast-path exercised; preload ${status_updates}/${eager}; 44 campaign maps idle-warmed PASS" | tee -a "$REPORT"
+  echo "Runtime load smoke ($label): 64 units + 480 drillSteam effects over 120 frames in ${elapsed}ms (~${fps} fps); SpriteBatch sorter/fast-path exercised; preload ${status_updates}/${eager}; 44 campaign maps idle-warmed PASS" | tee -a "$REPORT"
 }
 
 run_load desktop desktop 0 \
@@ -145,4 +145,4 @@ run_load mobile mobile 1 \
   /tmp/mindustry-runtime-load-mobile.html \
   9287
 
-echo 'Runtime load matrix: desktop + auto-detected mobile 64-unit + heavy drillSteam particle / 120-frame stability PASS' | tee -a "$REPORT"
+echo 'Runtime load matrix: desktop + auto-detected mobile 64-unit + 480-effect drillSteam / 120-frame stability PASS' | tee -a "$REPORT"
