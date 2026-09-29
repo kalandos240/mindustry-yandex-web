@@ -8,6 +8,38 @@ if not PATH.is_file():
     raise SystemExit(f"Missing pinned Mindustry Saves source: {PATH}")
 
 text = PATH.read_text(encoding="utf-8")
+
+# BrowserSaves has already indexed metadata from the hydrated IndexedDB cache. When
+# continuing a sector, SaveIO.load() must read the world, but re-inflating metadata
+# immediately afterwards is redundant. Keep the indexed SaveSlot.meta unless absent.
+old_load = '''        public void load(WorldContext context) throws SaveException{
+            try{
+                SaveIO.load(file, context);
+                meta = SaveIO.getMeta(file);
+                current = this;
+                totalPlaytime = meta.timePlayed;
+                savePreview();
+            }catch(Throwable e){
+                throw new SaveException(e);
+            }
+        }
+'''
+new_load = '''        public void load(WorldContext context) throws SaveException{
+            try{
+                SaveIO.load(file, context);
+                if(meta == null) meta = SaveIO.getMeta(file);
+                current = this;
+                totalPlaytime = meta.timePlayed;
+                savePreview();
+            }catch(Throwable e){
+                throw new SaveException(e);
+            }
+        }
+'''
+if old_load not in text:
+    raise SystemExit("Saves.SaveSlot.load Web patch no longer matches pinned upstream")
+text = text.replace(old_load, new_load, 1)
+
 old = '''        private void savePreview(){
             if(Core.assets.isLoaded(loadPreviewFile().path())){
                 Core.assets.unload(loadPreviewFile().path());
@@ -45,4 +77,4 @@ if old not in text:
 
 text = text.replace(old, new, 1)
 PATH.write_text(text, encoding="utf-8")
-print("Applied browser-event-loop save preview generation without ExecutorService")
+print("Applied browser save load metadata reuse + event-loop preview generation")
