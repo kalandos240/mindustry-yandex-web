@@ -47,6 +47,7 @@ run_load(){
   local renderer_bloom="true"
   local renderer_water="true"
   local renderer_shields="true"
+  local renderer_lights="true"
   if [ "$emulate_mobile" = "1" ]; then
     mobile_args+=(--emulate-mobile)
     pixel_policy="mobile-1.5x"
@@ -55,6 +56,7 @@ run_load(){
     renderer_bloom="false"
     renderer_water="false"
     renderer_shields="false"
+    renderer_lights="false"
   fi
 
   rm -rf "$profile"
@@ -77,6 +79,7 @@ run_load(){
     --require 'data-mindustry-renderer-gl-error-policy="120-frame"' \
     --require "data-mindustry-renderer-animated-water=\"${renderer_water}\"" \
     --require "data-mindustry-renderer-animated-shields=\"${renderer_shields}\"" \
+    --require "data-mindustry-renderer-lights=\"${renderer_lights}\"" \
     --require 'data-mindustry-local-map-test="maze"' \
     --require 'data-mindustry-local-map-state="playing"' \
     --require 'data-mindustry-local-map-loop="live"' \
