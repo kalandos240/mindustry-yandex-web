@@ -52,28 +52,32 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
         TextButton conveyorResearch = new TextButton("");
         conveyorResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.conveyor));
-        conveyorResearch.setDisabled(() -> mindustry.content.Blocks.conveyor.unlocked()
-            || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.conveyor));
+        arc.func.Boolp conveyorResearchDisabled = () -> mindustry.content.Blocks.conveyor.unlocked()
+            || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.conveyor);
+        conveyorResearch.setDisabled(conveyorResearchDisabled.get());
                 campaignProgress.add(conveyorResearch).colspan(2).width(campaignWidth).height(mobile ? 48f : 40f);
         campaignProgress.row();
 
         TextButton junctionResearch = new TextButton("");
         junctionResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.junction));
-        junctionResearch.setDisabled(() -> mindustry.content.Blocks.junction.unlocked()
-            || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.junction));
+        arc.func.Boolp junctionResearchDisabled = () -> mindustry.content.Blocks.junction.unlocked()
+            || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.junction);
+        junctionResearch.setDisabled(junctionResearchDisabled.get());
                 campaignProgress.add(junctionResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f);
 
         TextButton routerResearch = new TextButton("");
         routerResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.router));
-        routerResearch.setDisabled(() -> mindustry.content.Blocks.router.unlocked()
-            || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.router));
+        arc.func.Boolp routerResearchDisabled = () -> mindustry.content.Blocks.router.unlocked()
+            || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.router);
+        routerResearch.setDisabled(routerResearchDisabled.get());
                 campaignProgress.add(routerResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f);
         campaignProgress.row();
 
         TextButton frozenForestButton = new TextButton("");
         frozenForestButton.clicked(BrowserCampaignRuntime::playFrozenForest);
-        frozenForestButton.setDisabled(() -> !BrowserCampaignRuntime.campaignAssetsReady()
-            || !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frozenForest));
+        arc.func.Boolp frozenForestButtonDisabled = () -> !BrowserCampaignRuntime.campaignAssetsReady()
+            || !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frozenForest);
+        frozenForestButton.setDisabled(frozenForestButtonDisabled.get());
                 campaignProgress.add(frozenForestButton).colspan(2).width(campaignWidth).height(mobile ? 54f : 44f).padTop(2f);
         campaignProgress.row();
 
@@ -227,7 +231,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignRuntime.playWeatheredChannels();
             }
         });
-        craterResearch.setDisabled(() -> {
+        arc.func.Boolp craterResearchDisabled = () -> {
             if(!BrowserCampaignRuntime.campaignAssetsReady()) return true;
             if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground)){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCraterResearch();
@@ -372,11 +376,13 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
             return BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.weatheredChannels);
-        });
+        };
+        craterResearch.setDisabled(craterResearchDisabled.get());
         
         TextButton craterButton = new TextButton("");
         craterButton.clicked(BrowserCampaignRuntime::playCrateredBattleground);
-        craterButton.setDisabled(() -> !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground));
+        arc.func.Boolp craterButtonDisabled = () -> !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground);
+        craterButton.setDisabled(craterButtonDisabled.get());
         
         // Web: one throttled updater for all Serpulo/general campaign labels.
         // This replaces per-Actor update callbacks while preserving the same state logic.
@@ -386,6 +392,13 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             if((frame & 31) == 0){
                 BrowserCampaignResearch.refreshUnlocks();
             }
+
+            conveyorResearch.setDisabled(conveyorResearchDisabled.get());
+            junctionResearch.setDisabled(junctionResearchDisabled.get());
+            routerResearch.setDisabled(routerResearchDisabled.get());
+            frozenForestButton.setDisabled(frozenForestButtonDisabled.get());
+            craterResearch.setDisabled(craterResearchDisabled.get());
+            craterButton.setDisabled(craterButtonDisabled.get());
 
             // campaignButton
             boolean hasSave = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.groundZero);
@@ -926,7 +939,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 BrowserCampaignRuntime.playOrigin();
             }
         });
-        erekirProgress.setDisabled(() -> {
+        arc.func.Boolp erekirProgressDisabled = () -> {
             if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.onset)) return false;
             if(!BrowserCampaignRuntime.campaignAssetsReady()) return true;
 
@@ -994,9 +1007,11 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                 return next == null || !BrowserCampaignResearch.canSpend(next);
             }
             return BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin);
-        });
+        };
+        erekirProgress.setDisabled(erekirProgressDisabled.get());
         erekirProgress.update(() -> {
             if((campaignUiRefreshFrame[0] & 7) != 0) return;
+            erekirProgress.setDisabled(erekirProgressDisabled.get());
             if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.onset)){
                 boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.onset);
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOnsetResearch();
