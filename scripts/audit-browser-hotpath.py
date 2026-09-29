@@ -200,6 +200,8 @@ forbid(
     "browser sector load metadata reuse",
 )
 require(SAVE_PREVIEW_PATCH, "Skip minimap readback + PNG compression + IndexedDB writes", "browser save preview pruning")
+require(SAVE_PREVIEW_PATCH, "stock save preview loader omitted", "browser save preview pruning")
+forbid(SAVE_PREVIEW_PATCH, "new SavePreviewLoader()", "browser save preview pruning")
 forbid(SAVE_PREVIEW_PATCH, "previewFile().writePng", "browser save preview pruning")
 forbid(SAVE_PREVIEW_PATCH, "Core.app.post(() ->", "browser save preview pruning")
 forbid(BROWSER_SAVE, "BrowserSavePreviewLoader", "browser save preview pruning")
