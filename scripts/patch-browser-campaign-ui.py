@@ -11,10 +11,12 @@ text = UI.read_text(encoding="utf-8")
 
 old_menu = '''        root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
         root.row();
-        root.button(Core.bundle.get("continue", "Continue"), BrowserLocalMapRuntime::continueSaved)
+        localContinueButton = new TextButton(Core.bundle.get("continue", "Continue"));
+        localContinueButton.clicked(BrowserLocalMapRuntime::continueSaved);
+        localContinueButton.setDisabled(!BrowserSaveRuntime.hasLocalSession());
+        root.add(localContinueButton)
             .width(mobile ? 320f : 380f)
             .height(mobile ? 54f : 46f)
-            .disabled(button -> !BrowserSaveRuntime.hasLocalSession())
             .padBottom(8f);
         root.row();
 
@@ -1243,10 +1245,12 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
 
         root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
         root.row();
-        root.button(Core.bundle.get("continue", "Continue"), BrowserLocalMapRuntime::continueSaved)
+        localContinueButton = new TextButton(Core.bundle.get("continue", "Continue"));
+        localContinueButton.clicked(BrowserLocalMapRuntime::continueSaved);
+        localContinueButton.setDisabled(!BrowserSaveRuntime.hasLocalSession());
+        root.add(localContinueButton)
             .width(mobile ? 320f : 380f)
             .height(mobile ? 54f : 46f)
-            .disabled(button -> !BrowserSaveRuntime.hasLocalSession())
             .padBottom(8f);
         root.row();
 
