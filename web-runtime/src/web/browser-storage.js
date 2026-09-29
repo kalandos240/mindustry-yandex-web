@@ -6,6 +6,10 @@
     const memory = Object.create(null);
     let db = null;
     let initPromise = null;
+    let writeGeneration = 0;
+    let flushGeneration = -1;
+    let flushPromise = null;
+    let flushTransactions = 0;
 
     function markStage(stage){
         document.documentElement.setAttribute('data-mindustry-storage', stage);
@@ -98,6 +102,7 @@
         const key = normalize(path);
         const value = copyBytes(bytes, logicalLength);
         memory[key] = value;
+        writeGeneration++;
         const request = transaction('readwrite').put({path: key, data: value});
         request.onerror = () => console.error('Mindustry IndexedDB write failed:', request.error);
         return true;
@@ -107,6 +112,7 @@
         const key = normalize(path);
         const existed = Object.prototype.hasOwnProperty.call(memory, key);
         delete memory[key];
+        writeGeneration++;
         const request = transaction('readwrite').delete(key);
         request.onerror = () => console.error('Mindustry IndexedDB delete failed:', request.error);
         return existed;
@@ -118,6 +124,7 @@
         const keys = Object.keys(memory).filter(candidate => candidate === key || candidate.startsWith(prefix));
         for(const candidate of keys) delete memory[candidate];
         if(keys.length){
+            writeGeneration++;
             const store = transaction('readwrite');
             for(const candidate of keys) store.delete(candidate);
         }
@@ -145,13 +152,39 @@
 
     function flush(){
         if(!db) return Promise.resolve();
-        return new Promise((resolve, reject) => {
+
+        const targetGeneration = writeGeneration;
+        if(flushPromise){
+            // Share an in-flight durability barrier when no new write transaction was
+            // created. If writes appeared afterwards, chain one more barrier behind it.
+            if(flushGeneration >= targetGeneration) return flushPromise;
+            return flushPromise.then(() => flush());
+        }
+
+        flushGeneration = targetGeneration;
+        flushTransactions++;
+        document.documentElement.setAttribute('data-mindustry-storage-flush-policy', 'generation-coalesced');
+        document.documentElement.setAttribute('data-mindustry-storage-flush-transactions', String(flushTransactions));
+
+        const pending = new Promise((resolve, reject) => {
             const tx = db.transaction(STORE, 'readonly');
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error || new Error('IndexedDB flush failed'));
             tx.onabort = () => reject(tx.error || new Error('IndexedDB flush aborted'));
             tx.objectStore(STORE).count();
         });
+
+        flushPromise = pending.then(
+            value => {
+                flushPromise = null;
+                return value;
+            },
+            error => {
+                flushPromise = null;
+                throw error;
+            }
+        );
+        return flushPromise;
     }
 
     let lifecycleFlushCount = 0;
