@@ -84,7 +84,7 @@ forbid(APPLY_PORT, "Arrays.sort(sortKeys", "SpriteBatch Web patch")
 
 # Runtime load must actually exercise the sorted/effect path before this optimization
 # can be considered protected.
-require(LOCAL_MAP, "private static final int perfEffectsPerFrame = 2", "particle perf workload")
+require(LOCAL_MAP, "private static final int perfEffectsPerFrame = 4", "particle perf workload")
 require(LOCAL_MAP, "private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame", "particle perf workload")
 require(LOCAL_MAP, "Fx.drillSteam.at(x, y)", "particle perf workload")
 require(LOCAL_MAP, "Fx.drillSteam.shouldCreate()", "particle perf workload")
