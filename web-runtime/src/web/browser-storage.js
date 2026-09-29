@@ -23,12 +23,21 @@
         return value;
     }
 
-    function copyBytes(raw){
+    function copyBytes(raw, logicalLength){
         if(raw == null) return new Int8Array(0);
-        if(raw instanceof Int8Array) return raw.slice();
-        if(ArrayBuffer.isView(raw)) return new Int8Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
-        if(raw instanceof ArrayBuffer) return new Int8Array(raw.slice(0));
-        return new Int8Array(raw);
+        const available = raw.byteLength != null ? raw.byteLength :
+            (raw.length != null ? raw.length : undefined);
+        const length = logicalLength == null ? available :
+            Math.max(0, Math.min(Number(logicalLength) || 0, available == null ? Number(logicalLength) || 0 : available));
+
+        if(raw instanceof Int8Array) return raw.slice(0, length);
+        if(ArrayBuffer.isView(raw)){
+            const bytes = length == null ? raw.byteLength : length;
+            return new Int8Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + bytes));
+        }
+        if(raw instanceof ArrayBuffer) return new Int8Array(raw.slice(0, length));
+        const value = new Int8Array(raw);
+        return length == null || length === value.byteLength ? value : value.slice(0, length);
     }
 
     function openDatabase(){
@@ -85,9 +94,9 @@
         return value ? value.slice() : null;
     }
 
-    function put(path, bytes){
+    function put(path, bytes, logicalLength){
         const key = normalize(path);
-        const value = copyBytes(bytes);
+        const value = copyBytes(bytes, logicalLength);
         memory[key] = value;
         const request = transaction('readwrite').put({path: key, data: value});
         request.onerror = () => console.error('Mindustry IndexedDB write failed:', request.error);
