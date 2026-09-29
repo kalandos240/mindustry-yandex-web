@@ -103,13 +103,29 @@ public final class BrowserSaves extends Saves{
 
     @Override
     public void saveSector(Sector sector){
-        // Keep stock MSAV creation/autosave/name semantics, then mirror the stock
-        // lastSectorSave pointer into the browser override and persist the setting
-        // immediately. A tab/process can disappear without Arc's desktop exit hook,
-        // so campaign Continue must not depend on a later Settings.autosave().
-        super.saveSector(sector);
+        // Preserve stock sector MSAV creation/autosave semantics, but avoid rewriting
+        // the full settings file on every checkpoint of the same sector. The durable
+        // last-sector pointer only changes when campaign navigation changes sector.
+        if(sector.save == null){
+            sector.save = new SaveSlot(getSectorFile(sector));
+            sector.save.setName(sector.save.file.nameWithoutExtension());
+            getSaveSlots().add(sector.save);
+        }
+
+        sector.save.setAutosave(true);
+        sector.save.save();
+
+        String name = sector.save.getName();
+        boolean pointerChanged = browserLastSector != sector.save
+            || !name.equals(Core.settings.getString("last-sector-save", "<none>"));
         browserLastSector = sector.save;
-        Core.settings.forceSave();
+
+        if(pointerChanged){
+            Core.settings.put("last-sector-save", name);
+            // A tab/process can disappear without Arc's desktop exit hook. Persist a
+            // real navigation change immediately; repeated checkpoints stay MSAV-only.
+            Core.settings.forceSave();
+        }
     }
 
     @Override
