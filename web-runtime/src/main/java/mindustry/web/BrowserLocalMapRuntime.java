@@ -64,6 +64,7 @@ public final class BrowserLocalMapRuntime{
     private static boolean perfReady;
     private static int perfUnits;
     private static int perfEffects;
+    private static int perfControlPathStartSteps;
     private static final int perfTargetFrames = 120;
     private static final int perfEffectsPerFrame = 4;
     private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame;
@@ -203,6 +204,7 @@ public final class BrowserLocalMapRuntime{
         perfReady = false;
         perfUnits = 0;
         perfEffects = 0;
+        perfControlPathStartSteps = 0;
         testWaveExpected = false;
         testWaveFired = false;
         testWaveStart = state.wave;
@@ -271,6 +273,7 @@ public final class BrowserLocalMapRuntime{
 
         perfUnits = ground + air;
         perfEffects = 0;
+        perfControlPathStartSteps = controlPath.webSteps();
         SpriteBatch.webSortCalls = 0;
         SpriteBatch.webMaxSortRequests = 0;
         SpriteBatch.webMaxSortRuns = 0;
@@ -406,10 +409,15 @@ public final class BrowserLocalMapRuntime{
             if(SpriteBatch.webSortCalls <= 0 || SpriteBatch.webSortedFastPaths <= 0){
                 throw new IllegalStateException("Browser perf smoke did not exercise optimized SpriteBatch sorting");
             }
+            int controlPathSteps = controlPath.webSteps() - perfControlPathStartSteps;
+            if(controlPathSteps <= 0){
+                throw new IllegalStateException("Browser perf smoke did not execute ControlPathfinder worker steps");
+            }
             perfReady = true;
             markPerfReady(frames, perfUnits, perfEffects,
                 SpriteBatch.webSortCalls, SpriteBatch.webMaxSortRequests,
-                SpriteBatch.webMaxSortRuns, SpriteBatch.webSortedFastPaths);
+                SpriteBatch.webMaxSortRuns, SpriteBatch.webSortedFastPaths,
+                controlPathSteps);
         }
     }
 
@@ -837,11 +845,11 @@ public final class BrowserLocalMapRuntime{
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-loop', 'live'); document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames));")
     private static native void markLive(int frames);
 
-    @JSBody(params = {"units", "targetFrames", "targetEffects"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames)); root.setAttribute('data-mindustry-perf-effects-target',String(targetEffects)); root.setAttribute('data-mindustry-perf-effect-kind','drillSteam');")
+    @JSBody(params = {"units", "targetFrames", "targetEffects"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames)); root.setAttribute('data-mindustry-perf-effects-target',String(targetEffects)); root.setAttribute('data-mindustry-perf-effect-kind','drillSteam'); root.setAttribute('data-mindustry-perf-control-path-policy','stock-30hz');")
     private static native void markPerfStarted(int units, int targetFrames, int targetEffects);
 
-    @JSBody(params = {"frames", "units", "effects", "sortCalls", "maxRequests", "maxRuns", "fastPaths"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-effects',String(effects)); root.setAttribute('data-mindustry-perf-sort-calls',String(sortCalls)); root.setAttribute('data-mindustry-perf-sort-max-requests',String(maxRequests)); root.setAttribute('data-mindustry-perf-sort-max-runs',String(maxRuns)); root.setAttribute('data-mindustry-perf-sort-fast-paths',String(fastPaths)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
-    private static native void markPerfReady(int frames, int units, int effects, int sortCalls, int maxRequests, int maxRuns, int fastPaths);
+    @JSBody(params = {"frames", "units", "effects", "sortCalls", "maxRequests", "maxRuns", "fastPaths", "controlPathSteps"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-effects',String(effects)); root.setAttribute('data-mindustry-perf-sort-calls',String(sortCalls)); root.setAttribute('data-mindustry-perf-sort-max-requests',String(maxRequests)); root.setAttribute('data-mindustry-perf-sort-max-runs',String(maxRuns)); root.setAttribute('data-mindustry-perf-sort-fast-paths',String(fastPaths)); root.setAttribute('data-mindustry-perf-control-path-steps',String(controlPathSteps)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
+    private static native void markPerfReady(int frames, int units, int effects, int sortCalls, int maxRequests, int maxRuns, int fastPaths, int controlPathSteps);
 
     @JSBody(params = {"slug"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-state', 'menu'); document.documentElement.setAttribute('data-mindustry-local-map-returned-from', slug); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'stopped');")
     private static native void markReturned(String slug);
