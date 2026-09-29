@@ -95,6 +95,7 @@ public final class BrowserGameplayRuntime{
 
         smokeMode = smokeRequested();
         markSmokeMode(smokeMode ? "ci" : "production");
+        markGameStateSelfTestPolicy(smokeMode ? "ci-only" : "skipped-production");
 
         initialized = true;
         markReady(copperLogicId);
@@ -147,14 +148,15 @@ public final class BrowserGameplayRuntime{
         }else if(menuUpdateFrames == 3){
             markMenuLoopStable(menuUpdateFrames, moduleLoopFrames);
 
-            // Keep this tiny state-clock invariant in both production and CI. It swaps in
-            // a temporary GameState and restores the real menu in finally; unlike the
-            // gated world/play smoke below it never mutates the live map or enters play.
-            long smokeUpdateId = logic.updateWebGameStateSmoke();
-            if(smokeUpdateId != 1L || !state.isMenu()){
-                throw new IllegalStateException("Browser GameState tick smoke did not restore the real menu state");
+            // CI-only invariant. Production no longer allocates/swaps a temporary
+            // GameState during normal menu startup.
+            if(smokeMode){
+                long smokeUpdateId = logic.updateWebGameStateSmoke();
+                if(smokeUpdateId != 1L || !state.isMenu()){
+                    throw new IllegalStateException("Browser GameState tick smoke did not restore the real menu state");
+                }
+                markGameStateTickReady(smokeUpdateId);
             }
-            markGameStateTickReady(smokeUpdateId);
         }else if(smokeMode && menuUpdateFrames == 4){
             runWorldLoadSmoke();
         }else if(smokeMode && menuUpdateFrames == 5){
@@ -235,6 +237,9 @@ public final class BrowserGameplayRuntime{
 
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-smoke-mode', mode);")
     private static native void markSmokeMode(String mode);
+
+    @JSBody(params = {"policy"}, script = "document.documentElement.setAttribute('data-mindustry-game-state-selftest', policy);")
+    private static native void markGameStateSelfTestPolicy(String policy);
 
     @JSBody(params = {"logicId"}, script = "document.documentElement.setAttribute('data-mindustry-gameplay-runtime', 'ready'); document.documentElement.setAttribute('data-mindustry-world', 'ready'); document.documentElement.setAttribute('data-mindustry-logic', 'constructed'); document.documentElement.setAttribute('data-mindustry-logicvars', 'ready'); document.documentElement.setAttribute('data-mindustry-logic-copper-id', String(logicId)); document.documentElement.setAttribute('data-mindustry-fog-control', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-control-pathfinder', 'constructed-web-single-thread'); document.documentElement.setAttribute('data-mindustry-gameplay-loop', 'waiting-menu-frame'); document.documentElement.setAttribute('data-mindustry-module-loop', 'waiting'); document.documentElement.setAttribute('data-mindustry-module-phase', 'waiting');")
     private static native void markReady(int logicId);
