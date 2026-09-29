@@ -19,6 +19,8 @@ LOGIC_PATCH = (ROOT / "scripts" / "patch-mindustry-logic-web.py").read_text(enco
 BROWSER_FILES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFiles.java").read_text(encoding="utf-8")
 BROWSER_FI = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFi.java").read_text(encoding="utf-8")
 BROWSER_STORAGE = (ROOT / "web-runtime" / "src" / "web" / "browser-storage.js").read_text(encoding="utf-8")
+BROWSER_SAVES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSaves.java").read_text(encoding="utf-8")
+SAVE_PREVIEW_PATCH = (ROOT / "scripts" / "patch-mindustry-save-preview-web.py").read_text(encoding="utf-8")
 
 failures = []
 
@@ -184,6 +186,19 @@ forbid(BROWSER_FILES, "return copy(value);", "browser local read single copy")
 require(BROWSER_STORAGE, "function put(path, bytes, logicalLength)", "browser storage logical length")
 require(BROWSER_STORAGE, "copyBytes(bytes, logicalLength)", "browser storage logical length")
 require(BROWSER_STORAGE, "raw.slice(0, length)", "browser storage ownership copy")
+
+# Browser save indexing and Continue must not re-inflate metadata unnecessarily.
+require(BROWSER_SAVES, "meta = SaveIO.getMeta(SaveIO.getStream(file));", "browser save index one-pass metadata")
+require(BROWSER_SAVES, "SaveIO.backupFileFor(file)", "browser save index backup recovery")
+forbid(BROWSER_SAVES, "SaveIO.isSaveValid(file)", "browser save index one-pass metadata")
+if BROWSER_SAVES.count("SaveIO.getMeta(") != 2:
+    failures.append("browser save index one-pass metadata: expected current + backup metadata call sites only")
+require(SAVE_PREVIEW_PATCH, "if(meta == null) meta = SaveIO.getMeta(file);", "browser sector load metadata reuse")
+forbid(
+    SAVE_PREVIEW_PATCH,
+    "SaveIO.load(file, context);\n                meta = SaveIO.getMeta(file);",
+    "browser sector load metadata reuse",
+)
 
 # Production autosave must not inflate the same metadata twice. Local save validates
 # the newly written current file in one strict pass; campaign save/resume trusts the
