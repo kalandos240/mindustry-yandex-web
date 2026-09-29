@@ -105,6 +105,18 @@ for source, label, update_marker in [
     require(source, "webFieldCursor", label)
     require(source, update_marker, label)
 
+# ControlPathfinder has three independent Web budgets: stale-request cleanup,
+# cluster/invalidation maintenance and flow-field expansion. Keep all three bounded.
+require(CONTROL_PATH_PATCH, "new_run = '''", "ControlPathfinder Web patch new_run")
+require(CONTROL_PATH_PATCH, "private void updateWebCleanup()", "ControlPathfinder cleanup")
+require(CONTROL_PATH_PATCH, "int requestChecks = Math.min(32, requestCount);", "ControlPathfinder cleanup")
+require(CONTROL_PATH_PATCH, "int fieldChecks = Math.min(8, fieldCount);", "ControlPathfinder cleanup")
+require(CONTROL_PATH_PATCH, "Core.app != null && Core.app.isMobile() ? 1 : 2", "ControlPathfinder maintenance budget")
+require(CONTROL_PATH_PATCH, "while(fullClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)", "ControlPathfinder cluster budget")
+require(CONTROL_PATH_PATCH, "while(innerClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)", "ControlPathfinder inner-cluster budget")
+require(CONTROL_PATH_PATCH, "webInvalidSweepPending", "ControlPathfinder invalidation budget")
+forbid(CONTROL_PATH_PATCH, "Events.run(Trigger.update, () -> {\n            for(var req : controlPath.unitRequests.values())", "ControlPathfinder full stale scan")
+
 # The unbounded calls legitimately appear inside old_run anchors; require that each
 # patch replaces that exact upstream block with the bounded Web implementation.
 require(PATHFINDER_PATCH, "text = text.replace(old_run, new_run, 1)", "Pathfinder Web patch replacement")
