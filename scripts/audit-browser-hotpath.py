@@ -136,6 +136,8 @@ forbid(ASYNC_CORE_PATCH, "for(AsyncProcess p : processes){\n                p.be
 require(WEB_LAUNCHER, '"effects", true', "renderer defaults")
 require(WEB_LAUNCHER, '"animatedwater", !mobileMode', "renderer defaults")
 require(WEB_LAUNCHER, '"animatedshields", !mobileMode', "renderer defaults")
+require(WEB_LAUNCHER, '"drawlight", !mobileMode', "renderer defaults")
+require(WEB_LAUNCHER, "data-mindustry-renderer-lights", "renderer defaults")
 require(WEB_LAUNCHER, 'if(mobileMode && !Core.settings.has("bloom"))', "renderer defaults")
 require(WEB_LAUNCHER, 'Core.settings.put("bloom", false)', "renderer defaults")
 require(WEB_LAUNCHER, "data-mindustry-renderer-profile", "renderer defaults")
