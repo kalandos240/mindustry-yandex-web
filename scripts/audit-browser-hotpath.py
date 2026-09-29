@@ -115,7 +115,8 @@ require(CONTROL_PATH_PATCH, "Core.app != null && Core.app.isMobile() ? 1 : 2", "
 require(CONTROL_PATH_PATCH, "while(fullClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)", "ControlPathfinder cluster budget")
 require(CONTROL_PATH_PATCH, "while(innerClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)", "ControlPathfinder inner-cluster budget")
 require(CONTROL_PATH_PATCH, "webInvalidSweepPending", "ControlPathfinder invalidation budget")
-forbid(CONTROL_PATH_PATCH, "Events.run(Trigger.update, () -> {\n            for(var req : controlPath.unitRequests.values())", "ControlPathfinder full stale scan")
+require(CONTROL_PATH_PATCH, "new_main_cleanup = '''        // Web: same stale criteria, bounded round-robin cleanup.", "ControlPathfinder bounded stale cleanup")
+require(CONTROL_PATH_PATCH, "text = text.replace(old_main_cleanup, new_main_cleanup, 1)", "ControlPathfinder stale cleanup replacement")
 
 # The unbounded calls legitimately appear inside old_run anchors; require that each
 # patch replaces that exact upstream block with the bounded Web implementation.
