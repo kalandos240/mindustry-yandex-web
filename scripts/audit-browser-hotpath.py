@@ -23,6 +23,7 @@ BROWSER_STORAGE = (ROOT / "web-runtime" / "src" / "web" / "browser-storage.js").
 BROWSER_AUDIO = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserAudio.java").read_text(encoding="utf-8")
 BROWSER_AUDIO_JS = (ROOT / "web-runtime" / "src" / "web" / "browser-audio.js").read_text(encoding="utf-8")
 BROWSER_SAVES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSaves.java").read_text(encoding="utf-8")
+BROWSER_SAVE = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSaveRuntime.java").read_text(encoding="utf-8")
 SAVE_PREVIEW_PATCH = (ROOT / "scripts" / "patch-mindustry-save-preview-web.py").read_text(encoding="utf-8")
 
 failures = []
@@ -232,7 +233,6 @@ forbid(BROWSER_SAVE, "BrowserSavePreviewLoader", "browser save preview pruning")
 # the newly written current file in one strict pass; campaign save/resume trusts the
 # SaveSlot metadata already produced/indexed by stock Saves and keeps full revalidation
 # only inside CI capture smoke.
-BROWSER_SAVE = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSaveRuntime.java").read_text(encoding="utf-8")
 require(BROWSER_SAVE, "SaveMeta meta = SaveIO.getMeta(SaveIO.getStream(file));", "local save one-pass metadata")
 local_save_start = BROWSER_SAVE.index("public static SaveMeta saveLocalSession()")
 local_save_end = BROWSER_SAVE.index("public static SaveMeta loadLocalSession()", local_save_start)
