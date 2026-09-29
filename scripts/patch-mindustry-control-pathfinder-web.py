@@ -286,7 +286,7 @@ new_run = '''    /**
         webStepCount++;
 
         try{
-            queue.run();
+            queue.run(32);
 
             long maintenanceBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 1 : 2);
             long maintenanceStart = Time.nanos();
@@ -400,6 +400,7 @@ for required in (
     "webLastStep = now;",
     "webStepCount++;",
     "public int webSteps()",
+    "queue.run(32);",
     "private void updateWebCleanup()",
     "clustersToInnerUpdate.add(cluster);",
     "clustersToUpdate.add(cx + cy * cwidth);",
