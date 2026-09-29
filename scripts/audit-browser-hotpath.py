@@ -21,6 +21,7 @@ BROWSER_FILES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / 
 BROWSER_FI = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFi.java").read_text(encoding="utf-8")
 BROWSER_STORAGE = (ROOT / "web-runtime" / "src" / "web" / "browser-storage.js").read_text(encoding="utf-8")
 BROWSER_AUDIO = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserAudio.java").read_text(encoding="utf-8")
+BROWSER_AUDIO_JS = (ROOT / "web-runtime" / "src" / "web" / "browser-audio.js").read_text(encoding="utf-8")
 BROWSER_SAVES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSaves.java").read_text(encoding="utf-8")
 SAVE_PREVIEW_PATCH = (ROOT / "scripts" / "patch-mindustry-save-preview-web.py").read_text(encoding="utf-8")
 
@@ -264,6 +265,11 @@ if BROWSER_AUDIO.count('sfxVolume = settingVolume("sfxvol", 100);') != 2:
     failures.append("browser audio settings cadence: expected initialization + 32-frame refresh only")
 if BROWSER_AUDIO.count("verifyPackagedSound(smokeSound);") != 1:
     failures.append("browser audio CI validation gate: codec verification call count changed")
+
+require(BROWSER_AUDIO_JS, "if(!state.ctx || state.unlocked || state.unlocking) return;", "browser audio one-shot unlock")
+require(BROWSER_AUDIO_JS, "removeUnlockListeners();", "browser audio one-shot unlock")
+require(BROWSER_AUDIO_JS, "data-mindustry-audio-unlock-policy', 'one-shot", "browser audio one-shot unlock")
+require(BROWSER_AUDIO_JS, "state.unlocking = false;", "browser audio unlock coalescing")
 
 # Browser save preview loader/generation is fully pruned from Web.
 require(SAVE_PREVIEW_PATCH, "stock save preview loader omitted", "browser save preview pruning")
