@@ -65,7 +65,7 @@ public final class BrowserLocalMapRuntime{
     private static int perfUnits;
     private static int perfEffects;
     private static final int perfTargetFrames = 120;
-    private static final int perfEffectsPerFrame = 2;
+    private static final int perfEffectsPerFrame = 4;
     private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame;
 
     private BrowserLocalMapRuntime(){}
