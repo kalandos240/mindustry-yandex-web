@@ -44,6 +44,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-smoke-mode="ci"' \
   --require 'data-mindustry-game-state-selftest="ci-only"' \
   --require 'data-mindustry-audio="ready"' \
+  --require 'data-mindustry-audio-validation="ci-full"' \
   --require 'data-mindustry-renderer-init="ready"' \
   --require 'data-mindustry-control="ready"' \
   --require 'data-mindustry-local-ui="ready"' \
@@ -87,6 +88,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-smoke-mode="ci"' \
   --require 'data-mindustry-game-state-selftest="ci-only"' \
   --require 'data-mindustry-audio="ready"' \
+  --require 'data-mindustry-audio-validation="ci-full"' \
   --require 'data-mindustry-renderer-init="ready"' \
   --require 'data-mindustry-control="ready"' \
   --require 'data-mindustry-local-ui="ready"' \
