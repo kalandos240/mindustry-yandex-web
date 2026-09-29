@@ -70,18 +70,16 @@ public final class BrowserLocalMapRuntime{
 
     private BrowserLocalMapRuntime(){}
 
-    /** Load metadata for the exact stock built-in map catalog; no custom/workshop/mod scan. */
+    /** Validate the exact stock built-in catalog without inflating all 18 MSAV metadata blocks. */
     public static void init(){
         if(initialized) return;
         if(Core.files == null || content == null || waves == null){
             throw new IllegalStateException("Browser local maps require packaged files, content and Waves");
         }
 
-        // Maps is retained only for Map.filters()/readFilters semantics. Its constructor
-        // is patched for Web and no longer registers the desktop preview ContentLoader
-        // callback, so the lean browser launcher does not need an inert AssetManager shim.
-        // Do not call load(): that stock method scans custom/workshop/mod sources that are
-        // intentionally absent from the self-contained Yandex package.
+        // Maps is retained only for Map.filters()/readFilters semantics. Do not call
+        // stock load(): custom/workshop/mod sources are absent. Production menu startup
+        // validates paths only; metadata is decoded lazily when a map is selected.
         if(maps == null) maps = new Maps();
         if(!maps.all().isEmpty()){
             throw new IllegalStateException("Browser local map catalog must start from an empty Maps registry");
@@ -92,27 +90,32 @@ public final class BrowserLocalMapRuntime{
             if(!file.exists()){
                 throw new IllegalStateException("Pinned built-in map is missing from the Web package: " + slug);
             }
-
-            try{
-                Map map = MapIO.createMap(file, false);
-                if(map.name() == null || map.name().trim().isEmpty()){
-                    throw new IllegalStateException("Pinned built-in map has no display name: " + slug);
-                }
-                catalog.add(map);
-                maps.all().add(map);
-            }catch(IOException error){
-                throw new IllegalStateException("Failed to read packaged built-in map metadata: " + slug, error);
-            }
-        }
-
-        catalog.sort();
-        maps.all().sort();
-        if(catalog.size != builtinSlugs.length || maps.all().size != builtinSlugs.length){
-            throw new IllegalStateException("Browser built-in map catalog count mismatch");
         }
 
         initialized = true;
-        markCatalogReady(catalog.size);
+        markCatalogReady(builtinSlugs.length);
+        markCatalogPolicy();
+    }
+
+    public static String[] slugs(){
+        if(!initialized) throw new IllegalStateException("Browser local map catalog is not initialized");
+        return builtinSlugs.clone();
+    }
+
+    public static String displayName(String slug){
+        if(slug == null || slug.isEmpty()) return Core.bundle.get("unknown", "Unknown");
+        StringBuilder out = new StringBuilder(slug.length() + 4);
+        for(int i = 0; i < slug.length(); i++){
+            char ch = slug.charAt(i);
+            if(i == 0){
+                out.append(Character.toUpperCase(ch));
+            }else if(Character.isUpperCase(ch)){
+                out.append(' ').append(ch);
+            }else{
+                out.append(ch);
+            }
+        }
+        return out.toString();
     }
 
     public static Seq<Map> catalog(){
@@ -126,6 +129,12 @@ public final class BrowserLocalMapRuntime{
 
     public static Map current(){
         return current;
+    }
+
+    public static void start(String slug){
+        Map map = bySlug(slug);
+        if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
+        start(map);
     }
 
     /** Start the selected packaged map through the stock local world/play lifecycle. */
@@ -625,17 +634,51 @@ public final class BrowserLocalMapRuntime{
     }
 
     private static Map bySlug(String requested){
+        if(requested == null || requested.isEmpty()) return null;
         for(Map map : catalog){
             if(slug(map).equalsIgnoreCase(requested)) return map;
         }
-        return null;
+
+        String exact = null;
+        for(String slug : builtinSlugs){
+            if(slug.equalsIgnoreCase(requested)){
+                exact = slug;
+                break;
+            }
+        }
+        return exact == null ? null : loadBuiltInMap(exact);
     }
 
     private static Map byName(String requested){
         for(Map map : catalog){
             if(map.name().equals(requested)) return map;
         }
+
+        // Continue is not on the critical startup path. Decode unloaded metadata only
+        // until the saved stock display name is found.
+        for(String slug : builtinSlugs){
+            Map map = bySlug(slug);
+            if(map != null && map.name().equals(requested)) return map;
+        }
         return null;
+    }
+
+    private static Map loadBuiltInMap(String slug){
+        Fi file = Core.files.internal("maps/default/" + slug + "." + mapExtension);
+        if(!file.exists()) throw new IllegalStateException("Pinned built-in map is missing: " + slug);
+
+        try{
+            Map map = MapIO.createMap(file, false);
+            if(map.name() == null || map.name().trim().isEmpty()){
+                throw new IllegalStateException("Pinned built-in map has no display name: " + slug);
+            }
+            catalog.add(map);
+            maps.all().add(map);
+            markMapMetadataLoaded(slug, catalog.size);
+            return map;
+        }catch(IOException error){
+            throw new IllegalStateException("Failed to read packaged built-in map metadata: " + slug, error);
+        }
     }
 
     private static String slug(Map map){
@@ -721,6 +764,12 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-map-catalog', 'ready'); document.documentElement.setAttribute('data-mindustry-map-count', String(count)); document.documentElement.setAttribute('data-mindustry-map-source', 'pinned-builtin-local-only');")
     private static native void markCatalogReady(int count);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-map-catalog-policy','lazy-msav-metadata'); document.documentElement.setAttribute('data-mindustry-map-metadata-loaded','0');")
+    private static native void markCatalogPolicy();
+
+    @JSBody(params = {"slug", "count"}, script = "document.documentElement.setAttribute('data-mindustry-map-metadata-last',slug); document.documentElement.setAttribute('data-mindustry-map-metadata-loaded',String(count));")
+    private static native void markMapMetadataLoaded(String slug, int count);
 
     @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-phase', phase);")
     private static native void markPhase(String phase);
