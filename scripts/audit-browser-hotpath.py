@@ -429,6 +429,13 @@ for actor in [
     "frozenForestButton", "craterResearch", "craterButton",
 ]:
     forbid(CAMPAIGN_UI, f"{actor}.update(() -> {{", "campaign callback consolidation")
+for actor in [
+    "conveyorResearch", "junctionResearch", "routerResearch", "frozenForestButton",
+    "craterResearch", "craterButton", "erekirProgress",
+]:
+    forbid(CAMPAIGN_UI, f"{actor}.setDisabled(() ->", "campaign disabled-provider hot path")
+    require(CAMPAIGN_UI, f"arc.func.Boolp {actor}Disabled = () ->", "campaign throttled disabled state")
+    require(CAMPAIGN_UI, f"{actor}.setDisabled({actor}Disabled.get())", "campaign throttled disabled state")
 forbid(CAMPAIGN_UI, "campaignProgress.update(BrowserCampaignResearch::refreshUnlocks)", "campaign UI")
 
 if failures:
