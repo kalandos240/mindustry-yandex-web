@@ -152,6 +152,10 @@ require(CONTROL_PATH_PATCH, "while(fullClusters.hasNext && Time.timeSinceNanos(m
 require(CONTROL_PATH_PATCH, "while(innerClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)", "ControlPathfinder inner-cluster budget")
 require(CONTROL_PATH_PATCH, "webInvalidSweepPending", "ControlPathfinder invalidation budget")
 require(CONTROL_PATH_PATCH, "new_main_cleanup = '''        // Web: same stale criteria, bounded round-robin cleanup.", "ControlPathfinder bounded stale cleanup")
+require(CONTROL_PATH_PATCH, "clustersToInnerUpdate.add(cluster);", "ControlPathfinder direct tile coalescing")
+require(CONTROL_PATH_PATCH, "clustersToUpdate.add(cx + cy * cwidth);", "ControlPathfinder direct tile coalescing")
+forbid(CONTROL_PATH_PATCH, 'new_inner_queue = "            queue.post(() -> clustersToInnerUpdate.add(cluster));', "ControlPathfinder tile queue allocation")
+forbid(CONTROL_PATH_PATCH, 'new_cluster_queue = "            queue.post(() -> clustersToUpdate.add(cx + cy * cwidth));', "ControlPathfinder tile queue allocation")
 require(CONTROL_PATH_PATCH, "text = text.replace(old_main_cleanup, new_main_cleanup, 1)", "ControlPathfinder stale cleanup replacement")
 
 # The unbounded calls legitimately appear inside old_run anchors; require that each
