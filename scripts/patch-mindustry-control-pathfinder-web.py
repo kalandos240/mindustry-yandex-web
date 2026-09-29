@@ -241,6 +241,7 @@ old_run = '''    @Override
             }
         }
     }
+
 '''
 new_run = '''    /**
      * Executes one stock ControlPathfinder worker iteration on the browser event loop.
