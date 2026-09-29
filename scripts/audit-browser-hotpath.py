@@ -203,6 +203,11 @@ forbid(BROWSER_FILES, "return copy(value);", "browser local read single copy")
 require(BROWSER_STORAGE, "function put(path, bytes, logicalLength)", "browser storage logical length")
 require(BROWSER_STORAGE, "copyBytes(bytes, logicalLength)", "browser storage logical length")
 require(BROWSER_STORAGE, "raw.slice(0, length)", "browser storage ownership copy")
+require(BROWSER_STORAGE, "let writeGeneration = 0;", "browser storage flush coalescing")
+require(BROWSER_STORAGE, "let flushGeneration = -1;", "browser storage flush coalescing")
+require(BROWSER_STORAGE, "if(flushGeneration >= targetGeneration) return flushPromise;", "browser storage flush coalescing")
+require(BROWSER_STORAGE, "return flushPromise.then(() => flush());", "browser storage flush write-generation chaining")
+require(BROWSER_STORAGE, "data-mindustry-storage-flush-policy', 'generation-coalesced", "browser storage flush policy")
 
 # Browser save indexing and Continue must not re-inflate metadata unnecessarily.
 require(BROWSER_SAVES, "meta = SaveIO.getMeta(SaveIO.getStream(file));", "browser save index one-pass metadata")
