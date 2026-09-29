@@ -296,6 +296,8 @@ forbid(LOCAL_MAP, 'markPhase("renderer")', "local gameplay telemetry gate")
 
 # Stable production menu keeps the first boot trace only; CI smoke retains full tracing.
 require(GAMEPLAY, "boolean trace = smokeMode || moduleLoopFrames < 3", "menu telemetry gate")
+require(GAMEPLAY, "markGameStateSelfTestPolicy(smokeMode ? \"ci-only\" : \"skipped-production\")", "GameState self-test policy")
+require(GAMEPLAY, "if(smokeMode){\n                long smokeUpdateId = logic.updateWebGameStateSmoke();", "GameState self-test CI gate")
 require(GAMEPLAY, 'if(trace) markModulePhase("logic")', "menu telemetry gate")
 require(GAMEPLAY, 'if(trace) markModulePhase("renderer")', "menu telemetry gate")
 require(GAMEPLAY, 'if(trace) markModulePhase("ui-ready")', "menu telemetry gate")
