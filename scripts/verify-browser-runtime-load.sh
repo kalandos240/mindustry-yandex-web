@@ -92,6 +92,7 @@ run_load(){
     --require 'data-mindustry-perf-effects-target="480"' \
     --require 'data-mindustry-perf-effects="480"' \
     --require 'data-mindustry-perf-effect-kind="drillSteam"' \
+    --require 'data-mindustry-perf-control-path-policy="stock-30hz"' \
     --require 'data-mindustry-resize-policy="event-driven"' \
     --require 'data-mindustry-frame-resize-policy="event-driven-64-frame-fallback"' \
     --require 'data-mindustry-pause-policy="event-driven-64-frame-fallback"' \
@@ -120,6 +121,7 @@ run_load(){
   grep -Eq 'data-mindustry-perf-sort-max-requests="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-perf-sort-max-runs="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-perf-sort-fast-paths="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-perf-control-path-steps="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-local-map-update-id="[1-9][0-9]{2,}"' "$dom"
   grep -Eq 'data-mindustry-campaign-assets-bytes="[1-9][0-9]*"' "$dom"
 
@@ -138,7 +140,10 @@ run_load(){
     exit 1
   fi
 
-  echo "Runtime load smoke ($label): 64 units + 480 drillSteam effects over 120 frames in ${elapsed}ms (~${fps} fps); SpriteBatch sorter/fast-path exercised; preload ${status_updates}/${eager}; 44 campaign maps idle-warmed PASS" | tee -a "$REPORT"
+  local control_path_steps
+  control_path_steps="$(attr "$dom" data-mindustry-perf-control-path-steps)"
+
+  echo "Runtime load smoke ($label): 64 units + 480 drillSteam effects over 120 frames in ${elapsed}ms (~${fps} fps); ControlPath 30Hz steps=${control_path_steps}; SpriteBatch sorter/fast-path exercised; preload ${status_updates}/${eager}; 44 campaign maps idle-warmed PASS" | tee -a "$REPORT"
 }
 
 run_load desktop desktop 0 \
