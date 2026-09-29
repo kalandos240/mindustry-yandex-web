@@ -98,8 +98,8 @@ public final class BrowserUiRuntime{
 
         Table mapButtons = new Table();
         mapButtons.defaults().growX().height(mobile ? 52f : 46f).pad(2f);
-        for(Map map : BrowserLocalMapRuntime.catalog()){
-            mapButtons.button(map.plainName(), () -> BrowserLocalMapRuntime.start(map));
+        for(String slug : BrowserLocalMapRuntime.slugs()){
+            mapButtons.button(BrowserLocalMapRuntime.displayName(slug), () -> BrowserLocalMapRuntime.start(slug));
             mapButtons.row();
         }
 
