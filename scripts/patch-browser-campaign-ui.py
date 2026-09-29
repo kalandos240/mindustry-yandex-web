@@ -426,19 +426,19 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                         );
 
             // frozenForestButton
-            boolean ready = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frozenForest);
-                        boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.frozenForest);
+            boolean frozenReady = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frozenForest);
+                        boolean frozenSaved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.frozenForest);
                         frozenForestButton.setText(Core.bundle.get("sector.frozenForest.name", "Frozen Forest") + " — " +
-                            (ready
-                                ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                            (frozenReady
+                                ? Core.bundle.get(frozenSaved ? "continue" : "play", frozenSaved ? "Continue" : "Play")
                                 : Core.bundle.get("locked", "Locked")));
                         if(BrowserCampaignRuntime.diagnosticsEnabled()){
                             markCampaignProgressState(
                                 mindustry.content.Blocks.conveyor.unlocked(),
                                 mindustry.content.Blocks.junction.unlocked(),
                                 mindustry.content.Blocks.router.unlocked(),
-                                ready,
-                                saved
+                                frozenReady,
+                                frozenSaved
                             );
                         }
 
