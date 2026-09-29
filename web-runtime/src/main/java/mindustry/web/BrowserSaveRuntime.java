@@ -63,7 +63,6 @@ public final class BrowserSaveRuntime{
 
         runPhase("saves-index", () -> {
             BrowserSaves browserSaves = new BrowserSaves();
-            Core.assets.setLoader(Texture.class, ".spreview", new BrowserSavePreviewLoader());
             browserSaves.load();
             saves = browserSaves;
             SaveVersion.setWebPlaytime(browserSaves.getTotalPlaytime());
