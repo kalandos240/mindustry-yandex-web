@@ -25,6 +25,7 @@ import static mindustry.Vars.*;
  */
 public final class BrowserUiRuntime{
     private static boolean initialized;
+    private static TextButton localContinueButton;
 
     private BrowserUiRuntime(){}
 
@@ -89,10 +90,12 @@ public final class BrowserUiRuntime{
         root.defaults().pad(4f);
         root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
         root.row();
-        root.button(Core.bundle.get("continue", "Continue"), BrowserLocalMapRuntime::continueSaved)
+        localContinueButton = new TextButton(Core.bundle.get("continue", "Continue"));
+        localContinueButton.clicked(BrowserLocalMapRuntime::continueSaved);
+        localContinueButton.setDisabled(!BrowserSaveRuntime.hasLocalSession());
+        root.add(localContinueButton)
             .width(mobile ? 320f : 380f)
             .height(mobile ? 54f : 46f)
-            .disabled(button -> !BrowserSaveRuntime.hasLocalSession())
             .padBottom(8f);
         root.row();
 
@@ -164,7 +167,9 @@ public final class BrowserUiRuntime{
 
     public static void syncLocalSaveUiState(){
         if(!initialized) return;
-        markLocalSaveUiReady(BrowserSaveRuntime.hasLocalSession() ? "available" : "empty");
+        boolean available = BrowserSaveRuntime.hasLocalSession();
+        if(localContinueButton != null) localContinueButton.setDisabled(!available);
+        markLocalSaveUiReady(available ? "available" : "empty");
     }
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
