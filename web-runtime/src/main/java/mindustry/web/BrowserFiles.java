@@ -78,9 +78,12 @@ public final class BrowserFiles implements Files{
     byte[] bytes(String path, FileType type){
         String normalized = normalize(path);
         if(type == FileType.local){
+            // __mindustryStorage.get() already returns a fresh Int8Array slice. TeaVM
+            // materializes that as an independent byte[], so copying again here only
+            // doubles save-load memory traffic with no isolation benefit.
             byte[] value = requestLocalBytes(normalized);
             if(value == null) throw new IllegalStateException("Browser local file does not exist: " + path);
-            return copy(value);
+            return value;
         }
 
         byte[] binary = binaryAssets.get(normalized);
