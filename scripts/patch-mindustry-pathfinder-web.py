@@ -118,7 +118,7 @@ new_run = '''    /**
         if(!webActive || net.client() || !state.isPlaying()) return;
 
         try{
-            queue.run();
+            queue.run(32);
 
             // Desktop runs this worker off-thread with up to 8 ms per flowfield. Web owns
             // one event loop, so cap the TOTAL pathfinding time spent in this frame and
@@ -169,7 +169,7 @@ for forbidden in (
 required = (
     "public void updateWeb()",
     "updateTargets(data);",
-    "queue.run();",
+    "queue.run(32);",
     "long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);",
     "while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget)",
     "updateFrontier(data, Math.min(maxUpdate, remaining));",
