@@ -17,12 +17,12 @@ replacements = [
     ),
     (
         "    private static final int updateFPS = 30;\n    private static final int updateInterval = 1000 / updateFPS, invalidateCheckInterval = 1000;\n",
-        "    private static final int invalidateCheckInterval = 1000;\n",
+        "    /** Web preserves the stock ControlPathfinder 30 Hz worker cadence. */\n    private static final int updateInterval = 1000 / 30, invalidateCheckInterval = 1000;\n",
         "worker timing constants",
     ),
     (
         "    /** Current pathfinding thread */\n    @Nullable Thread thread;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
-        "    /** Web: true while this pathfinder accepts browser-frame worker steps. */\n    boolean webRunning;\n    /** Preserves the stock periodic invalidation cadence without a sleeping JVM thread. */\n    long webLastInvalidCheck;\n    /** True while a bounded invalid-request sweep still has work for a later frame. */\n    boolean webInvalidSweepPending;\n    /** Round-robin field cursor for the main-thread Web flow-field budget. */\n    int webFieldCursor;\n    /** Main-thread stale cleanup cursors; bounded to avoid O(n) scans per frame. */\n    int webCleanupRequestCursor, webCleanupFieldCursor;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
+        "    /** Web: true while this pathfinder accepts browser-frame worker steps. */\n    boolean webRunning;\n    /** Last browser worker step; used to preserve the stock 30 Hz cadence. */\n    long webLastStep;\n    /** Preserves the stock periodic invalidation cadence without a sleeping JVM thread. */\n    long webLastInvalidCheck;\n    /** True while a bounded invalid-request sweep still has work for a later frame. */\n    boolean webInvalidSweepPending;\n    /** Round-robin field cursor for the main-thread Web flow-field budget. */\n    int webFieldCursor;\n    /** Main-thread stale cleanup cursors; bounded to avoid O(n) scans per frame. */\n    int webCleanupRequestCursor, webCleanupFieldCursor;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
         "worker fields",
     ),
 ]
@@ -58,6 +58,8 @@ new_start_stop = '''    /** Starts or restarts browser-frame control pathfinding
 
         invalidated = false;
         webRunning = true;
+        // Allow the first browser-frame worker iteration immediately, then resume stock 30 Hz.
+        webLastStep = Time.millis() - updateInterval;
         webLastInvalidCheck = Time.millis() + invalidateCheckInterval;
     }
 
@@ -65,6 +67,7 @@ new_start_stop = '''    /** Starts or restarts browser-frame control pathfinding
     private void stop(){
         webRunning = false;
         invalidated = true;
+        webLastStep = 0L;
         webFieldCursor = 0;
         webCleanupRequestCursor = 0;
         webCleanupFieldCursor = 0;
@@ -251,6 +254,12 @@ new_run = '''    /**
     public void updateWeb(){
         if(!webRunning || net.client() || invalidated || !state.isPlaying()) return;
 
+        // Desktop's worker sleeps for updateInterval (30 Hz). Browser frames are commonly
+        // 60+ Hz; running this worker every RAF doubles path CPU with no stock-equivalent gain.
+        long now = Time.millis();
+        if(Time.timeSinceMillis(webLastStep) < updateInterval) return;
+        webLastStep = now;
+
         try{
             queue.run();
 
@@ -361,6 +370,9 @@ for forbidden in (
 for required in (
     "public void updateWeb()",
     "public boolean webActive()",
+    "private static final int updateInterval = 1000 / 30, invalidateCheckInterval = 1000;",
+    "if(Time.timeSinceMillis(webLastStep) < updateInterval) return;",
+    "webLastStep = now;",
     "private void updateWebCleanup()",
     "int requestChecks = Math.min(32, requestCount);",
     "int fieldChecks = Math.min(8, fieldCount);",
