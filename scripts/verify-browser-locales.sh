@@ -64,16 +64,18 @@ run_production_menu(){
     --require 'data-mindustry-gameplay-runtime="ready"' \
     --require 'data-mindustry-gameplay-loop="menu-stable"' \
     --require 'data-mindustry-module-loop="menu-stable"' \
-    --require 'data-mindustry-game-state-tick-smoke="ready"' \
+    --require 'data-mindustry-game-state-selftest="skipped-production"' \
     --require 'data-mindustry-map-catalog="ready"' \
     --require 'data-mindustry-map-count="18"' \
     --require 'data-mindustry-map-source="pinned-builtin-local-only"' \
+    --require 'data-mindustry-map-catalog-policy="lazy-msav-metadata"' \
+    --require 'data-mindustry-map-metadata-loaded="0"' \
     --require 'data-mindustry-local-map-ui="ready"' \
     --require 'data-mindustry-local-map-menu="builtin-selector"' \
     --require 'data-mindustry-local-map-back="ready"' \
     --require 'data-mindustry-network="local-only"' > "$dom"
 
-  if grep -Eq 'data-mindustry-world-load-smoke=|data-mindustry-world-size=|data-mindustry-playing-frame=|data-mindustry-playing-loop=|data-mindustry-playing-state=|data-mindustry-local-map-test=|data-mindustry-local-map-state="playing"|data-mindustry-local-map-loop="(starting|live)"' "$dom"; then
+  if grep -Eq 'data-mindustry-game-state-tick-smoke=|data-mindustry-world-load-smoke=|data-mindustry-world-size=|data-mindustry-playing-frame=|data-mindustry-playing-loop=|data-mindustry-playing-state=|data-mindustry-local-map-test=|data-mindustry-local-map-state="playing"|data-mindustry-local-map-loop="(starting|live)"' "$dom"; then
     echo 'Normal production startup unexpectedly executed deterministic or packaged-map play smoke.' >&2
     grep -o '<html[^>]*>' "$dom" >&2 || true
     exit 1
@@ -95,6 +97,9 @@ run_production_map(){
     --require 'data-mindustry-smoke-mode="production"' \
     --require 'data-mindustry-map-catalog="ready"' \
     --require 'data-mindustry-map-count="18"' \
+    --require 'data-mindustry-map-catalog-policy="lazy-msav-metadata"' \
+    --require 'data-mindustry-map-metadata-last="maze"' \
+    --require 'data-mindustry-map-metadata-loaded="1"' \
     --require 'data-mindustry-local-map-ui="ready"' \
     --require 'data-mindustry-local-map-test="maze"' \
     --require 'data-mindustry-local-map-state="playing"' \
