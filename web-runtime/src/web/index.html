@@ -170,7 +170,11 @@
             async function warmCampaignMaps(){
                 if(!deferredCampaignManifest.length) return;
                 let cursor = 0, warmed = 0, warmedBytes = 0;
-                const campaignWorkers = Math.max(1, Math.min(4, deferredCampaignManifest.length));
+                const coarsePointer = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+                const touchMobile = coarsePointer || ((navigator.maxTouchPoints || 0) > 0 && Math.min(innerWidth, innerHeight) <= 820);
+                const campaignWorkerCap = touchMobile ? 2 : 4;
+                const campaignWorkers = Math.max(1, Math.min(campaignWorkerCap, deferredCampaignManifest.length));
+                root.setAttribute('data-mindustry-campaign-assets-worker-policy', 'adaptive-2-mobile-4-desktop');
                 root.setAttribute('data-mindustry-campaign-assets-workers', String(campaignWorkers));
 
                 async function worker(){
