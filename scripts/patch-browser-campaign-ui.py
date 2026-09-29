@@ -37,18 +37,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             markCampaignUiAction(campaignContinue[0] ? "continue" : "play");
         }
         campaignButton.clicked(BrowserCampaignRuntime::playGroundZero);
-        campaignButton.update(() -> {
-            boolean hasSave = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.groundZero);
-            if(hasSave != campaignContinue[0]){
-                campaignContinue[0] = hasSave;
-                campaignButton.setText(Core.bundle.get(hasSave ? "continue" : "play",
-                    hasSave ? "Continue" : "Play"));
-                if(BrowserCampaignRuntime.diagnosticsEnabled()){
-                    markCampaignUiAction(hasSave ? "continue" : "play");
-                }
-            }
-        });
-        root.add(campaignButton).width(campaignWidth).height(campaignHeight).padBottom(8f);
+                root.add(campaignButton).width(campaignWidth).height(campaignHeight).padBottom(8f);
         root.row();
 
         // Early Serpulo progression uses the exact stock TechNode requirements/objectives,
@@ -57,13 +46,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         BrowserCampaignResearch.refreshUnlocks();
         final int[] campaignUiRefreshFrame = {7};
         Table campaignProgress = new Table();
-        campaignProgress.update(() -> {
-            int frame = ++campaignUiRefreshFrame[0];
-            if((frame & 31) == 0){
-                BrowserCampaignResearch.refreshUnlocks();
-            }
-        });
-        campaignProgress.defaults().pad(2f);
+                campaignProgress.defaults().pad(2f);
         campaignProgress.add(Core.bundle.get("research", "Research")).colspan(2).padBottom(2f);
         campaignProgress.row();
 
@@ -71,75 +54,27 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         conveyorResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.conveyor));
         conveyorResearch.setDisabled(() -> mindustry.content.Blocks.conveyor.unlocked()
             || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.conveyor));
-        conveyorResearch.update(() -> {
-            if((campaignUiRefreshFrame[0] & 7) != 0) return;
-            conveyorResearch.setText(
-                mindustry.content.Blocks.conveyor.localizedName + " — " +
-                (mindustry.content.Blocks.conveyor.unlocked()
-                    ? Core.bundle.get("unlocked", "Unlocked")
-                    : Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(mindustry.content.Blocks.conveyor))
-            );
-        });
-        campaignProgress.add(conveyorResearch).colspan(2).width(campaignWidth).height(mobile ? 48f : 40f);
+                campaignProgress.add(conveyorResearch).colspan(2).width(campaignWidth).height(mobile ? 48f : 40f);
         campaignProgress.row();
 
         TextButton junctionResearch = new TextButton("");
         junctionResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.junction));
         junctionResearch.setDisabled(() -> mindustry.content.Blocks.junction.unlocked()
             || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.junction));
-        junctionResearch.update(() -> {
-            if((campaignUiRefreshFrame[0] & 7) != 0) return;
-            junctionResearch.setText(
-                mindustry.content.Blocks.junction.localizedName + " — " +
-                (mindustry.content.Blocks.junction.unlocked()
-                    ? Core.bundle.get("unlocked", "Unlocked")
-                    : Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(mindustry.content.Blocks.junction))
-            );
-        });
-        campaignProgress.add(junctionResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f);
+                campaignProgress.add(junctionResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f);
 
         TextButton routerResearch = new TextButton("");
         routerResearch.clicked(() -> BrowserCampaignResearch.spend(mindustry.content.Blocks.router));
         routerResearch.setDisabled(() -> mindustry.content.Blocks.router.unlocked()
             || !BrowserCampaignResearch.canSpend(mindustry.content.Blocks.router));
-        routerResearch.update(() -> {
-            if((campaignUiRefreshFrame[0] & 7) != 0) return;
-            routerResearch.setText(
-                mindustry.content.Blocks.router.localizedName + " — " +
-                (mindustry.content.Blocks.router.unlocked()
-                    ? Core.bundle.get("unlocked", "Unlocked")
-                    : Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(mindustry.content.Blocks.router))
-            );
-        });
-        campaignProgress.add(routerResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f);
+                campaignProgress.add(routerResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f);
         campaignProgress.row();
 
         TextButton frozenForestButton = new TextButton("");
         frozenForestButton.clicked(BrowserCampaignRuntime::playFrozenForest);
         frozenForestButton.setDisabled(() -> !BrowserCampaignRuntime.campaignAssetsReady()
             || !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frozenForest));
-        frozenForestButton.update(() -> {
-            if((campaignUiRefreshFrame[0] & 7) != 0) return;
-            boolean ready = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frozenForest);
-            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.frozenForest);
-            frozenForestButton.setText(Core.bundle.get("sector.frozenForest.name", "Frozen Forest") + " — " +
-                (ready
-                    ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
-                    : Core.bundle.get("locked", "Locked")));
-            if(BrowserCampaignRuntime.diagnosticsEnabled()){
-                markCampaignProgressState(
-                    mindustry.content.Blocks.conveyor.unlocked(),
-                    mindustry.content.Blocks.junction.unlocked(),
-                    mindustry.content.Blocks.router.unlocked(),
-                    ready,
-                    saved
-                );
-            }
-        });
-        campaignProgress.add(frozenForestButton).colspan(2).width(campaignWidth).height(mobile ? 54f : 44f).padTop(2f);
+                campaignProgress.add(frozenForestButton).colspan(2).width(campaignWidth).height(mobile ? 54f : 44f).padTop(2f);
         campaignProgress.row();
 
         // Keep later research compact on phones: expose one true TechTree prerequisite
@@ -438,376 +373,439 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             }
             return BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.weatheredChannels);
         });
-        craterResearch.update(() -> {
-            if((campaignUiRefreshFrame[0] & 7) != 0) return;
-            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCraterResearch();
-                if(BrowserCampaignResearch.waitingForCraterCoal()){
-                    craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.coal.localizedName));
-                }else if(next == null){
-                    craterResearch.setText(Core.bundle.get("research", "Research") + " — " +
-                        Core.bundle.get("complete", "Complete"));
-                }else{
-                    craterResearch.setText(next.localizedName + " — " +
-                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
-                }
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crateredBattleground)){
-                craterResearch.setText(Core.bundle.get("sector.crateredBattleground.name", "Cratered Battleground") +
-                    " — " + Core.bundle.get("locked", "Locked"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ruinousShores)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextRuinousResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.ruinousShores)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.ruinousShores);
-                craterResearch.setText(Core.bundle.get("sector.ruinousShores.name", "Ruinous Shores") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.windsweptIslands)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWindsweptResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.windsweptIslands)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.windsweptIslands);
-                craterResearch.setText(Core.bundle.get("sector.windsweptIslands.name", "Windswept Islands") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.biomassFacility)){
-                boolean ready = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.biomassFacility);
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.biomassFacility);
-                craterResearch.setText(Core.bundle.get("sector.biomassFacility.name", "Biomass Synthesis Facility") + " — " +
-                    (ready ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
-                        : Core.bundle.get("locked", "Locked")));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.fungalPass)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextFungalResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.fungalPass)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.fungalPass);
-                craterResearch.setText(Core.bundle.get("sector.fungalPass.name", "Fungal Pass") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frontier)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextFrontierResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.frontier)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.frontier);
-                craterResearch.setText(Core.bundle.get("sector.frontier.name", "Frontier") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.saltFlats)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextSaltResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.saltFlats)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.saltFlats);
-                craterResearch.setText(Core.bundle.get("sector.saltFlats.name", "Salt Flats") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.tarFields)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTarResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.tarFields)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.tarFields);
-                craterResearch.setText(Core.bundle.get("sector.tarFields.name", "Tar Fields") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.impact0078)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextImpactResearch();
-                if(BrowserCampaignResearch.waitingForImpactThorium()){
-                    craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.thorium.localizedName));
-                }else{
-                    craterResearch.setText(next == null
-                        ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                        : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                            BrowserCampaignResearch.remaining(next));
-                }
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.impact0078)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.impact0078);
-                craterResearch.setText(Core.bundle.get("sector.impact0078.name", "Impact 0078") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stainedMountains)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.stainedMountains);
-                craterResearch.setText(Core.bundle.get("sector.stainedMountains.name", "Stained Mountains") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.infestedCanyons)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextInfestedResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.infestedCanyons)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.infestedCanyons);
-                craterResearch.setText(Core.bundle.get("sector.infestedCanyons.name", "Infested Canyons") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.nuclearComplex)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNuclearResearch();
-                if(BrowserCampaignResearch.waitingForNuclearPlastanium()){
-                    craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.plastanium.localizedName));
-                }else{
-                    craterResearch.setText(next == null
-                        ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                        : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                            BrowserCampaignResearch.remaining(next));
-                }
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.nuclearComplex)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.nuclearComplex);
-                craterResearch.setText(Core.bundle.get("sector.nuclearComplex.name", "Nuclear Production Complex") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.desolateRift)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextDesolateResearch();
-                if(BrowserCampaignResearch.waitingForDesolateCryofluid()){
-                    craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Liquids.cryofluid.localizedName));
-                }else{
-                    craterResearch.setText(next == null
-                        ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                        : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                            BrowserCampaignResearch.remaining(next));
-                }
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.desolateRift)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.desolateRift);
-                craterResearch.setText(Core.bundle.get("sector.desolateRift.name", "Desolate Rift") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.facility32m)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.facility32m);
-                craterResearch.setText(Core.bundle.get("sector.facility32m.name", "Facility 32M") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.perilousHarbor)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextPerilousResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.perilousHarbor)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.perilousHarbor);
-                craterResearch.setText(Core.bundle.get("sector.perilousHarbor.name", "Perilous Harbor") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.extractionOutpost)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextExtractionResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.extractionOutpost)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.extractionOutpost);
-                craterResearch.setText(Core.bundle.get("sector.extractionOutpost.name", "Extraction Outpost") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.coastline)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCoastlineResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.coastline)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.coastline);
-                craterResearch.setText(Core.bundle.get("sector.coastline.name", "Coastline") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.navalFortress)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNavalFortressResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.navalFortress)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.navalFortress);
-                craterResearch.setText(Core.bundle.get("sector.navalFortress.name", "Naval Fortress") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.overgrowth)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.overgrowth);
-                craterResearch.setText(Core.bundle.get("sector.overgrowth.name", "Overgrowth") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.mycelialBastion)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextMycelialResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.mycelialBastion)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.mycelialBastion);
-                craterResearch.setText(Core.bundle.get("sector.mycelialBastion.name", "Mycelial Bastion") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.littoralShipyard)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextLittoralResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.littoralShipyard)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.littoralShipyard);
-                craterResearch.setText(Core.bundle.get("sector.littoralShipyard.name", "Littoral Shipyard") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.planetaryTerminal)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTerminalResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.planetaryTerminal)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.planetaryTerminal);
-                craterResearch.setText(Core.bundle.get("sector.planetaryTerminal.name", "Planetary Launch Terminal") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.taintedWoods)){
-                craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.sporePod.localizedName));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.taintedWoods)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.taintedWoods);
-                craterResearch.setText(Core.bundle.get("sector.taintedWoods.name", "Tainted Woods") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atolls)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAtollsResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atolls)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.atolls);
-                craterResearch.setText(Core.bundle.get("sector.atolls.name", "Atolls") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.testingGrounds)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTestingGroundsResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.testingGrounds)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.testingGrounds);
-                craterResearch.setText(Core.bundle.get("sector.testingGrounds.name", "Testing Grounds") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.sunkenPier)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.sunkenPier);
-                craterResearch.setText(Core.bundle.get("sector.sunkenPier.name", "Sunken Pier") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.weatheredChannels)){
-                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWeatheredResearch();
-                craterResearch.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
-            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.weatheredChannels)){
-                boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.weatheredChannels);
-                craterResearch.setText(Core.bundle.get("sector.weatheredChannels.name", "Weathered Channels") + " — " +
-                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
-            }else{
-                craterResearch.setText(Core.bundle.get("planet.serpulo.name", "Serpulo") + " — " +
-                    Core.bundle.get("complete", "Complete"));
-            }
-
-            if(BrowserCampaignRuntime.diagnosticsEnabled()){
-                markCampaignRuinousState(
-                    mindustry.content.Blocks.graphitePress.unlocked(),
-                    mindustry.content.Blocks.siliconSmelter.unlocked(),
-                    mindustry.content.Blocks.kiln.unlocked(),
-                    mindustry.content.Blocks.mechanicalPump.unlocked(),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ruinousShores),
-                    BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.ruinousShores)
-                );
-                markCampaignWindsweptState(
-                    mindustry.content.Blocks.pneumaticDrill.unlocked(),
-                    mindustry.content.Blocks.duo.unlocked(),
-                    mindustry.content.Blocks.scatter.unlocked(),
-                    mindustry.content.Blocks.hail.unlocked(),
-                    mindustry.content.Blocks.steamGenerator.unlocked(),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.windsweptIslands),
-                    BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.windsweptIslands)
-                );
-                markCampaignSaltBranchState(
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.biomassFacility),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.biomassFacility),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.fungalPass),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.fungalPass),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frontier),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.frontier),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.saltFlats),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.saltFlats),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.tarFields),
-                    BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.tarFields)
-                );
-                markCampaignImpactState(
-                    mindustry.content.Blocks.laserDrill.unlocked(),
-                    mindustry.content.Items.thorium.unlocked(),
-                    mindustry.content.Blocks.lancer.unlocked(),
-                    mindustry.content.Blocks.salvo.unlocked(),
-                    mindustry.content.Blocks.coreFoundation.unlocked(),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.impact0078),
-                    BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.impact0078)
-                );
-                markCampaignLateState(
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.stainedMountains),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stainedMountains),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.infestedCanyons),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.infestedCanyons),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.nuclearComplex),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.nuclearComplex),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.desolateRift),
-                    BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.desolateRift)
-                );
-                markCampaignFinalInfraState(
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.facility32m),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.facility32m),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.perilousHarbor),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.perilousHarbor),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.extractionOutpost),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.extractionOutpost),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.coastline),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.coastline),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.navalFortress),
-                    BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.navalFortress)
-                );
-                markCampaignTerminalState(
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.overgrowth),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.overgrowth),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.mycelialBastion),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.mycelialBastion),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.littoralShipyard),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.littoralShipyard),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.planetaryTerminal),
-                    BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.planetaryTerminal)
-                );
-                markCampaignOptionalState(
-                    mindustry.content.Items.sporePod.unlocked(),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.taintedWoods),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.taintedWoods),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atolls),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atolls),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.testingGrounds),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.testingGrounds),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.sunkenPier),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.sunkenPier),
-                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.weatheredChannels),
-                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.weatheredChannels)
-                );
-            }
-        });
-
+        
         TextButton craterButton = new TextButton("");
         craterButton.clicked(BrowserCampaignRuntime::playCrateredBattleground);
         craterButton.setDisabled(() -> !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground));
-        craterButton.update(() -> {
-            if((campaignUiRefreshFrame[0] & 7) != 0) return;
-            boolean ready = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground);
-            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.crateredBattleground);
-            craterButton.setText(Core.bundle.get("sector.crateredBattleground.name", "Cratered Battleground") + " — " +
-                (ready
-                    ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
-                    : Core.bundle.get("locked", "Locked")));
-            if(BrowserCampaignRuntime.diagnosticsEnabled()){
-                markCampaignCraterState(
-                    mindustry.content.Blocks.mechanicalDrill.unlocked(),
-                    mindustry.content.Items.coal.unlocked(),
-                    mindustry.content.Blocks.combustionGenerator.unlocked(),
-                    mindustry.content.Blocks.powerNode.unlocked(),
-                    mindustry.content.Blocks.mender.unlocked(),
-                    ready,
-                    saved
-                );
+        
+        // Web: one throttled updater for all Serpulo/general campaign labels.
+        // This replaces per-Actor update callbacks while preserving the same state logic.
+        campaignProgress.update(() -> {
+            int frame = ++campaignUiRefreshFrame[0];
+            if((frame & 7) != 0) return;
+            if((frame & 31) == 0){
+                BrowserCampaignResearch.refreshUnlocks();
             }
+
+            // campaignButton
+            boolean hasSave = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.groundZero);
+                        if(hasSave != campaignContinue[0]){
+                            campaignContinue[0] = hasSave;
+                            campaignButton.setText(Core.bundle.get(hasSave ? "continue" : "play",
+                                hasSave ? "Continue" : "Play"));
+                            if(BrowserCampaignRuntime.diagnosticsEnabled()){
+                                markCampaignUiAction(hasSave ? "continue" : "play");
+                            }
+                        }
+
+            // conveyorResearch
+            conveyorResearch.setText(
+                            mindustry.content.Blocks.conveyor.localizedName + " — " +
+                            (mindustry.content.Blocks.conveyor.unlocked()
+                                ? Core.bundle.get("unlocked", "Unlocked")
+                                : Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(mindustry.content.Blocks.conveyor))
+                        );
+
+            // junctionResearch
+            junctionResearch.setText(
+                            mindustry.content.Blocks.junction.localizedName + " — " +
+                            (mindustry.content.Blocks.junction.unlocked()
+                                ? Core.bundle.get("unlocked", "Unlocked")
+                                : Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(mindustry.content.Blocks.junction))
+                        );
+
+            // routerResearch
+            routerResearch.setText(
+                            mindustry.content.Blocks.router.localizedName + " — " +
+                            (mindustry.content.Blocks.router.unlocked()
+                                ? Core.bundle.get("unlocked", "Unlocked")
+                                : Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(mindustry.content.Blocks.router))
+                        );
+
+            // frozenForestButton
+            boolean ready = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frozenForest);
+                        boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.frozenForest);
+                        frozenForestButton.setText(Core.bundle.get("sector.frozenForest.name", "Frozen Forest") + " — " +
+                            (ready
+                                ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                                : Core.bundle.get("locked", "Locked")));
+                        if(BrowserCampaignRuntime.diagnosticsEnabled()){
+                            markCampaignProgressState(
+                                mindustry.content.Blocks.conveyor.unlocked(),
+                                mindustry.content.Blocks.junction.unlocked(),
+                                mindustry.content.Blocks.router.unlocked(),
+                                ready,
+                                saved
+                            );
+                        }
+
+            // craterResearch
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCraterResearch();
+                            if(BrowserCampaignResearch.waitingForCraterCoal()){
+                                craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.coal.localizedName));
+                            }else if(next == null){
+                                craterResearch.setText(Core.bundle.get("research", "Research") + " — " +
+                                    Core.bundle.get("complete", "Complete"));
+                            }else{
+                                craterResearch.setText(next.localizedName + " — " +
+                                    Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                            }
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crateredBattleground)){
+                            craterResearch.setText(Core.bundle.get("sector.crateredBattleground.name", "Cratered Battleground") +
+                                " — " + Core.bundle.get("locked", "Locked"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ruinousShores)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextRuinousResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.ruinousShores)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.ruinousShores);
+                            craterResearch.setText(Core.bundle.get("sector.ruinousShores.name", "Ruinous Shores") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.windsweptIslands)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWindsweptResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.windsweptIslands)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.windsweptIslands);
+                            craterResearch.setText(Core.bundle.get("sector.windsweptIslands.name", "Windswept Islands") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.biomassFacility)){
+                            boolean ready = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.biomassFacility);
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.biomassFacility);
+                            craterResearch.setText(Core.bundle.get("sector.biomassFacility.name", "Biomass Synthesis Facility") + " — " +
+                                (ready ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                                    : Core.bundle.get("locked", "Locked")));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.fungalPass)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextFungalResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.fungalPass)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.fungalPass);
+                            craterResearch.setText(Core.bundle.get("sector.fungalPass.name", "Fungal Pass") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frontier)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextFrontierResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.frontier)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.frontier);
+                            craterResearch.setText(Core.bundle.get("sector.frontier.name", "Frontier") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.saltFlats)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextSaltResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.saltFlats)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.saltFlats);
+                            craterResearch.setText(Core.bundle.get("sector.saltFlats.name", "Salt Flats") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.tarFields)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTarResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.tarFields)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.tarFields);
+                            craterResearch.setText(Core.bundle.get("sector.tarFields.name", "Tar Fields") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.impact0078)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextImpactResearch();
+                            if(BrowserCampaignResearch.waitingForImpactThorium()){
+                                craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.thorium.localizedName));
+                            }else{
+                                craterResearch.setText(next == null
+                                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                        BrowserCampaignResearch.remaining(next));
+                            }
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.impact0078)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.impact0078);
+                            craterResearch.setText(Core.bundle.get("sector.impact0078.name", "Impact 0078") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stainedMountains)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.stainedMountains);
+                            craterResearch.setText(Core.bundle.get("sector.stainedMountains.name", "Stained Mountains") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.infestedCanyons)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextInfestedResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.infestedCanyons)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.infestedCanyons);
+                            craterResearch.setText(Core.bundle.get("sector.infestedCanyons.name", "Infested Canyons") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.nuclearComplex)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNuclearResearch();
+                            if(BrowserCampaignResearch.waitingForNuclearPlastanium()){
+                                craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.plastanium.localizedName));
+                            }else{
+                                craterResearch.setText(next == null
+                                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                        BrowserCampaignResearch.remaining(next));
+                            }
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.nuclearComplex)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.nuclearComplex);
+                            craterResearch.setText(Core.bundle.get("sector.nuclearComplex.name", "Nuclear Production Complex") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.desolateRift)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextDesolateResearch();
+                            if(BrowserCampaignResearch.waitingForDesolateCryofluid()){
+                                craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Liquids.cryofluid.localizedName));
+                            }else{
+                                craterResearch.setText(next == null
+                                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                        BrowserCampaignResearch.remaining(next));
+                            }
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.desolateRift)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.desolateRift);
+                            craterResearch.setText(Core.bundle.get("sector.desolateRift.name", "Desolate Rift") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.facility32m)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.facility32m);
+                            craterResearch.setText(Core.bundle.get("sector.facility32m.name", "Facility 32M") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.perilousHarbor)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextPerilousResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.perilousHarbor)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.perilousHarbor);
+                            craterResearch.setText(Core.bundle.get("sector.perilousHarbor.name", "Perilous Harbor") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.extractionOutpost)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextExtractionResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.extractionOutpost)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.extractionOutpost);
+                            craterResearch.setText(Core.bundle.get("sector.extractionOutpost.name", "Extraction Outpost") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.coastline)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCoastlineResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.coastline)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.coastline);
+                            craterResearch.setText(Core.bundle.get("sector.coastline.name", "Coastline") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.navalFortress)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNavalFortressResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.navalFortress)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.navalFortress);
+                            craterResearch.setText(Core.bundle.get("sector.navalFortress.name", "Naval Fortress") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.overgrowth)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.overgrowth);
+                            craterResearch.setText(Core.bundle.get("sector.overgrowth.name", "Overgrowth") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.mycelialBastion)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextMycelialResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.mycelialBastion)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.mycelialBastion);
+                            craterResearch.setText(Core.bundle.get("sector.mycelialBastion.name", "Mycelial Bastion") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.littoralShipyard)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextLittoralResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.littoralShipyard)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.littoralShipyard);
+                            craterResearch.setText(Core.bundle.get("sector.littoralShipyard.name", "Littoral Shipyard") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.planetaryTerminal)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTerminalResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.planetaryTerminal)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.planetaryTerminal);
+                            craterResearch.setText(Core.bundle.get("sector.planetaryTerminal.name", "Planetary Launch Terminal") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.taintedWoods)){
+                            craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.sporePod.localizedName));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.taintedWoods)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.taintedWoods);
+                            craterResearch.setText(Core.bundle.get("sector.taintedWoods.name", "Tainted Woods") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atolls)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAtollsResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atolls)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.atolls);
+                            craterResearch.setText(Core.bundle.get("sector.atolls.name", "Atolls") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.testingGrounds)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTestingGroundsResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.testingGrounds)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.testingGrounds);
+                            craterResearch.setText(Core.bundle.get("sector.testingGrounds.name", "Testing Grounds") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.sunkenPier)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.sunkenPier);
+                            craterResearch.setText(Core.bundle.get("sector.sunkenPier.name", "Sunken Pier") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.weatheredChannels)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWeatheredResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.weatheredChannels)){
+                            boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.weatheredChannels);
+                            craterResearch.setText(Core.bundle.get("sector.weatheredChannels.name", "Weathered Channels") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else{
+                            craterResearch.setText(Core.bundle.get("planet.serpulo.name", "Serpulo") + " — " +
+                                Core.bundle.get("complete", "Complete"));
+                        }
+            
+                        if(BrowserCampaignRuntime.diagnosticsEnabled()){
+                            markCampaignRuinousState(
+                                mindustry.content.Blocks.graphitePress.unlocked(),
+                                mindustry.content.Blocks.siliconSmelter.unlocked(),
+                                mindustry.content.Blocks.kiln.unlocked(),
+                                mindustry.content.Blocks.mechanicalPump.unlocked(),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ruinousShores),
+                                BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.ruinousShores)
+                            );
+                            markCampaignWindsweptState(
+                                mindustry.content.Blocks.pneumaticDrill.unlocked(),
+                                mindustry.content.Blocks.duo.unlocked(),
+                                mindustry.content.Blocks.scatter.unlocked(),
+                                mindustry.content.Blocks.hail.unlocked(),
+                                mindustry.content.Blocks.steamGenerator.unlocked(),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.windsweptIslands),
+                                BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.windsweptIslands)
+                            );
+                            markCampaignSaltBranchState(
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.biomassFacility),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.biomassFacility),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.fungalPass),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.fungalPass),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frontier),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.frontier),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.saltFlats),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.saltFlats),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.tarFields),
+                                BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.tarFields)
+                            );
+                            markCampaignImpactState(
+                                mindustry.content.Blocks.laserDrill.unlocked(),
+                                mindustry.content.Items.thorium.unlocked(),
+                                mindustry.content.Blocks.lancer.unlocked(),
+                                mindustry.content.Blocks.salvo.unlocked(),
+                                mindustry.content.Blocks.coreFoundation.unlocked(),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.impact0078),
+                                BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.impact0078)
+                            );
+                            markCampaignLateState(
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.stainedMountains),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stainedMountains),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.infestedCanyons),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.infestedCanyons),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.nuclearComplex),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.nuclearComplex),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.desolateRift),
+                                BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.desolateRift)
+                            );
+                            markCampaignFinalInfraState(
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.facility32m),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.facility32m),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.perilousHarbor),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.perilousHarbor),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.extractionOutpost),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.extractionOutpost),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.coastline),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.coastline),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.navalFortress),
+                                BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.navalFortress)
+                            );
+                            markCampaignTerminalState(
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.overgrowth),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.overgrowth),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.mycelialBastion),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.mycelialBastion),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.littoralShipyard),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.littoralShipyard),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.planetaryTerminal),
+                                BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.planetaryTerminal)
+                            );
+                            markCampaignOptionalState(
+                                mindustry.content.Items.sporePod.unlocked(),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.taintedWoods),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.taintedWoods),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atolls),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atolls),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.testingGrounds),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.testingGrounds),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.sunkenPier),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.sunkenPier),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.weatheredChannels),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.weatheredChannels)
+                            );
+                        }
+
+            // craterButton
+            boolean ready = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground);
+                        boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.crateredBattleground);
+                        craterButton.setText(Core.bundle.get("sector.crateredBattleground.name", "Cratered Battleground") + " — " +
+                            (ready
+                                ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                                : Core.bundle.get("locked", "Locked")));
+                        if(BrowserCampaignRuntime.diagnosticsEnabled()){
+                            markCampaignCraterState(
+                                mindustry.content.Blocks.mechanicalDrill.unlocked(),
+                                mindustry.content.Items.coal.unlocked(),
+                                mindustry.content.Blocks.combustionGenerator.unlocked(),
+                                mindustry.content.Blocks.powerNode.unlocked(),
+                                mindustry.content.Blocks.mender.unlocked(),
+                                ready,
+                                saved
+                            );
+                        }
         });
 
         campaignProgress.add(craterResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f).padTop(2f);
