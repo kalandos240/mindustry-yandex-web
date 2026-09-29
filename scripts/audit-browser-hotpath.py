@@ -91,6 +91,21 @@ require(APPLY_PORT, "System.arraycopy(requests, pos, copy, ptr, length)", "Sprit
 forbid(APPLY_PORT, "long[] sortKeys", "SpriteBatch Web patch")
 forbid(APPLY_PORT, "Arrays.sort(sortKeys", "SpriteBatch Web patch")
 
+# Local custom-game selector must not inflate metadata for all 18 packaged maps
+# during production startup. Metadata is parsed only for the selected/continued map.
+local_init_start = LOCAL_MAP.index("public static void init()")
+local_init_end = LOCAL_MAP.index("public static String[] slugs()", local_init_start)
+local_init_body = LOCAL_MAP[local_init_start:local_init_end]
+forbid(local_init_body, "MapIO.createMap", "lazy local map catalog")
+require(LOCAL_MAP, "private static Map loadBuiltInMap(String slug)", "lazy local map catalog")
+require(LOCAL_MAP, "Map map = MapIO.createMap(file, false);", "lazy local map catalog")
+require(LOCAL_MAP, "data-mindustry-map-catalog-policy','lazy-msav-metadata", "lazy local map catalog")
+require(LOCAL_MAP, "data-mindustry-map-metadata-loaded", "lazy local map catalog")
+BROWSER_UI = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserUiRuntime.java").read_text(encoding="utf-8")
+require(BROWSER_UI, "for(String slug : BrowserLocalMapRuntime.slugs())", "lazy local map UI")
+require(BROWSER_UI, "BrowserLocalMapRuntime.start(slug)", "lazy local map UI")
+forbid(BROWSER_UI, "for(Map map : BrowserLocalMapRuntime.catalog())", "lazy local map UI")
+
 # Runtime load must actually exercise the sorted/effect path before this optimization
 # can be considered protected.
 require(LOCAL_MAP, "private static final int perfEffectsPerFrame = 4", "particle perf workload")
