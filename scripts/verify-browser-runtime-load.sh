@@ -48,6 +48,7 @@ run_load(){
   local renderer_water="true"
   local renderer_shields="true"
   local renderer_lights="true"
+  local campaign_workers="4"
   if [ "$emulate_mobile" = "1" ]; then
     mobile_args+=(--emulate-mobile)
     pixel_policy="mobile-1.5x"
@@ -57,6 +58,7 @@ run_load(){
     renderer_water="false"
     renderer_shields="false"
     renderer_lights="false"
+    campaign_workers="2"
   fi
 
   rm -rf "$profile"
@@ -101,6 +103,8 @@ run_load(){
     --require 'data-mindustry-assets-status-policy="batch-16"' \
     --require 'data-mindustry-assets-deferred-campaign="44"' \
     --require 'data-mindustry-campaign-assets-policy="idle-background"' \
+    --require 'data-mindustry-campaign-assets-worker-policy="adaptive-2-mobile-4-desktop"' \
+    --require "data-mindustry-campaign-assets-workers=\"${campaign_workers}\"" \
     --require 'data-mindustry-campaign-assets="ready"' \
     --require 'data-mindustry-campaign-assets-count="44"' \
     --require 'data-mindustry-canvas-viewport-match="true"' \
