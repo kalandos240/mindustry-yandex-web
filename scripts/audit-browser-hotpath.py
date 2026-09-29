@@ -235,6 +235,35 @@ for method, end_marker in [
     forbid(body, "SaveIO.getMeta(", f"{method} autosave metadata reuse")
     require(body, "SaveMeta meta = current.save.meta;", f"{method} autosave metadata reuse")
 
+# Heavy SaveIO format/write/round-trip probes are CI-only; production startup
+# must hydrate the real save index without writing artificial test worlds.
+require(BROWSER_SAVE, "boolean fullValidation = fullValidationSmokeRequested();", "SaveIO production startup bypass")
+require(BROWSER_SAVE, 'markValidationPolicy(fullValidation ? "ci-full" : "skipped-production")', "SaveIO production startup bypass")
+require(BROWSER_SAVE, "if(fullValidation){", "SaveIO production startup bypass")
+require(BROWSER_SAVE, "get('mindustrySmoke') === '1'", "SaveIO production startup bypass")
+
+# Local Continue reuses metadata already parsed by BrowserSaves until the slot is
+# rewritten/deleted; no isSaveValid/getMeta re-inflate is allowed on that path.
+require(BROWSER_SAVE, "private static SaveMeta cachedLocalSessionMeta;", "local Continue metadata cache")
+require(BROWSER_SAVE, "cachedLocalSessionMeta = indexedLocalSessionMeta(browserSaves);", "local Continue metadata cache")
+require(BROWSER_SAVE, "cachedLocalSessionMeta = meta;", "local Continue metadata cache")
+local_meta_start = BROWSER_SAVE.index("public static SaveMeta localSessionMeta()")
+local_meta_end = BROWSER_SAVE.index("public static SaveMeta saveLocalSession()", local_meta_start)
+local_meta_body = BROWSER_SAVE[local_meta_start:local_meta_end]
+forbid(local_meta_body, "SaveIO.getMeta(", "local Continue metadata cache")
+local_load_start = BROWSER_SAVE.index("public static SaveMeta loadLocalSession()")
+local_load_end = BROWSER_SAVE.index("public static void deleteLocalSession()", local_load_start)
+local_load_body = BROWSER_SAVE[local_load_start:local_load_end]
+forbid(local_load_body, "SaveIO.isSaveValid", "local Continue metadata cache")
+forbid(local_load_body, "SaveIO.getMeta(", "local Continue metadata cache")
+
+# Repeated checkpoints inside one sector must not serialize the full settings file.
+require(BROWSER_SAVES, "boolean pointerChanged = browserLastSector != sector.save", "campaign settings write dedup")
+require(BROWSER_SAVES, "if(pointerChanged){", "campaign settings write dedup")
+require(BROWSER_SAVES, 'Core.settings.put("last-sector-save", name);', "campaign settings write dedup")
+require(BROWSER_SAVES, "Core.settings.forceSave();", "campaign settings write dedup")
+forbid(BROWSER_SAVES, "super.saveSector(sector);", "campaign settings write dedup")
+
 # Production local gameplay must not write DOM frame/phase telemetry at 60Hz.
 require(LOCAL_MAP, "private static boolean telemetry;", "local gameplay telemetry gate")
 require(LOCAL_MAP, "telemetry = smokeTelemetryRequested();", "local gameplay telemetry gate")
