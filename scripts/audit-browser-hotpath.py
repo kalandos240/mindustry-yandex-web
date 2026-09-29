@@ -107,6 +107,15 @@ require(BROWSER_UI, "for(String slug : BrowserLocalMapRuntime.slugs())", "lazy l
 require(BROWSER_UI, "BrowserLocalMapRuntime.start(slug)", "lazy local map UI")
 forbid(BROWSER_UI, "for(Map map : BrowserLocalMapRuntime.catalog())", "lazy local map UI")
 
+# Local Continue state is event-driven from save/delete events; Button.act() must not
+# poll BrowserSaveRuntime.hasLocalSession() every frame.
+require(BROWSER_UI, "private static TextButton localContinueButton;", "event-driven local Continue")
+require(BROWSER_UI, "if(localContinueButton != null) localContinueButton.setDisabled(!available);", "event-driven local Continue")
+forbid(BROWSER_UI, ".disabled(button -> !BrowserSaveRuntime.hasLocalSession())", "event-driven local Continue")
+forbid(CAMPAIGN_UI, ".disabled(button -> !BrowserSaveRuntime.hasLocalSession())", "event-driven local Continue")
+if BROWSER_SAVE.count("BrowserUiRuntime.syncLocalSaveUiState();") < 2:
+    failures.append("event-driven local Continue: expected save/delete UI sync callbacks")
+
 # Runtime load must actually exercise the sorted/effect path before this optimization
 # can be considered protected.
 require(LOCAL_MAP, "private static final int perfEffectsPerFrame = 4", "particle perf workload")
