@@ -42,6 +42,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-saveio-full="ready"' \
   --require 'data-mindustry-java-persistence-seed="ready"' \
   --require 'data-mindustry-smoke-mode="ci"' \
+  --require 'data-mindustry-game-state-selftest="ci-only"' \
   --require 'data-mindustry-audio="ready"' \
   --require 'data-mindustry-renderer-init="ready"' \
   --require 'data-mindustry-control="ready"' \
@@ -84,6 +85,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-saveio-full="ready"' \
   --require 'data-mindustry-file-persistence="recovered"' \
   --require 'data-mindustry-smoke-mode="ci"' \
+  --require 'data-mindustry-game-state-selftest="ci-only"' \
   --require 'data-mindustry-audio="ready"' \
   --require 'data-mindustry-renderer-init="ready"' \
   --require 'data-mindustry-control="ready"' \
