@@ -237,6 +237,12 @@ for method, end_marker in [
     forbid(body, "SaveIO.getMeta(", f"{method} autosave metadata reuse")
     require(body, "SaveMeta meta = current.save.meta;", f"{method} autosave metadata reuse")
 
+# Browser save preview loader/generation is fully pruned from Web.
+require(SAVE_PREVIEW_PATCH, "stock save preview loader omitted", "browser save preview pruning")
+require(SAVE_PREVIEW_PATCH, "requestedPreview = false;", "browser save preview pruning")
+forbid(SAVE_PREVIEW_PATCH, "new SavePreviewLoader()", "browser save preview pruning")
+forbid(SAVE_PREVIEW_PATCH, "previewFile().writePng", "browser save preview pruning")
+
 # Heavy SaveIO format/write/round-trip probes are CI-only; production startup
 # must hydrate the real save index without writing artificial test worlds.
 require(BROWSER_SAVE, "boolean fullValidation = fullValidationSmokeRequested();", "SaveIO production startup bypass")
