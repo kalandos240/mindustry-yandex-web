@@ -417,9 +417,18 @@ if CAMPAIGN_UI.count("if(BrowserCampaignRuntime.diagnosticsEnabled()){") < 6:
     failures.append("campaign UI: expected diagnostics gates around action/state telemetry")
 require(CAMPAIGN_UI, "final int[] campaignUiRefreshFrame = {7};", "campaign UI refresh throttle")
 require(CAMPAIGN_UI, "int frame = ++campaignUiRefreshFrame[0];", "campaign unlock refresh throttle")
+require(CAMPAIGN_UI, "if((frame & 7) != 0) return;", "campaign text refresh throttle")
 require(CAMPAIGN_UI, "if((frame & 31) == 0)", "campaign unlock refresh throttle")
-if CAMPAIGN_UI.count("if((campaignUiRefreshFrame[0] & 7) != 0) return;") < 7:
-    failures.append("campaign UI: expected at least seven 8-frame text refresh guards")
+require(CAMPAIGN_UI, "one throttled updater for all Serpulo/general campaign labels", "campaign callback consolidation")
+if CAMPAIGN_UI.count("campaignProgress.update(() -> {") != 1:
+    failures.append("campaign UI: expected exactly one consolidated Serpulo updater")
+if CAMPAIGN_UI.count("erekirProgress.update(() -> {") != 1:
+    failures.append("campaign UI: expected exactly one Erekir updater")
+for actor in [
+    "campaignButton", "conveyorResearch", "junctionResearch", "routerResearch",
+    "frozenForestButton", "craterResearch", "craterButton",
+]:
+    forbid(CAMPAIGN_UI, f"{actor}.update(() -> {{", "campaign callback consolidation")
 forbid(CAMPAIGN_UI, "campaignProgress.update(BrowserCampaignResearch::refreshUnlocks)", "campaign UI")
 
 if failures:
