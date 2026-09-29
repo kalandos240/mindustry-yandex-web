@@ -455,7 +455,7 @@ public final class BrowserCampaignRuntime{
         }
 
         control.saves.saveSector(sector);
-        if(!hasSectorSave(preset) || !SaveIO.isSaveValid(sector.save.file)){
+        if(!hasSectorSave(preset)){
             throw new IllegalStateException("Campaign preset did not create a valid stock sector save: " + preset.name);
         }
 
@@ -493,11 +493,14 @@ public final class BrowserCampaignRuntime{
         if(preset == null || sector == null || (sector.planet != Planets.serpulo && sector.planet != Planets.erekir)){
             throw new IllegalStateException("Campaign preset metadata is incomplete on resume");
         }
-        if(!hasSectorSave(preset) || !SaveIO.isSaveValid(sector.save.file)){
+        if(!hasSectorSave(preset)){
             throw new IllegalStateException("Persisted campaign sector save is missing or invalid: " + preset.name);
         }
 
-        SaveMeta indexed = sector.save.meta == null ? SaveIO.getMeta(sector.save.file) : sector.save.meta;
+        // BrowserSaves indexed this metadata from the same persisted file during boot.
+        // Avoid inflating the save a second time before sector.save.load() immediately
+        // reads the full world.
+        SaveMeta indexed = sector.save.meta;
         if(indexed == null || indexed.version != 13 || indexed.rules == null || indexed.rules.sector == null
         || indexed.rules.sector.id != sector.id || indexed.rules.sector.planet != sector.planet){
             throw new IllegalStateException("Persisted campaign sector metadata is invalid: " + preset.name);
@@ -567,11 +570,11 @@ public final class BrowserCampaignRuntime{
         long savedTickMillis = Math.round(state.tick * 1000d);
         control.saves.saveSector(current);
         if(current.save == null || current.save.file == null || !current.save.file.exists()
-        || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
-            throw new IllegalStateException("Campaign Back autosave did not produce a valid Ground Zero sector save");
+        || current.save.file.length() < 128 || current.save.meta == null){
+            throw new IllegalStateException("Campaign Back autosave did not produce a valid sector save");
         }
 
-        SaveMeta meta = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
+        SaveMeta meta = current.save.meta;
         if(meta == null || meta.version != 13 || meta.rules == null || meta.rules.sector == null
         || meta.rules.sector.id != current.id || meta.rules.sector.planet != current.planet){
             throw new IllegalStateException("Campaign Back autosave metadata failed validation");
@@ -994,11 +997,11 @@ public final class BrowserCampaignRuntime{
         diagPhase("sector-checkpoint");
         control.saves.saveSector(current);
         if(current.save == null || current.save.file == null || !current.save.file.exists()
-        || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
-            throw new IllegalStateException("Ground Zero campaign checkpoint did not produce a valid sector save");
+        || current.save.file.length() < 128 || current.save.meta == null){
+            throw new IllegalStateException("Campaign checkpoint did not produce a valid sector save");
         }
 
-        SaveMeta meta = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
+        SaveMeta meta = current.save.meta;
         if(meta == null || meta.version != 13 || meta.rules == null || meta.rules.sector == null
         || meta.rules.sector.id != current.id || meta.rules.sector.planet != current.planet){
             throw new IllegalStateException("Ground Zero campaign checkpoint metadata failed validation");
