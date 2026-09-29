@@ -29,14 +29,27 @@ public final class BrowserSaves extends Saves{
         slots.clear();
 
         Vars.saveDirectory.walk(file -> {
-            if(!file.name().contains("backup") && SaveIO.isSaveValid(file)){
+            if(file.name().contains("backup")) return;
+
+            try{
+                // Stock Saves.load() first inflates metadata for isSaveValid(file) and
+                // inflates it again for getMeta(file). Browser storage is synchronous in
+                // memory at this point, so parse metadata exactly once. Preserve backup
+                // recovery by trying the paired backup only when the current file fails.
+                SaveMeta meta;
                 try{
-                    SaveSlot slot = new SaveSlot(file);
-                    slot.meta = SaveIO.getMeta(file);
-                    slots.add(slot);
-                }catch(Throwable error){
-                    Log.err(error);
+                    meta = SaveIO.getMeta(SaveIO.getStream(file));
+                }catch(Throwable currentError){
+                    Fi backup = SaveIO.backupFileFor(file);
+                    if(!backup.exists()) throw currentError;
+                    meta = SaveIO.getMeta(SaveIO.getStream(backup));
                 }
+
+                SaveSlot slot = new SaveSlot(file);
+                slot.meta = meta;
+                slots.add(slot);
+            }catch(Throwable error){
+                Log.err(error);
             }
         });
 
