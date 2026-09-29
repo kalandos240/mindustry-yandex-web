@@ -31,6 +31,10 @@ new_fields = '''    /** indexed by team */
     // Web: dynamic visibility uses the same stock double-buffer algorithm on the
     // browser event loop; reuse this bitset instead of allocating it every frame.
     private final Bits webDynamicCleared = new Bits(256);
+    // Stock dynamic fog is capped at 25 FPS. Worker-thread Mindustry can afford to
+    // rebuild the full unit snapshot every render frame; Web keeps that scan on the
+    // same 25 Hz cadence as the visibility update instead of walking every unit at 60 Hz.
+    private long webLastDynamicScanMs;
 '''
 if old_fields not in text:
     raise SystemExit("FogControl Web field patch no longer matches pinned upstream")
@@ -62,6 +66,7 @@ new_stop = '''    void stop(){
         dynamicEventQueue.clear();
         unitEventQueue.clear();
         webDynamicCleared.clear();
+        webLastDynamicScanMs = 0L;
     }
 '''
 if old_stop not in text:
@@ -89,6 +94,158 @@ text = text.replace(old_threads, '''        // Web: the stock static/dynamic fog
         // on this browser frame instead of daemon worker threads.
 
 ''', 1)
+
+old_scan = '''        //clear to prepare for queuing fog radius from units and buildings
+        dynamicEventQueue.clear();
+
+        //update fog visibility manually
+        if(state.rules.fog && !headless && Groups.build.size() > 0){
+
+            int size = Groups.build.size();
+            int chunkSize = 5; //fraction of entity list to iterate each frame
+            int chunks = Math.min(chunkSize, size);
+
+            int iterated = Math.max(1, size / chunks);
+            int steps = 0;
+            int i = lastEntityUpdateIndex % size;
+
+            while(steps < iterated){
+                Groups.build.index(i).updateFogVisibility();
+
+                steps ++;
+                i ++;
+
+                if(i >= size){
+                    i = 0;
+                }
+            }
+
+            lastEntityUpdateIndex = i;
+        }
+
+        for(var team : state.teams.present){
+            //AI teams do not have fog
+            if(!team.team.isOnlyAI()){
+                //separate for each team
+                unitEventQueue.clear();
+
+                FogData data = fog[team.team.id];
+
+                if(data == null){
+                    data = fog[team.team.id] = new FogData();
+                }
+
+                synchronized(staticEvents){
+                    //TODO slow?
+                    for(var unit : team.units){
+                        int tx = unit.tileX(), ty = unit.tileY(), pos = tx + ty * ww;
+                        if(unit.type.fogRadius <= 0f) continue;
+                        long event = FogEvent.get(tx, ty, (int)unit.type.fogRadius, team.team.id);
+
+                        //always update the dynamic events, but only *flush* the results when necessary?
+                        unitEventQueue.add(event);
+
+                        if(unit.lastFogPos != pos){
+                            pushEvent(event, false);
+                            unit.lastFogPos = pos;
+                            data.dynamicUpdated = true;
+                        }
+                    }
+                }
+
+                //if it's time for an update, flush *everything* onto the update queue
+                if(data.dynamicUpdated && Time.timeSinceMillis(data.lastDynamicMs) > dynamicUpdateInterval){
+                    data.dynamicUpdated = false;
+                    data.lastDynamicMs = Time.millis();
+
+                    //add building updates
+                    for(var build : indexer.getFlagged(team.team, BlockFlag.hasFogRadius)){
+                        dynamicEventQueue.add(FogEvent.get(build.tile.x, build.tile.y, Mathf.round(build.fogRadius()), build.team.id));
+                    }
+
+                    //add unit updates
+                    dynamicEventQueue.addAll(unitEventQueue);
+                }
+            }
+        }
+'''
+new_scan = '''        // Building fog maintenance remains chunked each render frame; it is already
+        // bounded to ~1/5 of the list and can flag a later dynamic refresh.
+        if(state.rules.fog && !headless && Groups.build.size() > 0){
+
+            int size = Groups.build.size();
+            int chunkSize = 5;
+            int chunks = Math.min(chunkSize, size);
+
+            int iterated = Math.max(1, size / chunks);
+            int steps = 0;
+            int i = lastEntityUpdateIndex % size;
+
+            while(steps < iterated){
+                Groups.build.index(i).updateFogVisibility();
+
+                steps ++;
+                i ++;
+
+                if(i >= size){
+                    i = 0;
+                }
+            }
+
+            lastEntityUpdateIndex = i;
+        }
+
+        // Stock dynamic fog publishes at 25 FPS. On Web, rebuild the all-unit snapshot
+        // only when an update can actually be consumed; this removes redundant 60 Hz
+        // iteration over every visible-team unit while preserving the stock interval.
+        boolean webFogScan = justLoaded || Time.timeSinceMillis(webLastDynamicScanMs) >= dynamicUpdateInterval;
+        if(webFogScan){
+            webLastDynamicScanMs = Time.millis();
+            dynamicEventQueue.clear();
+
+            for(var team : state.teams.present){
+                if(!team.team.isOnlyAI()){
+                    unitEventQueue.clear();
+
+                    FogData data = fog[team.team.id];
+
+                    if(data == null){
+                        data = fog[team.team.id] = new FogData();
+                    }
+
+                    synchronized(staticEvents){
+                        for(var unit : team.units){
+                            int tx = unit.tileX(), ty = unit.tileY(), pos = tx + ty * ww;
+                            if(unit.type.fogRadius <= 0f) continue;
+                            long event = FogEvent.get(tx, ty, (int)unit.type.fogRadius, team.team.id);
+
+                            unitEventQueue.add(event);
+
+                            if(unit.lastFogPos != pos){
+                                pushEvent(event, false);
+                                unit.lastFogPos = pos;
+                                data.dynamicUpdated = true;
+                            }
+                        }
+                    }
+
+                    if(data.dynamicUpdated && (justLoaded || Time.timeSinceMillis(data.lastDynamicMs) > dynamicUpdateInterval)){
+                        data.dynamicUpdated = false;
+                        data.lastDynamicMs = Time.millis();
+
+                        for(var build : indexer.getFlagged(team.team, BlockFlag.hasFogRadius)){
+                            dynamicEventQueue.add(FogEvent.get(build.tile.x, build.tile.y, Mathf.round(build.fogRadius()), build.team.id));
+                        }
+
+                        dynamicEventQueue.addAll(unitEventQueue);
+                    }
+                }
+            }
+        }
+'''
+if old_scan not in text:
+    raise SystemExit("FogControl Web dynamic scan block no longer matches pinned upstream")
+text = text.replace(old_scan, new_scan, 1)
 
 old_flush = '''        if(dynamicEventQueue.size > 0){
             //flush unit events over when something happens
