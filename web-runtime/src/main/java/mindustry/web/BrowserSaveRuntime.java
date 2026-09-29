@@ -130,11 +130,14 @@ public final class BrowserSaveRuntime{
         SaveVersion.setWebPlaytime(totalPlaytimeForSave());
         Fi file = localSessionFile();
         SaveIO.save(file);
-        if(!file.exists() || file.length() < 128 || !SaveIO.isSaveValid(file)){
+        if(!file.exists() || file.length() < 128){
             throw new IllegalStateException("Browser local survival save did not produce a valid MSAV");
         }
 
-        SaveMeta meta = SaveIO.getMeta(file);
+        // SaveIO.isSaveValid(file) and SaveIO.getMeta(file) each inflate the same
+        // metadata region. Read the newly written file exactly once and do not hide
+        // a corrupt current save behind the backup-file fallback.
+        SaveMeta meta = SaveIO.getMeta(SaveIO.getStream(file));
         if(meta == null || meta.version != 13 || meta.rules == null || meta.rules.sector != null || meta.rules.pvp){
             throw new IllegalStateException("Browser local survival save metadata failed validation");
         }
