@@ -9,6 +9,13 @@ if not PATH.is_file():
 
 text = PATH.read_text(encoding="utf-8")
 
+# Lean Web UI never renders stock save preview textures. Do not register the loader;
+# together with the no-op savePreview() below this lets TeaVM prune preview decode code.
+old_loader = '        Core.assets.setLoader(Texture.class, ".spreview", new SavePreviewLoader());\n\n'
+if old_loader not in text:
+    raise SystemExit("Saves preview loader registration no longer matches pinned upstream")
+text = text.replace(old_loader, '        // Web: stock save preview loader omitted; lean UI never requests .spreview textures.\n\n', 1)
+
 # BrowserSaves has already indexed metadata from the hydrated IndexedDB cache. When
 # continuing a sector, SaveIO.load() must read the world, but re-inflating metadata
 # immediately afterwards is redundant. Keep the indexed SaveSlot.meta unless absent.
@@ -67,4 +74,4 @@ if old not in text:
 
 text = text.replace(old, new, 1)
 PATH.write_text(text, encoding="utf-8")
-print("Applied browser save metadata reuse + disabled unused save preview generation")
+print("Applied browser save metadata reuse + pruned unused save preview loader/generation")
