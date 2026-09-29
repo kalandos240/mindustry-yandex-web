@@ -153,6 +153,23 @@ if old_main_cleanup not in text:
     raise SystemExit("ControlPathfinder Web main-thread cleanup block no longer matches pinned upstream")
 text = text.replace(old_main_cleanup, new_main_cleanup, 1)
 
+# Web has no pathfinding worker thread. Tile-change callbacks already execute on the
+# event loop, so posting one Runnable per changed tile only allocates garbage and can
+# create a large queue burst during construction/destruction. Preserve the exact same
+# coalescing IntSets, but write them directly; updateWeb() still processes them under
+# the existing maintenance budget.
+old_inner_queue = "            queue.post(() -> clustersToInnerUpdate.add(cluster));\n"
+new_inner_queue = "            clustersToInnerUpdate.add(cluster);\n"
+if old_inner_queue not in text:
+    raise SystemExit("ControlPathfinder inner-cluster queue anchor no longer matches pinned upstream")
+text = text.replace(old_inner_queue, new_inner_queue, 1)
+
+old_cluster_queue = "            queue.post(() -> clustersToUpdate.add(cx + cy * cwidth));\n"
+new_cluster_queue = "            clustersToUpdate.add(cx + cy * cwidth);\n"
+if old_cluster_queue not in text:
+    raise SystemExit("ControlPathfinder cluster queue anchor no longer matches pinned upstream")
+text = text.replace(old_cluster_queue, new_cluster_queue, 1)
+
 old_run = '''    @Override
     public void run(){
         long lastInvalidCheck = Time.millis() + invalidateCheckInterval;
@@ -384,6 +401,8 @@ for required in (
     "webStepCount++;",
     "public int webSteps()",
     "private void updateWebCleanup()",
+    "clustersToInnerUpdate.add(cluster);",
+    "clustersToUpdate.add(cx + cy * cwidth);",
     "int requestChecks = Math.min(32, requestCount);",
     "int fieldChecks = Math.min(8, fieldCount);",
     "long maintenanceBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 1 : 2);",
