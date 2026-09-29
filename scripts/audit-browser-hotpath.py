@@ -132,6 +132,11 @@ for source, label, update_marker in [
 # ControlPathfinder has three independent Web budgets: stale-request cleanup,
 # cluster/invalidation maintenance and flow-field expansion. Keep all three bounded.
 require(CONTROL_PATH_PATCH, "new_run = '''", "ControlPathfinder Web patch new_run")
+require(CONTROL_PATH_PATCH, "private static final int updateInterval = 1000 / 30, invalidateCheckInterval = 1000;", "ControlPathfinder stock cadence")
+require(CONTROL_PATH_PATCH, "long webLastStep;", "ControlPathfinder stock cadence")
+require(CONTROL_PATH_PATCH, "webLastStep = Time.millis() - updateInterval;", "ControlPathfinder stock cadence")
+require(CONTROL_PATH_PATCH, "if(Time.timeSinceMillis(webLastStep) < updateInterval) return;", "ControlPathfinder stock cadence")
+require(CONTROL_PATH_PATCH, "webLastStep = now;", "ControlPathfinder stock cadence")
 require(CONTROL_PATH_PATCH, "private void updateWebCleanup()", "ControlPathfinder cleanup")
 require(CONTROL_PATH_PATCH, "int requestChecks = Math.min(32, requestCount);", "ControlPathfinder cleanup")
 require(CONTROL_PATH_PATCH, "int fieldChecks = Math.min(8, fieldCount);", "ControlPathfinder cleanup")
