@@ -41,6 +41,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-saveio-meta="ready"' \
   --require 'data-mindustry-saveio-full="ready"' \
   --require 'data-mindustry-java-persistence-seed="ready"' \
+  --require 'data-mindustry-storage-flush-policy="generation-coalesced"' \
   --require 'data-mindustry-smoke-mode="ci"' \
   --require 'data-mindustry-game-state-selftest="ci-only"' \
   --require 'data-mindustry-audio="ready"' \
