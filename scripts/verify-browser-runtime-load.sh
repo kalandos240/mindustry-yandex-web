@@ -68,6 +68,7 @@ run_load(){
     --port "$cdp" \
     --timeout 90 \
     --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-save-validation="skipped-production"' \
     --require 'data-mindustry-smoke-mode="production"' \
     --require "data-mindustry-input-mode=\"${input_mode}\"" \
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
