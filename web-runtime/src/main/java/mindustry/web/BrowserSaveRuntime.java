@@ -56,10 +56,14 @@ public final class BrowserSaveRuntime{
         Vars.tmpDirectory.mkdirs();
         Vars.schematicDirectory.mkdirs();
 
-        runPhase("fi", BrowserSaveRuntime::verifyMoveCopyDelete);
-        runPhase("meta", BrowserSaveRuntime::verifyRealSaveMetaFormat);
-        runPhase("full-write", BrowserSaveRuntime::verifyFullSaveWrite);
-        runPhase("roundtrip", BrowserSaveRuntime::verifyFullSaveRoundTrip);
+        boolean fullValidation = fullValidationSmokeRequested();
+        markValidationPolicy(fullValidation ? "ci-full" : "skipped-production");
+        if(fullValidation){
+            runPhase("fi", BrowserSaveRuntime::verifyMoveCopyDelete);
+            runPhase("meta", BrowserSaveRuntime::verifyRealSaveMetaFormat);
+            runPhase("full-write", BrowserSaveRuntime::verifyFullSaveWrite);
+            runPhase("roundtrip", BrowserSaveRuntime::verifyFullSaveRoundTrip);
+        }
 
         runPhase("saves-index", () -> {
             BrowserSaves browserSaves = new BrowserSaves();
@@ -72,7 +76,7 @@ public final class BrowserSaveRuntime{
         initialized = true;
         markLocalSessionAvailability(localSessionAvailable ? "available" : "empty");
         markPhase("ready");
-        markReady(saves.getSaveSlots().size);
+        markReady(saves.getSaveSlots().size, fullValidation);
     }
 
     private static void runPhase(String phase, Runnable action){
@@ -532,12 +536,18 @@ public final class BrowserSaveRuntime{
     @JSBody(script = "globalThis.__mindustryStorage.flush().then(function(){document.documentElement.setAttribute('data-mindustry-local-save-flush','ready');}).catch(function(e){document.documentElement.setAttribute('data-mindustry-local-save-flush','error');});")
     private static native void flushLocalSessionStorage();
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustrySmoke') === '1';")
+    private static native boolean fullValidationSmokeRequested();
+
+    @JSBody(params = {"policy"}, script = "document.documentElement.setAttribute('data-mindustry-save-validation', policy);")
+    private static native void markValidationPolicy(String policy);
+
     @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-saveio-phase', phase);")
     private static native void markPhase(String phase);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-saveio-load','ready');")
     private static native void markLoadReady();
 
-    @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-save-runtime','ready'); document.documentElement.setAttribute('data-mindustry-save-slots', String(count)); document.documentElement.setAttribute('data-mindustry-saveio-meta','ready'); document.documentElement.setAttribute('data-mindustry-saveio-full','ready');")
-    private static native void markReady(int count);
+    @JSBody(params = {"count", "validated"}, script = "document.documentElement.setAttribute('data-mindustry-save-runtime','ready'); document.documentElement.setAttribute('data-mindustry-save-slots', String(count)); if(validated){document.documentElement.setAttribute('data-mindustry-saveio-meta','ready'); document.documentElement.setAttribute('data-mindustry-saveio-full','ready');}")
+    private static native void markReady(int count, boolean validated);
 }
