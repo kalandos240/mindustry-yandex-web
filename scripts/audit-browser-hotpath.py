@@ -20,6 +20,7 @@ FOG_PATCH = (ROOT / "scripts" / "patch-mindustry-fog-web.py").read_text(encoding
 BROWSER_FILES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFiles.java").read_text(encoding="utf-8")
 BROWSER_FI = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFi.java").read_text(encoding="utf-8")
 BROWSER_STORAGE = (ROOT / "web-runtime" / "src" / "web" / "browser-storage.js").read_text(encoding="utf-8")
+BROWSER_AUDIO = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserAudio.java").read_text(encoding="utf-8")
 BROWSER_SAVES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSaves.java").read_text(encoding="utf-8")
 SAVE_PREVIEW_PATCH = (ROOT / "scripts" / "patch-mindustry-save-preview-web.py").read_text(encoding="utf-8")
 
@@ -251,6 +252,18 @@ for method, end_marker in [
     forbid(body, "SaveIO.isSaveValid", f"{method} autosave metadata reuse")
     forbid(body, "SaveIO.getMeta(", f"{method} autosave metadata reuse")
     require(body, "SaveMeta meta = current.save.meta;", f"{method} autosave metadata reuse")
+
+# Browser audio keeps production startup free of codec self-tests and avoids
+# reading Settings every render frame.
+require(BROWSER_AUDIO, "if((++settingsPoll & 31) == 0)", "browser audio settings cadence")
+require(BROWSER_AUDIO, "if(validationSmokeRequested()){", "browser audio CI validation gate")
+require(BROWSER_AUDIO, 'markAudioValidation("ci-full")', "browser audio CI validation gate")
+require(BROWSER_AUDIO, 'markAudioValidation("skipped-production")', "browser audio production validation bypass")
+require(BROWSER_AUDIO, "markAudioBackendReady();", "browser audio production validation bypass")
+if BROWSER_AUDIO.count('sfxVolume = settingVolume("sfxvol", 100);') != 2:
+    failures.append("browser audio settings cadence: expected initialization + 32-frame refresh only")
+if BROWSER_AUDIO.count("verifyPackagedSound(smokeSound);") != 1:
+    failures.append("browser audio CI validation gate: codec verification call count changed")
 
 # Browser save preview loader/generation is fully pruned from Web.
 require(SAVE_PREVIEW_PATCH, "stock save preview loader omitted", "browser save preview pruning")
