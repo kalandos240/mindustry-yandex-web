@@ -185,6 +185,37 @@ require(BROWSER_STORAGE, "function put(path, bytes, logicalLength)", "browser st
 require(BROWSER_STORAGE, "copyBytes(bytes, logicalLength)", "browser storage logical length")
 require(BROWSER_STORAGE, "raw.slice(0, length)", "browser storage ownership copy")
 
+# Production autosave must not inflate the same metadata twice. Local save validates
+# the newly written current file in one strict pass; campaign save/resume trusts the
+# SaveSlot metadata already produced/indexed by stock Saves and keeps full revalidation
+# only inside CI capture smoke.
+BROWSER_SAVE = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSaveRuntime.java").read_text(encoding="utf-8")
+require(BROWSER_SAVE, "SaveMeta meta = SaveIO.getMeta(SaveIO.getStream(file));", "local save one-pass metadata")
+local_save_start = BROWSER_SAVE.index("public static SaveMeta saveLocalSession()")
+local_save_end = BROWSER_SAVE.index("public static SaveMeta loadLocalSession()", local_save_start)
+local_save_body = BROWSER_SAVE[local_save_start:local_save_end]
+forbid(local_save_body, "SaveIO.isSaveValid(file)", "local save one-pass metadata")
+if local_save_body.count("SaveIO.getMeta(") != 1:
+    failures.append("local save one-pass metadata: expected exactly one metadata read")
+
+campaign_continue_start = CAMPAIGN_RUNTIME.index("private static void continuePreset")
+campaign_continue_end = CAMPAIGN_RUNTIME.index("public static void returnToMenu", campaign_continue_start)
+campaign_continue_body = CAMPAIGN_RUNTIME[campaign_continue_start:campaign_continue_end]
+forbid(campaign_continue_body, "SaveIO.isSaveValid", "campaign resume metadata reuse")
+forbid(campaign_continue_body, "SaveIO.getMeta(", "campaign resume metadata reuse")
+require(campaign_continue_body, "SaveMeta indexed = sector.save.meta;", "campaign resume metadata reuse")
+
+for method, end_marker in [
+    ("public static void returnToMenu", "private static void clearRuntimeState"),
+    ("private static void saveCampaignCheckpoint", "public static void updateFrame"),
+]:
+    start = CAMPAIGN_RUNTIME.index(method)
+    end = CAMPAIGN_RUNTIME.index(end_marker, start)
+    body = CAMPAIGN_RUNTIME[start:end]
+    forbid(body, "SaveIO.isSaveValid", f"{method} autosave metadata reuse")
+    forbid(body, "SaveIO.getMeta(", f"{method} autosave metadata reuse")
+    require(body, "SaveMeta meta = current.save.meta;", f"{method} autosave metadata reuse")
+
 # Production local gameplay must not write DOM frame/phase telemetry at 60Hz.
 require(LOCAL_MAP, "private static boolean telemetry;", "local gameplay telemetry gate")
 require(LOCAL_MAP, "telemetry = smokeTelemetryRequested();", "local gameplay telemetry gate")
