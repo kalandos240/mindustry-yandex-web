@@ -55,20 +55,10 @@ old = '''        private void savePreview(){
         }
 '''
 new = '''        private void savePreview(){
-            if(Core.assets.isLoaded(loadPreviewFile().path())){
-                Core.assets.unload(loadPreviewFile().path());
-            }
-            // Web: preserve deferred preview generation without a JVM ExecutorService.
-            // BrowserApplication drains Core.app.post on the requestAnimationFrame loop,
-            // so SaveIO remains synchronous while PNG preview work happens afterwards.
-            Core.app.post(() -> {
-                try{
-                    previewFile().writePng(renderer.minimap.getPixmap());
-                    requestedPreview = false;
-                }catch(Throwable t){
-                    Log.err(t);
-                }
-            });
+            // Web: the lean save/campaign UI never renders stock SaveSlot preview
+            // textures. Skip minimap readback + PNG compression + IndexedDB writes on
+            // every save/load; previewTexture() safely returns null when absent.
+            requestedPreview = false;
         }
 '''
 
@@ -77,4 +67,4 @@ if old not in text:
 
 text = text.replace(old, new, 1)
 PATH.write_text(text, encoding="utf-8")
-print("Applied browser save load metadata reuse + event-loop preview generation")
+print("Applied browser save metadata reuse + disabled unused save preview generation")
