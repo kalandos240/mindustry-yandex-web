@@ -22,7 +22,7 @@ replacements = [
     ),
     (
         "    /** Current pathfinding thread */\n    @Nullable Thread thread;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
-        "    /** Web: true while this pathfinder accepts browser-frame worker steps. */\n    boolean webRunning;\n    /** Preserves the stock periodic invalidation cadence without a sleeping JVM thread. */\n    long webLastInvalidCheck;\n    /** Round-robin field cursor for the main-thread Web budget. */\n    int webFieldCursor;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
+        "    /** Web: true while this pathfinder accepts browser-frame worker steps. */\n    boolean webRunning;\n    /** Preserves the stock periodic invalidation cadence without a sleeping JVM thread. */\n    long webLastInvalidCheck;\n    /** True while a bounded invalid-request sweep still has work for a later frame. */\n    boolean webInvalidSweepPending;\n    /** Round-robin field cursor for the main-thread Web budget. */\n    int webFieldCursor;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
         "worker fields",
     ),
 ]
@@ -67,6 +67,7 @@ new_start_stop = '''    /** Starts or restarts browser-frame control pathfinding
         webRunning = false;
         invalidated = true;
         webFieldCursor = 0;
+        webInvalidSweepPending = false;
         queue.clear();
     }
 
@@ -89,168 +90,70 @@ old_run = '''    @Override
                 if(state.isPlaying()){
                     queue.run();
 
-                    clustersToUpdate.each(cluster -> {
-                        updateClustersComplete(cluster);
+                    // Web/Yandex shares one event loop with rendering/input. Bound cluster
+            // rebuilds and invalidation bursts so large construction/destruction spikes
+            // cannot monopolize one frame; unprocessed entries remain queued for later.
+            long maintenanceBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 1 : 2);
+            long maintenanceStart = Time.nanos();
 
-                        //just in case: don't redundantly update inner clusters after you've recalculated it entirely
-                        clustersToInnerUpdate.remove(cluster);
-                    });
+            var fullClusters = clustersToUpdate.iterator();
+            while(fullClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget){
+                int cluster = fullClusters.next();
+                updateClustersComplete(cluster);
+                clustersToInnerUpdate.remove(cluster);
+                fullClusters.remove();
+            }
 
-                    clustersToInnerUpdate.each(cluster -> {
-                        //only recompute the inner links
-                        updateClustersInner(cluster);
-                    });
-
-                    clustersToInnerUpdate.clear();
-                    clustersToUpdate.clear();
-
-                    //periodically check for invalidated paths
-                    if(Time.timeSinceMillis(lastInvalidCheck) > invalidateCheckInterval){
-                        lastInvalidCheck = Time.millis();
-
-                        var it = invalidRequests.iterator();
-                        while(it.hasNext()){
-                            var request = it.next();
-
-                            //invalid request, ignore it
-                            if(request.invalidated){
-                                it.remove();
-                                continue;
-                            }
-
-                            long mapKey = FieldIndex.get(request.destination, request.costId, request.team);
-
-                            var field = fields.get(mapKey);
-
-                            if(field != null){
-                                //it's only worth recalculating a path when the current frontier has finished; otherwise the unit will be following something incomplete.
-                                if(field.frontier.isEmpty()){
-
-                                    //remove the field, to be recalculated next update once recalculatePath is processed
-                                    fields.remove(field.mapKey);
-                                    Core.app.post(() -> fieldList.remove(field));
-
-                                    //once the field is invalidated, make sure that all the requests that have it stored in their 'old' field, so units don't stutter during recalculations
-                                    for(var otherRequest : threadPathRequests){
-                                        if(otherRequest.destination == request.destination){
-                                            otherRequest.oldCache = field;
-
-                                            if(otherRequest != request){
-                                                queue.post(() -> recalculatePath(otherRequest));
-                                            }
-                                        }
-                                    }
-
-                                    //the recalculation is done next update, so multiple path requests in the same batch don't end up removing and recalculating the field multiple times.
-                                    queue.post(() -> recalculatePath(request));
-                                    //it has been processed.
-                                    it.remove();
-                                }
-                            }else{ //there's no field, presumably because a previous request already invalidated it.
-                                queue.post(() -> recalculatePath(request));
-                                it.remove();
-                            }
-                        }
-                    }
-
-                    //each update time (not total!) no longer than maxUpdate
-                    fields.eachValue(cache -> {
-                        if(cache != null){
-                            updateFields(cache, maxUpdate);
-                        }
-                    });
-                }
-
-                try{
-                    Thread.sleep(updateInterval);
-                }catch(InterruptedException e){
-                    //stop looping when interrupted externally
-                    return;
-                }
-            }catch(Throwable e){
-                if(!invalidated){
-                    Log.err(e);
-                }else{
-                    //This pathfinder is done, don't bother doing any tasks
-                    return;
+            if(Time.timeSinceNanos(maintenanceStart) < maintenanceBudget){
+                var innerClusters = clustersToInnerUpdate.iterator();
+                while(innerClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget){
+                    int cluster = innerClusters.next();
+                    updateClustersInner(cluster);
+                    innerClusters.remove();
                 }
             }
-        }
-    }
-'''
-new_run = '''    /**
-     * Executes one stock ControlPathfinder worker iteration on the browser event loop.
-     * Cluster rebuilding, invalidation and flow-field algorithms are unchanged; only
-     * the dedicated JVM daemon thread and sleep cadence are replaced.
-     */
-    public void updateWeb(){
-        if(!webRunning || net.client() || invalidated || !state.isPlaying()) return;
 
-        try{
-            queue.run();
-
-            clustersToUpdate.each(cluster -> {
-                updateClustersComplete(cluster);
-
-                //just in case: don't redundantly update inner clusters after you've recalculated it entirely
-                clustersToInnerUpdate.remove(cluster);
-            });
-
-            clustersToInnerUpdate.each(cluster -> {
-                //only recompute the inner links
-                updateClustersInner(cluster);
-            });
-
-            clustersToInnerUpdate.clear();
-            clustersToUpdate.clear();
-
-            //periodically check for invalidated paths
-            if(Time.timeSinceMillis(webLastInvalidCheck) > invalidateCheckInterval){
+            if(!webInvalidSweepPending && Time.timeSinceMillis(webLastInvalidCheck) > invalidateCheckInterval){
                 webLastInvalidCheck = Time.millis();
+                webInvalidSweepPending = true;
+            }
 
+            if(webInvalidSweepPending && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget){
                 var it = invalidRequests.iterator();
-                while(it.hasNext()){
+                while(it.hasNext() && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget){
                     var request = it.next();
 
-                    //invalid request, ignore it
                     if(request.invalidated){
                         it.remove();
                         continue;
                     }
 
                     long mapKey = FieldIndex.get(request.destination, request.costId, request.team);
-
                     var field = fields.get(mapKey);
 
                     if(field != null){
-                        //it's only worth recalculating a path when the current frontier has finished; otherwise the unit will be following something incomplete.
                         if(field.frontier.isEmpty()){
-
-                            //remove the field, to be recalculated next update once recalculatePath is processed
                             fields.remove(field.mapKey);
                             Core.app.post(() -> fieldList.remove(field));
 
-                            //once the field is invalidated, make sure that all the requests that have it stored in their 'old' field, so units don't stutter during recalculations
                             for(var otherRequest : threadPathRequests){
                                 if(otherRequest.destination == request.destination){
                                     otherRequest.oldCache = field;
-
                                     if(otherRequest != request){
                                         queue.post(() -> recalculatePath(otherRequest));
                                     }
                                 }
                             }
 
-                            //the recalculation is done next update, so multiple path requests in the same batch don't end up removing and recalculating the field multiple times.
                             queue.post(() -> recalculatePath(request));
-                            //it has been processed.
                             it.remove();
                         }
-                    }else{ //there's no field, presumably because a previous request already invalidated it.
+                    }else{
                         queue.post(() -> recalculatePath(request));
                         it.remove();
                     }
                 }
+                if(!it.hasNext()) webInvalidSweepPending = false;
             }
 
             // Desktop gives every cache up to 12 ms on a worker thread. Web must
@@ -301,6 +204,10 @@ for required in (
     "public boolean webActive()",
     "updateClustersComplete(cluster);",
     "updateClustersInner(cluster);",
+    "long maintenanceBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 1 : 2);",
+    "while(fullClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)",
+    "while(innerClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)",
+    "webInvalidSweepPending",
     "long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);",
     "while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget)",
     "updateFields(cache, Math.min(maxUpdate, remaining));",
