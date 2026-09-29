@@ -22,7 +22,7 @@ replacements = [
     ),
     (
         "    /** Current pathfinding thread */\n    @Nullable Thread thread;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
-        "    /** Web: true while this pathfinder accepts browser-frame worker steps. */\n    boolean webRunning;\n    /** Last browser worker step; used to preserve the stock 30 Hz cadence. */\n    long webLastStep;\n    /** Preserves the stock periodic invalidation cadence without a sleeping JVM thread. */\n    long webLastInvalidCheck;\n    /** True while a bounded invalid-request sweep still has work for a later frame. */\n    boolean webInvalidSweepPending;\n    /** Round-robin field cursor for the main-thread Web flow-field budget. */\n    int webFieldCursor;\n    /** Main-thread stale cleanup cursors; bounded to avoid O(n) scans per frame. */\n    int webCleanupRequestCursor, webCleanupFieldCursor;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
+        "    /** Web: true while this pathfinder accepts browser-frame worker steps. */\n    boolean webRunning;\n    /** Last browser worker step; used to preserve the stock 30 Hz cadence. */\n    long webLastStep;\n    /** Diagnostic count of executed Web worker steps for deterministic perf smoke. */\n    int webStepCount;\n    /** Preserves the stock periodic invalidation cadence without a sleeping JVM thread. */\n    long webLastInvalidCheck;\n    /** True while a bounded invalid-request sweep still has work for a later frame. */\n    boolean webInvalidSweepPending;\n    /** Round-robin field cursor for the main-thread Web flow-field budget. */\n    int webFieldCursor;\n    /** Main-thread stale cleanup cursors; bounded to avoid O(n) scans per frame. */\n    int webCleanupRequestCursor, webCleanupFieldCursor;\n\n    /** If true, this pathfinder is no longer relevant (stopped) and its errors can be ignored. */\n    volatile boolean invalidated;\n",
         "worker fields",
     ),
 ]
@@ -60,6 +60,7 @@ new_start_stop = '''    /** Starts or restarts browser-frame control pathfinding
         webRunning = true;
         // Allow the first browser-frame worker iteration immediately, then resume stock 30 Hz.
         webLastStep = Time.millis() - updateInterval;
+        webStepCount = 0;
         webLastInvalidCheck = Time.millis() + invalidateCheckInterval;
     }
 
@@ -68,6 +69,7 @@ new_start_stop = '''    /** Starts or restarts browser-frame control pathfinding
         webRunning = false;
         invalidated = true;
         webLastStep = 0L;
+        webStepCount = 0;
         webFieldCursor = 0;
         webCleanupRequestCursor = 0;
         webCleanupFieldCursor = 0;
@@ -78,6 +80,11 @@ new_start_stop = '''    /** Starts or restarts browser-frame control pathfinding
     /** True only for the current world-bound browser pathfinder instance. */
     public boolean webActive(){
         return webRunning && !invalidated;
+    }
+
+    /** Number of actual 30 Hz worker iterations executed for this world instance. */
+    public int webSteps(){
+        return webStepCount;
     }
 
     /**
@@ -259,6 +266,7 @@ new_run = '''    /**
         long now = Time.millis();
         if(Time.timeSinceMillis(webLastStep) < updateInterval) return;
         webLastStep = now;
+        webStepCount++;
 
         try{
             queue.run();
@@ -373,6 +381,8 @@ for required in (
     "private static final int updateInterval = 1000 / 30, invalidateCheckInterval = 1000;",
     "if(Time.timeSinceMillis(webLastStep) < updateInterval) return;",
     "webLastStep = now;",
+    "webStepCount++;",
+    "public int webSteps()",
     "private void updateWebCleanup()",
     "int requestChecks = Math.min(32, requestCount);",
     "int fieldChecks = Math.min(8, fieldCount);",
