@@ -144,7 +144,10 @@ public final class BrowserFi extends Fi{
         public void close() throws IOException{
             if(committed) return;
             committed = true;
-            files.putLocal(path, toByteArray());
+            // ByteArrayOutputStream.toByteArray() would clone the entire save before the
+            // storage layer clones it again. Pass the protected buffer + logical count so
+            // browser-storage performs the single ownership copy.
+            files.putLocal(path, buf, count);
             super.close();
         }
     }
