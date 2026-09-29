@@ -14,6 +14,7 @@ WEB_LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "
 GAMEPLAY = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserGameplayRuntime.java").read_text(encoding="utf-8")
 PATHFINDER_PATCH = (ROOT / "scripts" / "patch-mindustry-pathfinder-web.py").read_text(encoding="utf-8")
 CONTROL_PATH_PATCH = (ROOT / "scripts" / "patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")
+TASK_QUEUE_PATCH = (ROOT / "scripts" / "patch-arc-task-queue-web.py").read_text(encoding="utf-8")
 ASYNC_CORE_PATCH = (ROOT / "scripts" / "patch-mindustry-async-core-web.py").read_text(encoding="utf-8")
 LOGIC_PATCH = (ROOT / "scripts" / "patch-mindustry-logic-web.py").read_text(encoding="utf-8")
 FOG_PATCH = (ROOT / "scripts" / "patch-mindustry-fog-web.py").read_text(encoding="utf-8")
@@ -117,6 +118,15 @@ require(LOCAL_MAP, "perfEffects != perfTargetEffects", "particle perf workload")
 require(LOCAL_MAP, "SpriteBatch.webSortCalls = 0", "particle sorter telemetry reset")
 require(LOCAL_MAP, "SpriteBatch.webSortedFastPaths <= 0", "particle sorter telemetry gate")
 require(LOCAL_MAP, "data-mindustry-perf-sort-fast-paths", "particle sorter telemetry DOM")
+
+# Web pathfinding also bounds the number of queued callbacks drained per step.
+# The Arc overload preserves FIFO and reuses the existing execution buffer.
+require(APPLY_PORT, "patch-arc-task-queue-web.py", "bounded TaskQueue patch invocation")
+require(TASK_QUEUE_PATCH, "public int run(int maxTasks)", "bounded TaskQueue drain")
+require(TASK_QUEUE_PATCH, "count = Math.min(maxTasks, runnables.size);", "bounded TaskQueue drain")
+require(TASK_QUEUE_PATCH, "runnables.removeRange(0, count - 1);", "bounded TaskQueue FIFO")
+require(PATHFINDER_PATCH, "queue.run(32);", "Pathfinder bounded task drain")
+require(CONTROL_PATH_PATCH, "queue.run(32);", "ControlPathfinder bounded task drain")
 
 # Desktop pathfinding budgets are worker-thread budgets. Web must bound the TOTAL
 # main-thread slice per frame and resume fields round-robin.
