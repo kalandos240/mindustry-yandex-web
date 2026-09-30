@@ -170,6 +170,12 @@ PY
 python3 "$ROOT_DIR/scripts/patch-mindustry-renderer-web.py" \
   "$MINDUSTRY_DIR/core/src/mindustry/core/Renderer.java"
 
+# Visual effects stay stock on desktop. Mobile Web gets an active EffectState budget so
+# particle bursts cannot grow without bound and collapse frame time.
+python3 "$ROOT_DIR/scripts/patch-mindustry-effects-web.py" \
+  "$MINDUSTRY_DIR/core/src/mindustry/entities/Effect.java" \
+  "$MINDUSTRY_DIR/core/src/mindustry/entities/comp/EffectStateComp.java"
+
 # ClientLauncher contains desktop/JVM-only startup probes. Patch only the temporary
 # Web checkout: launch-marker/file logging will return with writable browser Fi,
 # while Runtime.maxMemory has no JavaScript equivalent.
