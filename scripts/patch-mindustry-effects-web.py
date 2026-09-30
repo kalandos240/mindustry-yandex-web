@@ -74,13 +74,14 @@ effect = effect.replace(method_anchor, method_new, 1)
 create_anchor = """        if(Core.camera.bounds(Tmp.r1).overlaps(Tmp.r2.setCentered(x, y, clip))){
             if(!initialized){
 """
-create_new = """        if(Core.camera.bounds(Tmp.r1).overlaps(Tmp.r2.setCentered(x, y, clip))){
-            // Reserve a visual slot before scheduling delayed effects. This prevents
-            // particle bursts from flooding Time.run() only to be discarded later.
-            if(webMaxActiveEffects > 0 && webActiveEffects >= webMaxActiveEffects){
-                webDroppedEffects++;
-                return;
-            }
+create_new = """        // Once the mobile Web visual budget is saturated, reject immediately.
+        // Avoid camera-bounds work and delayed Time.run() allocation for excess particles.
+        if(webMaxActiveEffects > 0 && webActiveEffects >= webMaxActiveEffects){
+            webDroppedEffects++;
+            return;
+        }
+
+        if(Core.camera.bounds(Tmp.r1).overlaps(Tmp.r2.setCentered(x, y, clip))){
             if(webMaxActiveEffects > 0) webActiveEffects++;
 
             if(!initialized){
