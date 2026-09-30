@@ -69,6 +69,7 @@ run_local_save(){
     --require 'data-mindustry-local-continue-ui="ready"' \
     --require 'data-mindustry-local-continue-slot="available"' \
     --require 'data-mindustry-local-save-flush="ready"' \
+    --require 'data-mindustry-storage-write-policy="task-coalesced-readwrite"' \
     --require 'data-mindustry-local-autosave-smoke="armed"' \
     --require 'data-mindustry-local-autosave="ready"' \
     --require 'data-mindustry-local-map-state="menu"' \
@@ -119,6 +120,7 @@ run_local_save(){
     --require 'data-mindustry-local-autosave-smoke="armed"' \
     --require 'data-mindustry-local-autosave="ready"' \
     --require 'data-mindustry-local-save-flush="ready"' \
+    --require 'data-mindustry-storage-write-policy="task-coalesced-readwrite"' \
     --require 'data-mindustry-local-map-state="menu"' \
     --require 'data-mindustry-local-map-returned-from="maze"' \
     --require 'data-mindustry-network="local-only"' \
