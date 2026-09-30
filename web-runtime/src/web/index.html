@@ -104,6 +104,8 @@
             await loadScript('mindustry.js');
 
             const manifest = globalThis.__mindustryAssetManifest || [];
+            globalThis.__mindustryAssetSet = new Set(manifest);
+            root.setAttribute('data-mindustry-asset-index', 'set');
             const cache = Object.create(null);
             globalThis.__mindustryAssetCache = cache;
 
