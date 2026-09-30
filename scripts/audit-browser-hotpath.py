@@ -6,6 +6,10 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserApplication.java").read_text(encoding="utf-8")
 CANVAS = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCanvas.java").read_text(encoding="utf-8")
 INPUT = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserInputBridge.java").read_text(encoding="utf-8")
+LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "WebClientLauncher.java").read_text(encoding="utf-8")
+LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
+APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
+EFFECT_PATCH = (ROOT / "scripts" / "patch-mindustry-effects-web.py").read_text(encoding="utf-8")
 APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
 LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 CAMPAIGN_UI = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
@@ -446,6 +450,16 @@ for actor in [
     require(CAMPAIGN_UI, f"arc.func.Boolp {actor}Disabled = () ->", "campaign throttled disabled state")
     require(CAMPAIGN_UI, f"{actor}.setDisabled({actor}Disabled.get())", "campaign throttled disabled state")
 forbid(CAMPAIGN_UI, "campaignProgress.update(BrowserCampaignResearch::refreshUnlocks)", "campaign UI")
+
+require(APPLY_PORT, "patch-mindustry-effects-web.py", "Web effect patch wiring")
+require(EFFECT_PATCH, "webMaxActiveEffects", "Web effect active cap")
+require(EFFECT_PATCH, "webBudgetCounted", "Web effect pooled counter flag")
+require(EFFECT_PATCH, "Effect.webEffectRemoved()", "Web effect removal accounting")
+require(LAUNCHER, "int effectBudget = mobileMode ? 512 : 0", "mobile effect budget profile")
+require(LAUNCHER, "data-mindustry-renderer-effect-budget-policy", "mobile effect budget telemetry")
+require(LOCAL_MAP, "private static final int perfMobileEffectBurst = 640", "mobile particle burst smoke")
+require(LOCAL_MAP, "droppedEffects <= 0", "mobile particle cap assertion")
+require(LOCAL_MAP, "Effect.webResetEffectBudget()", "local map effect budget reset")
 
 if failures:
     print("Browser hot-path audit: FAIL")
