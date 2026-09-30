@@ -55,6 +55,7 @@ run_load(){
   local audio_voice_policy="desktop-unlimited"
   local audio_accepted="64"
   local audio_dropped="0"
+  local preload_workers="8"
   local campaign_workers="4"
   if [ "$emulate_mobile" = "1" ]; then
     mobile_args+=(--emulate-mobile)
@@ -72,6 +73,7 @@ run_load(){
     audio_voice_policy="mobile-quietest-unprotected-48"
     audio_accepted="48"
     audio_dropped="16"
+    preload_workers="4"
     campaign_workers="2"
   fi
 
@@ -125,6 +127,8 @@ run_load(){
     --require 'data-mindustry-input-move-policy="raf-coalesced"' \
     --require 'data-mindustry-input-move-buffer="reused-slot"' \
     --require 'data-mindustry-assets-status-policy="batch-16"' \
+    --require 'data-mindustry-assets-preload-worker-policy="adaptive-4-mobile-8-desktop"' \
+    --require "data-mindustry-assets-preload-workers=\"${preload_workers}\"" \
     --require 'data-mindustry-assets-cache-policy="transfer-on-read-batched"' \
     --require 'data-mindustry-assets-deferred-campaign="44"' \
     --require 'data-mindustry-campaign-assets-policy="idle-background"' \
