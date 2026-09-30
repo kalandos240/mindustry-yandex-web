@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserApplication.java").read_text(encoding="utf-8")
 CANVAS = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCanvas.java").read_text(encoding="utf-8")
 INPUT = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserInputBridge.java").read_text(encoding="utf-8")
+INDEX_HTML = (ROOT / "web-runtime" / "src" / "web" / "index.html").read_text(encoding="utf-8")
 LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "WebClientLauncher.java").read_text(encoding="utf-8")
 LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
@@ -39,6 +40,10 @@ def require(source: str, needle: str, where: str) -> None:
 def forbid(source: str, needle: str, where: str) -> None:
     if needle in source:
         failures.append(f"{where}: forbidden hot-path pattern present: {needle}")
+
+require(INDEX_HTML, "const preloadWorkerCap = touchMobile ? 4 : 8", "adaptive eager preload concurrency")
+require(INDEX_HTML, "data-mindustry-assets-preload-worker-policy', 'adaptive-4-mobile-8-desktop", "adaptive eager preload telemetry")
+require(INDEX_HTML, "const campaignWorkerCap = touchMobile ? 2 : 4", "adaptive campaign warmup concurrency")
 
 require(APP, "BrowserCanvas.installResizeSignal(config.canvasId, resizeCallback)", "BrowserApplication")
 require(APP, "boolean resizeFallback = (callbackIndex & 63) == 0", "BrowserApplication")
