@@ -133,8 +133,12 @@
             root.setAttribute('data-mindustry-campaign-assets', deferredCampaignManifest.length ? 'pending' : 'ready');
 
             let next = 0, loaded = 0, loadedBytes = 0;
-            const workers = Math.max(1, Math.min(8, eagerManifest.length));
+            const coarsePointer = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+            const touchMobile = coarsePointer || ((navigator.maxTouchPoints || 0) > 0 && Math.min(innerWidth, innerHeight) <= 820);
+            const preloadWorkerCap = touchMobile ? 4 : 8;
+            const workers = Math.max(1, Math.min(preloadWorkerCap, eagerManifest.length));
             const preloadStarted = performance.now();
+            root.setAttribute('data-mindustry-assets-preload-worker-policy', 'adaptive-4-mobile-8-desktop');
             root.setAttribute('data-mindustry-assets-preload-workers', String(workers));
             root.setAttribute('data-mindustry-assets-status-policy', 'batch-16');
             let statusUpdates = 0;
@@ -170,8 +174,6 @@
             async function warmCampaignMaps(){
                 if(!deferredCampaignManifest.length) return;
                 let cursor = 0, warmed = 0, warmedBytes = 0;
-                const coarsePointer = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
-                const touchMobile = coarsePointer || ((navigator.maxTouchPoints || 0) > 0 && Math.min(innerWidth, innerHeight) <= 820);
                 const campaignWorkerCap = touchMobile ? 2 : 4;
                 const campaignWorkers = Math.max(1, Math.min(campaignWorkerCap, deferredCampaignManifest.length));
                 root.setAttribute('data-mindustry-campaign-assets-worker-policy', 'adaptive-2-mobile-4-desktop');
