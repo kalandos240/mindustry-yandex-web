@@ -469,6 +469,7 @@ public final class BrowserLocalMapRuntime{
             throw new IllegalStateException("Browser local continue escaped permanent single-player mode");
         }
 
+        mindustry.entities.Effect.webResetEffectBudget();
         SaveMeta meta = BrowserSaveRuntime.loadLocalSession();
         String savedName = meta.tags.get("mapname", "");
         Map builtin = byName(savedName);
