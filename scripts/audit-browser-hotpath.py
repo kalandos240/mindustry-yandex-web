@@ -23,6 +23,7 @@ FOG_PATCH = (ROOT / "scripts" / "patch-mindustry-fog-web.py").read_text(encoding
 BROWSER_FILES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFiles.java").read_text(encoding="utf-8")
 BROWSER_FI = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFi.java").read_text(encoding="utf-8")
 BROWSER_STORAGE = (ROOT / "web-runtime" / "src" / "web" / "browser-storage.js").read_text(encoding="utf-8")
+BROWSER_SETTINGS = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSettings.java").read_text(encoding="utf-8")
 BROWSER_AUDIO = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserAudio.java").read_text(encoding="utf-8")
 BROWSER_AUDIO_JS = (ROOT / "web-runtime" / "src" / "web" / "browser-audio.js").read_text(encoding="utf-8")
 BROWSER_SAVES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSaves.java").read_text(encoding="utf-8")
@@ -502,6 +503,12 @@ text_body = BROWSER_FILES[text_start:text_end]
 require(text_body, "String cached = textAssets.get(normalized);", "packaged text cache")
 require(text_body, "String decoded = new String(binary, StandardCharsets.UTF_8);", "packaged text direct decode")
 forbid(text_body, "new String(bytes(path, type)", "packaged text clone path")
+
+# Logic.reset() calls Settings.manualSave() for every world transition. Browser
+# localStorage is synchronous; unchanged settings must not be serialized again.
+require(BROWSER_SETTINGS, "if(modified) forceSave();", "modified-only manual settings write")
+require(BROWSER_SETTINGS, "data-mindustry-settings-write-policy','modified-only-manual", "settings write telemetry")
+forbid(BROWSER_SETTINGS, "public synchronized void manualSave(){\n        forceSave();", "unconditional manual settings rewrite")
 
 # IndexedDB hot paths: adopt hydrated buffers without cloning and share one readwrite
 # transaction across synchronous SaveIO file mutations in the same browser task.
