@@ -47,6 +47,18 @@
         return length == null || length === value.byteLength ? value : value.slice(0, length);
     }
 
+    function adoptHydratedBytes(raw){
+        // IndexedDB structured-clones record.data for this getAll() result already.
+        // Keep that owned buffer instead of cloning every persisted save a second time.
+        if(raw == null) return new Int8Array(0);
+        if(raw instanceof Int8Array) return raw;
+        if(ArrayBuffer.isView(raw)){
+            return new Int8Array(raw.buffer, raw.byteOffset, raw.byteLength);
+        }
+        if(raw instanceof ArrayBuffer) return new Int8Array(raw);
+        return new Int8Array(raw);
+    }
+
     function openDatabase(){
         return new Promise((resolve, reject) => {
             markStage('opening');
@@ -115,8 +127,10 @@
                 request.onsuccess = () => {
                     for(const record of request.result || []){
                         const path = normalize(record.path);
-                        memory[path] = copyBytes(record.data);
+                        memory[path] = adoptHydratedBytes(record.data);
                     }
+                    document.documentElement.setAttribute('data-mindustry-storage-hydration-policy', 'adopt-idb-buffer');
+                    document.documentElement.setAttribute('data-mindustry-storage-hydrated-files', String((request.result || []).length));
                     resolve();
                 };
                 request.onerror = () => reject(request.error || new Error('IndexedDB hydration failed'));
