@@ -10,6 +10,9 @@
     let flushGeneration = -1;
     let flushPromise = null;
     let flushTransactions = 0;
+    let mutationTx = null;
+    let mutationStoreRef = null;
+    let mutationTransactions = 0;
 
     function markStage(stage){
         document.documentElement.setAttribute('data-mindustry-storage', stage);
@@ -66,6 +69,42 @@
         return db.transaction(STORE, mode).objectStore(STORE);
     }
 
+    function clearMutationTransaction(tx){
+        if(mutationTx !== tx) return;
+        mutationTx = null;
+        mutationStoreRef = null;
+    }
+
+    function mutationStore(){
+        if(!db) throw new Error('Mindustry persistent storage is not initialized');
+        if(mutationStoreRef) return mutationStoreRef;
+
+        const tx = db.transaction(STORE, 'readwrite');
+        mutationTx = tx;
+        mutationStoreRef = tx.objectStore(STORE);
+        mutationTransactions++;
+        root.setAttribute('data-mindustry-storage-write-policy', 'task-coalesced-readwrite');
+        root.setAttribute('data-mindustry-storage-write-transactions', String(mutationTransactions));
+
+        tx.oncomplete = () => clearMutationTransaction(tx);
+        tx.onerror = () => clearMutationTransaction(tx);
+        tx.onabort = () => clearMutationTransaction(tx);
+        return mutationStoreRef;
+    }
+
+    function mutate(action){
+        let store = mutationStore();
+        try{
+            return action(store);
+        }catch(error){
+            if(!error || error.name !== 'TransactionInactiveError') throw error;
+            mutationTx = null;
+            mutationStoreRef = null;
+            store = mutationStore();
+            return action(store);
+        }
+    }
+
     async function init(){
         if(initPromise) return initPromise;
         initPromise = (async () => {
@@ -103,7 +142,7 @@
         const value = copyBytes(bytes, logicalLength);
         memory[key] = value;
         writeGeneration++;
-        const request = transaction('readwrite').put({path: key, data: value});
+        const request = mutate(store => store.put({path: key, data: value}));
         request.onerror = () => console.error('Mindustry IndexedDB write failed:', request.error);
         return true;
     }
@@ -113,7 +152,7 @@
         const existed = Object.prototype.hasOwnProperty.call(memory, key);
         delete memory[key];
         writeGeneration++;
-        const request = transaction('readwrite').delete(key);
+        const request = mutate(store => store.delete(key));
         request.onerror = () => console.error('Mindustry IndexedDB delete failed:', request.error);
         return existed;
     }
@@ -125,8 +164,9 @@
         for(const candidate of keys) delete memory[candidate];
         if(keys.length){
             writeGeneration++;
-            const store = transaction('readwrite');
-            for(const candidate of keys) store.delete(candidate);
+            mutate(store => {
+                for(const candidate of keys) store.delete(candidate);
+            });
         }
         return keys.length > 0;
     }
