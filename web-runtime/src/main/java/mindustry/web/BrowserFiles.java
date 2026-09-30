@@ -271,7 +271,7 @@ public final class BrowserFiles implements Files{
         """)
     private static native byte[] takePreloadedBytes(String url);
 
-    @JSBody(params = {"path"}, script = "const manifest = globalThis.__mindustryAssetManifest || []; return manifest.indexOf(path) !== -1;")
+    @JSBody(params = {"path"}, script = "const set = globalThis.__mindustryAssetSet; return set ? set.has(path) : false;")
     private static native boolean hasPackagedAsset(String path);
     @JSBody(script = "return globalThis.__mindustryAssetManifest || [];")
     private static native String[] packagedPaths();
