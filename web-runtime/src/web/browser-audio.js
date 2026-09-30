@@ -9,6 +9,9 @@
         voices: new Map(),
         music: new Map(),
         nextVoice: 1,
+        maxVoices: 0,
+        evictedVoices: 0,
+        droppedVoices: 0,
         platformPaused: false,
         unlocked: false,
         unlocking: false,
@@ -124,6 +127,13 @@
 
         state.decode = decode;
         state.startVoice = startVoice;
+        var inputMode = root.getAttribute('data-mindustry-input-mode') || 'desktop';
+        state.maxVoices = inputMode === 'mobile' ? 48 : 0;
+        state.evictedVoices = 0;
+        state.droppedVoices = 0;
+        root.setAttribute('data-mindustry-audio-voice-cap', String(state.maxVoices));
+        root.setAttribute('data-mindustry-audio-voice-policy',
+            state.maxVoices > 0 ? 'mobile-quietest-unprotected-48' : 'desktop-unlimited');
         unlockEvents.forEach(function(type){
             global.addEventListener(type, unlock, {passive: true, capture: true});
         });
@@ -153,6 +163,30 @@
     function playSound(url, volume, pitch, pan, loop){
         if(!state.ctx) return -1;
 
+        if(state.maxVoices > 0 && state.voices.size >= state.maxVoices){
+            var victimId = -1;
+            var victimVolume = Infinity;
+            state.voices.forEach(function(voice, id){
+                if(voice.loop || voice.protected) return;
+                if(voice.volume < victimVolume){
+                    victimVolume = voice.volume;
+                    victimId = id;
+                }
+            });
+
+            // Preserve an existing louder transient over a quieter incoming one. Looping
+            // and explicitly protected voices are never stolen.
+            if(victimId >= 0 && (loop || victimVolume <= volume)){
+                stopVoice(victimId);
+                state.evictedVoices++;
+                root.setAttribute('data-mindustry-audio-voices-evicted', String(state.evictedVoices));
+            }else{
+                state.droppedVoices++;
+                root.setAttribute('data-mindustry-audio-voices-dropped', String(state.droppedVoices));
+                return -1;
+            }
+        }
+
         var id = state.nextVoice++;
         var voice = {
             id: id,
@@ -161,6 +195,7 @@
             pitch: pitch,
             pan: pan,
             loop: loop,
+            protected: false,
             paused: false,
             started: false,
             source: null,
@@ -183,6 +218,11 @@
         if(!voice) return;
         try{ if(voice.source) voice.source.stop(); }catch(ignored){}
         state.voices.delete(id);
+    }
+
+    function protectVoice(id, protect){
+        var voice = state.voices.get(id);
+        if(voice) voice.protected = !!protect;
     }
 
     function stopSound(url){
@@ -370,6 +410,7 @@
         soundLength: function(url){ return state.durations.has(url) ? state.durations.get(url) : 0; },
         voicePlaying: function(id){ return state.voices.has(id); },
         stopVoice: stopVoice,
+        protectVoice: protectVoice,
         pauseVoice: pauseVoice,
         loopVoice: loopVoice,
         pitchVoice: pitchVoice,
