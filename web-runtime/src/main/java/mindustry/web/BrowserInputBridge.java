@@ -83,6 +83,8 @@ public final class BrowserInputBridge{
         const downCodes = new Set();
         const pointerSlots = new Map();
         const pendingMoves = new Map();
+        const movePoints = Array.from({length: 10}, () => [0, 0]);
+        const eventPoint = [0, 0];
         let moveFramePending = false;
 
         const flushMoves = () => {
@@ -97,17 +99,16 @@ public final class BrowserInputBridge{
             requestAnimationFrame(flushMoves);
         };
 
-        const coords = event => {
+        const coordsInto = (event, out) => {
             // The game canvas is fixed to the viewport. PointerEvent offset coordinates are
-            // already target-relative, so avoid getBoundingClientRect()/layout reads on every
-            // pointermove. BrowserCanvas keeps CSS dimensions cached on resize.
+            // already target-relative, so avoid layout reads and per-event coordinate arrays.
             const width = Math.max(1, canvas.__mindustryClientWidth | 0);
             const height = Math.max(1, canvas.__mindustryClientHeight | 0);
             const ox = Number.isFinite(event.offsetX) ? event.offsetX : event.clientX;
             const oy = Number.isFinite(event.offsetY) ? event.offsetY : event.clientY;
-            const x = Math.max(0, Math.min(width, Math.floor(ox)));
-            const y = Math.max(0, Math.min(height, Math.floor(height - oy)));
-            return [x, y];
+            out[0] = Math.max(0, Math.min(width, Math.floor(ox)));
+            out[1] = Math.max(0, Math.min(height, Math.floor(height - oy)));
+            return out;
         };
 
         const findSlot = (event, create) => {
@@ -166,7 +167,7 @@ public final class BrowserInputBridge{
         canvas.addEventListener('pointerdown', event => {
             const slot = findSlot(event, true);
             if (slot < 0) return;
-            const p = coords(event);
+            const p = coordsInto(event, eventPoint);
             pendingMoves.delete(slot);
             try { canvas.setPointerCapture(event.pointerId); } catch (_) {}
             canvas.focus({preventScroll: true});
@@ -177,7 +178,9 @@ public final class BrowserInputBridge{
         canvas.addEventListener('pointermove', event => {
             const slot = findSlot(event, false);
             if (slot < 0) return;
-            pendingMoves.set(slot, coords(event));
+            const p = movePoints[slot];
+            coordsInto(event, p);
+            pendingMoves.set(slot, p);
             scheduleMoveFlush();
             event.preventDefault();
         }, {passive: false});
@@ -185,7 +188,7 @@ public final class BrowserInputBridge{
         const finishPointer = event => {
             const slot = findSlot(event, false);
             if (slot < 0) return;
-            const p = coords(event);
+            const p = coordsInto(event, eventPoint);
             // Preserve the final drag coordinate even when several DOM moves were
             // collapsed into this browser frame.
             pendingMoves.delete(slot);
@@ -207,6 +210,7 @@ public final class BrowserInputBridge{
         document.documentElement.dataset.mindustryInput = 'ready';
         document.documentElement.setAttribute('data-mindustry-input-coordinates', 'offset-cached');
         document.documentElement.setAttribute('data-mindustry-input-move-policy', 'raf-coalesced');
+        document.documentElement.setAttribute('data-mindustry-input-move-buffer', 'reused-slot');
         """)
     private static native void installNative(String canvasId, KeyDownCallback keyDown, KeyUpCallback keyUp,
                                               PointerCallback pointerDown, PointerCallback pointerUp,
