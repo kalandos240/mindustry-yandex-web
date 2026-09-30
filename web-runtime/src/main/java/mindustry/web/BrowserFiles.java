@@ -75,6 +75,24 @@ public final class BrowserFiles implements Files{
 
     String text(String path, FileType type){ return new String(bytes(path, type), StandardCharsets.UTF_8); }
 
+    byte[] streamBytes(String path, FileType type){
+        // ByteArrayInputStream is read-only from Arc's perspective. Internal/classpath
+        // assets are immutable, so streaming decoders can consume the cached array
+        // directly instead of cloning multi-megabyte PNG/MSAV payloads first.
+        if(type == FileType.local) return bytes(path, type);
+
+        String normalized = normalize(path);
+        byte[] binary = binaryAssets.get(normalized);
+        if(binary == null){
+            String text = textAssets.get(normalized);
+            if(text != null) return text.getBytes(StandardCharsets.UTF_8);
+            binary = requestPreloadedBytes(assetUrl(normalized));
+            if(binary == null) throw new IllegalStateException("Browser asset is not packaged/preloaded: " + path);
+            binaryAssets.put(normalized, binary);
+        }
+        return binary;
+    }
+
     byte[] bytes(String path, FileType type){
         String normalized = normalize(path);
         if(type == FileType.local){
