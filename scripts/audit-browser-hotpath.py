@@ -461,6 +461,15 @@ require(LOCAL_MAP, "private static final int perfMobileEffectBurst = 640", "mobi
 require(LOCAL_MAP, "droppedEffects <= 0", "mobile particle cap assertion")
 require(LOCAL_MAP, "Effect.webResetEffectBudget()", "local map effect budget reset")
 
+# Browser SFX must not create an unbounded WebAudio node graph on mobile.
+require(BROWSER_AUDIO_JS, "state.maxVoices = inputMode === 'mobile' ? 48 : 0", "mobile SFX voice cap")
+require(BROWSER_AUDIO_JS, "voice.loop || voice.protected", "mobile SFX protected/loop preservation")
+require(BROWSER_AUDIO_JS, "victimVolume <= volume", "mobile SFX quietest-voice eviction")
+require(BROWSER_AUDIO_JS, "data-mindustry-audio-voice-policy", "mobile SFX cap telemetry")
+require(BROWSER_AUDIO_JS, "protectVoice: protectVoice", "mobile SFX protected voice API")
+require(BROWSER_AUDIO, "if(initialized) protectVoice(voice, protect);", "BrowserAudio protect bridge")
+require(BROWSER_AUDIO, "window.__mindustryAudioApi.protectVoice(id, protect)", "BrowserAudio protect JS bridge")
+
 if failures:
     print("Browser hot-path audit: FAIL")
     for failure in failures:
