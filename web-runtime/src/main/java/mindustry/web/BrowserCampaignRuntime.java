@@ -512,6 +512,7 @@ public final class BrowserCampaignRuntime{
         long expectedBytes = sector.save.file.length();
 
         sector.planet.setLastSector(sector);
+        mindustry.entities.Effect.webResetEffectBudget();
         diagPhase("sector-load");
         sector.save.load(world.makeSectorContext(sector));
         sector.save.setAutosave(true);
