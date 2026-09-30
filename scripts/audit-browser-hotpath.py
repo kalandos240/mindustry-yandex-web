@@ -462,6 +462,9 @@ require(EFFECT_PATCH, "Effect.webEffectRemoved()", "Web effect removal accountin
 require(LAUNCHER, "int effectBudget = mobileMode ? 512 : 0", "mobile effect budget profile")
 require(LAUNCHER, "data-mindustry-renderer-effect-budget-policy", "mobile effect budget telemetry")
 require(LOCAL_MAP, "private static final int perfMobileEffectBurst = 640", "mobile particle burst smoke")
+require(LOCAL_MAP, "int[] audioVoices = new int[64]", "browser SFX voice burst smoke")
+require(LOCAL_MAP, "audioAccepted != 48 || audioDropped != 16 || activeAudioVoices != 48", "mobile SFX cap behavior")
+require(LOCAL_MAP, "audioAccepted != 64 || audioDropped != 0 || activeAudioVoices != 64", "desktop SFX unlimited behavior")
 require(LOCAL_MAP, "droppedEffects <= 0", "mobile particle cap assertion")
 require(LOCAL_MAP, "Effect.webResetEffectBudget()", "local map effect budget reset")
 
