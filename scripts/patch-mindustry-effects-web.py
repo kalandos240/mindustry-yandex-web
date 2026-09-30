@@ -71,19 +71,31 @@ if method_anchor not in effect:
     raise SystemExit("Effect Web budget method anchor changed")
 effect = effect.replace(method_anchor, method_new, 1)
 
+create_anchor = """        if(Core.camera.bounds(Tmp.r1).overlaps(Tmp.r2.setCentered(x, y, clip))){
+            if(!initialized){
+"""
+create_new = """        if(Core.camera.bounds(Tmp.r1).overlaps(Tmp.r2.setCentered(x, y, clip))){
+            // Reserve a visual slot before scheduling delayed effects. This prevents
+            // particle bursts from flooding Time.run() only to be discarded later.
+            if(webMaxActiveEffects > 0 && webActiveEffects >= webMaxActiveEffects){
+                webDroppedEffects++;
+                return;
+            }
+            if(webMaxActiveEffects > 0) webActiveEffects++;
+
+            if(!initialized){
+"""
+if create_anchor not in effect:
+    raise SystemExit("Effect.create Web budget anchor changed")
+effect = effect.replace(create_anchor, create_new, 1)
+
 add_anchor = """    protected void add(float x, float y, float rotation, Color color, Object data){
         var entity = EffectState.create();
         entity.effect = this;
 """
 add_new = """    protected void add(float x, float y, float rotation, Color color, Object data){
-        if(webMaxActiveEffects > 0 && webActiveEffects >= webMaxActiveEffects){
-            webDroppedEffects++;
-            return;
-        }
-
         var entity = EffectState.create();
         entity.webBudgetCounted = webMaxActiveEffects > 0;
-        if(entity.webBudgetCounted) webActiveEffects++;
         entity.effect = this;
 """
 if add_anchor not in effect:
