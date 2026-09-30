@@ -116,7 +116,9 @@ run_load(){
     --require 'data-mindustry-pause-policy="event-driven-64-frame-fallback"' \
     --require 'data-mindustry-input-coordinates="offset-cached"' \
     --require 'data-mindustry-input-move-policy="raf-coalesced"' \
+    --require 'data-mindustry-input-move-buffer="reused-slot"' \
     --require 'data-mindustry-assets-status-policy="batch-16"' \
+    --require 'data-mindustry-assets-cache-policy="transfer-on-read"' \
     --require 'data-mindustry-assets-deferred-campaign="44"' \
     --require 'data-mindustry-campaign-assets-policy="idle-background"' \
     --require 'data-mindustry-campaign-assets-worker-policy="adaptive-2-mobile-4-desktop"' \
@@ -146,6 +148,8 @@ run_load(){
   grep -Eq 'data-mindustry-perf-dropped-effects="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-local-map-update-id="[1-9][0-9]{2,}"' "$dom"
   grep -Eq 'data-mindustry-campaign-assets-bytes="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-assets-transferred="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-assets-transferred-bytes="[1-9][0-9]*"' "$dom"
 
   local elapsed fps eager status_updates max_status_updates
   elapsed="$(attr "$dom" data-mindustry-perf-elapsed-ms)"
