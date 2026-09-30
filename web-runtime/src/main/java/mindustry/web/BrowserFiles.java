@@ -73,7 +73,25 @@ public final class BrowserFiles implements Files{
     @Override public String getLocalStoragePath(){ return "mindustry/"; }
     @Override public boolean isLocalStorageAvailable(){ return persistentStorageReady(); }
 
-    String text(String path, FileType type){ return new String(bytes(path, type), StandardCharsets.UTF_8); }
+    String text(String path, FileType type){
+        if(type == FileType.local) return new String(bytes(path, type), StandardCharsets.UTF_8);
+
+        String normalized = normalize(path);
+        String cached = textAssets.get(normalized);
+        if(cached != null) return cached;
+
+        // Internal/classpath assets are immutable. Decode their cached/preloaded bytes
+        // directly instead of cloning the whole payload through bytes() first.
+        byte[] binary = binaryAssets.get(normalized);
+        if(binary == null){
+            binary = requestPreloadedBytes(assetUrl(normalized));
+            if(binary == null) throw new IllegalStateException("Browser text asset is not packaged/preloaded: " + path);
+            binaryAssets.put(normalized, binary);
+        }
+        String decoded = new String(binary, StandardCharsets.UTF_8);
+        textAssets.put(normalized, decoded);
+        return decoded;
+    }
 
     byte[] streamBytes(String path, FileType type){
         // ByteArrayInputStream is read-only from Arc's perspective. Internal/classpath
