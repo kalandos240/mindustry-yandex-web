@@ -8,8 +8,10 @@
     let initPromise = null;
     let writeGeneration = 0;
     let flushGeneration = -1;
+    let durableGeneration = -1;
     let flushPromise = null;
     let flushTransactions = 0;
+    let flushSkips = 0;
     let mutationTx = null;
     let mutationStoreRef = null;
     let mutationTransactions = 0;
@@ -214,6 +216,11 @@
             if(flushGeneration >= targetGeneration) return flushPromise;
             return flushPromise.then(() => flush());
         }
+        if(durableGeneration >= targetGeneration){
+            flushSkips++;
+            document.documentElement.setAttribute('data-mindustry-storage-flush-skips', String(flushSkips));
+            return Promise.resolve();
+        }
 
         flushGeneration = targetGeneration;
         flushTransactions++;
@@ -230,6 +237,8 @@
 
         flushPromise = pending.then(
             value => {
+                durableGeneration = Math.max(durableGeneration, targetGeneration);
+                document.documentElement.setAttribute('data-mindustry-storage-durable-generation', String(durableGeneration));
                 flushPromise = null;
                 return value;
             },
