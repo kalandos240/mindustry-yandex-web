@@ -284,6 +284,30 @@ public final class BrowserLocalMapRuntime{
             throw new IllegalStateException("Browser particle perf smoke requires live renderer effects");
         }
 
+        // Deterministically exercise the browser SFX voice budget without waiting for
+        // autoplay unlock/decoding. Voice ownership is registered synchronously.
+        int[] audioVoices = new int[64];
+        int audioAccepted = 0, audioDropped = 0;
+        for(int i = 0; i < audioVoices.length; i++){
+            int voice = BrowserAudio.playSound("assets/sounds/ui/uiButton.ogg", 0.2f, 1f, 0f, true);
+            audioVoices[i] = voice;
+            if(voice >= 0) audioAccepted++;
+            else audioDropped++;
+        }
+        int activeAudioVoices = Core.audio.countTotalPlaying();
+        if(mobile){
+            if(audioAccepted != 48 || audioDropped != 16 || activeAudioVoices != 48){
+                throw new IllegalStateException("Mobile SFX voice cap mismatch: accepted=" + audioAccepted
+                    + " dropped=" + audioDropped + " active=" + activeAudioVoices);
+            }
+        }else if(audioAccepted != 64 || audioDropped != 0 || activeAudioVoices != 64){
+            throw new IllegalStateException("Desktop SFX voice path must remain unlimited: accepted=" + audioAccepted
+                + " dropped=" + audioDropped + " active=" + activeAudioVoices);
+        }
+        for(int voice : audioVoices){
+            if(voice >= 0) Core.audio.stop(voice);
+        }
+
         int burst = 0;
         if(mobile){
             burst = perfMobileEffectBurst;
@@ -297,7 +321,7 @@ public final class BrowserLocalMapRuntime{
             }
         }
 
-        markPerfStarted(perfUnits, perfTargetFrames, perfTargetEffects, burst);
+        markPerfStarted(perfUnits, perfTargetFrames, perfTargetEffects, burst, audioAccepted, audioDropped);
     }
 
     private static void stagePerfEffects(){
@@ -875,8 +899,8 @@ public final class BrowserLocalMapRuntime{
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-loop', 'live'); document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames));")
     private static native void markLive(int frames);
 
-    @JSBody(params = {"units", "targetFrames", "targetEffects", "effectBurst"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames)); root.setAttribute('data-mindustry-perf-effects-target',String(targetEffects)); root.setAttribute('data-mindustry-perf-effect-kind','drillSteam'); root.setAttribute('data-mindustry-perf-effect-burst',String(effectBurst)); root.setAttribute('data-mindustry-perf-control-path-policy','stock-30hz');")
-    private static native void markPerfStarted(int units, int targetFrames, int targetEffects, int effectBurst);
+    @JSBody(params = {"units", "targetFrames", "targetEffects", "effectBurst", "audioAccepted", "audioDropped"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames)); root.setAttribute('data-mindustry-perf-effects-target',String(targetEffects)); root.setAttribute('data-mindustry-perf-effect-kind','drillSteam'); root.setAttribute('data-mindustry-perf-effect-burst',String(effectBurst)); root.setAttribute('data-mindustry-perf-audio-voices-accepted',String(audioAccepted)); root.setAttribute('data-mindustry-perf-audio-voices-dropped',String(audioDropped)); root.setAttribute('data-mindustry-perf-control-path-policy','stock-30hz');")
+    private static native void markPerfStarted(int units, int targetFrames, int targetEffects, int effectBurst, int audioAccepted, int audioDropped);
 
     @JSBody(params = {"frames", "units", "effects", "sortCalls", "maxRequests", "maxRuns", "fastPaths", "controlPathSteps", "effectBudget", "activeEffects", "droppedEffects"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-effects',String(effects)); root.setAttribute('data-mindustry-perf-sort-calls',String(sortCalls)); root.setAttribute('data-mindustry-perf-sort-max-requests',String(maxRequests)); root.setAttribute('data-mindustry-perf-sort-max-runs',String(maxRuns)); root.setAttribute('data-mindustry-perf-sort-fast-paths',String(fastPaths)); root.setAttribute('data-mindustry-perf-control-path-steps',String(controlPathSteps)); root.setAttribute('data-mindustry-perf-effect-budget',String(effectBudget)); root.setAttribute('data-mindustry-perf-active-effects',String(activeEffects)); root.setAttribute('data-mindustry-perf-dropped-effects',String(droppedEffects)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
     private static native void markPerfReady(int frames, int units, int effects, int sortCalls, int maxRequests, int maxRuns, int fastPaths, int controlPathSteps, int effectBudget, int activeEffects, int droppedEffects);
