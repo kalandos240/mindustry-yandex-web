@@ -48,14 +48,14 @@ public final class BrowserFiles implements Files{
 
     public void preloadText(String path){
         String normalized = normalize(path);
-        byte[] bytes = requestPreloadedBytes(assetUrl(normalized));
+        byte[] bytes = takePreloadedBytes(assetUrl(normalized));
         if(bytes == null) throw new IllegalStateException("Browser text asset was not preloaded by HTML bootstrap: " + normalized);
         textAssets.put(normalized, new String(bytes, StandardCharsets.UTF_8));
     }
 
     public void preloadBinary(String path){
         String normalized = normalize(path);
-        byte[] bytes = requestPreloadedBytes(assetUrl(normalized));
+        byte[] bytes = takePreloadedBytes(assetUrl(normalized));
         if(bytes == null) throw new IllegalStateException("Browser binary asset was not preloaded by HTML bootstrap: " + normalized);
         binaryAssets.put(normalized, bytes);
     }
@@ -84,7 +84,7 @@ public final class BrowserFiles implements Files{
         // directly instead of cloning the whole payload through bytes() first.
         byte[] binary = binaryAssets.get(normalized);
         if(binary == null){
-            binary = requestPreloadedBytes(assetUrl(normalized));
+            binary = takePreloadedBytes(assetUrl(normalized));
             if(binary == null) throw new IllegalStateException("Browser text asset is not packaged/preloaded: " + path);
             binaryAssets.put(normalized, binary);
         }
@@ -104,7 +104,7 @@ public final class BrowserFiles implements Files{
         if(binary == null){
             String text = textAssets.get(normalized);
             if(text != null) return text.getBytes(StandardCharsets.UTF_8);
-            binary = requestPreloadedBytes(assetUrl(normalized));
+            binary = takePreloadedBytes(assetUrl(normalized));
             if(binary == null) throw new IllegalStateException("Browser asset is not packaged/preloaded: " + path);
             binaryAssets.put(normalized, binary);
         }
@@ -126,7 +126,7 @@ public final class BrowserFiles implements Files{
         if(binary == null){
             String text = textAssets.get(normalized);
             if(text != null) return text.getBytes(StandardCharsets.UTF_8);
-            binary = requestPreloadedBytes(assetUrl(normalized));
+            binary = takePreloadedBytes(assetUrl(normalized));
             if(binary == null) throw new IllegalStateException("Browser asset is not packaged/preloaded: " + path);
             binaryAssets.put(normalized, binary);
         }
@@ -245,8 +245,21 @@ public final class BrowserFiles implements Files{
     private static byte[] copy(byte[] value){ byte[] result = new byte[value.length]; System.arraycopy(value, 0, result, 0, value.length); return result; }
     private static String trimSlashes(String value){ value = value.replace('\\', '/'); while(value.startsWith("/")) value = value.substring(1); while(value.endsWith("/")) value = value.substring(0, value.length() - 1); return value; }
 
-    @JSBody(params = {"url"}, script = "const cache = globalThis.__mindustryAssetCache; return cache && cache[url] ? cache[url] : null;")
-    private static native byte[] requestPreloadedBytes(String url);
+    @JSBody(params = {"url"}, script = """
+        const cache = globalThis.__mindustryAssetCache;
+        const value = cache && cache[url] ? cache[url] : null;
+        if (value) {
+            delete cache[url];
+            const root = document.documentElement;
+            const count = Number(root.getAttribute('data-mindustry-assets-transferred') || 0) + 1;
+            const bytes = Number(root.getAttribute('data-mindustry-assets-transferred-bytes') || 0) + Number(value.byteLength || 0);
+            root.setAttribute('data-mindustry-assets-cache-policy', 'transfer-on-read');
+            root.setAttribute('data-mindustry-assets-transferred', String(count));
+            root.setAttribute('data-mindustry-assets-transferred-bytes', String(bytes));
+        }
+        return value;
+        """)
+    private static native byte[] takePreloadedBytes(String url);
     @JSBody(params = {"path"}, script = "const manifest = globalThis.__mindustryAssetManifest || []; return manifest.indexOf(path) !== -1;")
     private static native boolean hasPackagedAsset(String path);
     @JSBody(script = "return globalThis.__mindustryAssetManifest || [];")
