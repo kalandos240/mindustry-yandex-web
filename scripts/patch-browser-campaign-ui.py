@@ -389,6 +389,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         // Web: one throttled updater for all Serpulo/general campaign labels.
         // This replaces per-Actor update callbacks while preserving the same state logic.
         campaignProgress.update(() -> {
+            if(state == null || !state.isMenu()) return;
             int frame = ++campaignUiRefreshFrame[0];
             if((frame & 7) != 0) return;
             if((frame & 31) == 0){
@@ -1012,6 +1013,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         };
         erekirProgress.setDisabled(erekirProgressDisabled.get());
         erekirProgress.update(() -> {
+            if(state == null || !state.isMenu()) return;
             if((campaignUiRefreshFrame[0] & 7) != 0) return;
             erekirProgress.setDisabled(erekirProgressDisabled.get());
             if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.onset)){
