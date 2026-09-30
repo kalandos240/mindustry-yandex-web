@@ -41,6 +41,13 @@ def forbid(source: str, needle: str, where: str) -> None:
     if needle in source:
         failures.append(f"{where}: forbidden hot-path pattern present: {needle}")
 
+require(INDEX_HTML, "globalThis.__mindustryAssetSet = new Set(manifest)", "packaged asset O1 index")
+require(INDEX_HTML, "data-mindustry-asset-index', 'set", "packaged asset O1 index telemetry")
+require(BROWSER_FILES, "const set = globalThis.__mindustryAssetSet; return set ? set.has(path) : false;", "packaged asset O1 existence")
+forbid(BROWSER_FILES, "manifest.indexOf(path)", "linear packaged asset existence")
+require(BROWSER_FILES, "private final String[] packagedAssetPaths;", "cached packaged path list")
+require(BROWSER_FILES, "this.packagedAssetPaths = packagedPaths();", "cached packaged path list")
+require(BROWSER_FILES, "type == FileType.local ? localPaths() : packagedAssetPaths", "cached packaged path list")
 require(INDEX_HTML, "const preloadWorkerCap = touchMobile ? 4 : 8", "adaptive eager preload concurrency")
 require(INDEX_HTML, "data-mindustry-assets-preload-worker-policy', 'adaptive-4-mobile-8-desktop", "adaptive eager preload telemetry")
 require(INDEX_HTML, "const campaignWorkerCap = touchMobile ? 2 : 4", "adaptive campaign warmup concurrency")
