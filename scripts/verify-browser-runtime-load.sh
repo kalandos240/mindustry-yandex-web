@@ -53,6 +53,8 @@ run_load(){
   local effect_burst="0"
   local audio_voice_cap="0"
   local audio_voice_policy="desktop-unlimited"
+  local audio_buffer_cap="0"
+  local audio_buffer_policy="desktop-unlimited"
   local audio_accepted="64"
   local audio_dropped="0"
   local preload_workers="8"
@@ -71,6 +73,8 @@ run_load(){
     effect_burst="640"
     audio_voice_cap="48"
     audio_voice_policy="mobile-quietest-unprotected-48"
+    audio_buffer_cap="64"
+    audio_buffer_policy="mobile-lru-64"
     audio_accepted="48"
     audio_dropped="16"
     preload_workers="4"
@@ -91,6 +95,8 @@ run_load(){
     --require 'data-mindustry-audio-validation="skipped-production"' \
     --require "data-mindustry-audio-voice-cap=\"${audio_voice_cap}\"" \
     --require "data-mindustry-audio-voice-policy=\"${audio_voice_policy}\"" \
+    --require "data-mindustry-audio-buffer-cap=\"${audio_buffer_cap}\"" \
+    --require "data-mindustry-audio-buffer-policy=\"${audio_buffer_policy}\"" \
     --require 'data-mindustry-game-state-selftest="skipped-production"' \
     --require 'data-mindustry-smoke-mode="production"' \
     --require "data-mindustry-input-mode=\"${input_mode}\"" \
