@@ -84,7 +84,7 @@ public final class BrowserAudio extends Audio{
 
     @Override
     public void protect(int voice, boolean protect){
-        // Browser voices are explicitly owned and are never mixer-stolen.
+        if(initialized) protectVoice(voice, protect);
     }
 
     @Override
@@ -254,6 +254,9 @@ public final class BrowserAudio extends Audio{
 
     @JSBody(params = {"id"}, script = "window.__mindustryAudioApi.stopVoice(id);")
     private static native void stopVoice(int id);
+
+    @JSBody(params = {"id", "protect"}, script = "window.__mindustryAudioApi.protectVoice(id, protect);")
+    private static native void protectVoice(int id, boolean protect);
 
     @JSBody(params = {"id", "paused"}, script = "window.__mindustryAudioApi.pauseVoice(id, paused);")
     private static native void pauseVoice(int id, boolean paused);
