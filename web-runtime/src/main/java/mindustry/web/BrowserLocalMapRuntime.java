@@ -157,6 +157,7 @@ public final class BrowserLocalMapRuntime{
         telemetry = smokeTelemetryRequested();
         diagPhase("reset");
         logic.reset();
+        mindustry.entities.Effect.webResetEffectBudget();
 
         Rules rules = map.applyRules(Gamemode.survival);
         stageCoreRules(rules);
