@@ -10,8 +10,6 @@ LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web"
 LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
 EFFECT_PATCH = (ROOT / "scripts" / "patch-mindustry-effects-web.py").read_text(encoding="utf-8")
-APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
-LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 CAMPAIGN_UI = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
 CAMPAIGN_RUNTIME = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
 WEB_LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "WebClientLauncher.java").read_text(encoding="utf-8")
@@ -469,6 +467,21 @@ require(BROWSER_AUDIO_JS, "data-mindustry-audio-voice-policy", "mobile SFX cap t
 require(BROWSER_AUDIO_JS, "protectVoice: protectVoice", "mobile SFX protected voice API")
 require(BROWSER_AUDIO, "if(initialized) protectVoice(voice, protect);", "BrowserAudio protect bridge")
 require(BROWSER_AUDIO, "window.__mindustryAudioApi.protectVoice(id, protect)", "BrowserAudio protect JS bridge")
+
+# Packaged internal assets are immutable. Stream decoders (PNG/atlas/MSAV) must consume
+# their cached byte[] directly, while public readBytes() keeps copy isolation.
+require(BROWSER_FI, "new ByteArrayInputStream(files.streamBytes(browserPath, type))", "packaged Fi stream zero-copy")
+require(BROWSER_FILES, "byte[] streamBytes(String path, FileType type)", "packaged stream buffer API")
+require(BROWSER_FILES, "if(type == FileType.local) return bytes(path, type);", "local stream isolation")
+stream_start = BROWSER_FILES.index("byte[] streamBytes(String path, FileType type)")
+stream_end = BROWSER_FILES.index("byte[] bytes(String path, FileType type)", stream_start)
+stream_body = BROWSER_FILES[stream_start:stream_end]
+require(stream_body, "return binary;", "packaged stream direct buffer")
+forbid(stream_body, "return copy(binary);", "packaged stream zero-copy")
+bytes_start = stream_end
+bytes_end = BROWSER_FILES.index("void putLocal(", bytes_start)
+bytes_body = BROWSER_FILES[bytes_start:bytes_end]
+require(bytes_body, "return copy(binary);", "public packaged readBytes isolation")
 
 # IndexedDB hot paths: adopt hydrated buffers without cloning and share one readwrite
 # transaction across synchronous SaveIO file mutations in the same browser task.
