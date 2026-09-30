@@ -5,6 +5,10 @@
     var state = global.__mindustryAudio || (global.__mindustryAudio = {
         ctx: null,
         buffers: new Map(),
+        decodedBuffers: new Set(),
+        bufferAccess: new Map(),
+        bufferClock: 0,
+        maxDecodedBuffers: 0,
         durations: new Map(),
         voices: new Map(),
         music: new Map(),
@@ -23,8 +27,37 @@
         root.setAttribute('data-mindustry-audio-error', String(error).replace(/\s+/g, ' ').slice(0, 500));
     }
 
+    function bufferInUse(url){
+        var active = false;
+        state.voices.forEach(function(voice){
+            if(voice.url === url) active = true;
+        });
+        return active;
+    }
+
+    function trimDecodedBuffers(keepUrl){
+        if(!(state.maxDecodedBuffers > 0)) return;
+        while(state.decodedBuffers.size > state.maxDecodedBuffers){
+            var victim = null;
+            var oldest = Infinity;
+            state.decodedBuffers.forEach(function(url){
+                if(url === keepUrl || bufferInUse(url)) return;
+                var access = state.bufferAccess.get(url) || 0;
+                if(access < oldest){
+                    oldest = access;
+                    victim = url;
+                }
+            });
+            if(victim == null) return;
+            state.decodedBuffers.delete(victim);
+            state.bufferAccess.delete(victim);
+            state.buffers.delete(victim);
+        }
+    }
+
     function decode(url){
         var pending = state.buffers.get(url);
+        state.bufferAccess.set(url, ++state.bufferClock);
         if(pending) return pending;
 
         pending = fetch(url)
@@ -39,11 +72,18 @@
             })
             .then(function(buffer){
                 state.durations.set(url, buffer.duration || 0);
+                state.decodedBuffers.add(url);
+                state.bufferAccess.set(url, ++state.bufferClock);
+                trimDecodedBuffers(url);
                 return buffer;
             });
 
         state.buffers.set(url, pending);
-        pending.catch(function(){ state.buffers.delete(url); });
+        pending.catch(function(){
+            state.buffers.delete(url);
+            state.decodedBuffers.delete(url);
+            state.bufferAccess.delete(url);
+        });
         return pending;
     }
 
@@ -129,9 +169,13 @@
         state.startVoice = startVoice;
         var inputMode = root.getAttribute('data-mindustry-input-mode') || 'desktop';
         state.maxVoices = inputMode === 'mobile' ? 48 : 0;
+        state.maxDecodedBuffers = inputMode === 'mobile' ? 64 : 0;
         state.evictedVoices = 0;
         state.droppedVoices = 0;
         root.setAttribute('data-mindustry-audio-voice-cap', String(state.maxVoices));
+        root.setAttribute('data-mindustry-audio-buffer-cap', String(state.maxDecodedBuffers));
+        root.setAttribute('data-mindustry-audio-buffer-policy',
+            state.maxDecodedBuffers > 0 ? 'mobile-lru-64' : 'desktop-unlimited');
         root.setAttribute('data-mindustry-audio-voice-policy',
             state.maxVoices > 0 ? 'mobile-quietest-unprotected-48' : 'desktop-unlimited');
         unlockEvents.forEach(function(type){
@@ -313,6 +357,10 @@
         state.voices.forEach(function(voice, id){ ids.push(id); });
         ids.forEach(stopVoice);
         state.voices.clear();
+        state.buffers.clear();
+        state.decodedBuffers.clear();
+        state.bufferAccess.clear();
+        state.bufferClock = 0;
 
         state.music.forEach(function(entry){
             entry.element.pause();
