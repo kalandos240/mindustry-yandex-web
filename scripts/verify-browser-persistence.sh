@@ -37,6 +37,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --port 9228 \
   --timeout 40 \
   --require 'data-mindustry-storage="ready"' \
+  --require 'data-mindustry-storage-hydration-policy="adopt-idb-buffer"' \
+  --require 'data-mindustry-storage-write-policy="task-coalesced-readwrite"' \
   --require 'data-mindustry-save-validation="ci-full"' \
   --require 'data-mindustry-saveio-meta="ready"' \
   --require 'data-mindustry-saveio-full="ready"' \
@@ -82,6 +84,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --port 9229 \
   --timeout 40 \
   --require 'data-mindustry-storage="ready"' \
+  --require 'data-mindustry-storage-hydration-policy="adopt-idb-buffer"' \
   --require 'data-mindustry-save-validation="ci-full"' \
   --require 'data-mindustry-saveio-meta="ready"' \
   --require 'data-mindustry-saveio-full="ready"' \
