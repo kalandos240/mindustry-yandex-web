@@ -16,12 +16,14 @@ public final class BrowserFiles implements Files{
     private static final byte[] persistenceProbeBytes = {0, 1, 2, 127, -1, 77, 83, 65};
 
     private final String assetRoot;
+    private final String[] packagedAssetPaths;
     private final Map<String, String> textAssets = new LinkedHashMap<>();
     private final Map<String, byte[]> binaryAssets = new LinkedHashMap<>();
     private final Set<String> localDirectories = new LinkedHashSet<>();
 
     public BrowserFiles(String assetRoot){
         this.assetRoot = trimSlashes(assetRoot == null ? "" : assetRoot);
+        this.packagedAssetPaths = packagedPaths();
         localDirectories.add("");
         if(persistentStorageReady()){
             for(String path : localPaths()) registerParents(path);
@@ -233,7 +235,7 @@ public final class BrowserFiles implements Files{
         for(String part : parts){ current = current.isEmpty() ? part : current + "/" + part; localDirectories.add(current); }
     }
 
-    private String[] paths(FileType type){ return type == FileType.local ? localPaths() : packagedPaths(); }
+    private String[] paths(FileType type){ return type == FileType.local ? localPaths() : packagedAssetPaths; }
     private String assetUrl(String normalized){ return assetRoot.isEmpty() ? normalized : assetRoot + "/" + normalized; }
 
     static String normalize(String path){
