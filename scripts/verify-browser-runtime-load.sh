@@ -136,6 +136,7 @@ run_load(){
     --require 'data-mindustry-assets-preload-worker-policy="adaptive-4-mobile-8-desktop"' \
     --require "data-mindustry-assets-preload-workers=\"${preload_workers}\"" \
     --require 'data-mindustry-assets-cache-policy="transfer-on-read-batched"' \
+    --require 'data-mindustry-asset-index="set"' \
     --require 'data-mindustry-assets-deferred-campaign="44"' \
     --require 'data-mindustry-campaign-assets-policy="idle-background"' \
     --require 'data-mindustry-campaign-assets-worker-policy="adaptive-2-mobile-4-desktop"' \
