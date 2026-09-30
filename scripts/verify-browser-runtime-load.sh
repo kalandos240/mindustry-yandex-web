@@ -125,7 +125,7 @@ run_load(){
     --require 'data-mindustry-input-move-policy="raf-coalesced"' \
     --require 'data-mindustry-input-move-buffer="reused-slot"' \
     --require 'data-mindustry-assets-status-policy="batch-16"' \
-    --require 'data-mindustry-assets-cache-policy="transfer-on-read"' \
+    --require 'data-mindustry-assets-cache-policy="transfer-on-read-batched"' \
     --require 'data-mindustry-assets-deferred-campaign="44"' \
     --require 'data-mindustry-campaign-assets-policy="idle-background"' \
     --require 'data-mindustry-campaign-assets-worker-policy="adaptive-2-mobile-4-desktop"' \
