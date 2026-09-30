@@ -477,6 +477,10 @@ require(BROWSER_AUDIO_JS, "data-mindustry-audio-voice-policy", "mobile SFX cap t
 require(BROWSER_AUDIO_JS, "protectVoice: protectVoice", "mobile SFX protected voice API")
 require(BROWSER_AUDIO, "if(initialized) protectVoice(voice, protect);", "BrowserAudio protect bridge")
 require(BROWSER_AUDIO, "window.__mindustryAudioApi.protectVoice(id, protect)", "BrowserAudio protect JS bridge")
+play_sound_start = BROWSER_AUDIO_JS.index("function playSound(")
+play_sound_end = BROWSER_AUDIO_JS.index("function stopVoice(", play_sound_start)
+play_sound_body = BROWSER_AUDIO_JS[play_sound_start:play_sound_end]
+forbid(play_sound_body, "root.setAttribute(", "saturated SFX voice path DOM writes")
 
 # Packaged internal assets are immutable. Stream decoders (PNG/atlas/MSAV) must consume
 # their cached byte[] directly, while public readBytes() keeps copy isolation.
@@ -484,7 +488,9 @@ require(BROWSER_FI, "new ByteArrayInputStream(files.streamBytes(browserPath, typ
 require(BROWSER_FILES, "byte[] streamBytes(String path, FileType type)", "packaged stream buffer API")
 require(BROWSER_FILES, "private static native byte[] takePreloadedBytes(String url)", "asset cache transfer API")
 require(BROWSER_FILES, "delete cache[url]", "asset cache release after Java adoption")
-require(BROWSER_FILES, "data-mindustry-assets-cache-policy', 'transfer-on-read", "asset cache transfer telemetry")
+require(BROWSER_FILES, "data-mindustry-assets-cache-policy', 'transfer-on-read-batched", "asset cache transfer telemetry")
+require(BROWSER_FILES, "queueMicrotask(() ->", "batched asset transfer telemetry")
+require(BROWSER_FILES, "__mindustryAssetTransferTelemetryPending", "batched asset transfer telemetry")
 forbid(BROWSER_FILES, "requestPreloadedBytes(", "retained JS asset-cache read API")
 require(BROWSER_FILES, "if(type == FileType.local) return bytes(path, type);", "local stream isolation")
 stream_start = BROWSER_FILES.index("byte[] streamBytes(String path, FileType type)")
@@ -519,6 +525,9 @@ require(BROWSER_STORAGE, "task-coalesced-readwrite", "IndexedDB write coalescing
 require(BROWSER_STORAGE, "mutate(store => store.put", "IndexedDB put coalescing")
 require(BROWSER_STORAGE, "mutate(store => store.delete", "IndexedDB delete coalescing")
 require(BROWSER_STORAGE, "TransactionInactiveError", "IndexedDB coalescing retry")
+require(BROWSER_STORAGE, "let durableGeneration = -1", "IndexedDB durable generation")
+require(BROWSER_STORAGE, "if(durableGeneration >= targetGeneration)", "IndexedDB redundant flush fast path")
+require(BROWSER_STORAGE, "durableGeneration = Math.max(durableGeneration, targetGeneration)", "IndexedDB durable generation commit")
 forbid(BROWSER_STORAGE, "transaction('readwrite').put(", "IndexedDB per-file put transaction")
 forbid(BROWSER_STORAGE, "transaction('readwrite').delete(", "IndexedDB per-file delete transaction")
 
