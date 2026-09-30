@@ -354,7 +354,7 @@ public final class BrowserLocalMapRuntime{
 
         diagPhase("logic");
         logic.updateWebPlayingCore();
-        if(state.wave > beforeWave){
+        if(testWaveExpected && state.wave > beforeWave){
             testWaveFired = true;
             markWaveFired(state.wave);
         }
@@ -401,7 +401,7 @@ public final class BrowserLocalMapRuntime{
                 state.wave, state.enemies, state.wavetime);
         }
 
-        if(pauseSmoke && !pauseSmokeArmed && frames == 1){
+        if(telemetry && pauseSmoke && !pauseSmokeArmed && frames == 1){
             pauseSmokeArmed = true;
             markPauseSmokeArmed();
             pause();
@@ -409,37 +409,42 @@ public final class BrowserLocalMapRuntime{
         }
 
         if(frames >= 3){
-            if(testWaveExpected && (!testWaveFired || state.wave <= testWaveStart)){
-                throw new IllegalStateException("Packaged-map smoke did not execute a real survival wave");
-            }
-            if(testWaveExpected && state.enemies <= 0){
-                throw new IllegalStateException("Packaged-map smoke wave produced no live enemy units");
-            }
-
-            if(saveSmoke && !saveSmokeArmed){
-                saveSmokeArmed = true;
-                saveLocalSession();
-                markSaveSmokeArmed();
-            }
-
-            if(gameOverSmoke && !gameOverSmokeArmed){
-                if(!state.rules.canGameOver || state.rules.defaultTeam.cores().isEmpty()){
-                    throw new IllegalStateException("Game-over smoke requires canGameOver and an existing default-team core");
+            if(telemetry){
+                if(testWaveExpected && (!testWaveFired || state.wave <= testWaveStart)){
+                    throw new IllegalStateException("Packaged-map smoke did not execute a real survival wave");
                 }
-                state.rules.defaultTeam.cores().clear();
-                gameOverSmokeArmed = true;
-                markGameOverSmokeArmed();
-            }
+                if(testWaveExpected && state.enemies <= 0){
+                    throw new IllegalStateException("Packaged-map smoke wave produced no live enemy units");
+                }
 
-            if(!gameOverFreeze){
-                if(telemetry) markLive(frames);
+                if(saveSmoke && !saveSmokeArmed){
+                    saveSmokeArmed = true;
+                    saveLocalSession();
+                    markSaveSmokeArmed();
+                }
+
+                if(gameOverSmoke && !gameOverSmokeArmed){
+                    if(!state.rules.canGameOver || state.rules.defaultTeam.cores().isEmpty()){
+                        throw new IllegalStateException("Game-over smoke requires canGameOver and an existing default-team core");
+                    }
+                    state.rules.defaultTeam.cores().clear();
+                    gameOverSmokeArmed = true;
+                    markGameOverSmokeArmed();
+                }
+
+                if(!gameOverFreeze){
+                    markLive(frames);
+                    maybePeriodicSave();
+                }
+
+                if(autoSaveExitSmoke){
+                    markAutoSaveExitSmokeArmed();
+                    returnToMenu();
+                    return;
+                }
+            }else if(!gameOverFreeze && (frames & 63) == 0){
+                // Three-minute autosave does not need a 60Hz interval check.
                 maybePeriodicSave();
-            }
-
-            if(autoSaveExitSmoke){
-                markAutoSaveExitSmokeArmed();
-                returnToMenu();
-                return;
             }
         }
         if(perfSmoke && !perfReady && frames >= perfTargetFrames){
