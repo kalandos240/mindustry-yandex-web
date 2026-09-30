@@ -51,6 +51,8 @@ run_load(){
   local effect_budget="0"
   local effect_policy="desktop-unlimited"
   local effect_burst="0"
+  local audio_voice_cap="0"
+  local audio_voice_policy="desktop-unlimited"
   local campaign_workers="4"
   if [ "$emulate_mobile" = "1" ]; then
     mobile_args+=(--emulate-mobile)
@@ -64,6 +66,8 @@ run_load(){
     effect_budget="512"
     effect_policy="mobile-active-cap"
     effect_burst="640"
+    audio_voice_cap="48"
+    audio_voice_policy="mobile-quietest-unprotected-48"
     campaign_workers="2"
   fi
 
@@ -78,6 +82,8 @@ run_load(){
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-save-validation="skipped-production"' \
     --require 'data-mindustry-audio-validation="skipped-production"' \
+    --require "data-mindustry-audio-voice-cap=\"${audio_voice_cap}\"" \
+    --require "data-mindustry-audio-voice-policy=\"${audio_voice_policy}\"" \
     --require 'data-mindustry-game-state-selftest="skipped-production"' \
     --require 'data-mindustry-smoke-mode="production"' \
     --require "data-mindustry-input-mode=\"${input_mode}\"" \
