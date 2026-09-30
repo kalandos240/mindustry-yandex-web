@@ -179,10 +179,8 @@
             if(victimId >= 0 && (loop || victimVolume <= volume)){
                 stopVoice(victimId);
                 state.evictedVoices++;
-                root.setAttribute('data-mindustry-audio-voices-evicted', String(state.evictedVoices));
             }else{
                 state.droppedVoices++;
-                root.setAttribute('data-mindustry-audio-voices-dropped', String(state.droppedVoices));
                 return -1;
             }
         }
