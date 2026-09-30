@@ -68,6 +68,7 @@ public final class BrowserLocalMapRuntime{
     private static final int perfTargetFrames = 120;
     private static final int perfEffectsPerFrame = 4;
     private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame;
+    private static final int perfMobileEffectBurst = 640;
 
     private BrowserLocalMapRuntime(){}
 
@@ -282,7 +283,19 @@ public final class BrowserLocalMapRuntime{
         if(!Fx.drillSteam.shouldCreate()){
             throw new IllegalStateException("Browser particle perf smoke requires live renderer effects");
         }
-        markPerfStarted(perfUnits, perfTargetFrames, perfTargetEffects);
+
+        int burst = 0;
+        if(mobile){
+            burst = perfMobileEffectBurst;
+            for(int i = 0; i < burst; i++){
+                float angle = (i * 137.50776f) % 360f;
+                float radius = 12f + (i % 24) * 4f;
+                Fx.drillSteam.at(centerX + arc.math.Angles.trnsx(angle, radius),
+                    centerY + arc.math.Angles.trnsy(angle, radius));
+            }
+        }
+
+        markPerfStarted(perfUnits, perfTargetFrames, perfTargetEffects, burst);
     }
 
     private static void stagePerfEffects(){
@@ -414,11 +427,24 @@ public final class BrowserLocalMapRuntime{
             if(controlPathSteps <= 0){
                 throw new IllegalStateException("Browser perf smoke did not execute ControlPathfinder worker steps");
             }
+
+            int effectBudget = mindustry.entities.Effect.webMaxActiveEffects();
+            int activeEffects = mindustry.entities.Effect.webActiveEffects();
+            int droppedEffects = mindustry.entities.Effect.webDroppedEffects();
+            if(mobile){
+                if(effectBudget != 512 || activeEffects > effectBudget || droppedEffects <= 0){
+                    throw new IllegalStateException("Mobile effect budget did not cap the particle burst: budget="
+                        + effectBudget + " active=" + activeEffects + " dropped=" + droppedEffects);
+                }
+            }else if(effectBudget != 0 || droppedEffects != 0){
+                throw new IllegalStateException("Desktop effect budget must stay unlimited");
+            }
+
             perfReady = true;
             markPerfReady(frames, perfUnits, perfEffects,
                 SpriteBatch.webSortCalls, SpriteBatch.webMaxSortRequests,
                 SpriteBatch.webMaxSortRuns, SpriteBatch.webSortedFastPaths,
-                controlPathSteps);
+                controlPathSteps, effectBudget, activeEffects, droppedEffects);
         }
     }
 
@@ -846,11 +872,11 @@ public final class BrowserLocalMapRuntime{
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-loop', 'live'); document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames));")
     private static native void markLive(int frames);
 
-    @JSBody(params = {"units", "targetFrames", "targetEffects"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames)); root.setAttribute('data-mindustry-perf-effects-target',String(targetEffects)); root.setAttribute('data-mindustry-perf-effect-kind','drillSteam'); root.setAttribute('data-mindustry-perf-control-path-policy','stock-30hz');")
-    private static native void markPerfStarted(int units, int targetFrames, int targetEffects);
+    @JSBody(params = {"units", "targetFrames", "targetEffects", "effectBurst"}, script = "var root=document.documentElement; root.__mindustryPerfStarted=performance.now(); root.setAttribute('data-mindustry-perf-smoke','running'); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-target-frames',String(targetFrames)); root.setAttribute('data-mindustry-perf-effects-target',String(targetEffects)); root.setAttribute('data-mindustry-perf-effect-kind','drillSteam'); root.setAttribute('data-mindustry-perf-effect-burst',String(effectBurst)); root.setAttribute('data-mindustry-perf-control-path-policy','stock-30hz');")
+    private static native void markPerfStarted(int units, int targetFrames, int targetEffects, int effectBurst);
 
-    @JSBody(params = {"frames", "units", "effects", "sortCalls", "maxRequests", "maxRuns", "fastPaths", "controlPathSteps"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-effects',String(effects)); root.setAttribute('data-mindustry-perf-sort-calls',String(sortCalls)); root.setAttribute('data-mindustry-perf-sort-max-requests',String(maxRequests)); root.setAttribute('data-mindustry-perf-sort-max-runs',String(maxRuns)); root.setAttribute('data-mindustry-perf-sort-fast-paths',String(fastPaths)); root.setAttribute('data-mindustry-perf-control-path-steps',String(controlPathSteps)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
-    private static native void markPerfReady(int frames, int units, int effects, int sortCalls, int maxRequests, int maxRuns, int fastPaths, int controlPathSteps);
+    @JSBody(params = {"frames", "units", "effects", "sortCalls", "maxRequests", "maxRuns", "fastPaths", "controlPathSteps", "effectBudget", "activeEffects", "droppedEffects"}, script = "var root=document.documentElement; var started=Number(root.__mindustryPerfStarted || performance.now()); var elapsed=Math.max(1,Math.round(performance.now()-started)); root.setAttribute('data-mindustry-perf-smoke','ready'); root.setAttribute('data-mindustry-perf-frames',String(frames)); root.setAttribute('data-mindustry-perf-units',String(units)); root.setAttribute('data-mindustry-perf-effects',String(effects)); root.setAttribute('data-mindustry-perf-sort-calls',String(sortCalls)); root.setAttribute('data-mindustry-perf-sort-max-requests',String(maxRequests)); root.setAttribute('data-mindustry-perf-sort-max-runs',String(maxRuns)); root.setAttribute('data-mindustry-perf-sort-fast-paths',String(fastPaths)); root.setAttribute('data-mindustry-perf-control-path-steps',String(controlPathSteps)); root.setAttribute('data-mindustry-perf-effect-budget',String(effectBudget)); root.setAttribute('data-mindustry-perf-active-effects',String(activeEffects)); root.setAttribute('data-mindustry-perf-dropped-effects',String(droppedEffects)); root.setAttribute('data-mindustry-perf-elapsed-ms',String(elapsed)); root.setAttribute('data-mindustry-perf-fps',String(Math.round(frames*1000/elapsed)));")
+    private static native void markPerfReady(int frames, int units, int effects, int sortCalls, int maxRequests, int maxRuns, int fastPaths, int controlPathSteps, int effectBudget, int activeEffects, int droppedEffects);
 
     @JSBody(params = {"slug"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-state', 'menu'); document.documentElement.setAttribute('data-mindustry-local-map-returned-from', slug); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'stopped');")
     private static native void markReturned(String slug);
