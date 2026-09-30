@@ -483,6 +483,13 @@ bytes_end = BROWSER_FILES.index("void putLocal(", bytes_start)
 bytes_body = BROWSER_FILES[bytes_start:bytes_end]
 require(bytes_body, "return copy(binary);", "public packaged readBytes isolation")
 
+text_start = BROWSER_FILES.index("String text(String path, FileType type)")
+text_end = BROWSER_FILES.index("byte[] streamBytes(String path, FileType type)", text_start)
+text_body = BROWSER_FILES[text_start:text_end]
+require(text_body, "String cached = textAssets.get(normalized);", "packaged text cache")
+require(text_body, "String decoded = new String(binary, StandardCharsets.UTF_8);", "packaged text direct decode")
+forbid(text_body, "new String(bytes(path, type)", "packaged text clone path")
+
 # IndexedDB hot paths: adopt hydrated buffers without cloning and share one readwrite
 # transaction across synchronous SaveIO file mutations in the same browser task.
 require(BROWSER_STORAGE, "function adoptHydratedBytes(raw)", "IndexedDB hydration copy avoidance")
