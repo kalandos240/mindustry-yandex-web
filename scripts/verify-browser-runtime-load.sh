@@ -85,6 +85,7 @@ run_load(){
     --timeout 90 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-save-validation="skipped-production"' \
+    --require 'data-mindustry-settings-write-policy="modified-only-manual"' \
     --require 'data-mindustry-audio-validation="skipped-production"' \
     --require "data-mindustry-audio-voice-cap=\"${audio_voice_cap}\"" \
     --require "data-mindustry-audio-voice-policy=\"${audio_voice_policy}\"" \
