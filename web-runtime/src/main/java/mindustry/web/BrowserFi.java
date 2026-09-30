@@ -36,7 +36,7 @@ public final class BrowserFi extends Fi{
     @Override public String extension(){ String name = name(); int dot = name.lastIndexOf('.'); return dot < 0 ? "" : name.substring(dot + 1); }
     @Override public String nameWithoutExtension(){ String name = name(); int dot = name.lastIndexOf('.'); return dot < 0 ? name : name.substring(0, dot); }
     @Override public String pathWithoutExtension(){ int dot = browserPath.lastIndexOf('.'); int slash = browserPath.lastIndexOf('/'); return dot > slash ? browserPath.substring(0, dot) : browserPath; }
-    @Override public InputStream read(){ return new ByteArrayInputStream(readBytes()); }
+    @Override public InputStream read(){ return new ByteArrayInputStream(files.streamBytes(browserPath, type)); }
     @Override public String readString(){ return files.text(browserPath, type); }
     @Override public String readString(String charset){ return new String(readBytes(), Charset.forName(charset == null ? "UTF-8" : charset)); }
     @Override public byte[] readBytes(){ return files.bytes(browserPath, type); }
