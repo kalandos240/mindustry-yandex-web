@@ -470,6 +470,18 @@ require(BROWSER_AUDIO_JS, "protectVoice: protectVoice", "mobile SFX protected vo
 require(BROWSER_AUDIO, "if(initialized) protectVoice(voice, protect);", "BrowserAudio protect bridge")
 require(BROWSER_AUDIO, "window.__mindustryAudioApi.protectVoice(id, protect)", "BrowserAudio protect JS bridge")
 
+# IndexedDB hot paths: adopt hydrated buffers without cloning and share one readwrite
+# transaction across synchronous SaveIO file mutations in the same browser task.
+require(BROWSER_STORAGE, "function adoptHydratedBytes(raw)", "IndexedDB hydration copy avoidance")
+require(BROWSER_STORAGE, "data-mindustry-storage-hydration-policy', 'adopt-idb-buffer", "IndexedDB hydration telemetry")
+require(BROWSER_STORAGE, "function mutationStore()", "IndexedDB write coalescing")
+require(BROWSER_STORAGE, "task-coalesced-readwrite", "IndexedDB write coalescing telemetry")
+require(BROWSER_STORAGE, "mutate(store => store.put", "IndexedDB put coalescing")
+require(BROWSER_STORAGE, "mutate(store => store.delete", "IndexedDB delete coalescing")
+require(BROWSER_STORAGE, "TransactionInactiveError", "IndexedDB coalescing retry")
+forbid(BROWSER_STORAGE, "transaction('readwrite').put(", "IndexedDB per-file put transaction")
+forbid(BROWSER_STORAGE, "transaction('readwrite').delete(", "IndexedDB per-file delete transaction")
+
 if failures:
     print("Browser hot-path audit: FAIL")
     for failure in failures:
