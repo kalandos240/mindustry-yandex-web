@@ -86,7 +86,11 @@ public final class BrowserFiles implements Files{
         if(binary == null){
             binary = takePreloadedBytes(assetUrl(normalized));
             if(binary == null) throw new IllegalStateException("Browser text asset is not packaged/preloaded: " + path);
-            binaryAssets.put(normalized, binary);
+            String decoded = new String(binary, StandardCharsets.UTF_8);
+            // Text reads do not need to retain the original byte[] as well. If a later
+            // caller explicitly asks for bytes, the cached String can be encoded then.
+            textAssets.put(normalized, decoded);
+            return decoded;
         }
         String decoded = new String(binary, StandardCharsets.UTF_8);
         textAssets.put(normalized, decoded);
@@ -250,16 +254,23 @@ public final class BrowserFiles implements Files{
         const value = cache && cache[url] ? cache[url] : null;
         if (value) {
             delete cache[url];
-            const root = document.documentElement;
-            const count = Number(root.getAttribute('data-mindustry-assets-transferred') || 0) + 1;
-            const bytes = Number(root.getAttribute('data-mindustry-assets-transferred-bytes') || 0) + Number(value.byteLength || 0);
-            root.setAttribute('data-mindustry-assets-cache-policy', 'transfer-on-read');
-            root.setAttribute('data-mindustry-assets-transferred', String(count));
-            root.setAttribute('data-mindustry-assets-transferred-bytes', String(bytes));
+            globalThis.__mindustryAssetTransferCount = (globalThis.__mindustryAssetTransferCount || 0) + 1;
+            globalThis.__mindustryAssetTransferBytes = (globalThis.__mindustryAssetTransferBytes || 0) + Number(value.byteLength || 0);
+            if (!globalThis.__mindustryAssetTransferTelemetryPending) {
+                globalThis.__mindustryAssetTransferTelemetryPending = true;
+                queueMicrotask(() => {
+                    globalThis.__mindustryAssetTransferTelemetryPending = false;
+                    const root = document.documentElement;
+                    root.setAttribute('data-mindustry-assets-cache-policy', 'transfer-on-read-batched');
+                    root.setAttribute('data-mindustry-assets-transferred', String(globalThis.__mindustryAssetTransferCount || 0));
+                    root.setAttribute('data-mindustry-assets-transferred-bytes', String(globalThis.__mindustryAssetTransferBytes || 0));
+                });
+            }
         }
         return value;
         """)
     private static native byte[] takePreloadedBytes(String url);
+
     @JSBody(params = {"path"}, script = "const manifest = globalThis.__mindustryAssetManifest || []; return manifest.indexOf(path) !== -1;")
     private static native boolean hasPackagedAsset(String path);
     @JSBody(script = "return globalThis.__mindustryAssetManifest || [];")
