@@ -28,6 +28,7 @@ public final class BrowserSettings extends Settings{
             throw new IllegalArgumentException("storageKey must not be empty");
         }
         this.storageKey = storageKey;
+        markWritePolicy();
     }
 
     /**
@@ -59,7 +60,9 @@ public final class BrowserSettings extends Settings{
 
     @Override
     public synchronized void manualSave(){
-        forceSave();
+        // Logic.reset() invokes manualSave() on every map/sector transition. Browser
+        // localStorage is synchronous, so do not serialize/rewrite an unchanged map.
+        if(modified) forceSave();
     }
 
     @Override
@@ -184,6 +187,9 @@ public final class BrowserSettings extends Settings{
         if(value >= 'A' && value <= 'F') return value - 'A' + 10;
         throw new IllegalStateException("Invalid hexadecimal settings byte");
     }
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-settings-write-policy','modified-only-manual');")
+    private static native void markWritePolicy();
 
     @JSBody(params = {"key"}, script = "try { return window.localStorage.getItem(key); } catch (e) { return null; }")
     private static native String storageGet(String key);
