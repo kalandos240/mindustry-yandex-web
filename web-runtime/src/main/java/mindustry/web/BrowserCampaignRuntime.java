@@ -409,6 +409,7 @@ public final class BrowserCampaignRuntime{
 
         diagPhase("reset");
         logic.reset();
+        mindustry.entities.Effect.webResetEffectBudget();
 
         if(preset == SectorPresets.groundZero || preset == SectorPresets.onset) preset.quietUnlock();
         sector.planet.setLastSector(sector);
@@ -602,6 +603,7 @@ public final class BrowserCampaignRuntime{
         originObjectivesStaged = false;
         coreReadyMarked = false;
         logic.reset();
+        mindustry.entities.Effect.webResetEffectBudget();
         markReturnedToMenu();
     }
 
