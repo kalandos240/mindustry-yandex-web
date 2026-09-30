@@ -48,6 +48,9 @@ run_load(){
   local renderer_water="true"
   local renderer_shields="true"
   local renderer_lights="true"
+  local effect_budget="0"
+  local effect_policy="desktop-unlimited"
+  local effect_burst="0"
   local campaign_workers="4"
   if [ "$emulate_mobile" = "1" ]; then
     mobile_args+=(--emulate-mobile)
@@ -58,6 +61,9 @@ run_load(){
     renderer_water="false"
     renderer_shields="false"
     renderer_lights="false"
+    effect_budget="512"
+    effect_policy="mobile-active-cap"
+    effect_burst="640"
     campaign_workers="2"
   fi
 
@@ -85,6 +91,8 @@ run_load(){
     --require "data-mindustry-renderer-animated-water=\"${renderer_water}\"" \
     --require "data-mindustry-renderer-animated-shields=\"${renderer_shields}\"" \
     --require "data-mindustry-renderer-lights=\"${renderer_lights}\"" \
+    --require "data-mindustry-renderer-effect-budget=\"${effect_budget}\"" \
+    --require "data-mindustry-renderer-effect-budget-policy=\"${effect_policy}\"" \
     --require 'data-mindustry-local-map-test="maze"' \
     --require 'data-mindustry-local-map-state="playing"' \
     --require 'data-mindustry-local-map-loop="live"' \
@@ -94,6 +102,8 @@ run_load(){
     --require 'data-mindustry-perf-effects-target="480"' \
     --require 'data-mindustry-perf-effects="480"' \
     --require 'data-mindustry-perf-effect-kind="drillSteam"' \
+    --require "data-mindustry-perf-effect-burst=\"${effect_burst}\"" \
+    --require "data-mindustry-perf-effect-budget=\"${effect_budget}\"" \
     --require 'data-mindustry-perf-control-path-policy="stock-30hz"' \
     --require 'data-mindustry-resize-policy="event-driven"' \
     --require 'data-mindustry-frame-resize-policy="event-driven-64-frame-fallback"' \
@@ -126,6 +136,8 @@ run_load(){
   grep -Eq 'data-mindustry-perf-sort-max-runs="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-perf-sort-fast-paths="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-perf-control-path-steps="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-perf-active-effects="[0-9]+"' "$dom"
+  grep -Eq 'data-mindustry-perf-dropped-effects="[0-9]+"' "$dom"
   grep -Eq 'data-mindustry-local-map-update-id="[1-9][0-9]{2,}"' "$dom"
   grep -Eq 'data-mindustry-campaign-assets-bytes="[1-9][0-9]*"' "$dom"
 
@@ -144,10 +156,22 @@ run_load(){
     exit 1
   fi
 
-  local control_path_steps
+  local control_path_steps active_effects dropped_effects
   control_path_steps="$(attr "$dom" data-mindustry-perf-control-path-steps)"
+  active_effects="$(attr "$dom" data-mindustry-perf-active-effects)"
+  dropped_effects="$(attr "$dom" data-mindustry-perf-dropped-effects)"
 
-  echo "Runtime load smoke ($label): 64 units + 480 drillSteam effects over 120 frames in ${elapsed}ms (~${fps} fps); ControlPath 30Hz steps=${control_path_steps}; SpriteBatch sorter/fast-path exercised; preload ${status_updates}/${eager}; 44 campaign maps idle-warmed PASS" | tee -a "$REPORT"
+  if [ "$emulate_mobile" = "1" ]; then
+    if [ -z "$active_effects" ] || [ "$active_effects" -gt 512 ] || [ -z "$dropped_effects" ] || [ "$dropped_effects" -le 0 ]; then
+      echo "Mobile particle cap regressed: active=${active_effects:-missing} dropped=${dropped_effects:-missing} budget=512" >&2
+      exit 1
+    fi
+  elif [ "${active_effects:-1}" -ne 0 ] || [ "${dropped_effects:-1}" -ne 0 ]; then
+    echo "Desktop particle budget must remain disabled: active=${active_effects:-missing} dropped=${dropped_effects:-missing}" >&2
+    exit 1
+  fi
+
+  echo "Runtime load smoke ($label): 64 units + 480 steady drillSteam effects + ${effect_burst} burst over 120 frames in ${elapsed}ms (~${fps} fps); effect budget=${effect_budget} active=${active_effects} dropped=${dropped_effects}; ControlPath steps=${control_path_steps}; SpriteBatch sorter exercised; preload ${status_updates}/${eager}; 44 campaign maps idle-warmed PASS" | tee -a "$REPORT"
 }
 
 run_load desktop desktop 0 \
@@ -160,4 +184,4 @@ run_load mobile mobile 1 \
   /tmp/mindustry-runtime-load-mobile.html \
   9287
 
-echo 'Runtime load matrix: desktop + auto-detected mobile 64-unit + 480-effect drillSteam / 120-frame stability PASS' | tee -a "$REPORT"
+echo 'Runtime load matrix: desktop unlimited effects + mobile 512-active particle cap under 640-effect burst / 120-frame stability PASS' | tee -a "$REPORT"
