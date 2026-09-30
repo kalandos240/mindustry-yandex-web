@@ -446,6 +446,8 @@ require(CAMPAIGN_UI, "if(BrowserCampaignRuntime.diagnosticsEnabled()){", "campai
 if CAMPAIGN_UI.count("if(BrowserCampaignRuntime.diagnosticsEnabled()){") < 6:
     failures.append("campaign UI: expected diagnostics gates around action/state telemetry")
 require(CAMPAIGN_UI, "final int[] campaignUiRefreshFrame = {7};", "campaign UI refresh throttle")
+if CAMPAIGN_UI.count("if(state == null || !state.isMenu()) return;") < 2:
+    failures.append("campaign UI: Serpulo/Erekir updaters must be suspended outside menu state")
 require(CAMPAIGN_UI, "int frame = ++campaignUiRefreshFrame[0];", "campaign unlock refresh throttle")
 require(CAMPAIGN_UI, "if((frame & 7) != 0) return;", "campaign text refresh throttle")
 require(CAMPAIGN_UI, "if((frame & 31) == 0)", "campaign unlock refresh throttle")
