@@ -53,6 +53,8 @@ run_load(){
   local effect_burst="0"
   local audio_voice_cap="0"
   local audio_voice_policy="desktop-unlimited"
+  local audio_accepted="64"
+  local audio_dropped="0"
   local campaign_workers="4"
   if [ "$emulate_mobile" = "1" ]; then
     mobile_args+=(--emulate-mobile)
@@ -68,6 +70,8 @@ run_load(){
     effect_burst="640"
     audio_voice_cap="48"
     audio_voice_policy="mobile-quietest-unprotected-48"
+    audio_accepted="48"
+    audio_dropped="16"
     campaign_workers="2"
   fi
 
@@ -110,6 +114,8 @@ run_load(){
     --require 'data-mindustry-perf-effect-kind="drillSteam"' \
     --require "data-mindustry-perf-effect-burst=\"${effect_burst}\"" \
     --require "data-mindustry-perf-effect-budget=\"${effect_budget}\"" \
+    --require "data-mindustry-perf-audio-voices-accepted=\"${audio_accepted}\"" \
+    --require "data-mindustry-perf-audio-voices-dropped=\"${audio_dropped}\"" \
     --require 'data-mindustry-perf-control-path-policy="stock-30hz"' \
     --require 'data-mindustry-resize-policy="event-driven"' \
     --require 'data-mindustry-frame-resize-policy="event-driven-64-frame-fallback"' \
