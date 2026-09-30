@@ -287,11 +287,13 @@ public final class BrowserLocalMapRuntime{
         int burst = 0;
         if(mobile){
             burst = perfMobileEffectBurst;
+            float burstX = Core.camera.position.x;
+            float burstY = Core.camera.position.y;
             for(int i = 0; i < burst; i++){
                 float angle = (i * 137.50776f) % 360f;
                 float radius = 12f + (i % 24) * 4f;
-                Fx.drillSteam.at(centerX + arc.math.Angles.trnsx(angle, radius),
-                    centerY + arc.math.Angles.trnsy(angle, radius));
+                Fx.drillSteam.at(burstX + arc.math.Angles.trnsx(angle, radius),
+                    burstY + arc.math.Angles.trnsy(angle, radius));
             }
         }
 
