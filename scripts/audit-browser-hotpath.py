@@ -476,6 +476,11 @@ require(LOCAL_MAP, "Effect.webResetEffectBudget()", "local map effect budget res
 
 # Browser SFX must not create an unbounded WebAudio node graph on mobile.
 require(BROWSER_AUDIO_JS, "state.maxVoices = inputMode === 'mobile' ? 48 : 0", "mobile SFX voice cap")
+require(BROWSER_AUDIO_JS, "state.maxDecodedBuffers = inputMode === 'mobile' ? 64 : 0", "mobile decoded SFX cache cap")
+require(BROWSER_AUDIO_JS, "function trimDecodedBuffers(keepUrl)", "mobile decoded SFX LRU")
+require(BROWSER_AUDIO_JS, "if(url === keepUrl || bufferInUse(url)) return", "active SFX buffer preservation")
+require(BROWSER_AUDIO_JS, "state.buffers.delete(victim)", "decoded SFX cache eviction")
+require(BROWSER_AUDIO_JS, "data-mindustry-audio-buffer-policy", "decoded SFX cache telemetry")
 require(BROWSER_AUDIO_JS, "voice.loop || voice.protected", "mobile SFX protected/loop preservation")
 require(BROWSER_AUDIO_JS, "victimVolume <= volume", "mobile SFX quietest-voice eviction")
 require(BROWSER_AUDIO_JS, "data-mindustry-audio-voice-policy", "mobile SFX cap telemetry")
