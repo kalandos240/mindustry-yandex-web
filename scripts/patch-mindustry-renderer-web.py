@@ -44,7 +44,7 @@ new_settings = """        // Web/Yandex: the lean runtime has no live stock Sett
             drawDisplays = !settings.getBool("hidedisplays");
             maxZoomInGame = settings.getFloat("maxzoomingamemultiplier", 1) * maxZoom;
             minZoomInGame = minZoom / settings.getFloat("minzoomingamemultiplier", 1);
-            drawLight = settings.getBool("drawlight", true);
+            drawLight = settings.getBool("drawlight");
             showPings = settings.getBool("showpings", true);
             showOtherBuildPlans = settings.getBool("showotherbuildplans", true);
             pixelate = settings.getBool("pixelate");
@@ -308,3 +308,17 @@ if old_flush not in text:
 text = text.replace(old_flush, new_flush, 1)
 
 path.write_text(text, encoding="utf-8")
+
+# WebClientLauncher registers device-specific renderer defaults before constructing
+# Renderer. Keep its telemetry on the same Settings default path as Renderer itself;
+# the two-argument getBool(..., true) bypasses the registered mobile drawlight=false
+# default on a clean profile. Persisted user values still override Settings defaults.
+root = Path(__file__).resolve().parents[1]
+launcher = root / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "WebClientLauncher.java"
+launcher_text = launcher.read_text(encoding="utf-8")
+old_profile_light = '            Core.settings.getBool("drawlight", true),\n'
+new_profile_light = '            Core.settings.getBool("drawlight"),\n'
+if launcher_text.count(old_profile_light) != 1:
+    raise SystemExit("WebClientLauncher renderer lighting telemetry anchor no longer matches")
+launcher.write_text(launcher_text.replace(old_profile_light, new_profile_light, 1), encoding="utf-8")
+print("Applied Web renderer hot-path patch and device-default lighting semantics")
