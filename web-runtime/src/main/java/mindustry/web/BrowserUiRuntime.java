@@ -116,7 +116,11 @@ public final class BrowserUiRuntime{
     private static void buildLocalHudControls(){
         Table controls = new Table();
         controls.setFillParent(true);
-        controls.visible(BrowserLocalMapRuntime::active);
+        // The campaign UI patch turns the same lightweight HUD controls into the
+        // campaign Back surface. Keep this table active for either local-map or campaign
+        // play; otherwise the campaign Back button and its CI/UI action never receive
+        // Scene updates while a sector is running.
+        controls.visible(() -> BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active());
         controls.top().left();
         controls.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
