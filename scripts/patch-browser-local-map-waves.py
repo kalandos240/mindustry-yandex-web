@@ -79,6 +79,28 @@ if perf_marker not in text:
     text = text.replace(method_anchor, method, 1)
     changed = True
 
+# The load test intentionally keeps a real survival wave and enemy AI active. Its job
+# is to measure a fixed 120-frame sample, not to re-test match termination (which has a
+# dedicated core-loss smoke earlier in the browser gate). Prevent only this CI-only
+# perf session from ending before the sample window when Crux reaches the Sharded core.
+perf_survival_marker = "Perf CI: keep the 120-frame load sample alive"
+if perf_survival_marker not in text:
+    old_perf_head = '''    private static void stagePerfLoad(){
+        float centerX = world.width() * tilesize / 2f;
+'''
+    new_perf_head = '''    private static void stagePerfLoad(){
+        // Perf CI: keep the 120-frame load sample alive while preserving the real wave,
+        // enemy units, pathfinding and damage pressure. Normal play/game-over behavior
+        // is unchanged because this method only runs for mindustryPerfSmoke=1.
+        state.rules.canGameOver = false;
+
+        float centerX = world.width() * tilesize / 2f;
+'''
+    if text.count(old_perf_head) != 1:
+        raise SystemExit("Browser perf survivability anchor no longer matches runtime")
+    text = text.replace(old_perf_head, new_perf_head, 1)
+    changed = True
+
 # The current overlay may already contain this milestone. Build assembly still invokes
 # this historical patch script after applying upstream overlays, so treat an exact
 # already-patched source as success instead of trying to match obsolete pre-wave anchors.
@@ -93,7 +115,7 @@ already = [
 if all(marker in text for marker in already):
     if changed:
         RUNTIME.write_text(text, encoding="utf-8")
-        print("Added deterministic Web SpriteBatch merge + fast-path perf proof")
+        print("Added deterministic Web SpriteBatch perf proof and fixed-window perf survivability")
     print("BrowserLocalMapRuntime already contains the proven local survival wave milestone")
     raise SystemExit(0)
 
