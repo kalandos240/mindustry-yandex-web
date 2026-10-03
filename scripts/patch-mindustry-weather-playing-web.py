@@ -56,7 +56,7 @@ if logic.count(old_update) != 1:
     raise SystemExit("Logic Web weather update insertion anchor no longer matches staged playing core")
 logic = logic.replace(old_update, new_update, 1)
 
-old_attrs = '''        // Weather is still asserted absent above; retain the stock base rule attributes.
+old_attrs = '''        // Weather is asserted absent above; retain the stock base rule attributes.
         state.envAttrs.clear();
         state.envAttrs.add(state.rules.attributes);
 
@@ -71,7 +71,7 @@ new_attrs = '''        // Stock weather attributes: active WeatherState opacity 
         updateEntities();
 '''
 if logic.count(old_attrs) != 1:
-    raise SystemExit("Logic Web weather environment-attribute anchor no longer matches wave runtime")
+    raise SystemExit("Logic Web weather environment-attribute anchor no longer matches optimized playing core")
 logic = logic.replace(old_attrs, new_attrs, 1)
 LOGIC.write_text(logic, encoding="utf-8")
 
@@ -82,6 +82,41 @@ if text.count(old_clear) != 1:
     raise SystemExit("Browser local weather rule gate no longer matches staged runtime")
 text = text.replace(old_clear, '''        // Weather is now part of the proven Web playing core; preserve map entries.
 ''', 1)
+
+old_fields = '''    private static boolean fogPersistRestoreSmoke;
+    private static Map current;
+'''
+new_fields = '''    private static boolean fogPersistRestoreSmoke;
+    private static boolean weatherSmoke;
+    private static Map current;
+'''
+if text.count(old_fields) != 1:
+    raise SystemExit("Browser local weather cached smoke field anchor no longer matches fog-persistence runtime")
+text = text.replace(old_fields, new_fields, 1)
+
+old_cache = '''        fogPersistSeedSmoke = fogPersistSeedRequested();
+        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+    }
+'''
+new_cache = '''        fogPersistSeedSmoke = fogPersistSeedRequested();
+        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+        weatherSmoke = weatherSmokeRequested();
+    }
+'''
+if text.count(old_cache) != 1:
+    raise SystemExit("Browser local weather cached smoke flag anchor no longer matches fog-persistence runtime")
+text = text.replace(old_cache, new_cache, 1)
+
+old_continue = '''        fogPersistSeedSmoke = fogPersistSeedRequested();
+        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+'''
+new_continue = '''        fogPersistSeedSmoke = fogPersistSeedRequested();
+        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+        weatherSmoke = weatherSmokeRequested();
+'''
+if text.count(old_continue) != 1:
+    raise SystemExit("Browser local weather Continue smoke-cache anchor no longer matches fog-persistence runtime")
+text = text.replace(old_continue, new_continue, 1)
 
 old_final = '''        state.rules = rules;
         state.map = map;
@@ -108,10 +143,10 @@ if text.count(old_final) != 1:
 text = text.replace(old_final, new_final, 1)
 
 old_frame = '''        updateFogPersistenceSmoke();
-        if(state.wave > beforeWave){
+        if(testWaveExpected && state.wave > beforeWave){
 '''
 new_frame = '''        updateFogPersistenceSmoke();
-        if(weatherSmokeRequested()){
+        if(weatherSmoke){
             int weatherCount = mindustry.gen.Groups.weather.size();
             boolean rainActive = mindustry.content.Weathers.rain.isActive();
             float baseWater = state.rules.attributes.get(mindustry.world.meta.Attribute.water);
@@ -127,10 +162,10 @@ new_frame = '''        updateFogPersistenceSmoke();
                 throw new IllegalStateException("Browser stock rain weather did not converge after 3 playing frames");
             }
         }
-        if(state.wave > beforeWave){
+        if(testWaveExpected && state.wave > beforeWave){
 '''
 if text.count(old_frame) != 1:
-    raise SystemExit("Browser local weather frame verification anchor no longer matches fog-persistence runtime")
+    raise SystemExit("Browser local weather frame verification anchor no longer matches optimized fog-persistence runtime")
 text = text.replace(old_frame, new_frame, 1)
 
 old_query = '''    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryFogPersistRestore') === '1';")
@@ -168,4 +203,4 @@ if text.count(old_marker) != 1:
 text = text.replace(old_marker, new_marker, 1)
 
 RUNTIME.write_text(text, encoding="utf-8")
-print("Enabled stock local weather scheduling/render attributes without multiplayer Call transport")
+print("Enabled stock local weather scheduling/render attributes with cached smoke telemetry")
