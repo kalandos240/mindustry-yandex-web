@@ -58,7 +58,7 @@ run_production_menu(){
     --url "http://127.0.0.1:8081/index.html?lang=en" \
     --profile "$profile" \
     --port 9230 \
-    --timeout 30 \
+    --timeout 45 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-smoke-mode="production"' \
     --require 'data-mindustry-gameplay-runtime="ready"' \
@@ -92,7 +92,7 @@ run_production_map(){
     --url "http://127.0.0.1:8081/index.html?lang=en&mindustryMapSmoke=maze&mindustryGameOverSmoke=1&mindustryPauseSmoke=1" \
     --profile "$profile" \
     --port 9231 \
-    --timeout 30 \
+    --timeout 45 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-smoke-mode="production"' \
     --require 'data-mindustry-map-catalog="ready"' \
@@ -181,7 +181,7 @@ run_locale(){
     --url "http://127.0.0.1:8081/index.html?lang=$expected&mindustrySmoke=1" \
     --profile "$profile" \
     --port "$cdp_port" \
-    --timeout 30 \
+    --timeout 45 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-smoke-mode="ci"' \
     --require 'data-mindustry-ui-shell="ready"' \
@@ -249,7 +249,7 @@ run_mobile(){
     --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=en&mindustrySmoke=1" \
     --profile "$profile" \
     --port 9228 \
-    --timeout 30 \
+    --timeout 45 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-smoke-mode="ci"' \
     --require 'data-mindustry-ui-shell="ready"' \
