@@ -86,9 +86,6 @@ text = text.replace(preview_calls, "")
 if "MapPreviewLoader.checkPreviews()" in text:
     raise SystemExit("Renderer Web patch retained map-preview polling")
 
-# Keep production behavior unchanged while making TeaVM's stackless NPEs actionable.
-# BrowserApplication preserves nested exception messages, so these narrow boundaries
-# identify whether a runtime-load failure is an entity draw or the sorted batch flush.
 old_draw_call = '''            if(renderer.pixelate){
                 pixelator.drawPixelate();
             }else{
@@ -108,6 +105,180 @@ new_draw_call = '''            if(renderer.pixelate){
 if old_draw_call not in text:
     raise SystemExit("Renderer Web draw diagnostic anchor no longer matches pinned upstream")
 text = text.replace(old_draw_call, new_draw_call, 1)
+
+old_prelude = '''        camera.update();
+
+        if(Float.isNaN(camera.position.x) || Float.isNaN(camera.position.y)){
+            camera.position.set(player);
+        }
+
+        graphics.clear(clearColor);
+        Draw.reset();
+
+        if(animateWater || animateShields){
+            effectBuffer.resize(graphics.getWidth(), graphics.getHeight());
+        }
+
+        Draw.proj(camera);
+'''
+new_prelude = '''        try{
+            camera.update();
+
+            if(Float.isNaN(camera.position.x) || Float.isNaN(camera.position.y)){
+                camera.position.set(player);
+            }
+
+            graphics.clear(clearColor);
+            Draw.reset();
+
+            if(animateWater || animateShields){
+                effectBuffer.resize(graphics.getWidth(), graphics.getHeight());
+            }
+
+            Draw.proj(camera);
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer prelude failed", error);
+        }
+'''
+if old_prelude not in text:
+    raise SystemExit("Renderer Web prelude diagnostic anchor no longer matches pinned upstream")
+text = text.replace(old_prelude, new_prelude, 1)
+
+old_blocks_prep = '''        blocks.checkChanges();
+        blocks.processBlocks();
+'''
+new_blocks_prep = '''        try{
+            blocks.checkChanges();
+            blocks.processBlocks();
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer block preparation failed", error);
+        }
+'''
+if old_blocks_prep not in text:
+    raise SystemExit("Renderer Web block-prep diagnostic anchor no longer matches pinned upstream")
+text = text.replace(old_blocks_prep, new_blocks_prep, 1)
+
+old_draw_event = '''        Events.fire(Trigger.draw);
+'''
+new_draw_event = '''        try{
+            Events.fire(Trigger.draw);
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer Trigger.draw failed", error);
+        }
+'''
+if old_draw_event not in text:
+    raise SystemExit("Renderer Web draw-event diagnostic anchor no longer matches pinned upstream")
+text = text.replace(old_draw_event, new_draw_event, 1)
+
+old_env = '''        //render all matching environments
+        for(var renderer : envRenderers){
+            if((renderer.env & state.rules.env) == renderer.env){
+                renderer.renderer.run();
+            }
+        }
+'''
+new_env = '''        //render all matching environments
+        try{
+            for(var renderer : envRenderers){
+                if((renderer.env & state.rules.env) == renderer.env){
+                    renderer.renderer.run();
+                }
+            }
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer environment draw failed", error);
+        }
+'''
+if old_env not in text:
+    raise SystemExit("Renderer Web env diagnostic anchor no longer matches pinned upstream")
+text = text.replace(old_env, new_env, 1)
+
+old_bloom = '''        if(bloom != null){
+            bloom.resize(graphics.getWidth(), graphics.getHeight());
+            bloom.setBloomIntensity(webBloomIntensity / 4f + 1f);
+            bloom.blurPasses = webBloomBlur;
+            Draw.draw(Layer.bullet - 0.02f, bloom::capture);
+            Draw.draw(Layer.effect + 0.02f, bloom::render);
+        }
+
+        control.input.drawCommanded();
+'''
+new_bloom = '''        try{
+            if(bloom != null){
+                bloom.resize(graphics.getWidth(), graphics.getHeight());
+                bloom.setBloomIntensity(webBloomIntensity / 4f + 1f);
+                bloom.blurPasses = webBloomBlur;
+                Draw.draw(Layer.bullet - 0.02f, bloom::capture);
+                Draw.draw(Layer.effect + 0.02f, bloom::render);
+            }
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer bloom preparation failed", error);
+        }
+
+        try{
+            control.input.drawCommanded();
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer commanded-input draw failed", error);
+        }
+'''
+if old_bloom not in text:
+    raise SystemExit("Renderer Web bloom/input diagnostic anchor no longer matches pinned upstream")
+text = text.replace(old_bloom, new_bloom, 1)
+
+old_markers = '''        //draw objective markers
+        state.rules.objectives.eachRunning(obj -> {
+            for(var marker : obj.markers){
+                if(marker.world){
+                    marker.draw(marker.autoscale ? scaleFactor : 1);
+                }
+            }
+        });
+
+        for(var marker : state.markers){
+            if(marker.world){
+                marker.draw(marker.autoscale ? scaleFactor : 1);
+            }
+        }
+'''
+new_markers = '''        //draw objective markers
+        try{
+            state.rules.objectives.eachRunning(obj -> {
+                for(var marker : obj.markers){
+                    if(marker.world){
+                        marker.draw(marker.autoscale ? scaleFactor : 1);
+                    }
+                }
+            });
+
+            for(var marker : state.markers){
+                if(marker.world){
+                    marker.draw(marker.autoscale ? scaleFactor : 1);
+                }
+            }
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer world markers failed", error);
+        }
+'''
+if old_markers not in text:
+    raise SystemExit("Renderer Web markers diagnostic anchor no longer matches pinned upstream")
+text = text.replace(old_markers, new_markers, 1)
+
+old_draw_over = '''        Events.fire(Trigger.drawOver);
+        blocks.drawBlocks();
+'''
+new_draw_over = '''        try{
+            Events.fire(Trigger.drawOver);
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer Trigger.drawOver failed", error);
+        }
+        try{
+            blocks.drawBlocks();
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer blocks.drawBlocks failed", error);
+        }
+'''
+if old_draw_over not in text:
+    raise SystemExit("Renderer Web draw-over diagnostic anchor no longer matches pinned upstream")
+text = text.replace(old_draw_over, new_draw_over, 1)
 
 old_group_draw = "        Groups.draw.draw(Drawc::draw);\n"
 new_group_draw = '''        try{
