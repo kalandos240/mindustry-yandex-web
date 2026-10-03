@@ -38,7 +38,7 @@ grep -Fq 'c38f8f5ff27f47a5886d0903aadeba42e4302411' "$WEB_DIR/licenses/SOURCE-NO
 [ -s "$PLANETS_SOURCE" ] || fail "pinned Mindustry Planets.java missing from build workspace"
 grep -Fq 'erekir = new Planet("erekir", sun, 1f, 2)' "$PLANETS_SOURCE" || fail "pinned Erekir planet definition changed or missing"
 grep -Fq 'serpulo = new Planet("serpulo", sun, 1f, 3)' "$PLANETS_SOURCE" || fail "pinned Serpulo planet definition changed or missing"
-grep -Fq 'serpulo.loadPlanetData = true' "$PLANETS_SOURCE" || fail "pinned Serpulo PlanetData loading flag missing"
+sed -n '/serpulo = new Planet("serpulo", sun, 1f, 3){{/,/verilus = makeAsteroid/p' "$PLANETS_SOURCE" | grep -Fq 'loadPlanetData = true;' || fail "pinned Serpulo PlanetData loading flag missing"
 grep -Fq 'campaignRuleDefaults.rtsAI = true' "$PLANETS_SOURCE" || fail "pinned Erekir campaign RTS rule missing"
 grep -Fq 'erekir' "$WEB_DIR/mindustry.js" || fail "compiled Erekir content is not reachable in TeaVM output"
 grep -Fq 'serpulo' "$WEB_DIR/mindustry.js" || fail "compiled Serpulo content is not reachable in TeaVM output"
