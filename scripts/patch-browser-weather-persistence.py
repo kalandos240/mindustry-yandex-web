@@ -9,24 +9,25 @@ if not RUNTIME.is_file():
 
 text = RUNTIME.read_text(encoding="utf-8")
 
-old_fields = '''    private static boolean fogPersistSeedDone;
-    private static boolean fogPersistRestoreDone;
+old_fields = '''    private static boolean fogPersistRestoreSmoke;
+    private static boolean weatherSmoke;
     private static Map current;
-    private static int frames;
 '''
-new_fields = '''    private static boolean fogPersistSeedDone;
-    private static boolean fogPersistRestoreDone;
+new_fields = '''    private static boolean fogPersistRestoreSmoke;
+    private static boolean weatherSmoke;
     private static boolean weatherPersistSeedDone;
     private static boolean weatherPersistRestoreDone;
+    private static boolean weatherPersistSeedSmoke;
+    private static boolean weatherPersistRestoreSmoke;
     private static Map current;
-    private static int frames;
 '''
 if text.count(old_fields) != 1:
-    raise SystemExit("Weather persistence fields anchor no longer matches post-fog runtime")
+    raise SystemExit("Weather persistence fields anchor no longer matches cached weather runtime")
 text = text.replace(old_fields, new_fields, 1)
 
 old_start = '''        fogPersistSeedDone = false;
         fogPersistRestoreDone = false;
+        active = true;
 
         try{
 '''
@@ -34,12 +35,39 @@ new_start = '''        fogPersistSeedDone = false;
         fogPersistRestoreDone = false;
         weatherPersistSeedDone = false;
         weatherPersistRestoreDone = false;
+        active = true;
 
         try{
 '''
 if text.count(old_start) != 1:
     raise SystemExit("Weather persistence new-session reset anchor no longer matches")
 text = text.replace(old_start, new_start, 1)
+
+old_cache = '''        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+        weatherSmoke = weatherSmokeRequested();
+    }
+'''
+new_cache = '''        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+        weatherSmoke = weatherSmokeRequested();
+        weatherPersistSeedSmoke = weatherPersistSeedRequested();
+        weatherPersistRestoreSmoke = weatherPersistRestoreRequested();
+    }
+'''
+if text.count(old_cache) != 1:
+    raise SystemExit("Weather persistence session smoke-cache anchor no longer matches")
+text = text.replace(old_cache, new_cache, 1)
+
+old_continue_cache = '''        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+        weatherSmoke = weatherSmokeRequested();
+'''
+new_continue_cache = '''        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+        weatherSmoke = weatherSmokeRequested();
+        weatherPersistSeedSmoke = weatherPersistSeedRequested();
+        weatherPersistRestoreSmoke = weatherPersistRestoreRequested();
+'''
+if text.count(old_continue_cache) != 1:
+    raise SystemExit("Weather persistence Continue smoke-cache anchor no longer matches")
+text = text.replace(old_continue_cache, new_continue_cache, 1)
 
 old_weather_rules = '''        if(weatherSmokeRequested()){
             // Test-only deterministic stock weather. Production sessions preserve the
@@ -76,7 +104,7 @@ if text.count(old_weather_rules) != 1:
     raise SystemExit("Weather persistence rule-force anchor no longer matches weather runtime")
 text = text.replace(old_weather_rules, new_weather_rules, 1)
 
-old_frame = '''        if(weatherSmokeRequested()){
+old_frame = '''        if(weatherSmoke){
             int weatherCount = mindustry.gen.Groups.weather.size();
             boolean rainActive = mindustry.content.Weathers.rain.isActive();
             float baseWater = state.rules.attributes.get(mindustry.world.meta.Attribute.water);
@@ -92,9 +120,9 @@ old_frame = '''        if(weatherSmokeRequested()){
                 throw new IllegalStateException("Browser stock rain weather did not converge after 3 playing frames");
             }
         }
-        if(state.wave > beforeWave){
+        if(testWaveExpected && state.wave > beforeWave){
 '''
-new_frame = '''        if(weatherSmokeRequested()){
+new_frame = '''        if(weatherSmoke){
             int weatherCount = mindustry.gen.Groups.weather.size();
             boolean rainActive = mindustry.content.Weathers.rain.isActive();
             float baseWater = state.rules.attributes.get(mindustry.world.meta.Attribute.water);
@@ -111,10 +139,10 @@ new_frame = '''        if(weatherSmokeRequested()){
             }
         }
         updateWeatherPersistenceSmoke();
-        if(state.wave > beforeWave){
+        if(testWaveExpected && state.wave > beforeWave){
 '''
 if text.count(old_frame) != 1:
-    raise SystemExit("Weather persistence frame hook anchor no longer matches weather runtime")
+    raise SystemExit("Weather persistence frame hook anchor no longer matches optimized weather runtime")
 text = text.replace(old_frame, new_frame, 1)
 
 old_helper = '''    /**
@@ -128,6 +156,7 @@ new_helper = '''    /**
      * of spawning fresh rain: exactly one active state can only have come from SaveIO.
      */
     private static void updateWeatherPersistenceSmoke(){
+        if(!weatherPersistSeedSmoke && !weatherPersistRestoreSmoke) return;
         if(!active || current == null || !state.isPlaying() || state.gameOver) return;
         if(frames < 2) return; // require at least three real playing-core ticks
 
@@ -139,7 +168,7 @@ new_helper = '''    /**
         float light = state.envAttrs.get(mindustry.world.meta.Attribute.light);
         boolean attrsApplied = water > baseWater && light < baseLight;
 
-        if(weatherPersistSeedRequested() && !weatherPersistSeedDone){
+        if(weatherPersistSeedSmoke && !weatherPersistSeedDone){
             if(state.rules.weather.size != 1 || weatherCount != 1 || !rainActive || !attrsApplied){
                 throw new IllegalStateException("Weather persistence seed did not establish one active stock rain state");
             }
@@ -157,7 +186,7 @@ new_helper = '''    /**
             markWeatherPersistSeed(slug(current), state.rules.weather.size, mindustry.gen.Groups.weather.size(), savedWave, water, light);
         }
 
-        if(weatherPersistRestoreRequested() && !weatherPersistRestoreDone){
+        if(weatherPersistRestoreSmoke && !weatherPersistRestoreDone){
             int ruleCount = state.rules.weather.size;
             weatherCount = mindustry.gen.Groups.weather.size();
             rainActive = mindustry.content.Weathers.rain.isActive();
@@ -254,4 +283,4 @@ if text.count(old_marker) != 1:
 text = text.replace(old_marker, new_marker, 1)
 
 RUNTIME.write_text(text, encoding="utf-8")
-print("Added active WeatherState v13 save/restart proof with all WeatherEntry respawn paths removed")
+print("Added active WeatherState v13 save/restart proof with cached CI flags")
