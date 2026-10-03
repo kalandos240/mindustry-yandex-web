@@ -33,7 +33,7 @@ if text.count(old_start) != 1:
 text = text.replace(old_start, new_start, 1)
 
 # Player/build/mining/mobile smoke overlays may add work between the enemy-path probe
-# and markPhase("control"). The semantic insertion point is the unique enemy-path
+# and the control diagnostic. The semantic insertion point is the unique enemy-path
 # update itself; keep the original CoreBuild attack smoke immediately after it.
 old_step = '''        updateEnemyPathSmoke();
 '''
@@ -48,9 +48,19 @@ old_gameover = '''            markGameOver(state.rules.waveTeam.name, state.wave
 '''
 new_gameover = '''            markGameOver(state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
 '''
-if text.count(old_gameover) != 1:
-    raise SystemExit("Attack smoke game-over winner marker anchor no longer matches local game-over runtime")
-text = text.replace(old_gameover, new_gameover, 1)
+old_gameover_count = text.count(old_gameover)
+new_gameover_count = text.count(new_gameover)
+if old_gameover_count == 1 and new_gameover_count == 0:
+    text = text.replace(old_gameover, new_gameover, 1)
+elif old_gameover_count == 0 and new_gameover_count == 1:
+    # The committed BrowserLocalMapRuntime already carries this correctness fix.
+    # Treat the overlay as idempotent instead of failing the whole build.
+    pass
+else:
+    raise SystemExit(
+        "Attack smoke game-over winner marker is ambiguous: "
+        f"old={old_gameover_count}, new={new_gameover_count}"
+    )
 
 old_methods = '''    private static void startEnemyPathSmoke(){
 '''
