@@ -14,6 +14,7 @@
         gameplayActive: false,
         adResumeGameplay: false,
         adWaitingForResume: false,
+        adInFlight: false,
         initPromise: null,
         playerPromise: null
     };
@@ -79,6 +80,7 @@
         if(state.adResumeGameplay && state.adWaitingForResume){
             state.adResumeGameplay = false;
             state.adWaitingForResume = false;
+            state.adInFlight = false;
             gameplayStart();
             mark('data-yandex-ad-resume', 'restarted-after-platform-resume');
         }
@@ -176,7 +178,10 @@
     }
 
     function finishFullscreenAdv(){
-        if(!state.adResumeGameplay) return;
+        if(!state.adResumeGameplay){
+            state.adInFlight = false;
+            return;
+        }
 
         if(state.paused){
             state.adWaitingForResume = true;
@@ -186,11 +191,18 @@
 
         state.adResumeGameplay = false;
         state.adWaitingForResume = false;
+        state.adInFlight = false;
         gameplayStart();
         mark('data-yandex-ad-resume', 'restarted-after-callback');
     }
 
     function showFullscreenAdv(callbacks = {}){
+        if(state.adInFlight){
+            const error = new Error('Yandex fullscreen ad is already in progress');
+            mark('data-yandex-ad-state', 'busy');
+            if(typeof callbacks.onError === 'function') callbacks.onError(error);
+            return false;
+        }
         if(!state.ysdk || !state.ysdk.adv || typeof state.ysdk.adv.showFullscreenAdv !== 'function'){
             if(typeof callbacks.onError === 'function') callbacks.onError(new Error('Yandex fullscreen ads unavailable'));
             return false;
@@ -200,26 +212,47 @@
         // ad from a menu must not fabricate a playing GameplayAPI state afterwards.
         state.adResumeGameplay = state.gameplayActive;
         state.adWaitingForResume = false;
+        state.adInFlight = true;
         if(state.adResumeGameplay) gameplayStop();
 
-        state.ysdk.adv.showFullscreenAdv({
-            callbacks: {
-                onOpen: () => {
-                    mark('data-yandex-ad-state', 'open');
-                    if(typeof callbacks.onOpen === 'function') callbacks.onOpen();
-                },
-                onClose: (wasShown) => {
-                    mark('data-yandex-ad-state', 'closed');
-                    if(typeof callbacks.onClose === 'function') callbacks.onClose(Boolean(wasShown));
-                    finishFullscreenAdv();
-                },
-                onError: (error) => {
-                    mark('data-yandex-ad-state', 'error');
-                    if(typeof callbacks.onError === 'function') callbacks.onError(error);
-                    finishFullscreenAdv();
+        let finalized = false;
+        const finalize = (kind, payload) => {
+            if(finalized) return;
+            finalized = true;
+            mark('data-yandex-ad-state', kind);
+            // Restore lifecycle state even if a caller-provided callback throws.
+            try{
+                if(kind === 'closed' && typeof callbacks.onClose === 'function'){
+                    callbacks.onClose(Boolean(payload));
+                }else if(kind === 'error' && typeof callbacks.onError === 'function'){
+                    callbacks.onError(payload);
                 }
+            }finally{
+                finishFullscreenAdv();
             }
-        });
+        };
+
+        try{
+            const result = state.ysdk.adv.showFullscreenAdv({
+                callbacks: {
+                    onOpen: () => {
+                        mark('data-yandex-ad-state', 'open');
+                        if(typeof callbacks.onOpen === 'function') callbacks.onOpen();
+                    },
+                    onClose: (wasShown) => finalize('closed', wasShown),
+                    onError: (error) => finalize('error', error)
+                }
+            });
+            // The current SDK reports completion through callbacks, but accepting a
+            // thenable here also prevents a future/replaced SDK from leaving gameplay
+            // stopped on an uncaught asynchronous rejection.
+            if(result && typeof result.then === 'function'){
+                result.catch(error => finalize('error', error));
+            }
+        }catch(error){
+            finalize('error', error);
+            return false;
+        }
         return true;
     }
 
