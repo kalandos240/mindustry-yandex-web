@@ -5,22 +5,20 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java"
 
 if not RUNTIME.is_file():
-    raise SystemExit(f"Missing staged BrowserLocalMapRuntime: {RUNTIME}")
+    raise SystemExit(f"Missing browser local-map runtime source: {RUNTIME}")
 
 text = RUNTIME.read_text(encoding="utf-8")
 
-old_fields = '''    private static mindustry.gen.Unit enemyPathUnit;
-    private static float enemyPathX, enemyPathY;
-    private static int enemyPathFrames;
+old_fields = '''    private static int enemyPathFrames;
 '''
-new_fields = '''    private static mindustry.gen.Unit enemyPathUnit;
-    private static float enemyPathX, enemyPathY;
-    private static int enemyPathFrames;
-    private static mindustry.gen.Building attackSmokeCore;
-    private static boolean attackSmokeDestroyed;
+new_fields = '''    private static int enemyPathFrames;
+    private static mindustry.gen.Player attackSmokePlayer;
+    private static mindustry.gen.Unit attackSmokePlayerUnit;
+    private static mindustry.gen.Unit attackSmokeEnemy;
+    private static int attackSmokeFrames;
 '''
 if text.count(old_fields) != 1:
-    raise SystemExit("Attack smoke fields anchor no longer matches final enemy-path runtime")
+    raise SystemExit("Attack smoke field anchor no longer matches final runtime")
 text = text.replace(old_fields, new_fields, 1)
 
 old_start = '''        startEnemyPathSmoke();
@@ -32,112 +30,78 @@ if text.count(old_start) != 1:
     raise SystemExit("Attack smoke start anchor no longer matches final runtime")
 text = text.replace(old_start, new_start, 1)
 
-old_step = '''        updateEnemyPathSmoke();
-
-        markPhase("control");
+# Earlier browser smoke overlays add player/mining/build/AI probes around the frame
+# loop. Anchor to the already-stable enemy-path smoke call instead of matching that
+# entire evolving block. Attack smoke is logically the next independent per-frame CI
+# probe and does not alter production execution when its query flag is absent.
+old_update = '''        updateEnemyPathSmoke();
 '''
-new_step = '''        updateEnemyPathSmoke();
+new_update = '''        updateEnemyPathSmoke();
         updateAttackSmoke();
-
-        markPhase("control");
 '''
-if text.count(old_step) != 1:
+if text.count(old_update) != 1:
     raise SystemExit("Attack smoke update anchor no longer matches final runtime")
-text = text.replace(old_step, new_step, 1)
-
-old_gameover = '''            markGameOver(state.rules.waveTeam.name, state.wave);
-'''
-new_gameover = '''            markGameOver(state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
-'''
-if text.count(old_gameover) != 1:
-    raise SystemExit("Attack smoke game-over winner marker anchor no longer matches local game-over runtime")
-text = text.replace(old_gameover, new_gameover, 1)
+text = text.replace(old_update, new_update, 1)
 
 old_methods = '''    private static void startEnemyPathSmoke(){
 '''
 new_methods = '''    private static void startAttackSmoke(){
         if(!attackSmokeRequested()) return;
 
+        var playerCore = state.rules.defaultTeam.core();
+        var enemyCore = state.rules.waveTeam.core();
+        if(playerCore == null || enemyCore == null){
+            throw new IllegalStateException("Attack smoke requires both team cores");
+        }
+
         state.rules.attackMode = true;
         state.rules.waves = false;
-        state.rules.waveTimer = false;
-        state.rules.canGameOver = true;
+        state.rules.winWave = 0;
 
-        // mindustryMapSmoke normally proves one survival wave. This dedicated attack
-        // gate intentionally disables waves, so clear only that CI expectation.
-        testWaveExpected = false;
-        testWaveFired = false;
+        attackSmokePlayer = mindustry.gen.Player.create();
+        attackSmokePlayer.team(state.rules.defaultTeam);
+        attackSmokePlayerUnit = mindustry.content.UnitTypes.dagger.create(state.rules.defaultTeam);
+        attackSmokePlayerUnit.set(playerCore.x, playerCore.y);
+        attackSmokePlayerUnit.add();
+        attackSmokePlayer.unit(attackSmokePlayerUnit);
+        attackSmokePlayer.add();
+        mindustry.gen.Groups.player.add(attackSmokePlayer);
 
-        if(state.rules.defaultTeam.core() == null){
-            throw new IllegalStateException("Attack smoke requires the real local player core");
-        }
-        if(!state.rules.waveTeam.cores().isEmpty()){
-            throw new IllegalStateException("Attack smoke requires no pre-existing enemy core on maze");
-        }
-
-        mindustry.gen.Building playerCore = state.rules.defaultTeam.core();
-        mindustry.world.Tile spawn = null;
-        float minDistance = tilesize * 20f;
-        for(int x = 2; x < world.width() - 2 && spawn == null; x++){
-            for(int y = 2; y < world.height() - 2; y++){
-                mindustry.world.Tile tile = world.tile(x, y);
-                if(tile != null && tile.dst(playerCore.tile) >= minDistance && attackCoreFootprintClear(x, y)){
-                    spawn = tile;
-                    break;
-                }
-            }
-        }
-        if(spawn == null){
-            throw new IllegalStateException("Attack smoke found no safe interior tile for an enemy core");
-        }
-
-        spawn.setBlock(mindustry.content.Blocks.coreShard, state.rules.waveTeam, 0);
-        attackSmokeCore = spawn.build;
-        if(attackSmokeCore == null || attackSmokeCore.team != state.rules.waveTeam ||
-        state.rules.waveTeam.cores().isEmpty()){
-            throw new IllegalStateException("Attack smoke failed to create a real enemy CoreBuild");
-        }
-
-        attackSmokeDestroyed = false;
-        markAttackSmokeArmed(attackSmokeCore.id, state.rules.waveTeam.name);
-    }
-
-    private static boolean attackCoreFootprintClear(int x, int y){
-        // CoreShard is 3x3. This test setup only needs a collision-safe empty footprint;
-        // Tile.setBlock then exercises the real CoreBuild creation/team bookkeeping.
-        for(int dx = -1; dx <= 1; dx++){
-            for(int dy = -1; dy <= 1; dy++){
-                mindustry.world.Tile tile = world.tile(x + dx, y + dy);
-                if(tile == null || tile.block() != mindustry.content.Blocks.air ||
-                tile.floor().isDeep() || !tile.floor().placeableOn){
-                    return false;
-                }
-            }
-        }
-        return true;
+        attackSmokeEnemy = mindustry.content.UnitTypes.dagger.create(state.rules.waveTeam);
+        attackSmokeEnemy.set(enemyCore.x, enemyCore.y);
+        attackSmokeEnemy.add();
+        attackSmokeFrames = 0;
+        markAttackSmokeArmed();
     }
 
     private static void updateAttackSmoke(){
-        if(attackSmokeCore == null || attackSmokeDestroyed || state.gameOver) return;
-
-        // Let the real entity/team/pathfinding graph observe the enemy core for several
-        // production frames before destroying it through Building.damage -> Tile.buildDestroyed.
-        if(frames < 3) return;
-
-        mindustry.gen.Building core = attackSmokeCore;
-        core.damage(core.health + 1f);
-        if(core.isValid() || !state.rules.waveTeam.cores().isEmpty()){
-            throw new IllegalStateException("Local-authoritative enemy core destruction did not update team core state");
+        if(attackSmokeEnemy == null) return;
+        if(++attackSmokeFrames == 2){
+            var core = state.rules.waveTeam.core();
+            if(core == null) throw new IllegalStateException("Attack smoke enemy core disappeared before destruction");
+            core.kill();
+            markAttackSmokeCoreDestroyed();
+            return;
         }
-        attackSmokeDestroyed = true;
-        attackSmokeCore = null;
-        markAttackSmokeDestroyed();
+
+        if(attackSmokeFrames >= 3){
+            boolean noEnemyCore = state.rules.waveTeam.cores().isEmpty();
+            boolean won = state.gameOver && state.won;
+            markAttackSmokeResult(noEnemyCore, state.gameOver, state.won);
+            if(noEnemyCore && won){
+                attackSmokeEnemy = null;
+                return;
+            }
+            if(attackSmokeFrames >= 8){
+                throw new IllegalStateException("Attack-mode enemy-core destruction did not trigger local victory");
+            }
+        }
     }
 
     private static void startEnemyPathSmoke(){
 '''
 if text.count(old_methods) != 1:
-    raise SystemExit("Attack smoke method insertion anchor no longer matches final runtime")
+    raise SystemExit("Attack smoke method anchor no longer matches final runtime")
 text = text.replace(old_methods, new_methods, 1)
 
 old_query = '''    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryEnemyPathSmoke') === '1';")
@@ -146,11 +110,14 @@ old_query = '''    @JSBody(script = "return new URLSearchParams(location.search)
 new_query = '''    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryAttackSmoke') === '1';")
     private static native boolean attackSmokeRequested();
 
-    @JSBody(params = {"id", "team"}, script = "document.documentElement.setAttribute('data-mindustry-attack-smoke','armed'); document.documentElement.setAttribute('data-mindustry-attack-core-id',String(id)); document.documentElement.setAttribute('data-mindustry-attack-enemy-team',team); document.documentElement.setAttribute('data-mindustry-attack-mode','local-core-victory');")
-    private static native void markAttackSmokeArmed(int id, String team);
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-attack-smoke','armed');")
+    private static native void markAttackSmokeArmed();
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-attack-core-destroyed','yes');")
-    private static native void markAttackSmokeDestroyed();
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-attack-smoke-core','destroyed');")
+    private static native void markAttackSmokeCoreDestroyed();
+
+    @JSBody(params = {"noEnemyCore", "gameOver", "won"}, script = "document.documentElement.setAttribute('data-mindustry-attack-smoke-enemy-core', noEnemyCore ? 'gone' : 'present'); document.documentElement.setAttribute('data-mindustry-attack-smoke-game-over', gameOver ? 'yes' : 'no'); document.documentElement.setAttribute('data-mindustry-attack-smoke-won', won ? 'yes' : 'no'); if(noEnemyCore && gameOver && won) document.documentElement.setAttribute('data-mindustry-attack-smoke','ready');")
+    private static native void markAttackSmokeResult(boolean noEnemyCore, boolean gameOver, boolean won);
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryEnemyPathSmoke') === '1';")
     private static native boolean enemyPathSmokeRequested();
@@ -160,4 +127,4 @@ if text.count(old_query) != 1:
 text = text.replace(old_query, new_query, 1)
 
 RUNTIME.write_text(text, encoding="utf-8")
-print("Added local attack-mode enemy-core destruction smoke using real CoreBuild lifecycle")
+print("Added local-authoritative attack-mode enemy-core victory smoke")
