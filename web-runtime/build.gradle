@@ -60,8 +60,8 @@ tasks.register("stageWeb", Copy) {
     from("../work/Mindustry/core/assets") {
         include "bundles/bundle.properties"
         include "bundles/bundle_ru.properties"
-        include "planets/serpulo.json"
-        include "planets/erekir.json"
+        // Planet definitions are Java content in mindustry.content.Planets in v159.7;
+        // there are no planets/serpulo.json or planets/erekir.json assets upstream.
         include "logicids.dat"
         include "sprites/error.png"
         include "sprites/block_colors.png"
@@ -104,7 +104,7 @@ tasks.register("stageWeb", Copy) {
         include "maps/serpulo/sunkenPier.msav"
         include "maps/serpulo/weatheredChannels.msav"
 
-        // First verified Erekir progression surface.
+        // Complete stock Erekir preset progression through Origin.
         include "maps/erekir/onset.msav"
         include "maps/erekir/aegis.msav"
         include "maps/erekir/lake.msav"
