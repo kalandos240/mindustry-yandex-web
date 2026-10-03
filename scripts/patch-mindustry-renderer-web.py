@@ -86,4 +86,54 @@ text = text.replace(preview_calls, "")
 if "MapPreviewLoader.checkPreviews()" in text:
     raise SystemExit("Renderer Web patch retained map-preview polling")
 
+# Keep production behavior unchanged while making TeaVM's stackless NPEs actionable.
+# BrowserApplication preserves nested exception messages, so these narrow boundaries
+# identify whether a runtime-load failure is an entity draw or the sorted batch flush.
+old_draw_call = '''            if(renderer.pixelate){
+                pixelator.drawPixelate();
+            }else{
+                draw();
+            }
+'''
+new_draw_call = '''            if(renderer.pixelate){
+                pixelator.drawPixelate();
+            }else{
+                try{
+                    draw();
+                }catch(Throwable error){
+                    throw new IllegalStateException("Web renderer draw failed", error);
+                }
+            }
+'''
+if old_draw_call not in text:
+    raise SystemExit("Renderer Web draw diagnostic anchor no longer matches pinned upstream")
+text = text.replace(old_draw_call, new_draw_call, 1)
+
+old_group_draw = "        Groups.draw.draw(Drawc::draw);\n"
+new_group_draw = '''        try{
+            Groups.draw.draw(Drawc::draw);
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer Groups.draw failed", error);
+        }
+'''
+if old_group_draw not in text:
+    raise SystemExit("Renderer Web Groups.draw diagnostic anchor no longer matches pinned upstream")
+text = text.replace(old_group_draw, new_group_draw, 1)
+
+old_flush = '''        Draw.reset();
+        Draw.flush();
+        Draw.sort(false);
+'''
+new_flush = '''        Draw.reset();
+        try{
+            Draw.flush();
+        }catch(Throwable error){
+            throw new IllegalStateException("Web renderer Draw.flush failed", error);
+        }
+        Draw.sort(false);
+'''
+if old_flush not in text:
+    raise SystemExit("Renderer Web Draw.flush diagnostic anchor no longer matches pinned upstream")
+text = text.replace(old_flush, new_flush, 1)
+
 path.write_text(text, encoding="utf-8")
