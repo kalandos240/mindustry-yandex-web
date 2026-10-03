@@ -6,6 +6,7 @@ WEB_DIR="$ROOT_DIR/web-runtime/build/web"
 INDEX="$WEB_DIR/index.html"
 PLATFORM="$WEB_DIR/yandex-platform.js"
 MANIFEST="$WEB_DIR/assets-manifest.js"
+PLANETS_SOURCE="$ROOT_DIR/work/Mindustry/core/src/mindustry/content/Planets.java"
 MAX_BYTES=$((100 * 1024 * 1024))
 
 fail(){
@@ -28,11 +29,21 @@ fi
 [ -s "$WEB_DIR/licenses/upstream.lock" ] || fail "upstream lockfile missing from release"
 grep -Fq 'c9686eb5d0ae5dd47ee02c40f99f7d5018ccbc8c' "$WEB_DIR/licenses/SOURCE-NOTICE.txt" || fail "Mindustry source pin missing from notice"
 grep -Fq 'c38f8f5ff27f47a5886d0903aadeba42e4302411' "$WEB_DIR/licenses/SOURCE-NOTICE.txt" || fail "Arc source pin missing from notice"
-[ -s "$WEB_DIR/assets/planets/erekir.json" ] || fail "Erekir planet definition missing"
+
+# Mindustry v159.7 does not ship assets/planets/{erekir,serpulo}.json. Both planets are
+# Java content definitions in mindustry.content.Planets and TeaVM compiles that content
+# into mindustry.js. Verify the pinned definitions and their compiled reachability rather
+# than requiring imaginary asset files that never exist upstream.
+[ -s "$PLANETS_SOURCE" ] || fail "pinned Mindustry Planets.java missing from build workspace"
+grep -Fq 'erekir = new Planet("erekir", sun, 1f, 2)' "$PLANETS_SOURCE" || fail "pinned Erekir planet definition changed or missing"
+grep -Fq 'serpulo = new Planet("serpulo", sun, 1f, 3)' "$PLANETS_SOURCE" || fail "pinned Serpulo planet definition changed or missing"
+grep -Fq 'campaignRuleDefaults.rtsAI = true' "$PLANETS_SOURCE" || fail "pinned Erekir campaign RTS rule missing"
+grep -Fq 'erekir' "$WEB_DIR/mindustry.js" || fail "compiled Erekir content is not reachable in TeaVM output"
+grep -Fq 'serpulo' "$WEB_DIR/mindustry.js" || fail "compiled Serpulo content is not reachable in TeaVM output"
+
 for preset in onset aegis lake intersect atlas split basin marsh peaks ravine caldera-erekir stronghold crevice siege crossroads karst origin; do
   [ -s "$WEB_DIR/assets/maps/erekir/$preset.msav" ] || fail "Erekir campaign map missing: $preset.msav"
 done
-grep -Fq 'planets/erekir.json' "$MANIFEST" || fail "Erekir planet definition missing from asset manifest"
 for preset in onset aegis lake intersect atlas split basin marsh peaks ravine caldera-erekir stronghold crevice siege crossroads karst origin; do
   grep -Fq "maps/erekir/$preset.msav" "$MANIFEST" || fail "Erekir campaign map missing from asset manifest: $preset.msav"
 done
@@ -62,8 +73,8 @@ map_count="$(find "$WEB_DIR/assets/maps/default" -maxdepth 1 -type f -name '*.ms
 [ "$map_count" -gt 1 ] || fail "builtin local map set is unexpectedly incomplete"
 echo "Builtin local maps staged: $map_count"
 
-# Campaign milestone assets: only sectors whose real TechTree progression is currently
-# exposed by the lean browser campaign UI are allowed into the Yandex package.
+# Campaign milestone assets: all stock Serpulo TechTree presets reached by the current
+# complete browser campaign implementation must stay in the same-origin release.
 for preset in groundZero frozenForest crateredBattleground ruinousShores windsweptIslands biomassFacility fungalPass frontier saltFlats tarFields impact0078 stainedMountains infestedCanyons nuclearComplex desolateRift facility32m perilousHarbor extractionOutpost coastline navalFortress overgrowth mycelialBastion littoralShipyard planetaryTerminal taintedWoods atolls testingGrounds sunkenPier weatheredChannels; do
   [ -s "$WEB_DIR/assets/maps/serpulo/$preset.msav" ] || fail "campaign preset map missing: $preset.msav"
   grep -Fq "maps/serpulo/$preset.msav" "$MANIFEST" || fail "campaign preset missing from asset manifest: $preset.msav"
