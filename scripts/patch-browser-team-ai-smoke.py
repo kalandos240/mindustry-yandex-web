@@ -32,16 +32,13 @@ if text.count(old_start) != 1:
     raise SystemExit("Team-AI smoke start anchor no longer matches attack runtime")
 text = text.replace(old_start, new_start, 1)
 
-old_step = '''        updateEnemyPathSmoke();
-        updateAttackSmoke();
-
-        markPhase("control");
+# attack-smoke is the stable semantic predecessor. Do not depend on the diagnostic
+# helper name after it (markPhase/diagPhase), because production telemetry has already
+# been refactored independently of this CI-only team-AI probe.
+old_step = '''        updateAttackSmoke();
 '''
-new_step = '''        updateEnemyPathSmoke();
-        updateAttackSmoke();
+new_step = '''        updateAttackSmoke();
         updateTeamAiSmoke();
-
-        markPhase("control");
 '''
 if text.count(old_step) != 1:
     raise SystemExit("Team-AI smoke update anchor no longer matches attack runtime")
