@@ -10,6 +10,91 @@ for path in (APPLICATION, VERIFY, SMOKE):
     if not path.is_file():
         raise SystemExit(f"Missing browser build-placement source: {path}")
 
+# DOM PointerEvents are delivered after the application frame that dispatches them.
+# Do not release the world left button until stock DesktopInput has actually observed
+# Binding.select and entered PlaceMode.placing. A one-frame down/up pair can otherwise
+# collapse on slow/headless TeaVM runs and produce no BuildPlan at all; the separate
+# demolition/rotation gates made that race visible even though the ordinary build gate
+# often happened to pass.
+smoke = SMOKE.read_text(encoding="utf-8")
+old_world_gesture = '''        if(stage == 4){
+            // The world click must not be intercepted by the Arc HUD. This also proves
+            // the pointermove reached WebInput before placement starts.
+            if(Core.scene.hasMouse()){
+                throw new IllegalStateException("Chosen build tile is covered by an Arc Scene actor: " + targetX + "," + targetY);
+            }
+            if(Math.abs(Core.input.mouseX() - targetScreenX) > 3f || Math.abs(Core.input.mouseY() - targetScreenY) > 3f){
+                throw new IllegalStateException(
+                    "DOM pointermove did not reach build target: input=" + Core.input.mouseX() + "," + Core.input.mouseY() +
+                    " expected=" + targetScreenX + "," + targetScreenY
+                );
+            }
+
+            dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
+            pointerDown = true;
+            stage = 5;
+            markStage("world-down", targetScreenX, targetScreenY);
+            return;
+        }
+
+        if(stage == 5){
+            dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
+            pointerDown = false;
+            stage = 6;
+            markStage("world-up", targetScreenX, targetScreenY);
+            return;
+        }
+'''
+new_world_gesture = '''        if(stage == 4){
+            // The world click must not be intercepted by the Arc HUD. This also proves
+            // the pointermove reached WebInput before placement starts.
+            if(Core.scene.hasMouse()){
+                throw new IllegalStateException("Chosen build tile is covered by an Arc Scene actor: " + targetX + "," + targetY);
+            }
+            if(Math.abs(Core.input.mouseX() - targetScreenX) > 3f || Math.abs(Core.input.mouseY() - targetScreenY) > 3f){
+                throw new IllegalStateException(
+                    "DOM pointermove did not reach build target: input=" + Core.input.mouseX() + "," + Core.input.mouseY() +
+                    " expected=" + targetScreenX + "," + targetScreenY
+                );
+            }
+
+            dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
+            pointerDown = true;
+            pointerButton = 0;
+            uiFrames = 0;
+            stage = 5;
+            markStage("world-down", targetScreenX, targetScreenY);
+            return;
+        }
+
+        if(stage == 5){
+            // Browser DOM input is queued after this smoke observer. Keep the physical
+            // left button held until the next normal DesktopInput update has consumed
+            // the exact select binding and entered stock placing mode. Only then may the
+            // release edge flush linePlans into the player's real BuildPlan queue.
+            boolean placing = control.input instanceof DesktopInput &&
+                ((DesktopInput)control.input).mode == PlaceMode.placing;
+            if(!Core.input.keyDown(Binding.select) || !placing){
+                if(++uiFrames >= maxUiFrames){
+                    releasePointer();
+                    throw new IllegalStateException("DOM left-click never reached confirmed DesktopInput placing mode");
+                }
+                markWaiting("world-down", uiFrames);
+                return;
+            }
+
+            dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
+            pointerDown = false;
+            uiFrames = 0;
+            stage = 6;
+            markStage("world-up", targetScreenX, targetScreenY);
+            return;
+        }
+'''
+if smoke.count(old_world_gesture) != 1:
+    raise SystemExit("Build-placement world gesture anchor no longer matches")
+SMOKE.write_text(smoke.replace(old_world_gesture, new_world_gesture, 1), encoding="utf-8")
+
 application = APPLICATION.read_text(encoding="utf-8")
 old_hook = '''                BrowserPlayerInputSmoke.update();
                 BrowserPlayerCombatSmoke.update();
@@ -158,4 +243,4 @@ if verify.count(call_anchor) != 1:
 verify = verify.replace(call_anchor, call_replacement, 1)
 
 VERIFY.write_text(verify, encoding="utf-8")
-print("Extended browser gate with real palette/world DOM clicks through stock BuildPlan construction")
+print("Extended browser gate with real palette/world DOM clicks through confirmed stock DesktopInput placement, demolition and rotation")
