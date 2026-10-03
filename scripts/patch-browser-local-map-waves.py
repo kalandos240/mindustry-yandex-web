@@ -8,6 +8,76 @@ if not RUNTIME.is_file():
     raise SystemExit(f"Missing browser local-map runtime source: {RUNTIME}")
 
 text = RUNTIME.read_text(encoding="utf-8")
+changed = False
+
+# Runtime-load CI must prove the custom Web SpriteBatch sorter itself, not merely hope
+# that a particular camera/map happens to queue enough sortable requests. Use the real
+# Core.batch/Draw path with no-op queued draw requests: one deliberately unsorted flush
+# exercises the stable merge path, then an already-sorted flush proves the fast path.
+# This runs only when mindustryPerfSmoke=1; production gameplay never enters it.
+perf_marker = "private static void exercisePerfSpriteSort()"
+if perf_marker not in text:
+    old_reset = '''        perfControlPathStartSteps = controlPath.webSteps();
+        SpriteBatch.webSortCalls = 0;
+        SpriteBatch.webMaxSortRequests = 0;
+        SpriteBatch.webMaxSortRuns = 0;
+        SpriteBatch.webSortedFastPaths = 0;
+        if(!Fx.drillSteam.shouldCreate()){
+'''
+    new_reset = '''        perfControlPathStartSteps = controlPath.webSteps();
+        // Isolate sorter counters from any menu/world-start batch that may still be
+        // pending before the performance workload begins.
+        Draw.sort(false);
+        Draw.flush();
+        SpriteBatch.webSortCalls = 0;
+        SpriteBatch.webMaxSortRequests = 0;
+        SpriteBatch.webMaxSortRuns = 0;
+        SpriteBatch.webSortedFastPaths = 0;
+        exercisePerfSpriteSort();
+        if(!Fx.drillSteam.shouldCreate()){
+'''
+    if text.count(old_reset) != 1:
+        raise SystemExit("Browser perf sorter reset anchor no longer matches runtime")
+    text = text.replace(old_reset, new_reset, 1)
+
+    method_anchor = '''    private static void stagePerfEffects(){
+'''
+    method = '''    private static void exercisePerfSpriteSort(){
+        float previousZ = Draw.z();
+        try{
+            Draw.sort(true);
+
+            // Three descending/ascending runs force the Web stable merge path.
+            Draw.draw(3f, () -> {});
+            Draw.draw(1f, () -> {});
+            Draw.draw(2f, () -> {});
+            Draw.flush();
+
+            // A second monotonic batch must take the already-sorted fast path.
+            Draw.draw(1f, () -> {});
+            Draw.draw(2f, () -> {});
+            Draw.draw(3f, () -> {});
+            Draw.flush();
+        }finally{
+            Draw.sort(false);
+            Draw.z(previousZ);
+            Draw.reset();
+        }
+
+        if(SpriteBatch.webSortCalls < 2 || SpriteBatch.webMaxSortRequests < 3
+        || SpriteBatch.webMaxSortRuns < 3 || SpriteBatch.webSortedFastPaths < 1){
+            throw new IllegalStateException("Browser Web SpriteBatch deterministic sorter proof failed: calls="
+                + SpriteBatch.webSortCalls + " requests=" + SpriteBatch.webMaxSortRequests
+                + " runs=" + SpriteBatch.webMaxSortRuns + " fast=" + SpriteBatch.webSortedFastPaths);
+        }
+    }
+
+    private static void stagePerfEffects(){
+'''
+    if text.count(method_anchor) != 1:
+        raise SystemExit("Browser perf sorter helper anchor no longer matches runtime")
+    text = text.replace(method_anchor, method, 1)
+    changed = True
 
 # The current overlay may already contain this milestone. Build assembly still invokes
 # this historical patch script after applying upstream overlays, so treat an exact
@@ -21,6 +91,9 @@ already = [
     "// Preserve the selected built-in map's stock waves/waveTimer values.",
 ]
 if all(marker in text for marker in already):
+    if changed:
+        RUNTIME.write_text(text, encoding="utf-8")
+        print("Added deterministic Web SpriteBatch merge + fast-path perf proof")
     print("BrowserLocalMapRuntime already contains the proven local survival wave milestone")
     raise SystemExit(0)
 
