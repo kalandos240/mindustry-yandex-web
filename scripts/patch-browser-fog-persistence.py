@@ -16,6 +16,8 @@ old_fields = '''    private static boolean periodicSaveSmokeDone;
 new_fields = '''    private static boolean periodicSaveSmokeDone;
     private static boolean fogPersistSeedDone;
     private static boolean fogPersistRestoreDone;
+    private static boolean fogPersistSeedSmoke;
+    private static boolean fogPersistRestoreSmoke;
     private static Map current;
     private static int frames;
 '''
@@ -65,17 +67,17 @@ old_after_fog = '''            }else if(frames >= 2){
                 throw new IllegalStateException("Browser fog smoke did not converge after 3 playing frames");
             }
         }
-        if(state.wave > beforeWave){
+        if(testWaveExpected && state.wave > beforeWave){
 '''
 new_after_fog = '''            }else if(frames >= 2){
                 throw new IllegalStateException("Browser fog smoke did not converge after 3 playing frames");
             }
         }
         updateFogPersistenceSmoke();
-        if(state.wave > beforeWave){
+        if(testWaveExpected && state.wave > beforeWave){
 '''
 if text.count(old_after_fog) != 1:
-    raise SystemExit("Fog persistence frame hook anchor no longer matches fog runtime")
+    raise SystemExit("Fog persistence frame hook anchor no longer matches optimized fog runtime")
 text = text.replace(old_after_fog, new_after_fog, 1)
 
 old_helper = '''    /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
@@ -90,6 +92,9 @@ new_helper = '''    /**
      * survived SaveIO -> IndexedDB -> full process restart -> SaveIO.load.
      */
     private static void updateFogPersistenceSmoke(){
+        // Query-string smoke flags are cached once per session. Production frames never
+        // cross the TeaVM/JavaScript boundary just to discover that this CI path is off.
+        if(!fogPersistSeedSmoke && !fogPersistRestoreSmoke) return;
         if(!active || current == null || !state.isPlaying() || state.gameOver) return;
         if(frames < 2) return; // require at least three real playing-core ticks
 
@@ -99,7 +104,7 @@ new_helper = '''    /**
         int farY = core.tile.y < world.height() / 2 ? world.height() - 1 : 0;
         int farIndex = farX + farY * world.width();
 
-        if(fogPersistSeedRequested() && !fogPersistSeedDone){
+        if(fogPersistSeedSmoke && !fogPersistSeedDone){
             if(!state.rules.fog || !state.rules.staticFog){
                 throw new IllegalStateException("Fog persistence seed requires dynamic + static fog rules");
             }
@@ -124,7 +129,7 @@ new_helper = '''    /**
             markFogPersistSeed(slug(current), farX, farY, savedWave);
         }
 
-        if(fogPersistRestoreRequested() && !fogPersistRestoreDone){
+        if(fogPersistRestoreSmoke && !fogPersistRestoreDone){
             if(!state.rules.fog || !state.rules.staticFog){
                 throw new IllegalStateException("Fog persistence restore lost dynamic/static fog rules from v13 save");
             }
@@ -142,69 +147,34 @@ new_helper = '''    /**
 
     /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
     private static void maybePeriodicSave(){
-     * one far, currently hidden and previously undiscovered tile as explored, writes the
-     * normal v13 slot, then exits. A new Chrome process loads the same slot and must see
-     * that exact far tile as discovered while it remains dynamically hidden. A normal
-     * core-based fog rebuild cannot create this marker, so a PASS proves static-fog-data
-     * survived SaveIO -> IndexedDB -> full process restart -> SaveIO.load.
-     */
-    private static void updateFogPersistenceSmoke(){
-        if(!active || current == null || !state.isPlaying() || state.gameOver) return;
-        if(frames < 2) return; // require at least three real playing-core ticks
-
-        var core = state.rules.defaultTeam.core();
-        if(core == null) throw new IllegalStateException("Fog persistence smoke lost the default-team core");
-        int farX = core.tile.x < world.width() / 2 ? world.width() - 1 : 0;
-        int farY = core.tile.y < world.height() / 2 ? world.height() - 1 : 0;
-        int farIndex = farX + farY * world.width();
-
-        if(fogPersistSeedRequested() && !fogPersistSeedDone){
-            if(!state.rules.fog || !state.rules.staticFog){
-                throw new IllegalStateException("Fog persistence seed requires dynamic + static fog rules");
-            }
-            if(fogControl.isVisibleTile(state.rules.defaultTeam, farX, farY)){
-                throw new IllegalStateException("Fog persistence seed tile unexpectedly visible before save");
-            }
-            if(fogControl.isDiscovered(state.rules.defaultTeam, farX, farY)){
-                throw new IllegalStateException("Fog persistence seed tile was already discovered before marker injection");
-            }
-            var discovered = fogControl.getDiscovered(state.rules.defaultTeam);
-            if(discovered == null){
-                throw new IllegalStateException("Fog persistence seed has no static discovery bitmap");
-            }
-            discovered.set(farIndex);
-            if(!fogControl.isDiscovered(state.rules.defaultTeam, farX, farY)){
-                throw new IllegalStateException("Fog persistence seed bit could not be set");
-            }
-
-            int savedWave = state.wave;
-            saveLocalSession();
-            fogPersistSeedDone = true;
-            markFogPersistSeed(slug(current), farX, farY, savedWave);
-        }
-
-        if(fogPersistRestoreRequested() && !fogPersistRestoreDone){
-            if(!state.rules.fog || !state.rules.staticFog){
-                throw new IllegalStateException("Fog persistence restore lost dynamic/static fog rules from v13 save");
-            }
-            boolean discovered = fogControl.isDiscovered(state.rules.defaultTeam, farX, farY);
-            boolean hidden = !fogControl.isVisibleTile(state.rules.defaultTeam, farX, farY);
-            markFogPersistRestoreProbe(farX, farY, discovered, hidden);
-            if(discovered && hidden){
-                fogPersistRestoreDone = true;
-                markFogPersistRestored(slug(current), farX, farY, state.wave);
-            }else{
-                throw new IllegalStateException("Browser static fog marker did not survive v13 save/restart");
-            }
-        }
-    }
-
-    /**
-     * Save every three minutes of active simulation. No Timer/ExecutorService or page
 '''
 if text.count(old_helper) != 1:
     raise SystemExit("Fog persistence helper insertion anchor no longer matches periodic runtime")
 text = text.replace(old_helper, new_helper, 1)
+
+old_cache = '''        periodicSaveSmoke = periodicSaveSmokeRequested();
+    }
+'''
+new_cache = '''        periodicSaveSmoke = periodicSaveSmokeRequested();
+        fogPersistSeedSmoke = fogPersistSeedRequested();
+        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+    }
+'''
+if text.count(old_cache) != 1:
+    raise SystemExit("Fog persistence session smoke-cache anchor no longer matches")
+text = text.replace(old_cache, new_cache, 1)
+
+old_continue_head = '''    public static void continueSaved(){
+        telemetry = smokeTelemetryRequested();
+'''
+new_continue_head = '''    public static void continueSaved(){
+        telemetry = smokeTelemetryRequested();
+        fogPersistSeedSmoke = fogPersistSeedRequested();
+        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+'''
+if text.count(old_continue_head) != 1:
+    raise SystemExit("Fog persistence Continue smoke-cache anchor no longer matches")
+text = text.replace(old_continue_head, new_continue_head, 1)
 
 old_continue_reset = '''        periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
@@ -276,4 +246,4 @@ if text.count(old_marker) != 1:
 text = text.replace(old_marker, new_marker, 1)
 
 RUNTIME.write_text(text, encoding="utf-8")
-print("Added deterministic static-fog-data v13 save/restart proof without changing production fog semantics")
+print("Added deterministic static-fog v13 persistence proof with cached CI flags")
