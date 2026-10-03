@@ -41,6 +41,14 @@ def forbid(source: str, needle: str, where: str) -> None:
     if needle in source:
         failures.append(f"{where}: forbidden hot-path pattern present: {needle}")
 
+def java_static_method(source: str, signature: str) -> str:
+    """Return one top-level static Java method without depending on the next method name."""
+    start = source.index(signature)
+    body_start = source.index("{", start) + 1
+    next_method = re.search(r"\n    (?:public|private|protected) static ", source[body_start:])
+    end = body_start + next_method.start() if next_method else len(source)
+    return source[start:end]
+
 require(INDEX_HTML, "globalThis.__mindustryAssetSet = new Set(manifest)", "packaged asset O1 index")
 require(INDEX_HTML, "data-mindustry-asset-index', 'set", "packaged asset O1 index telemetry")
 require(BROWSER_FILES, "const set = globalThis.__mindustryAssetSet; return set ? set.has(path) : false;", "packaged asset O1 existence")
@@ -197,7 +205,6 @@ require(CONTROL_PATH_PATCH, "clustersToUpdate.add(cx + cy * cwidth);", "ControlP
 forbid(CONTROL_PATH_PATCH, 'new_inner_queue = "            queue.post(() -> clustersToInnerUpdate.add(cluster));', "ControlPathfinder tile queue allocation")
 forbid(CONTROL_PATH_PATCH, 'new_cluster_queue = "            queue.post(() -> clustersToUpdate.add(cx + cy * cwidth));', "ControlPathfinder tile queue allocation")
 require(CONTROL_PATH_PATCH, "text = text.replace(old_main_cleanup, new_main_cleanup, 1)", "ControlPathfinder stale cleanup replacement")
-
 # The unbounded calls legitimately appear inside old_run anchors; require that each
 # patch replaces that exact upstream block with the bounded Web implementation.
 require(PATHFINDER_PATCH, "text = text.replace(old_run, new_run, 1)", "Pathfinder Web patch replacement")
@@ -319,13 +326,11 @@ forbid(campaign_continue_body, "SaveIO.isSaveValid", "campaign resume metadata r
 forbid(campaign_continue_body, "SaveIO.getMeta(", "campaign resume metadata reuse")
 require(campaign_continue_body, "SaveMeta indexed = sector.save.meta;", "campaign resume metadata reuse")
 
-for method, end_marker in [
-    ("public static void returnToMenu", "private static void clearRuntimeState"),
-    ("private static void saveCampaignCheckpoint", "public static void updateFrame"),
+for method in [
+    "public static void returnToMenu",
+    "private static void saveCampaignCheckpoint",
 ]:
-    start = CAMPAIGN_RUNTIME.index(method)
-    end = CAMPAIGN_RUNTIME.index(end_marker, start)
-    body = CAMPAIGN_RUNTIME[start:end]
+    body = java_static_method(CAMPAIGN_RUNTIME, method)
     forbid(body, "SaveIO.isSaveValid", f"{method} autosave metadata reuse")
     forbid(body, "SaveIO.getMeta(", f"{method} autosave metadata reuse")
     require(body, "SaveMeta meta = current.save.meta;", f"{method} autosave metadata reuse")
@@ -541,6 +546,7 @@ forbid(BROWSER_SETTINGS, "public synchronized void manualSave(){\n        forceS
 
 # IndexedDB hot paths: adopt hydrated buffers without cloning and share one readwrite
 # transaction across synchronous SaveIO file mutations in the same browser task.
+require(BROWSER_STORAGE, "const root = document.documentElement;", "IndexedDB DOM telemetry root")
 require(BROWSER_STORAGE, "function adoptHydratedBytes(raw)", "IndexedDB hydration copy avoidance")
 require(BROWSER_STORAGE, "data-mindustry-storage-hydration-policy', 'adopt-idb-buffer", "IndexedDB hydration telemetry")
 require(BROWSER_STORAGE, "function mutationStore()", "IndexedDB write coalescing")
