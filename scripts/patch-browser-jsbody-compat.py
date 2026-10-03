@@ -11,7 +11,7 @@ text = RUNTIME.read_text(encoding="utf-8")
 old = '''    @JSBody(script = "const p=new URLSearchParams(location.search); for(const key of p.keys()){ if(key.startsWith('mindustry') && key.toLowerCase().endsWith('smoke')) return true; } return false;")
     private static native boolean smokeTelemetryRequested();
 '''
-new = '''    @JSBody(script = "var query=String(location.search || ''); if(query.charAt(0)==='?') query=query.substring(1); var parts=query.split('&'); for(var i=0;i<parts.length;i++){ var raw=parts[i].split('=')[0] || ''; var key; try{ key=decodeURIComponent(raw.replace(/\\+/g,' ')); }catch(e){ key=raw; } var lower=key.toLowerCase(); if(key.indexOf('mindustry')===0 && lower.length>=5 && lower.lastIndexOf('smoke')===lower.length-5) return true; } return false;")
+new = '''    @JSBody(script = "var query=String(location.search || ''); if(query.charAt(0)==='?') query=query.substring(1); var parts=query.split('&'); for(var i=0;i<parts.length;i++){ var raw=parts[i].split('=')[0] || ''; var key; try{ key=decodeURIComponent(raw.split('+').join(' ')); }catch(e){ key=raw; } var lower=key.toLowerCase(); if(key.indexOf('mindustry')===0 && lower.length>=5 && lower.lastIndexOf('smoke')===lower.length-5) return true; } return false;")
     private static native boolean smokeTelemetryRequested();
 '''
 
@@ -29,7 +29,8 @@ else:
 
 # TeaVM 0.15's JSBody parser accepts classic var/for syntax but rejects ES2015
 # for...of in this path while still allowing generateJavaScript to exit successfully.
-# Keep the source gate explicit so silent parser diagnostics cannot recur here.
+# Avoid Java string escape traps as well: this replacement intentionally contains no
+# JavaScript regexp/backslash literals.
 if "for(const key of p.keys())" in text or "const p=new URLSearchParams(location.search)" in text:
     raise SystemExit("Unsupported ES2015 smoke telemetry JSBody syntax remains after patch")
 
