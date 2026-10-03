@@ -211,6 +211,20 @@ def main() -> int:
     if args.third_resize_require and args.third_resize_width is None:
         parser.error("--third-resize-require requires --third-resize-width/--third-resize-height")
 
+    # BrowserGameplayRuntime deliberately keeps deterministic self-tests out of normal
+    # production startup. When a caller explicitly requires the CI-only GameState tick
+    # marker, make that contract explicit in the URL instead of silently waiting for a
+    # marker production mode will never emit. Other Chrome gates remain production-mode.
+    all_required = (
+        args.require
+        + args.after_resize_require
+        + args.second_resize_require
+        + args.third_resize_require
+    )
+    if any('data-mindustry-game-state-tick-smoke=' in marker for marker in all_required):
+        if 'mindustrySmoke=' not in args.url:
+            args.url += ('&' if '?' in args.url else '?') + 'mindustrySmoke=1'
+
     profile = Path(args.profile)
     profile.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
