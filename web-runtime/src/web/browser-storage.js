@@ -3,6 +3,7 @@
 
     const DB_NAME = 'mindustry-web-files-v1';
     const STORE = 'files';
+    const root = document.documentElement;
     const memory = Object.create(null);
     let db = null;
     let initPromise = null;
@@ -17,7 +18,7 @@
     let mutationTransactions = 0;
 
     function markStage(stage){
-        document.documentElement.setAttribute('data-mindustry-storage', stage);
+        root.setAttribute('data-mindustry-storage', stage);
     }
 
     function normalize(path){
@@ -131,8 +132,8 @@
                         const path = normalize(record.path);
                         memory[path] = adoptHydratedBytes(record.data);
                     }
-                    document.documentElement.setAttribute('data-mindustry-storage-hydration-policy', 'adopt-idb-buffer');
-                    document.documentElement.setAttribute('data-mindustry-storage-hydrated-files', String((request.result || []).length));
+                    root.setAttribute('data-mindustry-storage-hydration-policy', 'adopt-idb-buffer');
+                    root.setAttribute('data-mindustry-storage-hydrated-files', String((request.result || []).length));
                     resolve();
                 };
                 request.onerror = () => reject(request.error || new Error('IndexedDB hydration failed'));
@@ -141,7 +142,7 @@
             return api;
         })().catch(error => {
             markStage('error');
-            document.documentElement.setAttribute('data-mindustry-storage-error', String(error && error.name ? error.name : 'storage-error'));
+            root.setAttribute('data-mindustry-storage-error', String(error && error.name ? error.name : 'storage-error'));
             throw error;
         });
         return initPromise;
@@ -218,14 +219,14 @@
         }
         if(durableGeneration >= targetGeneration){
             flushSkips++;
-            document.documentElement.setAttribute('data-mindustry-storage-flush-skips', String(flushSkips));
+            root.setAttribute('data-mindustry-storage-flush-skips', String(flushSkips));
             return Promise.resolve();
         }
 
         flushGeneration = targetGeneration;
         flushTransactions++;
-        document.documentElement.setAttribute('data-mindustry-storage-flush-policy', 'generation-coalesced');
-        document.documentElement.setAttribute('data-mindustry-storage-flush-transactions', String(flushTransactions));
+        root.setAttribute('data-mindustry-storage-flush-policy', 'generation-coalesced');
+        root.setAttribute('data-mindustry-storage-flush-transactions', String(flushTransactions));
 
         const pending = new Promise((resolve, reject) => {
             const tx = db.transaction(STORE, 'readonly');
@@ -238,7 +239,7 @@
         flushPromise = pending.then(
             value => {
                 durableGeneration = Math.max(durableGeneration, targetGeneration);
-                document.documentElement.setAttribute('data-mindustry-storage-durable-generation', String(durableGeneration));
+                root.setAttribute('data-mindustry-storage-durable-generation', String(durableGeneration));
                 flushPromise = null;
                 return value;
             },
@@ -253,7 +254,6 @@
     let lifecycleFlushCount = 0;
     function lifecycleFlush(reason){
         const label = String(reason || 'unknown');
-        const root = document.documentElement;
         root.setAttribute('data-mindustry-storage-lifecycle-flush', label + '-pending');
         return flush().then(() => {
             lifecycleFlushCount++;
