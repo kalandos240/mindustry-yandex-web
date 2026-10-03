@@ -12,8 +12,16 @@ text = VERIFY.read_text(encoding="utf-8")
 menu_start = text.index("run_production_menu(){")
 menu_end = text.index("run_production_map(){", menu_start)
 menu = text[menu_start:menu_end]
-menu_anchor = '''    --require 'data-mindustry-local-map-back="ready"' \\\n'''
-menu_insert = menu_anchor + '''    --require 'data-mindustry-campaign-ui="ready"' \\\n    --require 'data-mindustry-campaign-ui-layout="desktop"' \\\n    --require 'data-mindustry-campaign-ui-action="play"' \\\n'''
+menu_anchor = '''    --require 'data-mindustry-local-map-back="ready"' \\
+'''
+# Normal production startup deliberately keeps BrowserCampaignRuntime diagnostics off.
+# Verify that the Campaign surface itself is constructed with the desktop layout, but
+# do not require data-mindustry-campaign-ui-action here: that telemetry is intentionally
+# emitted only by explicit campaign smoke URLs. The mobile campaign smoke below enables
+# diagnostics and still proves the Continue action after a real Back/autosave round-trip.
+menu_insert = menu_anchor + '''    --require 'data-mindustry-campaign-ui="ready"' \\
+    --require 'data-mindustry-campaign-ui-layout="desktop"' \\
+'''
 if menu.count(menu_anchor) != 1:
     raise SystemExit("Campaign UI production-menu Back marker anchor no longer matches")
 menu = menu.replace(menu_anchor, menu_insert, 1)
@@ -86,4 +94,4 @@ if text.count(call_anchor) != 1:
 text = text.replace(call_anchor, call_replacement, 1)
 
 VERIFY.write_text(text, encoding="utf-8")
-print("Extended browser gate with desktop Campaign menu state and mobile Campaign/Back autosave flow")
+print("Extended browser gate with production Campaign layout and diagnostic mobile Campaign/Back autosave flow")
