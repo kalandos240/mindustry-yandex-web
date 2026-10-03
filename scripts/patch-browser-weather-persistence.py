@@ -57,10 +57,19 @@ if text.count(old_cache) != 1:
     raise SystemExit("Weather persistence session smoke-cache anchor no longer matches")
 text = text.replace(old_cache, new_cache, 1)
 
-old_continue_cache = '''        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+# The same cached flag sequence remains inside cacheSessionSmokeFlags() after the
+# replacement above. Match continueSaved() explicitly so cold-resume flags are added
+# once without colliding with the session-initialization block.
+old_continue_cache = '''    public static void continueSaved(){
+        telemetry = smokeTelemetryRequested();
+        fogPersistSeedSmoke = fogPersistSeedRequested();
+        fogPersistRestoreSmoke = fogPersistRestoreRequested();
         weatherSmoke = weatherSmokeRequested();
 '''
-new_continue_cache = '''        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+new_continue_cache = '''    public static void continueSaved(){
+        telemetry = smokeTelemetryRequested();
+        fogPersistSeedSmoke = fogPersistSeedRequested();
+        fogPersistRestoreSmoke = fogPersistRestoreRequested();
         weatherSmoke = weatherSmokeRequested();
         weatherPersistSeedSmoke = weatherPersistSeedRequested();
         weatherPersistRestoreSmoke = weatherPersistRestoreRequested();
