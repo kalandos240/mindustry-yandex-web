@@ -5,10 +5,101 @@ ROOT = Path(__file__).resolve().parents[1]
 APPLICATION = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserApplication.java"
 VERIFY = ROOT / "scripts" / "verify-browser-locales.sh"
 SMOKE = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserPlayerMiningSmoke.java"
+BUILD_SMOKE = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserBuildPlacementSmoke.java"
 
-for path in (APPLICATION, VERIFY, SMOKE):
+for path in (APPLICATION, VERIFY, SMOKE, BUILD_SMOKE):
     if not path.is_file():
-        raise SystemExit(f"Missing player-mining smoke source: {path}")
+        raise SystemExit(f"Missing player-mining/build smoke source: {path}")
+
+# The build-placement overlay runs immediately before this patch. TeaVM DOM events are
+# delivered between application frames, so confirming DesktopInput.mode==placing and
+# releasing in the same smoke callback is still racy: the release can be consumed before
+# stock input has retained a complete placing frame/linePlans. Hold one additional full
+# frame, then require the real Binding.select release transition before watching BuildPlans.
+build_smoke = BUILD_SMOKE.read_text(encoding="utf-8")
+old_release = '''        if(stage == 5){
+            // Browser DOM input is queued after this smoke observer. Keep the physical
+            // left button held until the next normal DesktopInput update has consumed
+            // the exact select binding and entered stock placing mode. Only then may the
+            // release edge flush linePlans into the player's real BuildPlan queue.
+            boolean placing = control.input instanceof DesktopInput &&
+                ((DesktopInput)control.input).mode == PlaceMode.placing;
+            if(!Core.input.keyDown(Binding.select) || !placing){
+                if(++uiFrames >= maxUiFrames){
+                    releasePointer();
+                    throw new IllegalStateException("DOM left-click never reached confirmed DesktopInput placing mode");
+                }
+                markWaiting("world-down", uiFrames);
+                return;
+            }
+
+            dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
+            pointerDown = false;
+            uiFrames = 0;
+            stage = 6;
+            markStage("world-up", targetScreenX, targetScreenY);
+            return;
+        }
+
+        Tile tile = world.tile(targetX, targetY);
+'''
+new_release = '''        if(stage == 5){
+            // Browser DOM input is queued after this smoke observer. First prove stock
+            // DesktopInput consumed the physical down edge and entered placing mode.
+            boolean placing = control.input instanceof DesktopInput &&
+                ((DesktopInput)control.input).mode == PlaceMode.placing;
+            if(!Core.input.keyDown(Binding.select) || !placing){
+                if(++uiFrames >= maxUiFrames){
+                    releasePointer();
+                    throw new IllegalStateException("DOM left-click never reached confirmed DesktopInput placing mode");
+                }
+                markWaiting("world-down", uiFrames);
+                return;
+            }
+
+            // Do not release in the same observer callback that first sees placing. Keep
+            // one complete stock application frame with select held so updateLine/linePlans
+            // cannot be collapsed by a slow/headless TeaVM event turn.
+            uiFrames = 0;
+            stage = -5;
+            markStage("world-down-confirmed", targetScreenX, targetScreenY);
+            return;
+        }
+
+        if(stage == -5){
+            boolean placing = control.input instanceof DesktopInput &&
+                ((DesktopInput)control.input).mode == PlaceMode.placing;
+            if(!Core.input.keyDown(Binding.select) || !placing){
+                releasePointer();
+                throw new IllegalStateException("Stock DesktopInput lost placing mode before confirmed DOM release");
+            }
+
+            dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
+            pointerDown = false;
+            uiFrames = 0;
+            stage = 6;
+            markStage("world-up", targetScreenX, targetScreenY);
+            return;
+        }
+
+        if(stage == 6){
+            boolean stillPlacing = control.input instanceof DesktopInput &&
+                ((DesktopInput)control.input).mode == PlaceMode.placing;
+            if(Core.input.keyDown(Binding.select) || stillPlacing){
+                if(++uiFrames >= maxUiFrames){
+                    throw new IllegalStateException("DOM left-click release never left confirmed DesktopInput placing mode");
+                }
+                markWaiting("world-release", uiFrames);
+                return;
+            }
+            uiFrames = 0;
+        }
+
+        Tile tile = world.tile(targetX, targetY);
+'''
+if build_smoke.count(old_release) != 1:
+    raise SystemExit("Post-placement release handshake anchor no longer matches")
+BUILD_SMOKE.write_text(build_smoke.replace(old_release, new_release, 1), encoding="utf-8")
 
 application = APPLICATION.read_text(encoding="utf-8")
 old_hook = '''                BrowserBuildPlacementSmoke.update();
@@ -73,4 +164,4 @@ if verify.count(call_anchor) != 1:
 verify = verify.replace(call_anchor, call_replacement, 1)
 
 VERIFY.write_text(verify, encoding="utf-8")
-print("Extended browser gate with real DOM mining and stock player MinerComp core transfer")
+print("Extended browser gate with real DOM mining and stock player MinerComp core transfer; stabilized confirmed build release")
