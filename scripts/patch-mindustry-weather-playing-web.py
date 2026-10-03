@@ -107,10 +107,16 @@ if text.count(old_cache) != 1:
     raise SystemExit("Browser local weather cached smoke flag anchor no longer matches fog-persistence runtime")
 text = text.replace(old_cache, new_cache, 1)
 
-old_continue = '''        fogPersistSeedSmoke = fogPersistSeedRequested();
+# The same fog-cache pair also appears in cacheSessionSmokeFlags(). Anchor the cold
+# resume update to continueSaved() itself so this patch cannot collide with session init.
+old_continue = '''    public static void continueSaved(){
+        telemetry = smokeTelemetryRequested();
+        fogPersistSeedSmoke = fogPersistSeedRequested();
         fogPersistRestoreSmoke = fogPersistRestoreRequested();
 '''
-new_continue = '''        fogPersistSeedSmoke = fogPersistSeedRequested();
+new_continue = '''    public static void continueSaved(){
+        telemetry = smokeTelemetryRequested();
+        fogPersistSeedSmoke = fogPersistSeedRequested();
         fogPersistRestoreSmoke = fogPersistRestoreRequested();
         weatherSmoke = weatherSmokeRequested();
 '''
