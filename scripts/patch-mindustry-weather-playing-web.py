@@ -56,22 +56,22 @@ if logic.count(old_update) != 1:
     raise SystemExit("Logic Web weather update insertion anchor no longer matches staged playing core")
 logic = logic.replace(old_update, new_update, 1)
 
-old_attrs = '''        // Weather is asserted absent above; retain the stock base rule attributes.
-        state.envAttrs.clear();
+# Match executable structure only. Earlier Web compatibility patches intentionally
+# rewrite the explanatory comment around this block, but the env-attribute reset is
+# the semantic insertion point and remains unique in the staged Logic implementation.
+old_attrs = '''        state.envAttrs.clear();
         state.envAttrs.add(state.rules.attributes);
 
         updateEntities();
 '''
-new_attrs = '''        // Stock weather attributes: active WeatherState opacity contributes to the
-        // world environment on the frame following its entity fade/update.
-        state.envAttrs.clear();
+new_attrs = '''        state.envAttrs.clear();
         state.envAttrs.add(state.rules.attributes);
         Groups.weather.each(w -> state.envAttrs.add(w.weather.attrs, w.opacity));
 
         updateEntities();
 '''
 if logic.count(old_attrs) != 1:
-    raise SystemExit("Logic Web weather environment-attribute anchor no longer matches optimized playing core")
+    raise SystemExit("Logic Web weather environment-attribute executable block no longer matches optimized playing core")
 logic = logic.replace(old_attrs, new_attrs, 1)
 LOGIC.write_text(logic, encoding="utf-8")
 
