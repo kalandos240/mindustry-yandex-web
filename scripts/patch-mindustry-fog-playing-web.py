@@ -22,20 +22,26 @@ if logic.count(old_guard) != 1:
     raise SystemExit("Logic Web fog guard patch no longer matches post-gameover playing core")
 logic = logic.replace(old_guard, new_guard, 1)
 
-old_tick = '''        state.updateId ++;
-        state.teams.updateTeamStats();
-        MapPreviewLoader.checkPreviews();
+# patch-mindustry-logic-web.py deliberately removes the desktop/network
+# MapPreviewLoader.checkPreviews() no-op from the Web hot path and folds the enemy
+# count into Teams.updateTeamStats(). Insert fog after that optimized team pass,
+# preserving stock Logic.update ordering without reintroducing either removed cost.
+old_tick = '''        state.teams.updateTeamStats();
+        state.enemies = state.teams.webWaveEnemies;
+        // Web never installs the desktop/network MapPreviewLoader reflection callbacks;
+        // do not retain or poll that no-op preview bridge in the gameplay hot path.
 
         Time.update();
 '''
-new_tick = '''        state.updateId ++;
-        state.teams.updateTeamStats();
-        MapPreviewLoader.checkPreviews();
+new_tick = '''        state.teams.updateTeamStats();
+        state.enemies = state.teams.webWaveEnemies;
+        // Web never installs the desktop/network MapPreviewLoader reflection callbacks;
+        // do not retain or poll that no-op preview bridge in the gameplay hot path.
 
         // Stock Logic.update order: fog visibility is refreshed after team stats and
-        // map previews, before Time/GlobalVars/entity updates. FogControl itself is
-        // already patched to execute the stock static/dynamic rasterizers synchronously
-        // on the browser event loop instead of worker threads.
+        // map previews, before Time/GlobalVars/entity updates. Map preview polling is a
+        // deliberate Web no-op above; FogControl itself is patched to execute the stock
+        // static/dynamic rasterizers synchronously on the browser event loop.
         if(state.rules.fog){
             fogControl.update();
         }
@@ -43,7 +49,7 @@ new_tick = '''        state.updateId ++;
         Time.update();
 '''
 if logic.count(old_tick) != 1:
-    raise SystemExit("Logic Web fog update insertion anchor no longer matches")
+    raise SystemExit("Logic Web fog update insertion anchor no longer matches optimized Web playing core")
 logic = logic.replace(old_tick, new_tick, 1)
 LOGIC.write_text(logic, encoding="utf-8")
 
@@ -77,8 +83,11 @@ if text.count(old_final_rules) != 1:
     raise SystemExit("Browser local fog smoke rule insertion anchor no longer matches")
 text = text.replace(old_final_rules, new_final_rules, 1)
 
+# Keep the production wave branch test-only. Older fog milestone code matched an
+# unconditional state.wave comparison, but the optimized runtime intentionally avoids
+# wave-smoke DOM writes unless mindustryMapSmoke is active.
 old_logic_call = '''        logic.updateWebPlayingCore();
-        if(state.wave > beforeWave){
+        if(testWaveExpected && state.wave > beforeWave){
 '''
 new_logic_call = '''        logic.updateWebPlayingCore();
         if(fogSmokeRequested()){
@@ -103,10 +112,10 @@ new_logic_call = '''        logic.updateWebPlayingCore();
                 throw new IllegalStateException("Browser fog smoke did not converge after 3 playing frames");
             }
         }
-        if(state.wave > beforeWave){
+        if(testWaveExpected && state.wave > beforeWave){
 '''
 if text.count(old_logic_call) != 1:
-    raise SystemExit("Browser local fog frame verification anchor no longer matches wave runtime")
+    raise SystemExit("Browser local fog frame verification anchor no longer matches optimized wave runtime")
 text = text.replace(old_logic_call, new_logic_call, 1)
 
 old_query = '''    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryMapSmoke') || ''; ")
@@ -142,4 +151,4 @@ if text.count(old_marker) != 1:
 text = text.replace(old_marker, new_marker, 1)
 
 RUNTIME.write_text(text, encoding="utf-8")
-print("Enabled stock dynamic/static fog in Web playing core with deterministic visibility smoke")
+print("Enabled stock dynamic/static fog in optimized Web playing core with deterministic visibility smoke")
