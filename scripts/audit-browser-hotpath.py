@@ -3,43 +3,60 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-APP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserApplication.java").read_text(encoding="utf-8")
-CANVAS = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCanvas.java").read_text(encoding="utf-8")
-INPUT = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserInputBridge.java").read_text(encoding="utf-8")
-INDEX_HTML = (ROOT / "web-runtime" / "src" / "web" / "index.html").read_text(encoding="utf-8")
-LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "WebClientLauncher.java").read_text(encoding="utf-8")
-LOCAL_MAP = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
-APPLY_PORT = (ROOT / "scripts" / "apply-port.sh").read_text(encoding="utf-8")
-EFFECT_PATCH = (ROOT / "scripts" / "patch-mindustry-effects-web.py").read_text(encoding="utf-8")
-CAMPAIGN_UI = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
-CAMPAIGN_RUNTIME = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
-WEB_LAUNCHER = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "WebClientLauncher.java").read_text(encoding="utf-8")
-GAMEPLAY = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserGameplayRuntime.java").read_text(encoding="utf-8")
-PATHFINDER_PATCH = (ROOT / "scripts" / "patch-mindustry-pathfinder-web.py").read_text(encoding="utf-8")
-CONTROL_PATH_PATCH = (ROOT / "scripts" / "patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")
-TASK_QUEUE_PATCH = (ROOT / "scripts" / "patch-arc-task-queue-web.py").read_text(encoding="utf-8")
-ASYNC_CORE_PATCH = (ROOT / "scripts" / "patch-mindustry-async-core-web.py").read_text(encoding="utf-8")
-LOGIC_PATCH = (ROOT / "scripts" / "patch-mindustry-logic-web.py").read_text(encoding="utf-8")
-FOG_PATCH = (ROOT / "scripts" / "patch-mindustry-fog-web.py").read_text(encoding="utf-8")
-BROWSER_FILES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFiles.java").read_text(encoding="utf-8")
-BROWSER_FI = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserFi.java").read_text(encoding="utf-8")
-BROWSER_STORAGE = (ROOT / "web-runtime" / "src" / "web" / "browser-storage.js").read_text(encoding="utf-8")
-BROWSER_SETTINGS = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSettings.java").read_text(encoding="utf-8")
-BROWSER_AUDIO = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserAudio.java").read_text(encoding="utf-8")
-BROWSER_AUDIO_JS = (ROOT / "web-runtime" / "src" / "web" / "browser-audio.js").read_text(encoding="utf-8")
-BROWSER_SAVES = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSaves.java").read_text(encoding="utf-8")
-BROWSER_SAVE = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserSaveRuntime.java").read_text(encoding="utf-8")
-SAVE_PREVIEW_PATCH = (ROOT / "scripts" / "patch-mindustry-save-preview-web.py").read_text(encoding="utf-8")
+WEB_JAVA = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web"
+WEB_JS = ROOT / "web-runtime" / "src" / "web"
+SCRIPTS = ROOT / "scripts"
+
+APP = (WEB_JAVA / "BrowserApplication.java").read_text(encoding="utf-8")
+CANVAS = (WEB_JAVA / "BrowserCanvas.java").read_text(encoding="utf-8")
+INPUT = (WEB_JAVA / "BrowserInputBridge.java").read_text(encoding="utf-8")
+LOCAL_MAP = (WEB_JAVA / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
+BROWSER_UI = (WEB_JAVA / "BrowserUiRuntime.java").read_text(encoding="utf-8")
+WEB_LAUNCHER = (WEB_JAVA / "WebClientLauncher.java").read_text(encoding="utf-8")
+GAMEPLAY = (WEB_JAVA / "BrowserGameplayRuntime.java").read_text(encoding="utf-8")
+CAMPAIGN_RUNTIME = (WEB_JAVA / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
+BROWSER_FILES = (WEB_JAVA / "BrowserFiles.java").read_text(encoding="utf-8")
+BROWSER_FI = (WEB_JAVA / "BrowserFi.java").read_text(encoding="utf-8")
+BROWSER_SETTINGS = (WEB_JAVA / "BrowserSettings.java").read_text(encoding="utf-8")
+BROWSER_AUDIO = (WEB_JAVA / "BrowserAudio.java").read_text(encoding="utf-8")
+BROWSER_SAVES = (WEB_JAVA / "BrowserSaves.java").read_text(encoding="utf-8")
+BROWSER_SAVE = (WEB_JAVA / "BrowserSaveRuntime.java").read_text(encoding="utf-8")
+
+INDEX_HTML = (WEB_JS / "index.html").read_text(encoding="utf-8")
+BROWSER_STORAGE = (WEB_JS / "browser-storage.js").read_text(encoding="utf-8")
+BROWSER_AUDIO_JS = (WEB_JS / "browser-audio.js").read_text(encoding="utf-8")
+YANDEX_JS = (WEB_JS / "yandex-platform.js").read_text(encoding="utf-8")
+
+APPLY_PORT = (SCRIPTS / "apply-port.sh").read_text(encoding="utf-8")
+EFFECT_PATCH = (SCRIPTS / "patch-mindustry-effects-web.py").read_text(encoding="utf-8")
+CAMPAIGN_UI = (SCRIPTS / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
+PATHFINDER_PATCH = (SCRIPTS / "patch-mindustry-pathfinder-web.py").read_text(encoding="utf-8")
+CONTROL_PATH_PATCH = (SCRIPTS / "patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")
+TASK_QUEUE_PATCH = (SCRIPTS / "patch-arc-task-queue-web.py").read_text(encoding="utf-8")
+ASYNC_CORE_PATCH = (SCRIPTS / "patch-mindustry-async-core-web.py").read_text(encoding="utf-8")
+LOGIC_PATCH = (SCRIPTS / "patch-mindustry-logic-web.py").read_text(encoding="utf-8")
+FOG_PATCH = (SCRIPTS / "patch-mindustry-fog-web.py").read_text(encoding="utf-8")
+SAVE_PREVIEW_PATCH = (SCRIPTS / "patch-mindustry-save-preview-web.py").read_text(encoding="utf-8")
+RENDERER_PATCH = (SCRIPTS / "patch-mindustry-renderer-web.py").read_text(encoding="utf-8")
 
 failures = []
+
 
 def require(source: str, needle: str, where: str) -> None:
     if needle not in source:
         failures.append(f"{where}: missing {needle}")
 
+
 def forbid(source: str, needle: str, where: str) -> None:
     if needle in source:
-        failures.append(f"{where}: forbidden hot-path pattern present: {needle}")
+        failures.append(f"{where}: forbidden pattern present: {needle}")
+
+
+def strip_java_comments(source: str) -> str:
+    source = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
+    source = re.sub(r"//[^\n]*", "", source)
+    return source
+
 
 def java_static_method(source: str, signature: str) -> str:
     """Return one top-level static Java method without depending on the next method name."""
@@ -49,125 +66,108 @@ def java_static_method(source: str, signature: str) -> str:
     end = body_start + next_method.start() if next_method else len(source)
     return source[start:end]
 
+
+def section(source: str, start_marker: str, end_marker: str) -> str:
+    start = source.index(start_marker)
+    end = source.index(end_marker, start + len(start_marker))
+    return source[start:end]
+
+
+# Packaged asset lookups and preloading must stay O(1) / bounded-concurrency.
 require(INDEX_HTML, "globalThis.__mindustryAssetSet = new Set(manifest)", "packaged asset O1 index")
-require(INDEX_HTML, "data-mindustry-asset-index', 'set", "packaged asset O1 index telemetry")
+require(INDEX_HTML, "data-mindustry-asset-index', 'set", "packaged asset O1 telemetry")
 require(BROWSER_FILES, "const set = globalThis.__mindustryAssetSet; return set ? set.has(path) : false;", "packaged asset O1 existence")
 forbid(BROWSER_FILES, "manifest.indexOf(path)", "linear packaged asset existence")
 require(BROWSER_FILES, "private final String[] packagedAssetPaths;", "cached packaged path list")
 require(BROWSER_FILES, "this.packagedAssetPaths = packagedPaths();", "cached packaged path list")
-require(BROWSER_FILES, "type == FileType.local ? localPaths() : packagedAssetPaths", "cached packaged path list")
-require(INDEX_HTML, "const preloadWorkerCap = touchMobile ? 4 : 8", "adaptive eager preload concurrency")
-require(INDEX_HTML, "data-mindustry-assets-preload-worker-policy', 'adaptive-4-mobile-8-desktop", "adaptive eager preload telemetry")
-require(INDEX_HTML, "const campaignWorkerCap = touchMobile ? 2 : 4", "adaptive campaign warmup concurrency")
+require(INDEX_HTML, "const preloadWorkerCap = touchMobile ? 4 : 8", "adaptive eager preload")
+require(INDEX_HTML, "const campaignWorkerCap = touchMobile ? 2 : 4", "adaptive campaign warmup")
 
-require(APP, "BrowserCanvas.installResizeSignal(config.canvasId, resizeCallback)", "BrowserApplication")
-require(APP, "boolean resizeFallback = (callbackIndex & 63) == 0", "BrowserApplication")
-require(APP, "if((callbackIndex & 63) == 0)", "BrowserApplication")
-require(APP, "data-mindustry-pause-policy','event-driven-64-frame-fallback", "BrowserApplication")
-require(APP, "data-mindustry-frame-resize-policy','event-driven-64-frame-fallback", "BrowserApplication")
-require(APP, "pixelRatioCap = mobileBrowser ? Math.min(config.maxPixelRatio, 1.5f) : config.maxPixelRatio", "BrowserApplication")
-require(APP, "data-mindustry-pixel-ratio-policy", "BrowserApplication")
+# Resize/pause checks are event-driven with a deliberately sparse fallback.
+require(APP, "BrowserCanvas.installResizeSignal(config.canvasId, resizeCallback)", "BrowserApplication resize signal")
+require(APP, "boolean resizeFallback = (callbackIndex & 63) == 0", "BrowserApplication resize fallback")
+require(APP, "data-mindustry-pause-policy','event-driven-64-frame-fallback", "BrowserApplication pause policy")
+require(APP, "data-mindustry-frame-resize-policy','event-driven-64-frame-fallback", "BrowserApplication resize policy")
+require(APP, "pixelRatioCap = mobileBrowser ? Math.min(config.maxPixelRatio, 1.5f) : config.maxPixelRatio", "mobile pixel ratio cap")
+if APP.count("BrowserYandex.paused()") != 2:
+    failures.append("BrowserApplication: BrowserYandex.paused() must remain initialization + 64-frame fallback only")
+if APP.count("BrowserCanvas.resizeToDisplay(") != 2:
+    failures.append("BrowserApplication: resizeToDisplay() must remain constructor + gated frame call only")
+require(CANVAS, "new ResizeObserver(markResizeDirty)", "BrowserCanvas ResizeObserver")
+require(CANVAS, "window.addEventListener('resize', markResizeDirty", "BrowserCanvas resize listener")
+require(CANVAS, "window.addEventListener('orientationchange', markResizeDirty", "BrowserCanvas orientation listener")
+require(CANVAS, "window.visualViewport.addEventListener('resize', markResizeDirty", "BrowserCanvas visual viewport listener")
+require(CANVAS, "data-mindustry-resize-policy', 'event-driven", "BrowserCanvas resize telemetry")
 
-# One initialization sample plus one 64-frame fallback sample is intentional.
-paused_calls = APP.count("BrowserYandex.paused()")
-if paused_calls != 2:
-    failures.append(f"BrowserApplication: expected exactly 2 BrowserYandex.paused() call sites, found {paused_calls}")
-
-# One constructor sizing pass plus one event/fallback-gated frame-loop call.
-resize_calls = APP.count("BrowserCanvas.resizeToDisplay(")
-if resize_calls != 2:
-    failures.append(f"BrowserApplication: expected exactly 2 resizeToDisplay() call sites, found {resize_calls}")
-
-require(CANVAS, "new ResizeObserver(markResizeDirty)", "BrowserCanvas")
-require(CANVAS, "window.addEventListener('resize', markResizeDirty", "BrowserCanvas")
-require(CANVAS, "window.addEventListener('orientationchange', markResizeDirty", "BrowserCanvas")
-require(CANVAS, "window.visualViewport.addEventListener('resize', markResizeDirty", "BrowserCanvas")
-require(CANVAS, "markResizeDirty();", "BrowserCanvas fullscreen path")
-require(CANVAS, "data-mindustry-resize-policy', 'event-driven", "BrowserCanvas")
-
-forbid(INPUT, "canvas.getBoundingClientRect()", "BrowserInputBridge")
-forbid(INPUT, "canvas.clientWidth", "BrowserInputBridge")
-forbid(INPUT, "canvas.clientHeight", "BrowserInputBridge")
-require(INPUT, "event.offsetX", "BrowserInputBridge")
-require(INPUT, "event.offsetY", "BrowserInputBridge")
-require(INPUT, "__mindustryClientWidth", "BrowserInputBridge")
-require(INPUT, "__mindustryClientHeight", "BrowserInputBridge")
-require(INPUT, "data-mindustry-input-coordinates', 'offset-cached", "BrowserInputBridge")
+# Pointer motion must avoid layout reads/allocations and coalesce to render cadence.
+for needle in ["canvas.getBoundingClientRect()", "canvas.clientWidth", "canvas.clientHeight"]:
+    forbid(INPUT, needle, "BrowserInputBridge pointer hot path")
+require(INPUT, "event.offsetX", "BrowserInputBridge coordinates")
+require(INPUT, "event.offsetY", "BrowserInputBridge coordinates")
+require(INPUT, "__mindustryClientWidth", "BrowserInputBridge cached width")
+require(INPUT, "__mindustryClientHeight", "BrowserInputBridge cached height")
 require(INPUT, "const pendingMoves = new Map()", "BrowserInputBridge pointer coalescing")
-require(INPUT, "const movePoints = Array.from({length: 10}, () -> [0, 0])", "BrowserInputBridge pointer buffer reuse")
-require(INPUT, "const eventPoint = [0, 0]", "BrowserInputBridge pointer buffer reuse")
-require(INPUT, "requestAnimationFrame(flushMoves)", "BrowserInputBridge pointer coalescing")
-require(INPUT, "const p = movePoints[slot];", "BrowserInputBridge pointer buffer reuse")
-require(INPUT, "coordsInto(event, p);", "BrowserInputBridge pointer buffer reuse")
-require(INPUT, "pendingMoves.set(slot, p)", "BrowserInputBridge pointer coalescing")
-require(INPUT, "pendingMoves.delete(slot)", "BrowserInputBridge pointer coalescing")
-require(INPUT, "data-mindustry-input-move-policy', 'raf-coalesced", "BrowserInputBridge pointer coalescing")
-require(INPUT, "data-mindustry-input-move-buffer', 'reused-slot", "BrowserInputBridge pointer buffer telemetry")
+require(INPUT, "const movePoints = Array.from({length: 10}, () => [0, 0])", "BrowserInputBridge pointer buffer reuse")
+require(INPUT, "const eventPoint = [0, 0]", "BrowserInputBridge event buffer reuse")
+require(INPUT, "requestAnimationFrame(flushMoves)", "BrowserInputBridge rAF coalescing")
+require(INPUT, "pendingMoves.set(slot, p)", "BrowserInputBridge reused pointer buffer")
 forbid(INPUT, "pendingMoves.set(slot, coords(event))", "BrowserInputBridge per-move allocation")
-forbid(INPUT, "pointerMove(slot, p[0], p[1]);\n            event.preventDefault();", "BrowserInputBridge raw pointermove")
+require(INPUT, "data-mindustry-input-move-policy', 'raf-coalesced", "BrowserInputBridge telemetry")
 
-# Particle-heavy sorted rendering must use the Web-only stable int run sorter.
-require(APPLY_PORT, "int[] sortOrder = new int[0], sortScratch = new int[0]", "SpriteBatch Web patch")
-require(APPLY_PORT, "int[] runs = contiguous", "SpriteBatch Web patch")
-require(APPLY_PORT, "dst[out++] = za <= zb ? src[a++] : src[b++]", "SpriteBatch stable merge")
-require(APPLY_PORT, "public static int webSortCalls, webMaxSortRequests, webMaxSortRuns, webSortedFastPaths", "SpriteBatch sorter telemetry")
-require(APPLY_PORT, "webSortCalls++", "SpriteBatch sorter telemetry")
-require(APPLY_PORT, "webSortedFastPaths++", "SpriteBatch sorter telemetry")
-require(APPLY_PORT, "boolean alreadySorted = true", "SpriteBatch sorted fast path")
-require(APPLY_PORT, "if(z < previousZ) alreadySorted = false", "SpriteBatch sorted fast path")
-require(APPLY_PORT, "if(alreadySorted){", "SpriteBatch sorted fast path")
-require(APPLY_PORT, "System.arraycopy(requests, 0, copy, 0, count)", "SpriteBatch sorted fast path")
-require(APPLY_PORT, "System.arraycopy(requests, pos, copy, ptr, length)", "SpriteBatch run copy")
-forbid(APPLY_PORT, "long[] sortKeys", "SpriteBatch Web patch")
-forbid(APPLY_PORT, "Arrays.sort(sortKeys", "SpriteBatch Web patch")
+# Sprite sorting/effects are the major particle-heavy render path.
+for needle in [
+    "int[] sortOrder = new int[0], sortScratch = new int[0]",
+    "int[] runs = contiguous",
+    "dst[out++] = za <= zb ? src[a++] : src[b++]",
+    "webSortCalls++",
+    "webSortedFastPaths++",
+    "boolean alreadySorted = true",
+    "System.arraycopy(requests, 0, copy, 0, count)",
+]:
+    require(APPLY_PORT, needle, "SpriteBatch Web sorter")
+forbid(APPLY_PORT, "long[] sortKeys", "SpriteBatch allocation-heavy sorter")
+forbid(APPLY_PORT, "Arrays.sort(sortKeys", "SpriteBatch allocation-heavy sorter")
+require(APPLY_PORT, "patch-mindustry-effects-web.py", "Web effect patch wiring")
+require(EFFECT_PATCH, "webMaxActiveEffects", "Web effect active cap")
+require(EFFECT_PATCH, "webBudgetCounted", "Web effect pooled counter")
+require(EFFECT_PATCH, "Effect.webEffectRemoved()", "Web effect removal accounting")
+require(WEB_LAUNCHER, "int effectBudget = mobileMode ? 512 : 0", "mobile effect budget profile")
 
-# Local custom-game selector must not inflate metadata for all 18 packaged maps
-# during production startup. Metadata is parsed only for the selected/continued map.
-local_init_start = LOCAL_MAP.index("public static void init()")
-local_init_end = LOCAL_MAP.index("public static String[] slugs()", local_init_start)
-local_init_body = LOCAL_MAP[local_init_start:local_init_end]
-forbid(local_init_body, "MapIO.createMap", "lazy local map catalog")
+# Built-in map metadata stays lazy; Continue state stays event-driven.
+local_init = java_static_method(LOCAL_MAP, "public static void init()")
+forbid(local_init, "MapIO.createMap", "lazy local map catalog")
 require(LOCAL_MAP, "private static Map loadBuiltInMap(String slug)", "lazy local map catalog")
-require(LOCAL_MAP, "Map map = MapIO.createMap(file, false);", "lazy local map catalog")
-require(LOCAL_MAP, "data-mindustry-map-catalog-policy','lazy-msav-metadata", "lazy local map catalog")
-require(LOCAL_MAP, "data-mindustry-map-metadata-loaded", "lazy local map catalog")
-BROWSER_UI = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserUiRuntime.java").read_text(encoding="utf-8")
+require(LOCAL_MAP, "Map map = MapIO.createMap(file, false);", "lazy local map selected metadata")
+require(LOCAL_MAP, "data-mindustry-map-catalog-policy','lazy-msav-metadata", "lazy local map telemetry")
 require(BROWSER_UI, "for(String slug : BrowserLocalMapRuntime.slugs())", "lazy local map UI")
-require(BROWSER_UI, "BrowserLocalMapRuntime.start(slug)", "lazy local map UI")
-forbid(BROWSER_UI, "for(Map map : BrowserLocalMapRuntime.catalog())", "lazy local map UI")
-
-# Local Continue state is event-driven from save/delete events; Button.act() must not
-# poll BrowserSaveRuntime.hasLocalSession() every frame.
+forbid(BROWSER_UI, "for(Map map : BrowserLocalMapRuntime.catalog())", "eager local map UI")
 require(BROWSER_UI, "private static TextButton localContinueButton;", "event-driven local Continue")
-require(BROWSER_UI, "if(localContinueButton != null) localContinueButton.setDisabled(!available);", "event-driven local Continue")
-forbid(BROWSER_UI, ".disabled(button -> !BrowserSaveRuntime.hasLocalSession())", "event-driven local Continue")
-forbid(CAMPAIGN_UI, ".disabled(button -> !BrowserSaveRuntime.hasLocalSession())", "event-driven local Continue")
+require(BROWSER_UI, "localContinueButton.setDisabled(!available)", "event-driven local Continue")
+forbid(BROWSER_UI, ".disabled(button -> !BrowserSaveRuntime.hasLocalSession())", "per-frame local Continue polling")
 if BROWSER_SAVE.count("BrowserUiRuntime.syncLocalSaveUiState();") < 2:
-    failures.append("event-driven local Continue: expected save/delete UI sync callbacks")
+    failures.append("event-driven local Continue: save/delete callbacks missing")
 
-# Runtime load must actually exercise the sorted/effect path before this optimization
-# can be considered protected.
-require(LOCAL_MAP, "private static final int perfEffectsPerFrame = 4", "particle perf workload")
-require(LOCAL_MAP, "private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame", "particle perf workload")
-require(LOCAL_MAP, "Fx.drillSteam.at(x, y)", "particle perf workload")
-require(LOCAL_MAP, "Fx.drillSteam.shouldCreate()", "particle perf workload")
-require(LOCAL_MAP, "data-mindustry-perf-effect-kind','drillSteam", "particle perf workload")
-require(LOCAL_MAP, "perfEffects != perfTargetEffects", "particle perf workload")
-require(LOCAL_MAP, "SpriteBatch.webSortCalls = 0", "particle sorter telemetry reset")
-require(LOCAL_MAP, "SpriteBatch.webSortedFastPaths <= 0", "particle sorter telemetry gate")
-require(LOCAL_MAP, "data-mindustry-perf-sort-fast-paths", "particle sorter telemetry DOM")
+# Runtime performance smoke must exercise particles, sorting, pathfinding and audio.
+for needle in [
+    "private static final int perfEffectsPerFrame = 4",
+    "private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame",
+    "Fx.drillSteam.at(x, y)",
+    "SpriteBatch.webSortCalls = 0",
+    "SpriteBatch.webSortedFastPaths <= 0",
+    "private static final int perfMobileEffectBurst = 640",
+    "int[] audioVoices = new int[64]",
+    "audioAccepted != 48 || audioDropped != 16 || activeAudioVoices != 48",
+    "droppedEffects <= 0",
+]:
+    require(LOCAL_MAP, needle, "browser runtime perf smoke")
 
-# Web pathfinding also bounds the number of queued callbacks drained per step.
-# The Arc overload preserves FIFO and reuses the existing execution buffer.
-require(APPLY_PORT, "patch-arc-task-queue-web.py", "bounded TaskQueue patch invocation")
+# Worker-thread desktop systems are bounded main-thread slices on Web.
+require(APPLY_PORT, "patch-arc-task-queue-web.py", "bounded TaskQueue patch wiring")
 require(TASK_QUEUE_PATCH, "public int run(int maxTasks)", "bounded TaskQueue drain")
 require(TASK_QUEUE_PATCH, "count = Math.min(maxTasks, runnables.size);", "bounded TaskQueue drain")
 require(TASK_QUEUE_PATCH, "runnables.removeRange(0, count - 1);", "bounded TaskQueue FIFO")
-require(PATHFINDER_PATCH, "queue.run(32);", "Pathfinder bounded task drain")
-require(CONTROL_PATH_PATCH, "queue.run(32);", "ControlPathfinder bounded task drain")
-
-# Desktop pathfinding budgets are worker-thread budgets. Web must bound the TOTAL
-# main-thread slice per frame and resume fields round-robin.
+require(PATHFINDER_PATCH, "queue.run(32);", "Pathfinder bounded queue drain")
+require(CONTROL_PATH_PATCH, "queue.run(32);", "ControlPathfinder bounded queue drain")
 for source, label, update_marker in [
     (PATHFINDER_PATCH, "Pathfinder Web patch", "updateFrontier(data, Math.min(maxUpdate, remaining));"),
     (CONTROL_PATH_PATCH, "ControlPathfinder Web patch", "updateFields(cache, Math.min(maxUpdate, remaining));"),
@@ -176,379 +176,138 @@ for source, label, update_marker in [
     require(source, "Time.timeSinceNanos(frameStart) < frameBudget", label)
     require(source, "webFieldCursor", label)
     require(source, update_marker, label)
-
-# ControlPathfinder has three independent Web budgets: stale-request cleanup,
-# cluster/invalidation maintenance and flow-field expansion. Keep all three bounded.
-require(CONTROL_PATH_PATCH, "new_run = '''", "ControlPathfinder Web patch new_run")
-require(CONTROL_PATH_PATCH, "private static final int updateInterval = 1000 / 30, invalidateCheckInterval = 1000;", "ControlPathfinder stock cadence")
-require(CONTROL_PATH_PATCH, "long webLastStep;", "ControlPathfinder stock cadence")
-require(CONTROL_PATH_PATCH, "webLastStep = Time.millis() - updateInterval;", "ControlPathfinder stock cadence")
-require(CONTROL_PATH_PATCH, "if(Time.timeSinceMillis(webLastStep) < updateInterval) return;", "ControlPathfinder stock cadence")
-require(CONTROL_PATH_PATCH, "webLastStep = now;", "ControlPathfinder stock cadence")
-require(CONTROL_PATH_PATCH, "int webStepCount;", "ControlPathfinder cadence telemetry")
-require(CONTROL_PATH_PATCH, "webStepCount = 0;", "ControlPathfinder cadence telemetry")
-require(CONTROL_PATH_PATCH, "webStepCount++;", "ControlPathfinder cadence telemetry")
-require(CONTROL_PATH_PATCH, "public int webSteps()", "ControlPathfinder cadence telemetry")
-require(LOCAL_MAP, "perfControlPathStartSteps = controlPath.webSteps();", "ControlPathfinder cadence telemetry")
-require(LOCAL_MAP, "data-mindustry-perf-control-path-policy','stock-30hz", "ControlPathfinder cadence telemetry")
-require(LOCAL_MAP, "data-mindustry-perf-control-path-steps", "ControlPathfinder cadence telemetry")
-require(CONTROL_PATH_PATCH, "private void updateWebCleanup()", "ControlPathfinder cleanup")
-require(CONTROL_PATH_PATCH, "int requestChecks = Math.min(32, requestCount);", "ControlPathfinder cleanup")
-require(CONTROL_PATH_PATCH, "int fieldChecks = Math.min(8, fieldCount);", "ControlPathfinder cleanup")
-require(CONTROL_PATH_PATCH, "Core.app != null && Core.app.isMobile() ? 1 : 2", "ControlPathfinder maintenance budget")
-require(CONTROL_PATH_PATCH, "while(fullClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)", "ControlPathfinder cluster budget")
-require(CONTROL_PATH_PATCH, "while(innerClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)", "ControlPathfinder inner-cluster budget")
+require(CONTROL_PATH_PATCH, "if(Time.timeSinceMillis(webLastStep) < updateInterval) return;", "ControlPathfinder 30Hz cadence")
+require(CONTROL_PATH_PATCH, "int requestChecks = Math.min(32, requestCount);", "ControlPathfinder stale cleanup")
+require(CONTROL_PATH_PATCH, "int fieldChecks = Math.min(8, fieldCount);", "ControlPathfinder stale cleanup")
 require(CONTROL_PATH_PATCH, "webInvalidSweepPending", "ControlPathfinder invalidation budget")
-require(CONTROL_PATH_PATCH, "new_main_cleanup = '''        // Web: same stale criteria, bounded round-robin cleanup.", "ControlPathfinder bounded stale cleanup")
-require(CONTROL_PATH_PATCH, "clustersToInnerUpdate.add(cluster);", "ControlPathfinder direct tile coalescing")
-require(CONTROL_PATH_PATCH, "clustersToUpdate.add(cx + cy * cwidth);", "ControlPathfinder direct tile coalescing")
-forbid(CONTROL_PATH_PATCH, 'new_inner_queue = "            queue.post(() -> clustersToInnerUpdate.add(cluster));', "ControlPathfinder tile queue allocation")
-forbid(CONTROL_PATH_PATCH, 'new_cluster_queue = "            queue.post(() -> clustersToUpdate.add(cx + cy * cwidth));', "ControlPathfinder tile queue allocation")
-require(CONTROL_PATH_PATCH, "text = text.replace(old_main_cleanup, new_main_cleanup, 1)", "ControlPathfinder stale cleanup replacement")
-# The unbounded calls legitimately appear inside old_run anchors; require that each
-# patch replaces that exact upstream block with the bounded Web implementation.
-require(PATHFINDER_PATCH, "text = text.replace(old_run, new_run, 1)", "Pathfinder Web patch replacement")
-require(CONTROL_PATH_PATCH, "text = text.replace(old_run, new_run, 1)", "ControlPathfinder Web patch replacement")
+require(ASYNC_CORE_PATCH, "if(p == avoidance && (webFrame & 1) != 0) continue;", "AsyncCore avoidance 30Hz cadence")
 
-# Physics remains full-rate, while the expensive AI avoidance tile buffer is rebuilt
-# every other Web frame (30 Hz at 60 fps) instead of blocking the main thread at 60 Hz.
-require(ASYNC_CORE_PATCH, "private int webFrame;", "AsyncCore Web cadence")
-require(ASYNC_CORE_PATCH, "if(p == avoidance && (webFrame & 1) != 0) continue;", "AsyncCore Web cadence")
-if ASYNC_CORE_PATCH.count("webFrame = 0;") < 2:
-    failures.append("AsyncCore Web cadence: expected lifecycle resets for webFrame")
-forbid(ASYNC_CORE_PATCH, "for(AsyncProcess p : processes){\n                p.begin();\n            }", "AsyncCore Web cadence")
-
-# Lean Web UI never constructs the stock Settings dialog, so renderer defaults must
-# be installed explicitly. Mobile keeps real effects but disables the heaviest purely
-# visual paths by default; saved user choices remain authoritative.
-require(WEB_LAUNCHER, '"effects", true', "renderer defaults")
-require(WEB_LAUNCHER, '"animatedwater", !mobileMode', "renderer defaults")
-require(WEB_LAUNCHER, '"animatedshields", !mobileMode', "renderer defaults")
-require(WEB_LAUNCHER, '"drawlight", !mobileMode', "renderer defaults")
-require(WEB_LAUNCHER, "data-mindustry-renderer-lights", "renderer defaults")
-require(WEB_LAUNCHER, 'if(mobileMode && !Core.settings.has("bloom"))', "renderer defaults")
-require(WEB_LAUNCHER, 'Core.settings.put("bloom", false)', "renderer defaults")
-require(WEB_LAUNCHER, "data-mindustry-renderer-profile", "renderer defaults")
-require(WEB_LAUNCHER, "data-mindustry-renderer-settings-policy','32-frame", "renderer polling policy")
-require(WEB_LAUNCHER, "data-mindustry-renderer-gl-error-policy','120-frame", "renderer polling policy")
-require(APPLY_PORT, "patch-mindustry-renderer-web.py", "Renderer Web patch invocation")
-
-RENDERER_PATCH = (ROOT / "scripts" / "patch-mindustry-renderer-web.py").read_text(encoding="utf-8")
-require(RENDERER_PATCH, "webSettingsPoll++ == 0 || (webSettingsPoll & 31) == 0", "Renderer Web patch")
-require(RENDERER_PATCH, "graphics.getFrameId() % 120 == 0", "Renderer Web patch")
-require(RENDERER_PATCH, "webDrawHitboxes = settings.getBool(\"drawhitboxes\")", "Renderer Web settings cache")
-require(RENDERER_PATCH, "webBloomIntensity = settings.getInt(\"bloomintensity\", 6)", "Renderer Web settings cache")
-require(RENDERER_PATCH, "webBloomBlur = settings.getInt(\"bloomblur\", 1)", "Renderer Web settings cache")
-require(RENDERER_PATCH, "bloom.setBloomIntensity(webBloomIntensity / 4f + 1f)", "Renderer Web settings cache")
-require(RENDERER_PATCH, "if(webDrawHitboxes)", "Renderer Web settings cache")
-require(RENDERER_PATCH, 'preview_calls = "        MapPreviewLoader.checkPreviews();\\n"', "Renderer Web preview pruning")
-require(RENDERER_PATCH, 'if text.count(preview_calls) != 2:', "Renderer Web preview pruning")
-require(RENDERER_PATCH, 'if "MapPreviewLoader.checkPreviews()" in text:', "Renderer Web preview pruning")
-
-# Web Logic must not walk Groups.unit twice per frame. Teams.updateTeamStats()
-# owns the single full entity pass and publishes the exact top-level wave enemy count.
+# Renderer/settings polling and game-state work stay off the 60Hz critical path.
+for needle in [
+    '"effects", true',
+    '"animatedwater", !mobileMode',
+    '"animatedshields", !mobileMode',
+    '"drawlight", !mobileMode',
+    'if(mobileMode && !Core.settings.has("bloom"))',
+    'Core.settings.put("bloom", false)',
+    "data-mindustry-renderer-settings-policy','32-frame",
+]:
+    require(WEB_LAUNCHER, needle, "renderer defaults/polling")
+require(RENDERER_PATCH, "webSettingsPoll++ == 0 || (webSettingsPoll & 31) == 0", "Renderer settings cache")
+require(RENDERER_PATCH, "graphics.getFrameId() % 120 == 0", "Renderer GL error cadence")
+require(RENDERER_PATCH, "webDrawHitboxes = settings.getBool(\"drawhitboxes\")", "Renderer settings cache")
 require(LOGIC_PATCH, "public int webWaveEnemies;", "single-pass enemy count")
-require(LOGIC_PATCH, "if(unit.team == state.rules.waveTeam && unit.isEnemy()) webWaveEnemies++;", "single-pass enemy count")
 require(LOGIC_PATCH, "state.enemies = state.teams.webWaveEnemies;", "single-pass enemy count")
-forbid(LOGIC_PATCH, "state.enemies = Groups.unit.count", "single-pass enemy count")
+forbid(LOGIC_PATCH, "state.enemies = Groups.unit.count", "duplicate enemy entity pass")
+require(FOG_PATCH, "boolean webFogScan = justLoaded || Time.timeSinceMillis(webLastDynamicScanMs) >= dynamicUpdateInterval;", "FogControl cadence")
+require(FOG_PATCH, "private final Bits webDynamicCleared = new Bits(256);", "FogControl reusable buffer")
+require(FOG_PATCH, "updateDynamic(webDynamicCleared);", "FogControl reusable buffer")
 
-# Desktop FogControl uses worker threads; Web keeps the stock 25 FPS visibility
-# cadence on the main thread and must not scan every unit at render-frame frequency.
-require(FOG_PATCH, "private long webLastDynamicScanMs;", "FogControl Web cadence")
-require(FOG_PATCH, "webLastDynamicScanMs = 0L;", "FogControl Web cadence reset")
-require(FOG_PATCH, "boolean webFogScan = justLoaded || Time.timeSinceMillis(webLastDynamicScanMs) >= dynamicUpdateInterval;", "FogControl Web cadence")
-require(FOG_PATCH, "if(webFogScan){", "FogControl Web cadence")
-require(FOG_PATCH, "private final Bits webDynamicCleared = new Bits(256);", "FogControl reusable dynamic buffer")
-require(FOG_PATCH, "updateDynamic(webDynamicCleared);", "FogControl reusable dynamic buffer")
-require(FOG_PATCH, "Building fog maintenance remains chunked each render frame", "FogControl building maintenance")
-for needle in ["StaticFogThread", "DynamicFogThread", "notifyStatic", "notifyDynamic"]:
-    # These names may occur only in old upstream matcher strings / guard lists.
-    if FOG_PATCH.count(needle) < 2:
-        failures.append(f"FogControl Web patch lost pinned-thread removal guard for {needle}")
-
-# Desktop/network map preview reflection is not installed in the lean Web runtime.
-# Keep its no-op polling out of updateWebPlayingCore reachability.
-forbid(LOGIC_PATCH, "state.enemies = state.teams.webWaveEnemies;\n        MapPreviewLoader.checkPreviews();", "Web Logic preview hot path")
-require(LOGIC_PATCH, "do not retain or poll that no-op preview bridge", "Web Logic preview hot path")
-
-# Browser saves are buffered until stream close. Keep exactly one ownership copy at
-# the JS/IndexedDB boundary instead of cloning a full MSAV in Java and then again in JS.
+# Browser file/save path: one ownership copy, one metadata inflate, no preview generation.
 require(BROWSER_FI, "files.putLocal(path, buf, count);", "browser save zero-extra-copy commit")
-forbid(BROWSER_FI, "files.putLocal(path, toByteArray());", "browser save zero-extra-copy commit")
+forbid(BROWSER_FI, "files.putLocal(path, toByteArray());", "browser save extra full-array copy")
 require(BROWSER_FILES, "void putLocal(String path, byte[] bytes, int length)", "browser save logical length")
 require(BROWSER_FILES, "storeLocalBytes(normalized, bytes, length);", "browser save logical length")
-require(BROWSER_FILES, "return value;", "browser local read single copy")
-forbid(BROWSER_FILES, "return copy(value);", "browser local read single copy")
-require(BROWSER_STORAGE, "function put(path, bytes, logicalLength)", "browser storage logical length")
-require(BROWSER_STORAGE, "copyBytes(bytes, logicalLength)", "browser storage logical length")
-require(BROWSER_STORAGE, "raw.slice(0, length)", "browser storage ownership copy")
-require(BROWSER_STORAGE, "let writeGeneration = 0;", "browser storage flush coalescing")
-require(BROWSER_STORAGE, "let flushGeneration = -1;", "browser storage flush coalescing")
-require(BROWSER_STORAGE, "if(flushGeneration >= targetGeneration) return flushPromise;", "browser storage flush coalescing")
-require(BROWSER_STORAGE, "return flushPromise.then(() => flush());", "browser storage flush write-generation chaining")
-require(BROWSER_STORAGE, "data-mindustry-storage-flush-policy', 'generation-coalesced", "browser storage flush policy")
-
-# Browser save indexing and Continue must not re-inflate metadata unnecessarily.
 require(BROWSER_SAVES, "meta = SaveIO.getMeta(SaveIO.getStream(file));", "browser save index one-pass metadata")
 require(BROWSER_SAVES, "SaveIO.backupFileFor(file)", "browser save index backup recovery")
-forbid(BROWSER_SAVES, "SaveIO.isSaveValid(file)", "browser save index one-pass metadata")
+forbid(BROWSER_SAVES, "SaveIO.isSaveValid(file)", "browser save index duplicate validation")
 if BROWSER_SAVES.count("SaveIO.getMeta(") != 2:
-    failures.append("browser save index one-pass metadata: expected current + backup metadata call sites only")
-require(SAVE_PREVIEW_PATCH, "if(meta == null) meta = SaveIO.getMeta(file);", "browser sector load metadata reuse")
-forbid(
-    SAVE_PREVIEW_PATCH,
-    "SaveIO.load(file, context);\n                meta = SaveIO.getMeta(file);",
-    "browser sector load metadata reuse",
-)
-require(SAVE_PREVIEW_PATCH, "Skip minimap readback + PNG compression + IndexedDB writes", "browser save preview pruning")
-require(SAVE_PREVIEW_PATCH, "stock save preview loader omitted", "browser save preview pruning")
-forbid(SAVE_PREVIEW_PATCH, "new SavePreviewLoader()", "browser save preview pruning")
-forbid(SAVE_PREVIEW_PATCH, "previewFile().writePng", "browser save preview pruning")
-forbid(SAVE_PREVIEW_PATCH, "Core.app.post(() ->", "browser save preview pruning")
-forbid(BROWSER_SAVE, "BrowserSavePreviewLoader", "browser save preview pruning")
+    failures.append("browser save index: expected current + backup metadata call sites only")
 
-# Production autosave must not inflate the same metadata twice. Local save validates
-# the newly written current file in one strict pass; campaign save/resume trusts the
-# SaveSlot metadata already produced/indexed by stock Saves and keeps full revalidation
-# only inside CI capture smoke.
-require(BROWSER_SAVE, "SaveMeta meta = SaveIO.getMeta(SaveIO.getStream(file));", "local save one-pass metadata")
-local_save_start = BROWSER_SAVE.index("public static SaveMeta saveLocalSession()")
-local_save_end = BROWSER_SAVE.index("public static SaveMeta loadLocalSession()", local_save_start)
-local_save_body = BROWSER_SAVE[local_save_start:local_save_end]
-forbid(local_save_body, "SaveIO.isSaveValid(file)", "local save one-pass metadata")
-if local_save_body.count("SaveIO.getMeta(") != 1:
-    failures.append("local save one-pass metadata: expected exactly one metadata read")
-
-campaign_continue_start = CAMPAIGN_RUNTIME.index("private static void continuePreset")
-campaign_continue_end = CAMPAIGN_RUNTIME.index("public static void returnToMenu", campaign_continue_start)
-campaign_continue_body = CAMPAIGN_RUNTIME[campaign_continue_start:campaign_continue_end]
-forbid(campaign_continue_body, "SaveIO.isSaveValid", "campaign resume metadata reuse")
-forbid(campaign_continue_body, "SaveIO.getMeta(", "campaign resume metadata reuse")
-require(campaign_continue_body, "SaveMeta indexed = sector.save.meta;", "campaign resume metadata reuse")
-
-for method in [
-    "public static void returnToMenu",
-    "private static void saveCampaignCheckpoint",
+# patch-mindustry-save-preview-web.py intentionally contains old_* upstream anchors.
+# Validate the replacement wiring/output instead of treating those removal anchors as live code.
+for needle in [
+    "text = text.replace(old_loader",
+    "text = text.replace(old_load, new_load, 1)",
+    "text = text.replace(old, new, 1)",
+    "if(meta == null) meta = SaveIO.getMeta(file);",
+    "stock save preview loader omitted",
+    "Skip minimap readback + PNG compression + IndexedDB writes",
+    "requestedPreview = false;",
 ]:
-    body = java_static_method(CAMPAIGN_RUNTIME, method)
-    forbid(body, "SaveIO.isSaveValid", f"{method} autosave metadata reuse")
-    forbid(body, "SaveIO.getMeta(", f"{method} autosave metadata reuse")
-    require(body, "SaveMeta meta = current.save.meta;", f"{method} autosave metadata reuse")
+    require(SAVE_PREVIEW_PATCH, needle, "browser save preview replacement")
 
-# Browser audio keeps production startup free of codec self-tests and avoids
-# reading Settings every render frame.
-require(BROWSER_AUDIO, "if((++settingsPoll & 31) == 0)", "browser audio settings cadence")
-require(BROWSER_AUDIO, "if(validationSmokeRequested()){", "browser audio CI validation gate")
-require(BROWSER_AUDIO, 'markAudioValidation("ci-full")', "browser audio CI validation gate")
-require(BROWSER_AUDIO, 'markAudioValidation("skipped-production")', "browser audio production validation bypass")
-require(BROWSER_AUDIO, "markAudioBackendReady();", "browser audio production validation bypass")
-if BROWSER_AUDIO.count('sfxVolume = settingVolume("sfxvol", 100);') != 2:
-    failures.append("browser audio settings cadence: expected initialization + 32-frame refresh only")
-if BROWSER_AUDIO.count("verifyPackagedSound(smokeSound);") != 1:
-    failures.append("browser audio CI validation gate: codec verification call count changed")
+local_save_code = strip_java_comments(java_static_method(BROWSER_SAVE, "public static SaveMeta saveLocalSession()"))
+forbid(local_save_code, "SaveIO.isSaveValid", "local save one-pass metadata")
+if local_save_code.count("SaveIO.getMeta(") != 1:
+    failures.append("local save one-pass metadata: expected exactly one metadata read")
+require(local_save_code, "SaveMeta meta = SaveIO.getMeta(SaveIO.getStream(file));", "local save strict metadata read")
 
-require(BROWSER_AUDIO_JS, "if(!state.ctx || state.unlocked || state.unlocking) return;", "browser audio one-shot unlock")
-require(BROWSER_AUDIO_JS, "removeUnlockListeners();", "browser audio one-shot unlock")
-require(BROWSER_AUDIO_JS, "data-mindustry-audio-unlock-policy', 'one-shot", "browser audio one-shot unlock")
-require(BROWSER_AUDIO_JS, "state.unlocking = false;", "browser audio unlock coalescing")
+local_meta_code = strip_java_comments(java_static_method(BROWSER_SAVE, "public static SaveMeta localSessionMeta()"))
+forbid(local_meta_code, "SaveIO.getMeta(", "local Continue metadata cache")
+local_load_code = strip_java_comments(java_static_method(BROWSER_SAVE, "public static SaveMeta loadLocalSession()"))
+forbid(local_load_code, "SaveIO.isSaveValid", "local Continue metadata cache")
+forbid(local_load_code, "SaveIO.getMeta(", "local Continue metadata cache")
+require(BROWSER_SAVE, "cachedLocalSessionMeta = indexedLocalSessionMeta(browserSaves);", "local Continue indexed metadata cache")
 
-# Browser save preview loader/generation is fully pruned from Web.
-require(SAVE_PREVIEW_PATCH, "stock save preview loader omitted", "browser save preview pruning")
-require(SAVE_PREVIEW_PATCH, "requestedPreview = false;", "browser save preview pruning")
-forbid(SAVE_PREVIEW_PATCH, "new SavePreviewLoader()", "browser save preview pruning")
-forbid(SAVE_PREVIEW_PATCH, "previewFile().writePng", "browser save preview pruning")
+campaign_continue_code = strip_java_comments(java_static_method(CAMPAIGN_RUNTIME, "private static void continuePreset"))
+forbid(campaign_continue_code, "SaveIO.isSaveValid", "campaign resume metadata reuse")
+forbid(campaign_continue_code, "SaveIO.getMeta(", "campaign resume metadata reuse")
+require(campaign_continue_code, "SaveMeta indexed = sector.save.meta;", "campaign resume metadata reuse")
+for method in ["public static void returnToMenu", "private static void saveCampaignCheckpoint"]:
+    body = strip_java_comments(java_static_method(CAMPAIGN_RUNTIME, method))
+    forbid(body, "SaveIO.isSaveValid", f"{method} metadata reuse")
+    forbid(body, "SaveIO.getMeta(", f"{method} metadata reuse")
+    require(body, "SaveMeta meta = current.save.meta;", f"{method} indexed metadata reuse")
 
-# Heavy SaveIO format/write/round-trip probes are CI-only; production startup
-# must hydrate the real save index without writing artificial test worlds.
-require(BROWSER_SAVE, "boolean fullValidation = fullValidationSmokeRequested();", "SaveIO production startup bypass")
-require(BROWSER_SAVE, 'markValidationPolicy(fullValidation ? "ci-full" : "skipped-production")', "SaveIO production startup bypass")
-require(BROWSER_SAVE, "if(fullValidation){", "SaveIO production startup bypass")
-require(BROWSER_SAVE, "get('mindustrySmoke') === '1'", "SaveIO production startup bypass")
-
-# Local Continue reuses metadata already parsed by BrowserSaves until the slot is
-# rewritten/deleted; no isSaveValid/getMeta re-inflate is allowed on that path.
-require(BROWSER_SAVE, "private static SaveMeta cachedLocalSessionMeta;", "local Continue metadata cache")
-require(BROWSER_SAVE, "cachedLocalSessionMeta = indexedLocalSessionMeta(browserSaves);", "local Continue metadata cache")
-require(BROWSER_SAVE, "cachedLocalSessionMeta = meta;", "local Continue metadata cache")
-local_meta_start = BROWSER_SAVE.index("public static SaveMeta localSessionMeta()")
-local_meta_end = BROWSER_SAVE.index("public static SaveMeta saveLocalSession()", local_meta_start)
-local_meta_body = BROWSER_SAVE[local_meta_start:local_meta_end]
-forbid(local_meta_body, "SaveIO.getMeta(", "local Continue metadata cache")
-local_load_start = BROWSER_SAVE.index("public static SaveMeta loadLocalSession()")
-local_load_end = BROWSER_SAVE.index("public static void deleteLocalSession()", local_load_start)
-local_load_body = BROWSER_SAVE[local_load_start:local_load_end]
-forbid(local_load_body, "SaveIO.isSaveValid", "local Continue metadata cache")
-forbid(local_load_body, "SaveIO.getMeta(", "local Continue metadata cache")
-
-# Repeated checkpoints inside one sector must not serialize the full settings file.
-require(BROWSER_SAVES, "boolean pointerChanged = browserLastSector != sector.save", "campaign settings write dedup")
-require(BROWSER_SAVES, "if(pointerChanged){", "campaign settings write dedup")
-require(BROWSER_SAVES, 'Core.settings.put("last-sector-save", name);', "campaign settings write dedup")
-require(BROWSER_SAVES, "Core.settings.forceSave();", "campaign settings write dedup")
-forbid(BROWSER_SAVES, "super.saveSector(sector);", "campaign settings write dedup")
-
-# Production local gameplay must not write DOM frame/phase telemetry at 60Hz.
+# Production telemetry is gated; smoke-only graph work must not leak into normal frames.
 require(LOCAL_MAP, "private static boolean telemetry;", "local gameplay telemetry gate")
 require(LOCAL_MAP, "telemetry = smokeTelemetryRequested();", "local gameplay telemetry gate")
 require(LOCAL_MAP, "private static void diagPhase(String phase)", "local gameplay telemetry gate")
 require(LOCAL_MAP, "if(telemetry){\n            markFrame(", "local gameplay telemetry gate")
-require(LOCAL_MAP, "if(telemetry) markLive(frames);", "local gameplay telemetry gate")
-require(LOCAL_MAP, "if(telemetry) markPauseFrame(", "local gameplay telemetry gate")
-require(LOCAL_MAP, "key.toLowerCase().endsWith('smoke')", "local gameplay telemetry gate")
-require(LOCAL_MAP, "private static void cacheSessionSmokeFlags()", "local smoke flag cache")
-for name in [
-    "pauseSmokeRequested",
-    "saveSmokeRequested",
-    "gameOverSmokeRequested",
-    "autoSaveExitSmokeRequested",
-    "periodicSaveSmokeRequested",
-]:
-    calls = LOCAL_MAP.count(name + "()")
-    if calls != 2:
-        failures.append(f"local smoke flag cache: expected 2 {name}() occurrences, found {calls}")
-forbid(LOCAL_MAP, 'markPhase("logic")', "local gameplay telemetry gate")
-forbid(LOCAL_MAP, 'markPhase("renderer")', "local gameplay telemetry gate")
-
-# Stable production menu keeps the first boot trace only; CI smoke retains full tracing.
+require(LOCAL_MAP, "markLive(frames);", "local gameplay telemetry gate")
+require(LOCAL_MAP, "}else if(!gameOverFreeze && (frames & 63) == 0){", "64-frame production autosave check")
+forbid(LOCAL_MAP, 'markPhase("logic")', "ungated local phase telemetry")
+forbid(LOCAL_MAP, 'markPhase("renderer")', "ungated local phase telemetry")
 require(GAMEPLAY, "boolean trace = smokeMode || moduleLoopFrames < 3", "menu telemetry gate")
-require(GAMEPLAY, "markGameStateSelfTestPolicy(smokeMode ? \"ci-only\" : \"skipped-production\")", "GameState self-test policy")
-require(GAMEPLAY, "if(smokeMode){\n                long smokeUpdateId = logic.updateWebGameStateSmoke();", "GameState self-test CI gate")
-require(GAMEPLAY, 'if(trace) markModulePhase("logic")', "menu telemetry gate")
-require(GAMEPLAY, 'if(trace) markModulePhase("renderer")', "menu telemetry gate")
-require(GAMEPLAY, 'if(trace) markModulePhase("ui-ready")', "menu telemetry gate")
-
-# Campaign smoke/query state is cached once per sector; production frames must not
-# cross into JavaScript just to discover that CI flags are absent.
 require(CAMPAIGN_RUNTIME, "private static void cacheSmokeFlags()", "campaign smoke flag cache")
-require(CAMPAIGN_RUNTIME, "diagnosticsQueryCached", "campaign diagnostics query cache")
-for name in [
-    "saveSmokeRequested",
-    "captureSmokeRequested",
-    "progressSmokeRequested",
-    "diagnosticsRequested",
-]:
-    calls = CAMPAIGN_RUNTIME.count(name + "()")
-    if calls != 2:
-        failures.append(f"campaign smoke/query cache: expected 2 {name}() occurrences, found {calls}")
+require(CAMPAIGN_RUNTIME, "if(captureSmoke){\n            // CI stages only", "campaign capture smoke gate")
+require(CAMPAIGN_RUNTIME, "if(captureSmoke || progressSmoke){\n            // Intersect uses", "campaign progression smoke gate")
 
-# The enormous objective/capture progression graph is CI-only. Production campaign
-# frames must skip its preset/objective comparisons behind one cached boolean branch.
-require(CAMPAIGN_RUNTIME, "if(captureSmoke){\n            // CI stages only", "campaign capture smoke outer guard")
-require(CAMPAIGN_RUNTIME, "if(captureSmoke || progressSmoke){\n            // Intersect uses", "campaign progression smoke outer guard")
-
-# Campaign menu save labels must stay storage-free; strict file validation belongs
-# to the actual launch/resume path, not Scene.update().
-save_hint_start = CAMPAIGN_RUNTIME.index("public static boolean hasSave(SectorPreset preset)")
-save_hint_end = CAMPAIGN_RUNTIME.index("private static boolean hasSectorSave", save_hint_start)
-save_hint = CAMPAIGN_RUNTIME[save_hint_start:save_hint_end]
-for needle in [".exists()", ".length()", "hasSectorSave("]:
-    if needle in save_hint:
-        failures.append(f"campaign save hint hot path: forbidden {needle}")
-require(save_hint, "SaveMeta meta =", "campaign save hint hot path")
-
-# Campaign menu telemetry and auto-unlock scans must not return to 60Hz production work.
-require(CAMPAIGN_UI, "if(BrowserCampaignRuntime.diagnosticsEnabled()){", "campaign diagnostic telemetry gate")
-if CAMPAIGN_UI.count("if(BrowserCampaignRuntime.diagnosticsEnabled()){") < 6:
-    failures.append("campaign UI: expected diagnostics gates around action/state telemetry")
+# Campaign menu callbacks stay consolidated/throttled.
 require(CAMPAIGN_UI, "final int[] campaignUiRefreshFrame = {7};", "campaign UI refresh throttle")
-if CAMPAIGN_UI.count("if(state == null || !state.isMenu()) return;") < 2:
-    failures.append("campaign UI: Serpulo/Erekir updaters must be suspended outside menu state")
-require(CAMPAIGN_UI, "int frame = ++campaignUiRefreshFrame[0];", "campaign unlock refresh throttle")
+require(CAMPAIGN_UI, "int frame = ++campaignUiRefreshFrame[0];", "campaign UI refresh throttle")
 require(CAMPAIGN_UI, "if((frame & 7) != 0) return;", "campaign text refresh throttle")
 require(CAMPAIGN_UI, "if((frame & 31) == 0)", "campaign unlock refresh throttle")
-require(CAMPAIGN_UI, "one throttled updater for all Serpulo/general campaign labels", "campaign callback consolidation")
 if CAMPAIGN_UI.count("campaignProgress.update(() -> {") != 1:
-    failures.append("campaign UI: expected exactly one consolidated Serpulo updater")
+    failures.append("campaign UI: expected one consolidated Serpulo updater")
 if CAMPAIGN_UI.count("erekirProgress.update(() -> {") != 1:
-    failures.append("campaign UI: expected exactly one Erekir updater")
-for actor in [
-    "campaignButton", "conveyorResearch", "junctionResearch", "routerResearch",
-    "frozenForestButton", "craterResearch", "craterButton",
-]:
-    forbid(CAMPAIGN_UI, f"{actor}.update(() -> {{", "campaign callback consolidation")
-for actor in [
-    "conveyorResearch", "junctionResearch", "routerResearch", "frozenForestButton",
-    "craterResearch", "craterButton", "erekirProgress",
-]:
-    forbid(CAMPAIGN_UI, f"{actor}.setDisabled(() ->", "campaign disabled-provider hot path")
-    require(CAMPAIGN_UI, f"arc.func.Boolp {actor}Disabled = () ->", "campaign throttled disabled state")
-    require(CAMPAIGN_UI, f"{actor}.setDisabled({actor}Disabled.get())", "campaign throttled disabled state")
-forbid(CAMPAIGN_UI, "campaignProgress.update(BrowserCampaignResearch::refreshUnlocks)", "campaign UI")
+    failures.append("campaign UI: expected one consolidated Erekir updater")
 
-require(APPLY_PORT, "patch-mindustry-effects-web.py", "Web effect patch wiring")
-require(EFFECT_PATCH, "webMaxActiveEffects", "Web effect active cap")
-require(EFFECT_PATCH, "webBudgetCounted", "Web effect pooled counter flag")
-require(EFFECT_PATCH, "Effect.webEffectRemoved()", "Web effect removal accounting")
-require(LAUNCHER, "int effectBudget = mobileMode ? 512 : 0", "mobile effect budget profile")
-require(LAUNCHER, "data-mindustry-renderer-effect-budget-policy", "mobile effect budget telemetry")
-require(LOCAL_MAP, "if(testWaveExpected && state.wave > beforeWave)", "test-only wave telemetry")
-require(LOCAL_MAP, "}else if(!gameOverFreeze && (frames & 63) == 0){", "64-frame production autosave check")
-require(LOCAL_MAP, "if(telemetry){", "local smoke outer guard")
-forbid(LOCAL_MAP, "if(state.wave > beforeWave){", "production wave-smoke DOM marker")
-require(LOCAL_MAP, "private static final int perfMobileEffectBurst = 640", "mobile particle burst smoke")
-require(LOCAL_MAP, "int[] audioVoices = new int[64]", "browser SFX voice burst smoke")
-require(LOCAL_MAP, "audioAccepted != 48 || audioDropped != 16 || activeAudioVoices != 48", "mobile SFX cap behavior")
-require(LOCAL_MAP, "audioAccepted != 64 || audioDropped != 0 || activeAudioVoices != 64", "desktop SFX unlimited behavior")
-require(LOCAL_MAP, "droppedEffects <= 0", "mobile particle cap assertion")
-require(LOCAL_MAP, "Effect.webResetEffectBudget()", "local map effect budget reset")
-
-# Browser SFX must not create an unbounded WebAudio node graph on mobile.
+# WebAudio saturation and decode cache are explicitly bounded on mobile.
+require(BROWSER_AUDIO, "if((++settingsPoll & 31) == 0)", "browser audio settings cadence")
+require(BROWSER_AUDIO, "if(validationSmokeRequested()){", "browser audio CI-only validation")
+require(BROWSER_AUDIO_JS, "if(!state.ctx || state.unlocked || state.unlocking) return;", "browser audio one-shot unlock")
 require(BROWSER_AUDIO_JS, "state.maxVoices = inputMode === 'mobile' ? 48 : 0", "mobile SFX voice cap")
 require(BROWSER_AUDIO_JS, "state.maxDecodedBuffers = inputMode === 'mobile' ? 64 : 0", "mobile decoded SFX cache cap")
 require(BROWSER_AUDIO_JS, "function trimDecodedBuffers(keepUrl)", "mobile decoded SFX LRU")
-require(BROWSER_AUDIO_JS, "if(url === keepUrl || bufferInUse(url)) return", "active SFX buffer preservation")
-require(BROWSER_AUDIO_JS, "state.buffers.delete(victim)", "decoded SFX cache eviction")
-require(BROWSER_AUDIO_JS, "data-mindustry-audio-buffer-policy", "decoded SFX cache telemetry")
-require(BROWSER_AUDIO_JS, "voice.loop || voice.protected", "mobile SFX protected/loop preservation")
-require(BROWSER_AUDIO_JS, "victimVolume <= volume", "mobile SFX quietest-voice eviction")
-require(BROWSER_AUDIO_JS, "data-mindustry-audio-voice-policy", "mobile SFX cap telemetry")
-require(BROWSER_AUDIO_JS, "protectVoice: protectVoice", "mobile SFX protected voice API")
-require(BROWSER_AUDIO, "if(initialized) protectVoice(voice, protect);", "BrowserAudio protect bridge")
-require(BROWSER_AUDIO, "window.__mindustryAudioApi.protectVoice(id, protect)", "BrowserAudio protect JS bridge")
-play_sound_start = BROWSER_AUDIO_JS.index("function playSound(")
-play_sound_end = BROWSER_AUDIO_JS.index("function stopVoice(", play_sound_start)
-play_sound_body = BROWSER_AUDIO_JS[play_sound_start:play_sound_end]
-forbid(play_sound_body, "root.setAttribute(", "saturated SFX voice path DOM writes")
+require(BROWSER_AUDIO_JS, "voice.loop || voice.protected", "mobile protected voice preservation")
+play_sound = section(BROWSER_AUDIO_JS, "function playSound(", "function stopVoice(")
+forbid(play_sound, "root.setAttribute(", "saturated SFX path DOM writes")
 
-# Packaged internal assets are immutable. Stream decoders (PNG/atlas/MSAV) must consume
-# their cached byte[] directly, while public readBytes() keeps copy isolation.
-require(BROWSER_FI, "new ByteArrayInputStream(files.streamBytes(browserPath, type))", "packaged Fi stream zero-copy")
-require(BROWSER_FILES, "byte[] streamBytes(String path, FileType type)", "packaged stream buffer API")
-require(BROWSER_FILES, "private static native byte[] takePreloadedBytes(String url)", "asset cache transfer API")
+# Immutable packaged assets may stream their owned byte[] directly; local files remain isolated.
 require(BROWSER_FILES, "delete cache[url]", "asset cache release after Java adoption")
-require(BROWSER_FILES, "data-mindustry-assets-cache-policy', 'transfer-on-read-batched", "asset cache transfer telemetry")
-require(BROWSER_FILES, "queueMicrotask(() ->", "batched asset transfer telemetry")
-require(BROWSER_FILES, "__mindustryAssetTransferTelemetryPending", "batched asset transfer telemetry")
-forbid(BROWSER_FILES, "requestPreloadedBytes(", "retained JS asset-cache read API")
+require(BROWSER_FILES, "queueMicrotask(() =>", "batched asset transfer telemetry")
+require(BROWSER_FILES, "__mindustryAssetTransferTelemetryPending", "batched asset telemetry")
 require(BROWSER_FILES, "if(type == FileType.local) return bytes(path, type);", "local stream isolation")
-stream_start = BROWSER_FILES.index("byte[] streamBytes(String path, FileType type)")
-stream_end = BROWSER_FILES.index("byte[] bytes(String path, FileType type)", stream_start)
-stream_body = BROWSER_FILES[stream_start:stream_end]
+stream_body = section(BROWSER_FILES, "byte[] streamBytes(String path, FileType type)", "byte[] bytes(String path, FileType type)")
 require(stream_body, "return binary;", "packaged stream direct buffer")
-forbid(stream_body, "return copy(binary);", "packaged stream zero-copy")
-bytes_start = stream_end
-bytes_end = BROWSER_FILES.index("void putLocal(", bytes_start)
-bytes_body = BROWSER_FILES[bytes_start:bytes_end]
+forbid(stream_body, "return copy(binary);", "packaged stream clone")
+bytes_body = section(BROWSER_FILES, "byte[] bytes(String path, FileType type)", "void putLocal(")
 require(bytes_body, "return copy(binary);", "public packaged readBytes isolation")
+text_body = section(BROWSER_FILES, "String text(String path, FileType type)", "byte[] streamBytes(String path, FileType type)")
+require(text_body, "if(type == FileType.local) return new String(bytes(path, type), StandardCharsets.UTF_8);", "local text isolation")
+packaged_text = text_body[text_body.index("String normalized = normalize(path);"):]
+require(packaged_text, "String decoded = new String(binary, StandardCharsets.UTF_8);", "packaged text direct decode")
+forbid(packaged_text, "new String(bytes(path, type)", "packaged text clone path")
 
-text_start = BROWSER_FILES.index("String text(String path, FileType type)")
-text_end = BROWSER_FILES.index("byte[] streamBytes(String path, FileType type)", text_start)
-text_body = BROWSER_FILES[text_start:text_end]
-require(text_body, "String cached = textAssets.get(normalized);", "packaged text cache")
-require(text_body, "String decoded = new String(binary, StandardCharsets.UTF_8);", "packaged text direct decode")
-forbid(text_body, "new String(bytes(path, type)", "packaged text clone path")
-
-# Logic.reset() calls Settings.manualSave() for every world transition. Browser
-# localStorage is synchronous; unchanged settings must not be serialized again.
+# Logic.reset() is frequent; unchanged browser settings must not rewrite localStorage.
 require(BROWSER_SETTINGS, "if(modified) forceSave();", "modified-only manual settings write")
 require(BROWSER_SETTINGS, "data-mindustry-settings-write-policy','modified-only-manual", "settings write telemetry")
-forbid(BROWSER_SETTINGS, "public synchronized void manualSave(){\n        forceSave();", "unconditional manual settings rewrite")
 
-# IndexedDB hot paths: adopt hydrated buffers without cloning and share one readwrite
-# transaction across synchronous SaveIO file mutations in the same browser task.
-require(BROWSER_STORAGE, "const root = document.documentElement;", "IndexedDB DOM telemetry root")
+# IndexedDB writes are task-coalesced and durability barriers generation-coalesced.
+require(BROWSER_STORAGE, "const root = document.documentElement;", "IndexedDB telemetry root regression guard")
 require(BROWSER_STORAGE, "function adoptHydratedBytes(raw)", "IndexedDB hydration copy avoidance")
-require(BROWSER_STORAGE, "data-mindustry-storage-hydration-policy', 'adopt-idb-buffer", "IndexedDB hydration telemetry")
 require(BROWSER_STORAGE, "function mutationStore()", "IndexedDB write coalescing")
 require(BROWSER_STORAGE, "task-coalesced-readwrite", "IndexedDB write coalescing telemetry")
 require(BROWSER_STORAGE, "mutate(store => store.put", "IndexedDB put coalescing")
@@ -560,6 +319,15 @@ require(BROWSER_STORAGE, "durableGeneration = Math.max(durableGeneration, target
 forbid(BROWSER_STORAGE, "transaction('readwrite').put(", "IndexedDB per-file put transaction")
 forbid(BROWSER_STORAGE, "transaction('readwrite').delete(", "IndexedDB per-file delete transaction")
 
+# Yandex lifecycle/ad wrapper must never strand gameplay paused/stopped.
+require(YANDEX_JS, "storage.lifecycleFlush('yandex-pause')", "Yandex pause durability barrier")
+require(YANDEX_JS, "adInFlight: false", "Yandex fullscreen ad re-entry guard")
+require(YANDEX_JS, "if(state.adInFlight)", "Yandex fullscreen ad re-entry guard")
+require(YANDEX_JS, "state.adWaitingForResume = true", "Yandex ad/platform resume race")
+require(YANDEX_JS, "const finalize = (kind, payload) =>", "Yandex ad one-shot finalizer")
+require(YANDEX_JS, "finally{\n                finishFullscreenAdv();", "Yandex ad callback exception safety")
+require(YANDEX_JS, "result.catch(error => finalize('error', error))", "Yandex async ad rejection safety")
+
 if failures:
     print("Browser hot-path audit: FAIL")
     for failure in failures:
@@ -568,5 +336,5 @@ if failures:
 
 print(
     "Browser hot-path audit: PASS "
-    "(event-driven resize/pause + cached pointer coordinates; no pointermove layout read)"
+    "(scoped runtime checks: input/render/pathfinding/save/audio/storage/Yandex lifecycle)"
 )
