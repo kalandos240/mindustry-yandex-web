@@ -98,7 +98,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --second-resize-require 'data-mindustry-resize-orientation="portrait"' \
   --second-resize-require 'data-mindustry-input-mode="mobile"' \
   --second-resize-require 'data-mindustry-campaign-ui-layout="mobile"' \
-  --second-resize-require 'data-mindustry-campaign-ui-map-pane-height="130"' \
+  --second-resize-require 'data-mindustry-campaign-ui-map-pane-height="110"' \
   --second-resize-require 'data-mindustry-gameplay-loop="menu-stable"' \
   --third-resize-width 844 \
   --third-resize-height 390 \
