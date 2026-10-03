@@ -83,19 +83,17 @@ LOGIC.write_text(logic, encoding="utf-8")
 
 runtime = RUNTIME.read_text(encoding="utf-8")
 
-old_stage = '''        // TeamRules.get(team) is mutating: it materializes a TeamRule entry. Iterating
-        // Team.all therefore creates 256 otherwise-unused entries and inflates the rules
-        // JSON beyond DataOutput.writeUTF's v13 metadata limit. Local survival only needs
-        // the player/default and wave teams guarded; keep all untouched teams lazy so the
-        // stock MSAV v13 metadata format remains byte-compatible with desktop Mindustry.
-        stageTeamRules(rules, rules.defaultTeam);
+# Earlier runtime cleanup removed the explanatory comment that used to wrap this
+# gate, but the semantic gate itself is still exactly these two calls. Remove only
+# them so map-authored TeamRules remain lazy and are no longer forcibly disabled.
+old_stage = '''        stageTeamRules(rules, rules.defaultTeam);
         if(rules.waveTeam != rules.defaultTeam) stageTeamRules(rules, rules.waveTeam);
 '''
 new_stage = '''        // Preserve map-authored TeamRules lazily. Do not materialize all 256 teams:
         // stock buildAi/rtsAi/prebuildAi/fillItems are now supported by the Web loop.
 '''
 if runtime.count(old_stage) != 1:
-    raise SystemExit("Browser local TeamRules staging block no longer matches final runtime")
+    raise SystemExit("Browser local TeamRules staging calls no longer match final runtime")
 runtime = runtime.replace(old_stage, new_stage, 1)
 
 old_helper = '''    private static void stageTeamRules(Rules rules, Team team){
@@ -112,8 +110,8 @@ if runtime.count(old_helper) != 1:
 runtime = runtime.replace(old_helper, "", 1)
 
 runtime = runtime.replace(
-    " * wave lifecycle and local core-loss Game Over handling. Fog, weather, campaign/PvP and\n * builder/RTS AI remain explicit later milestones.",
-    " * wave lifecycle, local core-loss Game Over, fog, weather and stock team AI. Campaign/PvP\n * remain explicit later milestones.",
+    " * enabled; fog/weather/PvP and builder/RTS/prebuild AI remain explicit later gates.",
+    " * enabled; fog/weather and stock team AI are supported. Campaign/PvP remain later gates.",
     1
 )
 
