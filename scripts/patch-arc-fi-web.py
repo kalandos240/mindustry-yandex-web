@@ -71,5 +71,24 @@ for old, new in replacements:
     pixmap = pixmap.replace(old, new, 1)
 pixmap_path.write_text(pixmap)
 
+# apply-port.sh removes the desktop ForkJoin sorter and SpriteBatch.PopulateTask from
+# the Web checkout. ForkJoinHolder.java is a separate upstream source file, so javac
+# still compiles it even though nothing references it; after PopulateTask is removed,
+# that orphan source no longer compiles. Delete it only after proving SpriteBatch has
+# no remaining ForkJoinHolder reference and the pinned holder is still the expected
+# desktop-only class.
+sprite_path = path.parent.parent / "graphics/g2d/SpriteBatch.java"
+holder_path = path.parent.parent / "graphics/g2d/ForkJoinHolder.java"
+sprite = sprite_path.read_text()
+if "ForkJoinHolder" in sprite:
+    raise SystemExit("Arc Web SpriteBatch still references ForkJoinHolder; refusing to remove desktop sorter holder.")
+if not holder_path.is_file():
+    raise SystemExit("Arc ForkJoinHolder source is unexpectedly missing before Web cleanup.")
+holder = holder_path.read_text()
+if "PopulateTask" not in holder or "ForkJoinPool.commonPool()" not in holder:
+    raise SystemExit("Arc ForkJoinHolder no longer matches the pinned desktop-only sorter holder.")
+holder_path.unlink()
+print("Removed orphaned Arc ForkJoinHolder after Web serial SpriteBatch sorter patch")
+
 root = Path(__file__).resolve().parents[1]
 subprocess.run([sys.executable, str(root / "scripts" / "patch-arc-json-web.py")], check=True)
