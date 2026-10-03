@@ -367,7 +367,36 @@ def main() -> int:
                 sys.stdout.write("<!DOCTYPE html>\n" + last_html + "\n")
                 return 0
             time.sleep(0.1)
-        sys.stderr.write("Chrome marker wait timed out. Last <html> tag:\n")
+
+        # A Runtime.evaluate call may begin before the deadline and return just after it.
+        # Validate that final authoritative snapshot once more before declaring timeout;
+        # this avoids rejecting a page whose required state arrived during that last CDP
+        # round trip. If it is still incomplete, print the exact missing marker(s).
+        if resize_phase == 0:
+            required = args.require
+        elif resize_phase == 1:
+            required = args.after_resize_require
+        elif resize_phase == 2:
+            required = args.second_resize_require
+        else:
+            required = args.third_resize_require
+        missing = [marker for marker in required if marker not in last_html]
+        if not missing:
+            elapsed = time.monotonic() - started
+            phase = (
+                " after third live resize" if resize_phase == 3
+                else " after second live resize" if resize_phase == 2
+                else " after live resize" if resize_phase == 1
+                else ""
+            )
+            sys.stderr.write(f"Chrome required markers ready{phase} at deadline edge in {elapsed:.3f}s after {polls} DOM poll(s).\n")
+            sys.stdout.write("<!DOCTYPE html>\n" + last_html + "\n")
+            return 0
+
+        sys.stderr.write("Chrome marker wait timed out. Missing required marker(s):\n")
+        for marker in missing:
+            sys.stderr.write(f"  {marker!r}\n")
+        sys.stderr.write("Last <html> tag:\n")
         start = last_html.find("<html")
         end = last_html.find(">", start)
         if start >= 0 and end >= start:
