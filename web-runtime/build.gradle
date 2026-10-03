@@ -60,8 +60,13 @@ tasks.register("stageWeb", Copy) {
     from("../work/Mindustry/core/assets") {
         include "bundles/bundle.properties"
         include "bundles/bundle_ru.properties"
-        // Planet definitions are Java content in mindustry.content.Planets in v159.7;
-        // there are no planets/serpulo.json or planets/erekir.json assets upstream.
+
+        // Planet definitions live in mindustry.content.Planets. In addition, tools:pack
+        // generates Serpulo's vanilla PlanetData at build time because Serpulo sets
+        // loadPlanetData=true and Planet.getData() reads planets/serpulo.json. Erekir
+        // does not use that JSON path, so do not invent or stage an Erekir counterpart.
+        include "planets/serpulo.json"
+
         include "logicids.dat"
         include "sprites/error.png"
         include "sprites/block_colors.png"
