@@ -1,6 +1,7 @@
 package mindustry.web;
 
 import arc.*;
+import arc.files.*;
 import arc.struct.*;
 import arc.util.*;
 import mindustry.*;
