@@ -7,6 +7,7 @@ INDEX="$WEB_DIR/index.html"
 PLATFORM="$WEB_DIR/yandex-platform.js"
 MANIFEST="$WEB_DIR/assets-manifest.js"
 PLANETS_SOURCE="$ROOT_DIR/work/Mindustry/core/src/mindustry/content/Planets.java"
+SERPULO_DATA="$WEB_DIR/assets/planets/serpulo.json"
 MAX_BYTES=$((100 * 1024 * 1024))
 
 fail(){
@@ -30,16 +31,22 @@ fi
 grep -Fq 'c9686eb5d0ae5dd47ee02c40f99f7d5018ccbc8c' "$WEB_DIR/licenses/SOURCE-NOTICE.txt" || fail "Mindustry source pin missing from notice"
 grep -Fq 'c38f8f5ff27f47a5886d0903aadeba42e4302411' "$WEB_DIR/licenses/SOURCE-NOTICE.txt" || fail "Arc source pin missing from notice"
 
-# Mindustry v159.7 does not ship assets/planets/{erekir,serpulo}.json. Both planets are
-# Java content definitions in mindustry.content.Planets and TeaVM compiles that content
-# into mindustry.js. Verify the pinned definitions and their compiled reachability rather
-# than requiring imaginary asset files that never exist upstream.
+# Vanilla planet definitions are Java content compiled into mindustry.js. Serpulo also
+# sets loadPlanetData=true, and tools:pack generates planets/serpulo.json at build time;
+# Planet.getData() consumes that same-origin file for attack-sector/preset metadata.
+# Erekir does not use loadPlanetData, so no Erekir JSON asset is required or staged.
 [ -s "$PLANETS_SOURCE" ] || fail "pinned Mindustry Planets.java missing from build workspace"
 grep -Fq 'erekir = new Planet("erekir", sun, 1f, 2)' "$PLANETS_SOURCE" || fail "pinned Erekir planet definition changed or missing"
 grep -Fq 'serpulo = new Planet("serpulo", sun, 1f, 3)' "$PLANETS_SOURCE" || fail "pinned Serpulo planet definition changed or missing"
+grep -Fq 'serpulo.loadPlanetData = true' "$PLANETS_SOURCE" || fail "pinned Serpulo PlanetData loading flag missing"
 grep -Fq 'campaignRuleDefaults.rtsAI = true' "$PLANETS_SOURCE" || fail "pinned Erekir campaign RTS rule missing"
 grep -Fq 'erekir' "$WEB_DIR/mindustry.js" || fail "compiled Erekir content is not reachable in TeaVM output"
 grep -Fq 'serpulo' "$WEB_DIR/mindustry.js" || fail "compiled Serpulo content is not reachable in TeaVM output"
+[ -s "$SERPULO_DATA" ] || fail "generated Serpulo PlanetData asset missing"
+grep -Fq 'attackSectors' "$SERPULO_DATA" || fail "generated Serpulo PlanetData lacks attack sectors"
+grep -Fq 'groundZero' "$SERPULO_DATA" || fail "generated Serpulo PlanetData lacks Ground Zero mapping"
+grep -Fq 'planets/serpulo.json' "$MANIFEST" || fail "generated Serpulo PlanetData missing from asset manifest"
+[ ! -e "$WEB_DIR/assets/planets/erekir.json" ] || fail "unexpected Erekir PlanetData JSON was staged"
 
 for preset in onset aegis lake intersect atlas split basin marsh peaks ravine caldera-erekir stronghold crevice siege crossroads karst origin; do
   [ -s "$WEB_DIR/assets/maps/erekir/$preset.msav" ] || fail "Erekir campaign map missing: $preset.msav"
