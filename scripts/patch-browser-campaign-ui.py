@@ -35,9 +35,10 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         boolean[] campaignContinue = {BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.groundZero)};
         campaignButton.setText(Core.bundle.get(campaignContinue[0] ? "continue" : "play",
             campaignContinue[0] ? "Continue" : "Play"));
-        if(BrowserCampaignRuntime.diagnosticsEnabled()){
-            markCampaignUiAction(campaignContinue[0] ? "continue" : "play");
-        }
+        // Production cold-boot verification needs to observe the actual menu state
+        // without enabling any smoke/diagnostic query. This marker changes only when the
+        // button state changes, so it is not part of the frame hot path.
+        markCampaignUiAction(campaignContinue[0] ? "continue" : "play");
         campaignButton.clicked(BrowserCampaignRuntime::playGroundZero);
                 root.add(campaignButton).width(campaignWidth).height(campaignHeight).padBottom(8f);
         root.row();
@@ -409,9 +410,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                             campaignContinue[0] = hasSave;
                             campaignButton.setText(Core.bundle.get(hasSave ? "continue" : "play",
                                 hasSave ? "Continue" : "Play"));
-                            if(BrowserCampaignRuntime.diagnosticsEnabled()){
-                                markCampaignUiAction(hasSave ? "continue" : "play");
-                            }
+                            markCampaignUiAction(hasSave ? "continue" : "play");
                         }
 
             // conveyorResearch
