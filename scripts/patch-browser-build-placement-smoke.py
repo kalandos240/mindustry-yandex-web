@@ -21,7 +21,7 @@ old_world_gesture = '''        if(stage == 4){
             // The world click must not be intercepted by the Arc HUD. This also proves
             // the pointermove reached WebInput before placement starts.
             if(Core.scene.hasMouse()){
-                throw new IllegalStateException("build:ui:" + targetX + "," + targetY);
+                throw new IllegalStateException("Chosen build tile is covered by an Arc Scene actor: " + targetX + "," + targetY);
             }
             if(Math.abs(Core.input.mouseX() - targetScreenX) > 3f || Math.abs(Core.input.mouseY() - targetScreenY) > 3f){
                 throw new IllegalStateException(
@@ -49,7 +49,7 @@ new_world_gesture = '''        if(stage == 4){
             // The world click must not be intercepted by the Arc HUD. This also proves
             // the pointermove reached WebInput before placement starts.
             if(Core.scene.hasMouse()){
-                throw new IllegalStateException("Chosen build tile is covered by an Arc Scene actor: " + targetX + "," + targetY);
+                throw new IllegalStateException("build:ui:" + targetX + "," + targetY);
             }
             if(Math.abs(Core.input.mouseX() - targetScreenX) > 3f || Math.abs(Core.input.mouseY() - targetScreenY) > 3f){
                 throw new IllegalStateException(
