@@ -158,7 +158,10 @@ public final class BrowserPlayerCombatSmoke{
                 float screenX = width * nx;
                 float screenY = height * (1f - ny);
 
-                if(Core.scene != null && Core.scene.hasMouse(screenX, screenY)) continue;
+                if(Core.scene != null){
+                    Vec2 stagePoint = Core.scene.screenToStageCoordinates(new Vec2(screenX, screenY));
+                    if(Core.scene.hasMouse(stagePoint.x, stagePoint.y)) continue;
+                }
 
                 Vec2 worldPoint = Core.camera.unproject(screenX, screenY);
                 Tile tile = world.tileWorld(worldPoint.x, worldPoint.y);
