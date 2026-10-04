@@ -991,6 +991,7 @@ public final class BrowserCampaignResearch{
         }
 
         stageAndSpend(source, Blocks.coreNucleus);
+        produceItem(source, Items.scrap);
         stageAndSpend(source, Blocks.pulverizer);
         stageAndSpend(source, Blocks.incinerator);
         stageAndSpend(source, Blocks.melter);
