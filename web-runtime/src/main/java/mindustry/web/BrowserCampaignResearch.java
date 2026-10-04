@@ -1296,6 +1296,13 @@ public final class BrowserCampaignResearch{
             if(remaining > 0){
                 throw new IllegalStateException("r:capacity");
             }
+
+            // Stock campaign research is incremental: resources can be contributed and
+            // consumed before the next requirement is available. Spending each staged
+            // requirement here prevents large late-game nodes from requiring every
+            // research material to fit in campaign storage simultaneously.
+            spend(content);
+            if(content.unlocked()) return;
         }
     }
 
