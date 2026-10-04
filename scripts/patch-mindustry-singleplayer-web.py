@@ -71,6 +71,21 @@ control_replacements = [
         "lean campaign unlock HUD notifications",
     ),
     (
+        '''            if(!net.client() && e.sector.preset != null && e.sector.preset.isLastSector && e.initialCapture){
+                Time.run(60f * 2f, () -> {
+                    ui.campaignComplete.show(e.sector.planet);
+                });
+            }
+''',
+        '''            if(!net.client() && e.sector.preset != null && e.sector.preset.isLastSector && e.initialCapture){
+                // Full UI.init() is intentionally absent from the compact Web client,
+                // so CampaignCompleteDialog is not constructed. Sector capture state is
+                // already persisted above; skip only the desktop presentation dialog.
+            }
+''',
+        "lean campaign completion dialog",
+    ),
+    (
         '''        Events.on(PlayEvent.class, event -> {\n            player.team(netServer.assignTeam(player));\n            player.add();\n\n            state.set(State.playing);\n        });\n''',
         '''        Events.on(PlayEvent.class, event -> {\n            // Web/Yandex is intentionally single-player. There is no NetServer team\n            // allocator; local play uses the map/rules default team directly.\n            player.team(state.rules.defaultTeam);\n            player.add();\n\n            state.set(State.playing);\n        });\n''',
         "PlayEvent team assignment",
