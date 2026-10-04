@@ -1275,34 +1275,41 @@ public final class BrowserCampaignResearch{
 
         for(int i = 0; i < node.requirements.length; i++){
             Item item = node.requirements[i].item;
-            int unfinished = Math.max(0, node.requirements[i].amount - node.finishedRequirements[i].amount);
-            int remaining = Math.max(0, unfinished - available(node, item));
-            if(remaining <= 0) continue;
 
-            // Stock campaign research spends from every unfrozen base@the tech
-            // planet. A single sector/core cannot necessarily hold an entire late-game
-            // research requirement, so stage the CI economy across those same storages.
-            // Prefer the active/source sector, then the remaining captured bases.
-            if(source != null && source.planet == planet && source.hasBase() && !source.isFrozen()){
-                remaining -= stageIntoSector(source, item, remaining);
+            while(node.finishedRequirements[i].amount < node.requirements[i].amount){
+                int before = node.finishedRequirements[i].amount;
+
+                // Consume anything already present first. This can free storage before
+                // staging the next chunk of a very large late-game requirement.
+                if(available(node, item) > 0){
+                    spend(content);
+                    if(content.unlocked()) return;
+                    if(node.finishedRequirements[i].amount > before) continue;
+                }
+
+                int missing = node.requirements[i].amount - node.finishedRequirements[i].amount;
+                int staged = 0;
+
+                if(source != null && source.planet == planet && source.hasBase() && !source.isFrozen()){
+                    staged += stageIntoSector(source, item, missing - staged);
+                }
+
+                for(Sector sector : planet.sectors){
+                    if(staged >= missing) break;
+                    if(sector == source || !sector.hasBase() || sector.isFrozen()) continue;
+                    staged += stageIntoSector(sector, item, missing - staged);
+                }
+
+                if(staged <= 0){
+                    throw new IllegalStateException("r:capacity");
+                }
+
+                spend(content);
+                if(content.unlocked()) return;
+                if(node.finishedRequirements[i].amount <= before){
+                    throw new IllegalStateException("r:stalled");
+                }
             }
-
-            for(Sector sector : planet.sectors){
-                if(remaining <= 0) break;
-                if(sector == source || !sector.hasBase() || sector.isFrozen()) continue;
-                remaining -= stageIntoSector(sector, item, remaining);
-            }
-
-            if(remaining > 0){
-                throw new IllegalStateException("r:capacity");
-            }
-
-            // Stock campaign research is incremental: resources can be contributed and
-            // consumed before the next requirement is available. Spending each staged
-            // requirement here prevents large late-game nodes from requiring every
-            // research material to fit in campaign storage simultaneously.
-            spend(content);
-            if(content.unlocked()) return;
         }
     }
 
