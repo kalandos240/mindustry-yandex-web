@@ -831,6 +831,7 @@ public final class BrowserCampaignResearch{
             throw new IllegalStateException("r:60");
         }
 
+        produceItem(source, Items.sporePod);
         stageAndSpend(source, Blocks.airFactory);
         stageAndSpend(source, Blocks.additiveReconstructor);
         stageAndSpend(source, UnitTypes.mace);
@@ -959,6 +960,12 @@ public final class BrowserCampaignResearch{
         stageAndSpend(source, Blocks.thermalGenerator);
         stageAndSpend(source, Blocks.laserDrill);
         stageAndSpend(source, Blocks.plastaniumCompressor);
+        produceItem(source, Items.plastanium);
+
+        if(isCaptured(SectorPresets.impact0078)){
+            stageAndSpend(source, Blocks.phaseWeaver);
+            produceItem(source, Items.phaseFabric);
+        }
 
         if(!Items.plastanium.unlocked()){
             ItemSeq produced = new ItemSeq();
@@ -1076,6 +1083,8 @@ public final class BrowserCampaignResearch{
             throw new IllegalStateException("r:89");
         }
 
+        stageAndSpend(source, Blocks.surgeSmelter);
+        produceItem(source, Items.surgeAlloy);
         stageAndSpend(source, Blocks.massDriver);
         stageAndSpend(source, UnitTypes.retusa);
         stageAndSpend(source, UnitTypes.oxynoe);
