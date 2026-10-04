@@ -526,12 +526,12 @@ public final class BrowserLocalMapRuntime{
         current = builtin;
         frames = 0;
         perfSmoke = false;
-        telemetry = false;
-        pauseSmoke = false;
-        saveSmoke = false;
-        gameOverSmoke = false;
-        autoSaveExitSmoke = false;
-        periodicSaveSmoke = false;
+        // Continue can be entered by the production UI or by the browser smoke harness.
+        // Re-evaluate telemetry and smoke flags for this new process/session instead of
+        // clearing them after the saved world has loaded. Otherwise the restored game
+        // runs, but CI never emits the live/module-order markers it is waiting for.
+        telemetry = smokeTelemetryRequested();
+        cacheSessionSmokeFlags();
         perfReady = false;
         perfUnits = 0;
         active = true;
