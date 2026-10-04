@@ -357,6 +357,11 @@ jobs:
           grep -q 'data-mindustry-gameplay-runtime="ready"' /tmp/mindustry-web-mobile-dom.html
           grep -q 'data-mindustry-game-state-tick-smoke="ready"' /tmp/mindustry-web-mobile-dom.html
 
+      # Independent fresh-profile campaign proof. Run it before the long localization/
+      # persistence matrices so TechTree/map compatibility regressions fail fast.
+      - name: Verify all Serpulo TechTree sectors through Weathered Channels
+        run: bash scripts/verify-browser-campaign-capture.sh
+
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
 
@@ -385,8 +390,6 @@ jobs:
 
       # verify-browser-persistence already chains campaign cold save/resume, and
       # verify-browser-locales already chains the Yandex SDK desktop/mobile lifecycle.
-      - name: Verify all Serpulo TechTree sectors through Weathered Channels
-        run: bash scripts/verify-browser-campaign-capture.sh
 
       - name: Verify Erekir Onset boot and cold resume
         run: bash scripts/verify-browser-erekir-onset.sh
