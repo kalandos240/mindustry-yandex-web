@@ -161,6 +161,28 @@ trim_web_runtime_diagnostics(
     "web-runtime/src/main/java/mindustry/web/BrowserLocalMapRuntime.java", "l:"
 )
 
+# Campaign runtime errors already have detailed state exposed through DOM telemetry.
+# Strip the generated c:N payloads from the staged TeaVM source entirely; keeping
+# dozens of tiny exception strings costs several KB in the minified JS at the very
+# tight complete-campaign budget.
+campaign_runtime_path = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignRuntime.java"
+campaign_runtime_text = campaign_runtime_path.read_text(encoding="utf-8")
+campaign_runtime_pattern = re.compile(
+    r'throw new (IllegalStateException|IllegalArgumentException)\(\s*"c:\d+"'
+    r'(?:\s*\+\s*[^;]+)?\s*\);',
+    re.S
+)
+campaign_runtime_text, campaign_runtime_stripped = campaign_runtime_pattern.subn(
+    lambda m: f'throw new {m.group(1)}();',
+    campaign_runtime_text
+)
+if campaign_runtime_stripped < 80:
+    raise SystemExit(
+        f"Web campaign runtime diagnostic strip expected 80+ c:* exceptions, found {campaign_runtime_stripped}"
+    )
+campaign_runtime_path.write_text(campaign_runtime_text, encoding="utf-8")
+print(f"Stripped {campaign_runtime_stripped} CI-only campaign runtime exception messages from TeaVM input")
+
 # BrowserCampaignResearch retains readable r:* codes in the repository, but those
 # exception messages are CI-only and become 100+ distinct JavaScript string literals.
 # Strip just the staged TeaVM copies after every research overlay has already matched.
