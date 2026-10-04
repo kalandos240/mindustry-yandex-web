@@ -21,6 +21,7 @@ import static mindustry.Vars.*;
 public final class BrowserPlayerMiningSmoke{
     private static final int maxSpawnFrames = 900;
     private static final int maxMineFrames = 900;
+    private static final int maxAimFrames = 120;
     private static final int maxApproachFrames = 1800;
     private static final int maxDepositFrames = 180;
 
@@ -32,6 +33,7 @@ public final class BrowserPlayerMiningSmoke{
     private static int spawnFrames;
     private static int mineFrames;
     private static int mineClickAttempts;
+    private static int aimFrames;
     private static int approachFrames;
     private static int depositFrames;
     private static int targetX = -1, targetY = -1;
@@ -107,8 +109,27 @@ public final class BrowserPlayerMiningSmoke{
                 return;
             }
 
+            // Stop first, then give the normal camera-follow path a frame to settle.
+            // Projecting the ore in the same observer callback as the final movement key-up
+            // can leave the world point under the bottom-right build palette.
             stopMovement();
+            aimFrames = 0;
+            stage = 5;
+            return;
+        }
+
+        if(stage == 5){
+            Tile target = world.tile(targetX, targetY);
+            if(target == null) throw new IllegalStateException("Mine target disappeared before pointer aim");
+
             Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
+            if(sceneCovered(projected.x, projected.y)){
+                if(++aimFrames >= maxAimFrames){
+                    throw new IllegalStateException("Mine target remained covered by Arc UI after camera settle");
+                }
+                return;
+            }
+
             targetScreenX = projected.x;
             targetScreenY = projected.y;
             dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
@@ -117,6 +138,29 @@ public final class BrowserPlayerMiningSmoke{
         }
 
         if(stage == 2){
+            Tile target = world.tile(targetX, targetY);
+            if(target == null) throw new IllegalStateException("Mine target disappeared before pointerdown");
+
+            // Camera follow can still advance between the pointermove and the next input
+            // update. Re-project until DOM input and the exact ore tile agree in one frame.
+            Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
+            if(sceneCovered(projected.x, projected.y)){
+                stage = 5;
+                if(++aimFrames >= maxAimFrames){
+                    throw new IllegalStateException("Mine target moved under Arc UI before pointerdown");
+                }
+                return;
+            }
+            if(Math.abs(projected.x - targetScreenX) > 2f || Math.abs(projected.y - targetScreenY) > 2f){
+                targetScreenX = projected.x;
+                targetScreenY = projected.y;
+                dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+                if(++aimFrames >= maxAimFrames){
+                    throw new IllegalStateException("Mine target projection never stabilized after camera follow");
+                }
+                return;
+            }
+
             verifyWorldPointer(targetScreenX, targetScreenY, "mine target");
             dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
             pointerDown = true;
@@ -151,13 +195,15 @@ public final class BrowserPlayerMiningSmoke{
                 // accepted the tile; never assign mineTile or grant items directly.
                 if(mineFrames % 12 == 0 && mineClickAttempts < 3){
                     Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
-                    targetScreenX = projected.x;
-                    targetScreenY = projected.y;
-                    dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
-                    dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
-                    dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
-                    mineClickAttempts++;
-                    markMineRetry(mineClickAttempts);
+                    if(!sceneCovered(projected.x, projected.y)){
+                        targetScreenX = projected.x;
+                        targetScreenY = projected.y;
+                        dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+                        dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
+                        dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
+                        mineClickAttempts++;
+                        markMineRetry(mineClickAttempts);
+                    }
                 }
 
                 if(mineFrames >= 60){
@@ -318,8 +364,14 @@ public final class BrowserPlayerMiningSmoke{
         dispatchKey("keyup", key, key.equals("KeyD") ? "d" : key.equals("KeyA") ? "a" : key.equals("KeyW") ? "w" : "s");
     }
 
+    private static boolean sceneCovered(float x, float y){
+        if(Core.scene == null) return false;
+        Vec2 stagePoint = Core.scene.screenToStageCoordinates(new Vec2(x, y));
+        return Core.scene.hasMouse(stagePoint.x, stagePoint.y);
+    }
+
     private static void verifyWorldPointer(float x, float y, String label){
-        if(Core.scene.hasMouse(x, y)){
+        if(sceneCovered(x, y)){
             throw new IllegalStateException(label + " is covered by an Arc Scene actor");
         }
         if(Math.abs(Core.input.mouseX() - x) > 4f || Math.abs(Core.input.mouseY() - y) > 4f){
