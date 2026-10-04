@@ -856,6 +856,7 @@ public final class BrowserCampaignResearch{
 
         stageAndSpend(source, Blocks.copperWall);
         stageAndSpend(source, Blocks.copperWallLarge);
+        produceItem(source, Items.titanium);
         stageAndSpend(source, Blocks.titaniumWall);
         stageAndSpend(source, Blocks.door);
 
