@@ -1277,15 +1277,11 @@ public final class BrowserCampaignResearch{
             Item item = node.requirements[i].item;
 
             while(node.finishedRequirements[i].amount < node.requirements[i].amount){
-                int before = node.finishedRequirements[i].amount;
-
-                // Consume anything already present first. This can free storage before
-                // staging the next chunk of a very large late-game requirement.
-                if(available(node, item) > 0){
-                    spend(content);
-                    if(content.unlocked()) return;
-                    if(node.finishedRequirements[i].amount > before) continue;
-                }
+                // Spend the previous chunk first, freeing the same finite campaign
+                // storage before the next contribution is staged.
+                spend(content);
+                if(content.unlocked()) return;
+                if(node.finishedRequirements[i].amount >= node.requirements[i].amount) break;
 
                 int missing = node.requirements[i].amount - node.finishedRequirements[i].amount;
                 int staged = 0;
@@ -1300,15 +1296,7 @@ public final class BrowserCampaignResearch{
                     staged += stageIntoSector(sector, item, missing - staged);
                 }
 
-                if(staged <= 0){
-                    throw new IllegalStateException("r:capacity");
-                }
-
-                spend(content);
-                if(content.unlocked()) return;
-                if(node.finishedRequirements[i].amount <= before){
-                    throw new IllegalStateException("r:stalled");
-                }
+                if(staged <= 0) throw new IllegalStateException("r:capacity");
             }
         }
     }
