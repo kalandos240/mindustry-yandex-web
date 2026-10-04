@@ -86,7 +86,10 @@ public final class BrowserPlayerCombatSmoke{
             float ay = unit.aimY();
             markAimProgress(aimFrames, mx, my, ax, ay);
 
-            boolean pointerReachedInput = mx > Core.graphics.getWidth() * 0.60f;
+            float expectedMouseX = Core.graphics.getWidth() * targetNx;
+            float expectedMouseY = Core.graphics.getHeight() * (1f - targetNy);
+            boolean pointerReachedInput = Math.abs(mx - expectedMouseX) <= 2f &&
+                Math.abs(my - expectedMouseY) <= 2f;
             boolean validAim = !Float.isNaN(ax) && !Float.isInfinite(ax) &&
                 !Float.isNaN(ay) && !Float.isInfinite(ay) &&
                 (Math.abs(ax - unit.x) > 1f || Math.abs(ay - unit.y) > 1f);
