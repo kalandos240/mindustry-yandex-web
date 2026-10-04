@@ -1314,29 +1314,26 @@ public final class BrowserCampaignRuntime{
 
             if(captureSmokeStaged && !captureSmokeComplete){
                 if(current.info.wasCaptured && !state.rules.waves && !state.rules.attackMode){
-                    int saveState = current.save == null ? 1
-                        : current.save.file == null ? 2
-                        : !current.save.file.exists() ? 3
-                        : current.save.file.length() < 128 ? 4
-                        : !SaveIO.isSaveValid(current.save.file) ? 5 : 0;
+                    // sectorCapture() already requests a stock sector save. If
+                    // that browser-backed rewrite is invalid, retry the same stock save
+                    // once after all capture mutations/objective clearing have completed.
+                    boolean captureSaveValid = current.save != null
+                        && current.save.file != null
+                        && current.save.file.exists()
+                        && current.save.file.length() >= 128
+                        && SaveIO.isSaveValid(current.save.file);
 
-                    // sectorCapture() already requests a stock sector save. If the
-                    // browser-backed slot is still invalid here, retry that same stock
-                    // save once after all capture mutations/objective clearing have
-                    // completed. This repairs an interrupted/invalid rewrite without
-                    // bypassing SaveIO or changing the serialized format.
-                    if(saveState != 0 && control != null && control.saves != null){
+                    if(!captureSaveValid && control != null && control.saves != null){
                         control.saves.saveSector(current);
-                        saveState = current.save == null ? 1
-                            : current.save.file == null ? 2
-                            : !current.save.file.exists() ? 3
-                            : current.save.file.length() < 128 ? 4
-                            : !SaveIO.isSaveValid(current.save.file) ? 5 : 0;
+                        captureSaveValid = current.save != null
+                            && current.save.file != null
+                            && current.save.file.exists()
+                            && current.save.file.length() >= 128
+                            && SaveIO.isSaveValid(current.save.file);
                     }
 
-                    if(saveState != 0){
-                        setRuntimeDomAttribute("data-mindustry-campaign-capture-save-state", String.valueOf(saveState));
-                        throw new IllegalStateException("Capture save state is invalid");
+                    if(!captureSaveValid){
+                        throw new IllegalStateException("Capture save invalid");
                     }
                     SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
                     if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
