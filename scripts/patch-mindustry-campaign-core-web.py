@@ -43,5 +43,66 @@ if text.count(old_tick) != 1:
     raise SystemExit("Logic Web campaign tick anchor no longer matches fog-enabled playing core")
 text = text.replace(old_tick, new_tick, 1)
 
+# The lean Web playing core intentionally does not call desktop Logic.checkGameState().
+# Restore only the stock campaign branch here, keeping it local-authoritative so the
+# browser does not retain generated multiplayer Call transport.
+old_post = '''        Events.fire(Trigger.afterGameUpdate);
+
+        if(!state.gameOver){
+'''
+new_post = '''        Events.fire(Trigger.afterGameUpdate);
+
+        if(state.isCampaign()){
+            if(state.rules.sector == null){
+                throw new IllegalStateException("Campaign Web state check lost its active sector");
+            }
+
+            // Stock campaign loss semantics: losing every player core ends the run.
+            if(state.teams.playerCores().size == 0 && !state.gameOver){
+                state.gameOver = true;
+                state.won = false;
+                Events.fire(new GameOverEvent(state.rules.waveTeam));
+            }
+
+            // Match stock Logic.checkGameState(): maps with no remaining spawn source
+            // stop waves, and winWave/attack victory captures the active sector.
+            if(state.rules.waves && spawner.countSpawns() + state.teams.cores(state.rules.waveTeam).size <= 0){
+                state.rules.waves = false;
+            }
+
+            boolean waveVictory = state.rules.waves && state.enemies == 0
+                && state.rules.winWave > 0 && state.wave >= state.rules.winWave
+                && !spawner.isSpawning();
+            boolean attackVictory = state.rules.attackMode && !state.rules.waveTeam.isAlive();
+
+            if(waveVictory || attackVictory){
+                if(state.rules.sector.preset != null
+                && state.rules.sector.preset.attackAfterWaves
+                && !state.rules.attackMode){
+                    state.rules.attackMode = true;
+                    state.rules.waves = false;
+                }else{
+                    // Same local body as stock Call.sectorCapture(), without RPC.
+                    sectorCapture();
+                }
+            }
+        }
+
+        if(!state.gameOver){
+'''
+if text.count(old_post) != 1:
+    raise SystemExit("Logic Web campaign state-check anchor no longer matches attack-mode playing core")
+text = text.replace(old_post, new_post, 1)
+
+# sectorCapture() is invoked locally above. The generated Call.clearObjectives() wrapper
+# is only a transport hop; mutate the same authoritative rules collection directly.
+old_clear = '''        Call.clearObjectives();
+'''
+new_clear = '''        state.rules.objectives.clear();
+'''
+if text.count(old_clear) != 1:
+    raise SystemExit("Logic Web campaign objective-clear anchor no longer matches pinned sectorCapture")
+text = text.replace(old_clear, new_clear, 1)
+
 LOGIC.write_text(text, encoding="utf-8")
-print("Enabled stock SectorInfo/Universe campaign tick in Web playing core")
+print("Enabled stock local campaign tick + victory/capture state check in Web playing core")
