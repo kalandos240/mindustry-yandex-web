@@ -110,6 +110,26 @@ if "renderer.takeMapScreenshot();" in control:
     raise SystemExit("Single-player Web Control still reaches whole-map screenshot encoder")
 CONTROL.write_text(control, encoding="utf-8")
 
+# Permanent Web single-player has no remote host authority. Keep TechTree objectives
+# (e.g. Research(coal)) on the same local unlock bit used by the rest of campaign UI.
+UNLOCKABLE = MINDUSTRY / "ctype" / "UnlockableContent.java"
+if not UNLOCKABLE.is_file():
+    raise SystemExit(f"Missing pinned Mindustry source: {UNLOCKABLE}")
+unlockable = UNLOCKABLE.read_text(encoding="utf-8")
+unlock_old = '''    public boolean unlockedHost(){
+        return net != null && net.client() ?
+            alwaysUnlocked || state.rules.researched.contains(this) :
+            unlocked || alwaysUnlocked;
+    }
+'''
+unlock_new = '''    public boolean unlockedHost(){
+        return unlocked || alwaysUnlocked;
+    }
+'''
+if unlock_old not in unlockable:
+    raise SystemExit("Single-player UnlockableContent host-unlock patch no longer matches pinned upstream")
+UNLOCKABLE.write_text(unlockable.replace(unlock_old, unlock_new, 1), encoding="utf-8")
+
 menu = MENU.read_text(encoding="utf-8")
 menu_replacements = [
     (
