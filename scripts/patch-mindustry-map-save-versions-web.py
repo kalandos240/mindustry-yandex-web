@@ -8,30 +8,45 @@ ROOT = Path(__file__).resolve().parents[1]
 SAVEIO = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "io" / "SaveIO.java"
 ASSETS = ROOT / "work" / "Mindustry" / "core" / "assets"
 BUILD = ROOT / "web-runtime" / "build.gradle"
+LOCAL_RUNTIME = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java"
 
-for path in (SAVEIO, BUILD):
+for path in (SAVEIO, BUILD, LOCAL_RUNTIME):
     if not path.is_file():
         raise SystemExit(f"Missing pinned source: {path}")
 
-# Keep only legacy readers required by files that are actually copied into the Web
-# package. Campaign maps are not all the same historical MSAV version (Frozen Forest
-# is v11 on the pinned upstream), so a hard-coded v4-v10 list is both brittle and can
-# retain unnecessary TeaVM reachability.
+# Keep only legacy readers required by maps that the browser can actually launch.
+# Campaign maps are not all the same historical MSAV version (Frozen Forest is v11 on
+# the pinned upstream), while maps/default/** also contains a packaged-but-hidden map.
+# A hard-coded registry is brittle; scanning every packaged file retains unreachable
+# legacy readers. Derive the exact reachable set instead.
 includes = re.findall(r'include\s+"(maps/[^"]+)"', BUILD.read_text(encoding="utf-8"))
 map_files = set()
+
+# Campaign maps are explicit build includes and all are reachable from the compact UI.
 for pattern in includes:
-    if pattern.endswith("/**"):
-        directory = ASSETS / pattern[:-3]
-        if not directory.is_dir():
-            raise SystemExit(f"Packaged map directory is missing from pinned assets: {pattern}")
-        map_files.update(directory.rglob("*.msav"))
-    elif "*" in pattern:
-        map_files.update(p for p in ASSETS.glob(pattern) if p.is_file() and p.suffix == ".msav")
-    else:
-        path = ASSETS / pattern
-        if not path.is_file():
-            raise SystemExit(f"Packaged map include is missing from pinned assets: {pattern}")
-        map_files.add(path)
+    if "*" in pattern:
+        continue
+    path = ASSETS / pattern
+    if not path.is_file():
+        raise SystemExit(f"Packaged map include is missing from pinned assets: {pattern}")
+    map_files.add(path)
+
+# maps/default/** also carries canyon.msav, which pinned Mindustry does not expose in
+# Maps.defaultMapNames and BrowserLocalMapRuntime deliberately keeps hidden. Do not
+# retain a legacy reader solely for unreachable packaged data; derive the reachable
+# default set from the same production browser catalog the user can actually launch.
+runtime_text = LOCAL_RUNTIME.read_text(encoding="utf-8")
+match = re.search(r'builtinSlugs\s*=\s*\{(.*?)\};', runtime_text, re.S)
+if match is None:
+    raise SystemExit("Browser local-map catalog declaration changed")
+default_slugs = re.findall(r'"([^"]+)"', match.group(1))
+if not default_slugs:
+    raise SystemExit("Browser local-map catalog is empty")
+for slug in default_slugs:
+    path = ASSETS / "maps" / "default" / f"{slug}.msav"
+    if not path.is_file():
+        raise SystemExit(f"Reachable browser default map is missing: {slug}")
+    map_files.add(path)
 
 if not map_files:
     raise SystemExit("No packaged MSAV maps found while building Web save-version registry")
