@@ -967,13 +967,6 @@ public final class BrowserCampaignResearch{
             produceItem(source, Items.phaseFabric);
         }
 
-        if(!Items.plastanium.unlocked()){
-            ItemSeq produced = new ItemSeq();
-            produced.add(Items.plastanium, 1);
-            source.addItems(produced);
-            Items.plastanium.unlock();
-        }
-
         stageAndSpend(source, Blocks.salvo);
         stageAndSpend(source, Blocks.swarmer);
 
