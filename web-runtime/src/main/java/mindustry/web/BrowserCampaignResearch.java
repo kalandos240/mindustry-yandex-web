@@ -723,12 +723,8 @@ public final class BrowserCampaignResearch{
         // those produced resources before buying power. TechNode also adds implicit
         // Research(item) objectives for a block's build dependencies (lead here), not
         // only the explicit Research(coal) objective declared in SerpuloTechTree.
-        ItemSeq produced = new ItemSeq();
-        if(!Items.lead.unlocked()) produced.add(Items.lead, 1);
-        if(!Items.coal.unlocked()) produced.add(Items.coal, 1);
-        if(produced.total() > 0) source.addItems(produced);
-        if(!Items.lead.unlocked()) Items.lead.unlock();
-        if(!Items.coal.unlocked()) Items.coal.unlock();
+        produceItem(source, Items.lead);
+        produceItem(source, Items.coal);
 
         TechNode combustion = node(Blocks.combustionGenerator);
         boolean coalObjective = objectivesComplete(combustion);
@@ -758,8 +754,14 @@ public final class BrowserCampaignResearch{
         }
 
         stageAndSpend(source, Blocks.graphitePress);
+        produceItem(source, Items.graphite);
+
         stageAndSpend(source, Blocks.siliconSmelter);
+        produceItem(source, Items.silicon);
+
         stageAndSpend(source, Blocks.kiln);
+        produceItem(source, Items.metaglass);
+
         stageAndSpend(source, Blocks.mechanicalPump);
 
         if(control != null) control.checkAutoUnlocks();
@@ -1240,6 +1242,14 @@ public final class BrowserCampaignResearch{
         }
         Core.settings.forceSave();
         markWeatheredProgressSmoke();
+    }
+
+    private static void produceItem(Sector source, Item item){
+        if(item == null || item.unlocked()) return;
+        ItemSeq produced = new ItemSeq();
+        produced.add(item, 1);
+        source.addItems(produced);
+        item.unlock();
     }
 
     private static void stageAndSpend(Sector source, UnlockableContent content){
