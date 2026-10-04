@@ -33,6 +33,44 @@ control_replacements = [
         "single-player auto-unlock net guard",
     ),
     (
+        '''        Events.on(UnlockEvent.class, e -> {
+            if(e.content.showUnlock()){
+                ui.hudfrag.showUnlock(e.content);
+            }
+
+            checkAutoUnlocks();
+
+            if(e.content instanceof SectorPreset){
+                for(TechNode node : TechTree.all){
+                    if(!node.content.unlocked() && node.objectives.contains(o -> o instanceof SectorComplete sec && sec.preset == e.content) && !node.objectives.contains(o -> !o.complete())){
+                        ui.hudfrag.showToast(new TextureRegionDrawable(node.content.uiIcon), iconLarge, bundle.get("available"));
+                    }
+                }
+            }
+        });
+''',
+        '''        Events.on(UnlockEvent.class, e -> {
+            // The compact Web campaign can unlock research before the stock HudFragment
+            // is constructed. Unlock persistence and auto-unlock chaining are gameplay
+            // state; desktop toast effects are optional and must not dereference null UI.
+            if(ui.hudfrag != null && e.content.showUnlock()){
+                ui.hudfrag.showUnlock(e.content);
+            }
+
+            checkAutoUnlocks();
+
+            if(ui.hudfrag != null && e.content instanceof SectorPreset){
+                for(TechNode node : TechTree.all){
+                    if(!node.content.unlocked() && node.objectives.contains(o -> o instanceof SectorComplete sec && sec.preset == e.content) && !node.objectives.contains(o -> !o.complete())){
+                        ui.hudfrag.showToast(new TextureRegionDrawable(node.content.uiIcon), iconLarge, bundle.get("available"));
+                    }
+                }
+            }
+        });
+''',
+        "lean campaign unlock HUD notifications",
+    ),
+    (
         '''        Events.on(PlayEvent.class, event -> {\n            player.team(netServer.assignTeam(player));\n            player.add();\n\n            state.set(State.playing);\n        });\n''',
         '''        Events.on(PlayEvent.class, event -> {\n            // Web/Yandex is intentionally single-player. There is no NetServer team\n            // allocator; local play uses the map/rules default team directly.\n            player.team(state.rules.defaultTeam);\n            player.add();\n\n            state.set(State.playing);\n        });\n''',
         "PlayEvent team assignment",
