@@ -20,6 +20,19 @@ for path in (CONTROL, UI, MENU, PAUSED, PLAYER_LIST):
 control = CONTROL.read_text(encoding="utf-8")
 control_replacements = [
     (
+        '''    public void checkAutoUnlocks(){
+        if(net.client()) return;
+
+        for(TechNode node : TechTree.all){
+''',
+        '''    public void checkAutoUnlocks(){
+        // Web/Yandex is permanently local-authoritative. The desktop Net object is
+        // deliberately pruned/nullable, so there is no remote-client case to skip here.
+        for(TechNode node : TechTree.all){
+''',
+        "single-player auto-unlock net guard",
+    ),
+    (
         '''        Events.on(PlayEvent.class, event -> {\n            player.team(netServer.assignTeam(player));\n            player.add();\n\n            state.set(State.playing);\n        });\n''',
         '''        Events.on(PlayEvent.class, event -> {\n            // Web/Yandex is intentionally single-player. There is no NetServer team\n            // allocator; local play uses the map/rules default team directly.\n            player.team(state.rules.defaultTeam);\n            player.add();\n\n            state.set(State.playing);\n        });\n''',
         "PlayEvent team assignment",
