@@ -139,6 +139,10 @@ run_campaign_cold_restart(){
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$resume_dom"
 
+  echo "Campaign cold-restart DOM metadata ($label):"
+  grep -oE 'data-mindustry-campaign-(checkpoint|resume)-(wave|tick-ms|bytes)="[^"]*"' "$save_dom" "$resume_dom" || true
+  grep -oE 'data-mindustry-campaign-(frames|update-id)="[^"]*"' "$resume_dom" || true
+
   grep -Eq 'data-mindustry-campaign-frames="([3-9]|[1-9][0-9]+)"' "$resume_dom"
   grep -Eq 'data-mindustry-campaign-update-id="[1-9][0-9]*"' "$resume_dom"
   grep -Eq 'data-mindustry-campaign-resume-wave="[0-9]+"' "$resume_dom"
