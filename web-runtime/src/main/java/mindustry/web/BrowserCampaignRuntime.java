@@ -1320,7 +1320,8 @@ public final class BrowserCampaignRuntime{
                         : current.save.file.length() < 128 ? 4
                         : !SaveIO.isSaveValid(current.save.file) ? 5 : 0;
                     if(saveState != 0){
-                        throw new IllegalStateException("capture-save:" + saveState);
+                        setRuntimeDomAttribute("data-mindustry-campaign-capture-save-state", String.valueOf(saveState));
+                        throw new IllegalStateException("Capture save state is invalid");
                     }
                     SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
                     if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
