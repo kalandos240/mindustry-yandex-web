@@ -128,7 +128,26 @@ unlock_new = '''    public boolean unlockedHost(){
 '''
 if unlock_old not in unlockable:
     raise SystemExit("Single-player UnlockableContent host-unlock patch no longer matches pinned upstream")
-UNLOCKABLE.write_text(unlockable.replace(unlock_old, unlock_new, 1), encoding="utf-8")
+unlockable = unlockable.replace(unlock_old, unlock_new, 1)
+
+# Keep unlocked() on the same local authority as unlockedHost(). Leaving the stock
+# client fallback here can report content as researched through rules.researched
+# without setting the local unlock bit, then Research(...) immediately fails against
+# the local-only unlockedHost() result.
+local_old = '''    public boolean unlocked(){
+        return net != null && net.client() ?
+            alwaysUnlocked || unlocked || state.rules.researched.contains(this) :
+            unlocked || alwaysUnlocked;
+    }
+'''
+local_new = '''    public boolean unlocked(){
+        return unlocked || alwaysUnlocked;
+    }
+'''
+if local_old not in unlockable:
+    raise SystemExit("Single-player UnlockableContent local-unlock patch no longer matches pinned upstream")
+unlockable = unlockable.replace(local_old, local_new, 1)
+UNLOCKABLE.write_text(unlockable, encoding="utf-8")
 
 menu = MENU.read_text(encoding="utf-8")
 menu_replacements = [
