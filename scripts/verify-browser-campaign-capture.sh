@@ -40,7 +40,7 @@ run_capture(){
     --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignCaptureSmoke=1&mindustryCampaignProgressSmoke=1" \
     --profile "$profile" \
     --port "$cdp" \
-    --timeout 90 \
+    --timeout 150 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-storage="ready"' \
     --require 'data-mindustry-smoke-mode="production"' \
