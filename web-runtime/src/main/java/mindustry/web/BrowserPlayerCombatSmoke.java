@@ -148,28 +148,42 @@ public final class BrowserPlayerCombatSmoke{
         int width = Core.graphics.getWidth();
         int height = Core.graphics.getHeight();
 
-        // Browser-space normalized candidates. Keep away from the top-left local controls
-        // and bottom-right build palette, then reject any remaining Scene hit explicitly.
-        float[] xs = {0.50f, 0.62f, 0.38f, 0.70f, 0.30f, 0.56f, 0.44f};
-        float[] ys = {0.38f, 0.50f, 0.30f, 0.58f, 0.42f, 0.66f, 0.24f};
-
-        for(float ny : ys){
-            for(float nx : xs){
+        // Search the visible gameplay viewport rather than relying on one map-specific
+        // coordinate. Stock desktop "tap player" range is 11 world units, so 18 leaves
+        // a safety margin without incorrectly rejecting an entire zoomed-in corridor.
+        int uiRejected = 0, blockedRejected = 0, mineRejected = 0, nearRejected = 0;
+        for(int yi = 2; yi <= 8; yi++){
+            float ny = yi / 10f;
+            for(int xi = 2; xi <= 8; xi++){
+                float nx = xi / 10f;
                 float screenX = width * nx;
                 float screenY = height * (1f - ny);
 
                 if(Core.scene != null){
                     Vec2 stagePoint = Core.scene.screenToStageCoordinates(new Vec2(screenX, screenY));
-                    if(Core.scene.hasMouse(stagePoint.x, stagePoint.y)) continue;
+                    if(Core.scene.hasMouse(stagePoint.x, stagePoint.y)){
+                        uiRejected++;
+                        continue;
+                    }
                 }
 
                 Vec2 worldPoint = Core.camera.unproject(screenX, screenY);
                 Tile tile = world.tileWorld(worldPoint.x, worldPoint.y);
-                if(tile == null || tile.build != null || tile.block() != Blocks.air || tile.drop() != null) continue;
+                if(tile == null || tile.build != null || tile.block() != Blocks.air){
+                    blockedRejected++;
+                    continue;
+                }
+                if(tile.drop() != null){
+                    mineRejected++;
+                    continue;
+                }
 
                 float tx = tile.worldx(), ty = tile.worldy();
                 float distance = unit.dst(tx, ty);
-                if(distance < 56f) continue;
+                if(distance < 18f){
+                    nearRejected++;
+                    continue;
+                }
 
                 targetNx = nx;
                 targetNy = ny;
@@ -178,7 +192,10 @@ public final class BrowserPlayerCombatSmoke{
             }
         }
 
-        throw new IllegalStateException("Player-combat smoke found no visible empty non-mineable firing target");
+        throw new IllegalStateException(
+            "Player-combat smoke found no visible empty non-mineable firing target: ui=" + uiRejected +
+            " blocked=" + blockedRejected + " mineable=" + mineRejected + " near=" + nearRejected
+        );
     }
 
     private static int ownedBullets(Unit unit){
