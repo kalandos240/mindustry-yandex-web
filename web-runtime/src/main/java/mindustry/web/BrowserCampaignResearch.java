@@ -1118,8 +1118,8 @@ public final class BrowserCampaignResearch{
         stageAndSpend(source, UnitTypes.crawler);
         stageAndSpend(source, UnitTypes.atrax);
         stageAndSpend(source, UnitTypes.spiroct);
-        stageAndSpend(source, UnitTypes.arkyid);
         stageAndSpend(source, Blocks.exponentialReconstructor);
+        stageAndSpend(source, UnitTypes.arkyid);
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.mycelialBastion)){
