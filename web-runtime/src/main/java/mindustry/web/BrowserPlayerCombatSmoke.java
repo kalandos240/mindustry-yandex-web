@@ -187,7 +187,6 @@ public final class BrowserPlayerCombatSmoke{
 
                 targetNx = nx;
                 targetNy = ny;
-                markSafeTarget(tile.x, tile.y, screenX, screenY, distance);
                 return;
             }
         }
@@ -248,9 +247,6 @@ public final class BrowserPlayerCombatSmoke{
 
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-player-combat-smoke', 'waiting-unit'); document.documentElement.setAttribute('data-mindustry-player-combat-wait-frames', String(frames));")
     private static native void markWaiting(int frames);
-
-    @JSBody(params = {"x", "y", "sx", "sy", "distance"}, script = "document.documentElement.setAttribute('data-mindustry-player-combat-target', 'safe-floor'); document.documentElement.setAttribute('data-mindustry-player-combat-target-tile', String(x) + ',' + String(y)); document.documentElement.setAttribute('data-mindustry-player-combat-target-screen', String(Math.round(sx)) + ',' + String(Math.round(sy))); document.documentElement.setAttribute('data-mindustry-player-combat-target-distance', String(distance));")
-    private static native void markSafeTarget(int x, int y, float sx, float sy, float distance);
 
     @JSBody(params = {"id", "type", "ax", "ay", "bullets"}, script = "document.documentElement.setAttribute('data-mindustry-player-combat-smoke', 'aiming'); document.documentElement.setAttribute('data-mindustry-player-combat-unit-id', String(id)); document.documentElement.setAttribute('data-mindustry-player-combat-unit', type); document.documentElement.setAttribute('data-mindustry-player-combat-start-aim-x', String(ax)); document.documentElement.setAttribute('data-mindustry-player-combat-start-aim-y', String(ay)); document.documentElement.setAttribute('data-mindustry-player-combat-start-bullets', String(bullets));")
     private static native void markAiming(int id, String type, float ax, float ay, int bullets);
