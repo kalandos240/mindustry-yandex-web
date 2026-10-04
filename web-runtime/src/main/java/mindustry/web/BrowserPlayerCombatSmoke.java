@@ -51,19 +51,19 @@ public final class BrowserPlayerCombatSmoke{
             spawnFrames++;
             markWaiting(spawnFrames);
             if(spawnFrames >= maxSpawnFrames){
-                throw new IllegalStateException("Player-combat smoke never received a real local player unit");
+                throw new IllegalStateException("combat:no-player");
             }
             return;
         }
 
         if(unitId != -1 && (unit.id != unitId || player.unit() != unit)){
             releasePointer();
-            throw new IllegalStateException("Player-combat smoke changed controlled unit during pointer test");
+            throw new IllegalStateException("combat:unit-changed");
         }
 
         if(stage == 0){
             if(!unit.hasWeapons() || unit.mounts == null || unit.mounts.length == 0){
-                throw new IllegalStateException("Local player unit has no weapon mounts for pointer firing smoke: " + unit.type.name);
+                throw new IllegalStateException("combat:no-weapons:" + unit.type.name);
             }
 
             unitId = unit.id;
@@ -104,7 +104,7 @@ public final class BrowserPlayerCombatSmoke{
 
             if(aimFrames >= maxAimFrames){
                 throw new IllegalStateException(
-                    "DOM pointermove did not reach stock player aiming: mouse=" + mx + "," + my +
+                    "combat:aim mouse=" + mx + "," + my +
                     " aim=" + ax + "," + ay + " unit=" + unit.x + "," + unit.y
                 );
             }
@@ -132,9 +132,9 @@ public final class BrowserPlayerCombatSmoke{
         if(fireFrames >= maxFireFrames){
             releasePointer();
             throw new IllegalStateException(
-                "DOM mouse-left reached combat smoke but no local-unit Bullet was created: playerShooting=" +
-                player.shooting + ", mountShooting=" + mountShooting + ", ownedBullets=" + owned +
-                ", baseline=" + startOwnedBullets
+                "combat:no-bullet ps=" +
+                player.shooting + ", ms=" + mountShooting + ", ob=" + owned +
+                ", base=" + startOwnedBullets
             );
         }
     }
@@ -193,8 +193,8 @@ public final class BrowserPlayerCombatSmoke{
         }
 
         throw new IllegalStateException(
-            "Player-combat smoke found no visible empty non-mineable firing target: ui=" + uiRejected +
-            " blocked=" + blockedRejected + " mineable=" + mineRejected + " near=" + nearRejected
+            "combat:no-target ui=" + uiRejected +
+            " b=" + blockedRejected + " m=" + mineRejected + " n=" + nearRejected
         );
     }
 
