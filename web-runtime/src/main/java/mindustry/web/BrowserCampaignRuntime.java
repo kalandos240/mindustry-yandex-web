@@ -1314,9 +1314,20 @@ public final class BrowserCampaignRuntime{
 
             if(captureSmokeStaged && !captureSmokeComplete){
                 if(current.info.wasCaptured && !state.rules.waves && !state.rules.attackMode){
-                    if(current.save == null || current.save.file == null || !current.save.file.exists()
-                    || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
-                        throw new IllegalStateException("Stock Ground Zero capture did not persist a valid sector save");
+                    if(current.save == null){
+                        throw new IllegalStateException("Capture save slot missing");
+                    }
+                    if(current.save.file == null){
+                        throw new IllegalStateException("Capture save file missing");
+                    }
+                    if(!current.save.file.exists()){
+                        throw new IllegalStateException("Capture save file does not exist");
+                    }
+                    if(current.save.file.length() < 128){
+                        throw new IllegalStateException("Capture save file is truncated");
+                    }
+                    if(!SaveIO.isSaveValid(current.save.file)){
+                        throw new IllegalStateException("Capture save failed SaveIO validation");
                     }
                     SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
                     if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
