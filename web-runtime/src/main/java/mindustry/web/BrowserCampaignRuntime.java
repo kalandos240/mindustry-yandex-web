@@ -1314,20 +1314,13 @@ public final class BrowserCampaignRuntime{
 
             if(captureSmokeStaged && !captureSmokeComplete){
                 if(current.info.wasCaptured && !state.rules.waves && !state.rules.attackMode){
-                    if(current.save == null){
-                        throw new IllegalStateException("Capture save slot missing");
-                    }
-                    if(current.save.file == null){
-                        throw new IllegalStateException("Capture save file missing");
-                    }
-                    if(!current.save.file.exists()){
-                        throw new IllegalStateException("Capture save file does not exist");
-                    }
-                    if(current.save.file.length() < 128){
-                        throw new IllegalStateException("Capture save file is truncated");
-                    }
-                    if(!SaveIO.isSaveValid(current.save.file)){
-                        throw new IllegalStateException("Capture save failed SaveIO validation");
+                    int saveState = current.save == null ? 1
+                        : current.save.file == null ? 2
+                        : !current.save.file.exists() ? 3
+                        : current.save.file.length() < 128 ? 4
+                        : !SaveIO.isSaveValid(current.save.file) ? 5 : 0;
+                    if(saveState != 0){
+                        throw new IllegalStateException("capture-save:" + saveState);
                     }
                     SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
                     if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
