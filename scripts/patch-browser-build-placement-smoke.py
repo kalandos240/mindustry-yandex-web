@@ -69,17 +69,44 @@ new_world_gesture = '''        if(stage == 4){
 
         if(stage == 5){
             // Browser DOM input is queued after this smoke observer. Keep the physical
-            // left button held until the next normal DesktopInput update has consumed
-            // the exact select binding and entered stock placing mode. Only then may the
-            // release edge flush linePlans into the player's real BuildPlan queue.
+            // left button held until DesktopInput has both entered placing mode *and*
+            // produced the real preview linePlan for our target tile. Seeing only the
+            // mode is insufficient on slow/headless TeaVM: camera follow can shift the
+            // world point between pointerdown and updateLine(), leaving linePlans empty.
             boolean placing = control.input instanceof DesktopInput &&
                 ((DesktopInput)control.input).mode == PlaceMode.placing;
-            if(!Core.input.keyDown(Binding.select) || !placing){
+            boolean targetPreview = false;
+            for(BuildPlan plan : control.input.linePlans){
+                if(!plan.breaking && plan.block == Blocks.conveyor && plan.x == targetX && plan.y == targetY){
+                    targetPreview = true;
+                    break;
+                }
+            }
+
+            if(!Core.input.keyDown(Binding.select) || !placing || !targetPreview){
+                // Re-project the exact chosen tile while the button stays held. A DOM
+                // pointermove becomes a stock drag event, allowing updateLine() to
+                // converge even if the camera moved after the original projection.
+                Vec2 projected = Core.camera.project(new Vec2(
+                    targetX * tilesize + tilesize / 2f,
+                    targetY * tilesize + tilesize / 2f
+                ));
+                if(Math.abs(projected.x - targetScreenX) > 0.5f ||
+                Math.abs(projected.y - targetScreenY) > 0.5f || !targetPreview){
+                    targetScreenX = projected.x;
+                    targetScreenY = projected.y;
+                    dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, true);
+                }
+
                 if(++uiFrames >= maxUiFrames){
                     releasePointer();
-                    throw new IllegalStateException("DOM left-click never reached confirmed DesktopInput placing mode");
+                    throw new IllegalStateException(
+                        "DOM left-click never produced confirmed target linePlan: select=" +
+                        Core.input.keyDown(Binding.select) + ", placing=" + placing +
+                        ", targetPreview=" + targetPreview + ", linePlans=" + control.input.linePlans.size
+                    );
                 }
-                markWaiting("world-down", uiFrames);
+                markWaiting(targetPreview ? "world-down" : "world-line-plan", uiFrames);
                 return;
             }
 
