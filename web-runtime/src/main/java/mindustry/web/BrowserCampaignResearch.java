@@ -718,21 +718,23 @@ public final class BrowserCampaignResearch{
 
         stageAndSpend(source, Blocks.mechanicalDrill);
 
-        // In production, Control.update() unlocks every item present in the campaign core.
-        // The smoke supplies one produced coal deterministically and invokes that same
-        // UnlockableContent state transition so Research(coal) is not bypassed.
-        if(!Items.coal.unlocked()){
-            ItemSeq produced = new ItemSeq();
-            produced.add(Items.coal, 1);
-            source.addItems(produced);
-            Items.coal.unlock();
-        }
+        // Frozen Forest is the first early Serpulo milestone that supplies lead/coal
+        // to the campaign economy. The smoke fast-forwards combat, so explicitly model
+        // those produced resources before buying power. TechNode also adds implicit
+        // Research(item) objectives for a block's build dependencies (lead here), not
+        // only the explicit Research(coal) objective declared in SerpuloTechTree.
+        ItemSeq produced = new ItemSeq();
+        if(!Items.lead.unlocked()) produced.add(Items.lead, 1);
+        if(!Items.coal.unlocked()) produced.add(Items.coal, 1);
+        if(produced.total() > 0) source.addItems(produced);
+        if(!Items.lead.unlocked()) Items.lead.unlock();
+        if(!Items.coal.unlocked()) Items.coal.unlock();
 
         TechNode combustion = node(Blocks.combustionGenerator);
         boolean coalObjective = objectivesComplete(combustion);
         markCoalResearchState(Items.coal.unlocked(), Items.coal.unlockedHost(), coalObjective);
-        if(!Items.coal.unlocked() || !Items.coal.unlockedHost() || !coalObjective){
-            throw new IllegalStateException("r:coal");
+        if(!Items.lead.unlockedHost() || !Items.coal.unlockedHost() || !coalObjective){
+            throw new IllegalStateException("r:power-deps");
         }
 
         stageAndSpend(source, Blocks.combustionGenerator);
