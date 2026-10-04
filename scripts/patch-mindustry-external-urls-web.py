@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry"
@@ -130,5 +131,34 @@ patch("io/SaveIO.java", [
      '            SaveMeta meta = ver.getMeta(stream);\n            meta.version = version; // Web: use the authoritative MSAV header version.\n            stream.close();\n            return meta;',
      'SaveIO SaveMeta header version'),
 ])
+
+# Final TeaVM-size pass. This workflow command runs after the complete browser
+# overlay chain, so all pinned source anchors have already been consumed. Keep
+# exception types and DOM telemetry, but compact campaign/local-map prose.
+def trim_web_runtime_diagnostics(path_rel, prefix):
+    path = ROOT / path_rel
+    if not path.is_file():
+        raise SystemExit(f"Missing Web runtime source for diagnostic trim: {path}")
+    text = path.read_text(encoding="utf-8")
+    pattern = re.compile(r'throw new (IllegalStateException|IllegalArgumentException)\(\s*"([^"]+)"')
+    index = 0
+
+    def repl(match):
+        nonlocal index
+        index += 1
+        return f'throw new {match.group(1)}("{prefix}{index}"'
+
+    text = pattern.sub(repl, text)
+    if index == 0:
+        raise SystemExit(f"Web runtime diagnostic trim found no exception strings: {path_rel}")
+    path.write_text(text, encoding="utf-8")
+    print(f"Trimmed {index} {prefix} Web diagnostic messages")
+
+trim_web_runtime_diagnostics(
+    "web-runtime/src/main/java/mindustry/web/BrowserCampaignRuntime.java", "c:"
+)
+trim_web_runtime_diagnostics(
+    "web-runtime/src/main/java/mindustry/web/BrowserLocalMapRuntime.java", "l:"
+)
 
 print("Stripped upstream external URLs and applied browser-safe save serialization overlays")
