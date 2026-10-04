@@ -55,7 +55,7 @@ public final class BrowserCampaignResearch{
     private static final UnlockableContent[] nextExtractionSequence = {Blocks.multiplicativeReconstructor, UnitTypes.fortress};
     private static final UnlockableContent[] nextCoastlineSequence = {Blocks.itemBridge, Blocks.titaniumConveyor, Blocks.payloadConveyor};
     private static final UnlockableContent[] nextNavalFortressSequence = {Blocks.massDriver, UnitTypes.retusa, UnitTypes.oxynoe, UnitTypes.bryde, Blocks.cyclone, Blocks.ripple};
-    private static final UnlockableContent[] nextMycelialSequence = {UnitTypes.crawler, UnitTypes.atrax, UnitTypes.spiroct, UnitTypes.arkyid, Blocks.exponentialReconstructor};
+    private static final UnlockableContent[] nextMycelialSequence = {UnitTypes.crawler, UnitTypes.atrax, UnitTypes.spiroct, Blocks.exponentialReconstructor, UnitTypes.arkyid};
     private static final UnlockableContent[] nextLittoralSequence = {UnitTypes.sei, Blocks.spectre};
     private static final UnlockableContent[] nextTerminalSequence = {Blocks.advancedLaunchPad, Blocks.massDriver, Blocks.impactReactor, Blocks.tetrativeReconstructor, UnitTypes.omura};
     private static final UnlockableContent[] nextAtollsSequence = {UnitTypes.poly, UnitTypes.mega};
