@@ -1,7 +1,10 @@
 package mindustry.web;
 
 import arc.*;
+import arc.math.geom.*;
+import mindustry.content.*;
 import mindustry.gen.*;
+import mindustry.world.*;
 import org.teavm.jso.JSBody;
 
 import static mindustry.Vars.*;
@@ -30,6 +33,7 @@ public final class BrowserPlayerCombatSmoke{
     private static int unitId = -1;
     private static int startOwnedBullets;
     private static float startAimX, startAimY;
+    private static float targetNx = 0.5f, targetNy = 0.5f;
 
     private BrowserPlayerCombatSmoke(){}
 
@@ -67,7 +71,8 @@ public final class BrowserPlayerCombatSmoke{
             startAimY = unit.aimY();
             startOwnedBullets = ownedBullets(unit);
 
-            dispatchPointer("pointermove", 0.78f, 0.42f, -1);
+            chooseSafeTarget(unit);
+            dispatchPointer("pointermove", targetNx, targetNy, -1);
             stage = 1;
             markAiming(unitId, unit.type.name, startAimX, startAimY, startOwnedBullets);
             return;
@@ -87,7 +92,7 @@ public final class BrowserPlayerCombatSmoke{
                 (Math.abs(ax - unit.x) > 1f || Math.abs(ay - unit.y) > 1f);
 
             if(pointerReachedInput && validAim){
-                dispatchPointer("pointerdown", 0.78f, 0.42f, 0);
+                dispatchPointer("pointerdown", targetNx, targetNy, 0);
                 pointerDown = true;
                 stage = 2;
                 markPointerDown(mx, my, ax, ay);
@@ -131,6 +136,45 @@ public final class BrowserPlayerCombatSmoke{
         }
     }
 
+    /**
+     * Choose a visible gameplay point that stock DesktopInput cannot reinterpret as a
+     * HUD click, building tap or mining action. Fixed screen coordinates are brittle:
+     * Maze ores/buildings and Web HUD geometry can legitimately consume mouse-left.
+     */
+    private static void chooseSafeTarget(Unit unit){
+        int width = Core.graphics.getWidth();
+        int height = Core.graphics.getHeight();
+
+        // Browser-space normalized candidates. Keep away from the top-left local controls
+        // and bottom-right build palette, then reject any remaining Scene hit explicitly.
+        float[] xs = {0.50f, 0.62f, 0.38f, 0.70f, 0.30f, 0.56f, 0.44f};
+        float[] ys = {0.38f, 0.50f, 0.30f, 0.58f, 0.42f, 0.66f, 0.24f};
+
+        for(float ny : ys){
+            for(float nx : xs){
+                float screenX = width * nx;
+                float screenY = height * (1f - ny);
+
+                if(Core.scene != null && Core.scene.hasMouse(screenX, screenY)) continue;
+
+                Vec2 worldPoint = Core.camera.unproject(screenX, screenY);
+                Tile tile = world.tileWorld(worldPoint.x, worldPoint.y);
+                if(tile == null || tile.build != null || tile.block() != Blocks.air || tile.drop() != null) continue;
+
+                float tx = tile.worldx(), ty = tile.worldy();
+                float distance = unit.dst(tx, ty);
+                if(distance < 56f) continue;
+
+                targetNx = nx;
+                targetNy = ny;
+                markSafeTarget(tile.x, tile.y, screenX, screenY, distance);
+                return;
+            }
+        }
+
+        throw new IllegalStateException("Player-combat smoke found no visible empty non-mineable firing target");
+    }
+
     private static int ownedBullets(Unit unit){
         return Groups.bullet.count(b -> b.owner == unit);
     }
@@ -146,7 +190,7 @@ public final class BrowserPlayerCombatSmoke{
 
     private static void releasePointer(){
         if(!pointerDown) return;
-        dispatchPointer("pointerup", 0.78f, 0.42f, 0);
+        dispatchPointer("pointerup", targetNx, targetNy, 0);
         pointerDown = false;
         markPointerState("up");
     }
@@ -181,6 +225,9 @@ public final class BrowserPlayerCombatSmoke{
 
     @JSBody(params = {"frames"}, script = "document.documentElement.setAttribute('data-mindustry-player-combat-smoke', 'waiting-unit'); document.documentElement.setAttribute('data-mindustry-player-combat-wait-frames', String(frames));")
     private static native void markWaiting(int frames);
+
+    @JSBody(params = {"x", "y", "sx", "sy", "distance"}, script = "document.documentElement.setAttribute('data-mindustry-player-combat-target', 'safe-floor'); document.documentElement.setAttribute('data-mindustry-player-combat-target-tile', String(x) + ',' + String(y)); document.documentElement.setAttribute('data-mindustry-player-combat-target-screen', String(Math.round(sx)) + ',' + String(Math.round(sy))); document.documentElement.setAttribute('data-mindustry-player-combat-target-distance', String(distance));")
+    private static native void markSafeTarget(int x, int y, float sx, float sy, float distance);
 
     @JSBody(params = {"id", "type", "ax", "ay", "bullets"}, script = "document.documentElement.setAttribute('data-mindustry-player-combat-smoke', 'aiming'); document.documentElement.setAttribute('data-mindustry-player-combat-unit-id', String(id)); document.documentElement.setAttribute('data-mindustry-player-combat-unit', type); document.documentElement.setAttribute('data-mindustry-player-combat-start-aim-x', String(ax)); document.documentElement.setAttribute('data-mindustry-player-combat-start-aim-y', String(ay)); document.documentElement.setAttribute('data-mindustry-player-combat-start-bullets', String(bullets));")
     private static native void markAiming(int id, String type, float ax, float ay, int bullets);
