@@ -161,4 +161,26 @@ trim_web_runtime_diagnostics(
     "web-runtime/src/main/java/mindustry/web/BrowserLocalMapRuntime.java", "l:"
 )
 
+# BrowserCampaignResearch retains readable r:* codes in the repository, but those
+# exception messages are CI-only and become 100+ distinct JavaScript string literals.
+# Strip just the staged TeaVM copies after every research overlay has already matched.
+research_path = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignResearch.java"
+if not research_path.is_file():
+    raise SystemExit(f"Missing Web campaign research source for diagnostic trim: {research_path}")
+research_text = research_path.read_text(encoding="utf-8")
+research_pattern = re.compile(
+    r'throw new (IllegalStateException|IllegalArgumentException)\(\s*"r:[^"]*"'
+    r'(?:\s*\+\s*[^;\n]+)?\s*\);'
+)
+research_text, research_trimmed = research_pattern.subn(
+    lambda m: f'throw new {m.group(1)}();',
+    research_text
+)
+if research_trimmed < 100:
+    raise SystemExit(
+        f"Web campaign research diagnostic trim expected 100+ r:* exceptions, found {research_trimmed}"
+    )
+research_path.write_text(research_text, encoding="utf-8")
+print(f"Stripped {research_trimmed} CI-only campaign research exception messages from TeaVM input")
+
 print("Stripped upstream external URLs and applied browser-safe save serialization overlays")
