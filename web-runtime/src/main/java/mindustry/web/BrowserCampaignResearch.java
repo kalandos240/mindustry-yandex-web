@@ -754,6 +754,9 @@ public final class BrowserCampaignResearch{
         stageAndSpend(source, Blocks.graphitePress);
         produceItem(source, Items.graphite);
 
+        stageAndSpend(source, Blocks.pyratiteMixer);
+        produceItem(source, Items.pyratite);
+
         stageAndSpend(source, Blocks.siliconSmelter);
         produceItem(source, Items.silicon);
 
@@ -1026,6 +1029,8 @@ public final class BrowserCampaignResearch{
         if(source == null || source != SectorPresets.facility32m.sector || !isCaptured(SectorPresets.facility32m)){
             throw new IllegalStateException("r:81");
         }
+        stageAndSpend(source, Blocks.blastMixer);
+        produceItem(source, Items.blastCompound);
         stageAndSpend(source, Blocks.cultivator);
         stageAndSpend(source, UnitTypes.retusa);
         if(control != null) control.checkAutoUnlocks();
