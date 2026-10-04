@@ -46,13 +46,26 @@ text = text.replace(old_tick, new_tick, 1)
 # The lean Web playing core intentionally does not call desktop Logic.checkGameState().
 # Restore only the stock campaign branch here, keeping it local-authoritative so the
 # browser does not retain generated multiplayer Call transport.
-old_post = '''        Events.fire(Trigger.afterGameUpdate);
+old_post = '''        if(!state.gameOver){
+            if(!state.rules.attackMode && state.rules.canGameOver && state.teams.playerCores().size == 0){
+                state.gameOver = true;
+                state.won = false;
+                Events.fire(new GameOverEvent(state.rules.waveTeam));
+            }else if(state.rules.attackMode){
+                int countAlive = state.teams.getActive().count(t -> t.isAlive() && t.team != Team.derelict);
+                if(countAlive <= 1 || (!state.rules.pvp && state.rules.defaultTeam.core() == null)){
+                    TeamData left = state.teams.getActive().find(t -> t.isAlive() && t.team != Team.derelict);
+                    Team winner = left == null ? Team.derelict : left.team;
+                    state.gameOver = true;
+                    state.won = player != null && player.team() == winner;
+                    Events.fire(new GameOverEvent(winner));
+                }
+            }
+        }
 
-        if(!state.gameOver){
+        PerfCounter.stateUpdate.end(PerfCounter.entityUpdate.latestValueNs());
 '''
-new_post = '''        Events.fire(Trigger.afterGameUpdate);
-
-        if(state.isCampaign()){
+new_post = '''        if(state.isCampaign()){
             if(state.rules.sector == null){
                 throw new IllegalStateException("Campaign Web state check lost its active sector");
             }
@@ -89,6 +102,23 @@ new_post = '''        Events.fire(Trigger.afterGameUpdate);
         }
 
         if(!state.gameOver){
+            if(!state.rules.attackMode && state.rules.canGameOver && state.teams.playerCores().size == 0){
+                state.gameOver = true;
+                state.won = false;
+                Events.fire(new GameOverEvent(state.rules.waveTeam));
+            }else if(state.rules.attackMode){
+                int countAlive = state.teams.getActive().count(t -> t.isAlive() && t.team != Team.derelict);
+                if(countAlive <= 1 || (!state.rules.pvp && state.rules.defaultTeam.core() == null)){
+                    TeamData left = state.teams.getActive().find(t -> t.isAlive() && t.team != Team.derelict);
+                    Team winner = left == null ? Team.derelict : left.team;
+                    state.gameOver = true;
+                    state.won = player != null && player.team() == winner;
+                    Events.fire(new GameOverEvent(winner));
+                }
+            }
+        }
+
+        PerfCounter.stateUpdate.end(PerfCounter.entityUpdate.latestValueNs());
 '''
 if text.count(old_post) != 1:
     raise SystemExit("Logic Web campaign state-check anchor no longer matches attack-mode playing core")
