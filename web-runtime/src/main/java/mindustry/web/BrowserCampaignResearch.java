@@ -15,7 +15,7 @@ import static mindustry.Vars.*;
  *
  * This keeps the stock TechNode requirements/objectives/unlock persistence semantics,
  * but avoids pulling the desktop ResearchDialog tree/layout graph into the Yandex build.
- * Research resources are consumed from live sector storage on the TechNode's owning planet
+ * Research resources are consumed from live sector storage@the TechNode's owning planet
  * through Sector.removeItem(), matching the stock ResearchDialog inventory model.
  */
 public final class BrowserCampaignResearch{
@@ -131,7 +131,7 @@ public final class BrowserCampaignResearch{
     /**
      * Stock path from captured Ruinous Shores to Windswept Islands. Hail is nested
      * below Duo -> Scatter, so those parent nodes are included explicitly instead of
-     * relying on unlock() to silently backfill them.
+     * relying@unlock() to silently backfill them.
      */
     public static UnlockableContent nextWindsweptResearch(){
         return firstLocked(nextWindsweptSequence);
@@ -727,10 +727,8 @@ public final class BrowserCampaignResearch{
         produceItem(source, Items.coal);
 
         TechNode combustion = node(Blocks.combustionGenerator);
-        boolean coalObjective = objectivesComplete(combustion);
-        markCoalResearchState(Items.coal.unlocked(), Items.coal.unlockedHost(), coalObjective);
-        if(!Items.lead.unlockedHost() || !Items.coal.unlockedHost() || !coalObjective){
-            throw new IllegalStateException("r:power-deps");
+        if(!Items.lead.unlockedHost() || !Items.coal.unlockedHost() || !objectivesComplete(combustion)){
+            throw new IllegalStateException("r:pd");
         }
 
         stageAndSpend(source, Blocks.combustionGenerator);
@@ -1257,7 +1255,7 @@ public final class BrowserCampaignResearch{
         stageMissing(source, content);
         spend(content);
         if(!content.unlocked()){
-            throw new IllegalStateException("Stock TechNode research did not unlock " + content.name);
+            throw new IllegalStateException("r:u:" + content.name);
         }
     }
 
@@ -1272,7 +1270,7 @@ public final class BrowserCampaignResearch{
             int remaining = Math.max(0, unfinished - available(node, item));
             if(remaining <= 0) continue;
 
-            // Stock campaign research spends from every unfrozen base on the tech
+            // Stock campaign research spends from every unfrozen base@the tech
             // planet. A single sector/core cannot necessarily hold an entire late-game
             // research requirement, so stage the CI economy across those same storages.
             // Prefer the active/source sector, then the remaining captured bases.
@@ -1306,10 +1304,10 @@ public final class BrowserCampaignResearch{
         TechNode node = node(content);
         if(content.unlocked()) return;
         if(node.parent != null && !node.parent.content.unlocked()){
-            throw new IllegalStateException("Research parent is still locked: " + content.name);
+            throw new IllegalStateException("r:p:" + content.name);
         }
         if(!objectivesComplete(node)){
-            throw new IllegalStateException("Research objectives are incomplete: " + content.name);
+            throw new IllegalStateException("r:o:" + content.name);
         }
 
         boolean complete = true;
@@ -1392,7 +1390,7 @@ public final class BrowserCampaignResearch{
     private static void removeFromResearchPlanet(TechNode node, Item item, int amount){
         Planet planet = researchPlanet(node);
         if(planet == null){
-            throw new IllegalStateException("Campaign research has no owning planet for " + node.content.name);
+            throw new IllegalStateException("r:np:" + node.content.name);
         }
 
         int remaining = amount;
@@ -1421,8 +1419,8 @@ public final class BrowserCampaignResearch{
 
         if(remaining != 0){
             throw new IllegalStateException(
-                "Campaign research resource accounting changed while spending " + item.name +
-                " on " + planet.name
+                "r:a:" + item.name +
+                "@" + planet.name
             );
         }
     }
@@ -1752,12 +1750,6 @@ public final class BrowserCampaignResearch{
         setResearchDomAttribute("data-mindustry-campaign-force-projector-unlocked", "true");
         setResearchDomAttribute("data-mindustry-campaign-overdrive-projector-unlocked", "true");
         setResearchDomAttribute("data-mindustry-campaign-weathered-channels-ready", "true");
-    }
-
-    private static void markCoalResearchState(boolean local, boolean host, boolean objective){
-        setResearchDomAttribute("data-mindustry-campaign-coal-local", local ? "true" : "false");
-        setResearchDomAttribute("data-mindustry-campaign-coal-host", host ? "true" : "false");
-        setResearchDomAttribute("data-mindustry-campaign-coal-objective", objective ? "true" : "false");
     }
 
     @org.teavm.jso.JSBody(params = {"key", "value"}, script = "document.documentElement.setAttribute(key, value);")
