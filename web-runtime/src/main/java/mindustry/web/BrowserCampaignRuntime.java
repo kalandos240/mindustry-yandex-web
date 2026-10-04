@@ -1319,6 +1319,21 @@ public final class BrowserCampaignRuntime{
                         : !current.save.file.exists() ? 3
                         : current.save.file.length() < 128 ? 4
                         : !SaveIO.isSaveValid(current.save.file) ? 5 : 0;
+
+                    // sectorCapture() already requests a stock sector save. If the
+                    // browser-backed slot is still invalid here, retry that same stock
+                    // save once after all capture mutations/objective clearing have
+                    // completed. This repairs an interrupted/invalid rewrite without
+                    // bypassing SaveIO or changing the serialized format.
+                    if(saveState != 0 && control != null && control.saves != null){
+                        control.saves.saveSector(current);
+                        saveState = current.save == null ? 1
+                            : current.save.file == null ? 2
+                            : !current.save.file.exists() ? 3
+                            : current.save.file.length() < 128 ? 4
+                            : !SaveIO.isSaveValid(current.save.file) ? 5 : 0;
+                    }
+
                     if(saveState != 0){
                         setRuntimeDomAttribute("data-mindustry-campaign-capture-save-state", String.valueOf(saveState));
                         throw new IllegalStateException("Capture save state is invalid");
