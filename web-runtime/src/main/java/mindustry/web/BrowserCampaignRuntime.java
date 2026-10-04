@@ -31,6 +31,7 @@ public final class BrowserCampaignRuntime{
     private static boolean saveSmokeArmed;
     private static boolean captureSmokeStaged;
     private static boolean captureSmokeComplete;
+    private static int captureSaveWaitFrames;
     private static boolean onsetObjectivesStaged;
     private static boolean marshObjectivesStaged;
     private static boolean peaksObjectivesStaged;
@@ -365,6 +366,7 @@ public final class BrowserCampaignRuntime{
         saveSmokeArmed = false;
         captureSmokeStaged = false;
         captureSmokeComplete = false;
+        captureSaveWaitFrames = 0;
         onsetObjectivesStaged = false;
         marshObjectivesStaged = false;
         peaksObjectivesStaged = false;
@@ -548,6 +550,7 @@ public final class BrowserCampaignRuntime{
         saveSmokeArmed = false;
         captureSmokeStaged = false;
         captureSmokeComplete = false;
+        captureSaveWaitFrames = 0;
         onsetObjectivesStaged = false;
         marshObjectivesStaged = false;
         peaksObjectivesStaged = false;
@@ -594,6 +597,7 @@ public final class BrowserCampaignRuntime{
         saveSmokeArmed = false;
         captureSmokeStaged = false;
         captureSmokeComplete = false;
+        captureSaveWaitFrames = 0;
         onsetObjectivesStaged = false;
         marshObjectivesStaged = false;
         peaksObjectivesStaged = false;
@@ -1314,27 +1318,16 @@ public final class BrowserCampaignRuntime{
 
             if(captureSmokeStaged && !captureSmokeComplete){
                 if(current.info.wasCaptured && !state.rules.waves && !state.rules.attackMode){
-                    // sectorCapture() already requests a stock sector save. If
-                    // that browser-backed rewrite is invalid, retry the same stock save
-                    // once after all capture mutations/objective clearing have completed.
-                    boolean captureSaveValid = current.save != null
-                        && current.save.file != null
-                        && current.save.file.exists()
-                        && current.save.file.length() >= 128
-                        && SaveIO.isSaveValid(current.save.file);
-
-                    if(!captureSaveValid && control != null && control.saves != null){
-                        control.saves.saveSector(current);
-                        captureSaveValid = current.save != null
-                            && current.save.file != null
-                            && current.save.file.exists()
-                            && current.save.file.length() >= 128
-                            && SaveIO.isSaveValid(current.save.file);
-                    }
-
-                    if(!captureSaveValid){
+                    if(current.save == null || current.save.file == null || !current.save.file.exists()
+                    || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
+                        // Browser-backed sector writes may finish after the capture flag
+                        // becomes visible to the frame loop. Keep the stock save path
+                        // untouched and allow a bounded number of frames for that same
+                        // save to become readable before treating it as corruption.
+                        if(++captureSaveWaitFrames < 30) return;
                         throw new IllegalStateException("Capture save invalid");
                     }
+                    captureSaveWaitFrames = 0;
                     SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
                     if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
                         throw new IllegalStateException("Captured Ground Zero save metadata lost the active sector");
