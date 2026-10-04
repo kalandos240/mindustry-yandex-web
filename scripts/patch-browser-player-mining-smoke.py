@@ -51,9 +51,9 @@ old_release = '''        if(stage == 5){
                 if(++uiFrames >= maxUiFrames){
                     releasePointer();
                     throw new IllegalStateException(
-                        "DOM left-click never produced confirmed target linePlan: select=" +
-                        Core.input.keyDown(Binding.select) + ", placing=" + placing +
-                        ", targetPreview=" + targetPreview + ", linePlans=" + control.input.linePlans.size
+                        "build:no-line-plan s=" +
+                        Core.input.keyDown(Binding.select) + ", p=" + placing +
+                        ", t=" + targetPreview + ", n=" + control.input.linePlans.size
                     );
                 }
                 markWaiting(targetPreview ? "world-down" : "world-line-plan", uiFrames);
@@ -98,9 +98,9 @@ new_release = '''        if(stage == 5){
                 if(++uiFrames >= maxUiFrames){
                     releasePointer();
                     throw new IllegalStateException(
-                        "DOM left-click never produced confirmed target linePlan: select=" +
-                        Core.input.keyDown(Binding.select) + ", placing=" + placing +
-                        ", targetPreview=" + targetPreview + ", linePlans=" + control.input.linePlans.size
+                        "build:no-line-plan s=" +
+                        Core.input.keyDown(Binding.select) + ", p=" + placing +
+                        ", t=" + targetPreview + ", n=" + control.input.linePlans.size
                     );
                 }
                 markWaiting(targetPreview ? "world-down" : "world-line-plan", uiFrames);
@@ -129,9 +129,9 @@ new_release = '''        if(stage == 5){
             if(!Core.input.keyDown(Binding.select) || !placing || !targetPreview){
                 releasePointer();
                 throw new IllegalStateException(
-                    "Stock DesktopInput lost confirmed target linePlan before DOM release: select=" +
-                    Core.input.keyDown(Binding.select) + ", placing=" + placing +
-                    ", targetPreview=" + targetPreview + ", linePlans=" + control.input.linePlans.size
+                    "build:lost-line-plan s=" +
+                    Core.input.keyDown(Binding.select) + ", p=" + placing +
+                    ", t=" + targetPreview + ", n=" + control.input.linePlans.size
                 );
             }
 
@@ -148,7 +148,7 @@ new_release = '''        if(stage == 5){
                 ((DesktopInput)control.input).mode == PlaceMode.placing;
             if(Core.input.keyDown(Binding.select) || stillPlacing){
                 if(++uiFrames >= maxUiFrames){
-                    throw new IllegalStateException("DOM left-click release never left confirmed DesktopInput placing mode");
+                    throw new IllegalStateException("build:release-stuck");
                 }
                 markWaiting("world-release", uiFrames);
                 return;
