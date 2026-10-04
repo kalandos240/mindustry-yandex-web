@@ -20,7 +20,12 @@ for path in (SAVEIO, BUILD):
 includes = re.findall(r'include\s+"(maps/[^"]+)"', BUILD.read_text(encoding="utf-8"))
 map_files = set()
 for pattern in includes:
-    if "*" in pattern:
+    if pattern.endswith("/**"):
+        directory = ASSETS / pattern[:-3]
+        if not directory.is_dir():
+            raise SystemExit(f"Packaged map directory is missing from pinned assets: {pattern}")
+        map_files.update(directory.rglob("*.msav"))
+    elif "*" in pattern:
         map_files.update(p for p in ASSETS.glob(pattern) if p.is_file() and p.suffix == ".msav")
     else:
         path = ASSETS / pattern
