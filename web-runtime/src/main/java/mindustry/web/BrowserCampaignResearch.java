@@ -1263,12 +1263,43 @@ public final class BrowserCampaignResearch{
 
     private static void stageMissing(Sector source, UnlockableContent content){
         TechNode node = node(content);
-        ItemSeq staged = new ItemSeq();
+        Planet planet = researchPlanet(node);
+        if(planet == null) throw new IllegalStateException("r:no-planet");
+
         for(int i = 0; i < node.requirements.length; i++){
-            int missing = Math.max(0, node.requirements[i].amount - node.finishedRequirements[i].amount);
-            if(missing > 0) staged.add(node.requirements[i].item, missing);
+            Item item = node.requirements[i].item;
+            int unfinished = Math.max(0, node.requirements[i].amount - node.finishedRequirements[i].amount);
+            int remaining = Math.max(0, unfinished - available(node, item));
+            if(remaining <= 0) continue;
+
+            // Stock campaign research spends from every unfrozen base on the tech
+            // planet. A single sector/core cannot necessarily hold an entire late-game
+            // research requirement, so stage the CI economy across those same storages.
+            // Prefer the active/source sector, then the remaining captured bases.
+            if(source != null && source.planet == planet && source.hasBase() && !source.isFrozen()){
+                remaining -= stageIntoSector(source, item, remaining);
+            }
+
+            for(Sector sector : planet.sectors){
+                if(remaining <= 0) break;
+                if(sector == source || !sector.hasBase() || sector.isFrozen()) continue;
+                remaining -= stageIntoSector(sector, item, remaining);
+            }
+
+            if(remaining > 0){
+                throw new IllegalStateException("r:capacity");
+            }
         }
-        source.addItems(staged);
+    }
+
+    private static int stageIntoSector(Sector sector, Item item, int requested){
+        if(sector == null || item == null || requested <= 0) return 0;
+        int before = sector.items().get(item);
+        ItemSeq staged = new ItemSeq();
+        staged.add(item, requested);
+        sector.addItems(staged);
+        int after = sector.items().get(item);
+        return Math.max(0, after - before);
     }
 
     public static void spend(UnlockableContent content){
