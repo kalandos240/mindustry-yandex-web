@@ -37,7 +37,7 @@ public final class BrowserPlayerMiningSmoke{
     private static int approachFrames;
     private static int depositFrames;
     private static int targetX = -1, targetY = -1;
-    private static int coreStartItems;
+     private static int coreStartItems;
     private static int minedStack;
     private static float targetScreenX, targetScreenY;
     private static float playerScreenX, playerScreenY;
@@ -124,6 +124,26 @@ public final class BrowserPlayerMiningSmoke{
 
             Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
             if(sceneCovered(projected.x, projected.y)){
+                // The normal desktop HUD can legitimately cover one ore tile after
+                // camera-follow settles. Prefer another currently mineable ore that is
+                // already within range; otherwise choose a new world target and approach
+                // it again. Do not mutate mineTile or bypass DesktopInput.
+                int oldX = targetX, oldY = targetY;
+                 if(findVisibleInRangeTarget(unit, oldX, oldY)){
+                    aimFrames = 0;
+                    markTarget(targetX, targetY);
+                    return;
+                }
+
+                if(findTarget(unit, oldX, oldY)){
+                    coreStartItems = core.items.get(targetItem);
+                    approachFrames = 0;
+                    aimFrames = 0;
+                    stage = 1;
+                    markTarget(targetX, targetY);
+                    return;
+                }
+
                 if(++aimFrames >= maxAimFrames){
                     throw new IllegalStateException("mining:ui-covered");
                 }
@@ -311,6 +331,10 @@ public final class BrowserPlayerMiningSmoke{
     }
 
     private static boolean findTarget(Unit unit){
+        return findTarget(unit, -1, -1);
+    }
+
+    private static boolean findTarget(Unit unit, int skipX, int skipY){
         if(Core.camera == null) return false;
 
         int ux = World.toTile(unit.x), uy = World.toTile(unit.y);
@@ -322,7 +346,7 @@ public final class BrowserPlayerMiningSmoke{
                 for(int dy = -r; dy <= r; dy++){
                     if(Math.abs(dx) != r && Math.abs(dy) != r) continue;
                     Tile tile = world.tile(ux + dx, uy + dy);
-                    if(tile == null) continue;
+                    if(tile == null || (tile.x == skipX && tile.y == skipY)) continue;
 
                     Item item = unit.getMineResult(tile);
                     if(item == null || !unit.acceptsItem(item)) continue;
@@ -332,7 +356,42 @@ public final class BrowserPlayerMiningSmoke{
                     targetX = tile.x;
                     targetY = tile.y;
                     targetItem = item;
+                    coreStartItems = core == null ? 0 : core.items.get(item);
                     Vec2 projected = Core.camera.project(new Vec2(tile.worldx(), tile.worldy()));
+                    targetScreenX = projected.x;
+                    targetScreenY = projected.y;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean findVisibleInRangeTarget(Unit unit, int skipX, int skipY){
+        int ux = World.toTile(unit.x), uy = World.toTile(unit.y);
+        int radius = Math.max(1, (int)Math.ceil(unit.type.mineRange / tilesize) + 1);
+        boolean doubleTap = Core.settings.getBool("doubletapmine");
+
+        for(int r = 0; r <= radius; r++){
+            for(int dx = -r; dx <= r; dx++){
+                for(int dy = -r; dy <= r; dy++){
+                    if(r > 0 && Math.abs(dx) != r && Math.abs(dy) != r) continue;
+                    Tile tile = world.tile(ux + dx, uy + dy);
+                    if(tile == null || (tile.x == skipX && tile.y == skipY)) continue;
+                    if(!unit.validMine(tile)) continue;
+
+                    Item item = unit.getMineResult(tile);
+                    if(item == null || !unit.acceptsItem(item)) continue;
+                    if(!doubleTap && tile.floor().playerUnmineable && tile.overlay().itemDrop == null) continue;
+                    if(!doubleTap && tile.overlay().playerUnmineable && tile.overlay().itemDrop != null) continue;
+
+                    Vec2 projected = Core.camera.project(new Vec2(tile.worldx(), tile.worldy()));
+                    if(sceneCovered(projected.x, projected.y)) continue;
+
+                    targetX = tile.x;
+                    targetY = tile.y;
+                    targetItem = item;
+                    coreStartItems = core.items.get(item);
                     targetScreenX = projected.x;
                     targetScreenY = projected.y;
                     return true;
