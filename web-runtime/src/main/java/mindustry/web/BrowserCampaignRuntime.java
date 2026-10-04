@@ -1012,6 +1012,13 @@ public final class BrowserCampaignRuntime{
 
         long tickMillis = Math.round(state.tick * 1000d);
         markCheckpoint(state.wave, tickMillis, current.save.file.length());
+
+        // This explicit CI checkpoint is the durable value the cold-restart verifier
+        // compares. SaveSlot.save() makes the sector the current autosave slot, and a
+        // clean Chrome shutdown may then let stock Control.dispose() rewrite it a few
+        // frames later. Disable only that exit rewrite; continuePreset() restores
+        // autosave=true immediately after loading the persisted sector.
+        current.save.setAutosave(false);
         flushCampaignStorage();
     }
 
