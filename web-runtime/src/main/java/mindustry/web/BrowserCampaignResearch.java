@@ -728,6 +728,13 @@ public final class BrowserCampaignResearch{
             Items.coal.unlock();
         }
 
+        TechNode combustion = node(Blocks.combustionGenerator);
+        boolean coalObjective = objectivesComplete(combustion);
+        markCoalResearchState(Items.coal.unlocked(), Items.coal.unlockedHost(), coalObjective);
+        if(!Items.coal.unlocked() || !Items.coal.unlockedHost() || !coalObjective){
+            throw new IllegalStateException("r:coal");
+        }
+
         stageAndSpend(source, Blocks.combustionGenerator);
         stageAndSpend(source, Blocks.powerNode);
         stageAndSpend(source, Blocks.mender);
@@ -1702,6 +1709,12 @@ public final class BrowserCampaignResearch{
         setResearchDomAttribute("data-mindustry-campaign-force-projector-unlocked", "true");
         setResearchDomAttribute("data-mindustry-campaign-overdrive-projector-unlocked", "true");
         setResearchDomAttribute("data-mindustry-campaign-weathered-channels-ready", "true");
+    }
+
+    private static void markCoalResearchState(boolean local, boolean host, boolean objective){
+        setResearchDomAttribute("data-mindustry-campaign-coal-local", local ? "true" : "false");
+        setResearchDomAttribute("data-mindustry-campaign-coal-host", host ? "true" : "false");
+        setResearchDomAttribute("data-mindustry-campaign-coal-objective", objective ? "true" : "false");
     }
 
     @org.teavm.jso.JSBody(params = {"key", "value"}, script = "document.documentElement.setAttribute(key, value);")
