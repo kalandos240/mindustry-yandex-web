@@ -1427,12 +1427,12 @@ public final class BrowserCampaignResearch{
             if(objective instanceof Objectives.SectorComplete complete){
                 if(complete.preset == null || !captured(complete.preset)) return false;
             }else if(objective instanceof Objectives.Research research){
-                // Web/Yandex is permanently single-player. Match unlockedHost()'s
-                // local branch directly and avoid retaining/dereferencing multiplayer
-                // researched-content state in this browser research bridge.
-                if(research.content == null || !research.content.unlocked()) return false;
+                // Web/Yandex is permanently single-player. Read the local persisted
+                // unlock flag directly so neither unlockedHost() nor unlocked() can
+                // enter their multiplayer state.rules.researched branch.
+                if(!locallyUnlocked(research.content)) return false;
             }else if(objective instanceof Objectives.Produce produce){
-                if(produce.content == null || !produce.content.unlocked()) return false;
+                if(!locallyUnlocked(produce.content)) return false;
             }else if(objective instanceof Objectives.OnSector onSector){
                 if(onSector.preset == null || onSector.preset.sector == null || !onSector.preset.sector.hasBase()) return false;
             }else if(!objective.complete()){
@@ -1440,6 +1440,11 @@ public final class BrowserCampaignResearch{
             }
         }
         return true;
+    }
+
+    private static boolean locallyUnlocked(UnlockableContent content){
+        return content != null && (content.alwaysUnlocked
+            || Core.settings != null && Core.settings.getBool(content.name + "-unlocked", false));
     }
 
     private static boolean captured(SectorPreset preset){
