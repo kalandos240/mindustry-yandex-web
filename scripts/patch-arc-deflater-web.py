@@ -59,10 +59,10 @@ new = '''public class FastDeflaterOutputStream extends DeflaterOutputStream{
 }
 '''
 
-if text != old:
-    if "webInputChunk = 8192" in text:
-        raise SystemExit("FastDeflaterOutputStream Web chunk patch already applied before overlay")
+if "webInputChunk = 8192" in text:
+    raise SystemExit("FastDeflaterOutputStream Web chunk patch already applied before overlay")
+if text.count(old) != 1:
     raise SystemExit("FastDeflaterOutputStream Web patch no longer matches pinned Arc")
 
-PATH.write_text(new, encoding="utf-8")
+PATH.write_text(text.replace(old, new, 1), encoding="utf-8")
 print("Applied Web bounded-input FastDeflaterOutputStream patch")
