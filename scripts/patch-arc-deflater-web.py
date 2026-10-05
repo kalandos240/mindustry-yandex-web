@@ -39,7 +39,6 @@ import java.util.zip.DeflaterOutputStream;
 
 public class FastDeflaterOutputStream extends DeflaterOutputStream{
     private static final int webInputChunk = 8192;
-    private static final byte[] empty = {};
     private final byte[] tmp = {0};
 
     public FastDeflaterOutputStream(OutputStream outputStream){
@@ -87,7 +86,7 @@ public class FastDeflaterOutputStream extends DeflaterOutputStream{
             // TeaVM 0.15 updates TDeflater.inRead only on Z_OK; a non-fatal JZlib
             // Z_BUF_ERROR can consume the final input before throwing. Resetting to an
             // empty input synchronizes needsInput() after total_in reached the target.
-            def.setInput(empty, 0, 0);
+            def.setInput(buf, 0, 0);
             offset += chunk;
         }
     }
