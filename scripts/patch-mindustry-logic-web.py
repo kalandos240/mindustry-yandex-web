@@ -53,6 +53,8 @@ web_methods = '''    /** Lightweight CI/runtime breadcrumb for the lean Web play
     public int webPhase;
     /** Subphase inside a LogicBlock update when diagnosing privileged map processors. */
     public int webBuildPhase;
+    /** CI-only one-shot campaign predicate; production never arms this. */
+    public boolean webCampaignAttackVictory;
 
     /** Web transition path: exact stock Logic.update semantics while state is menu. */
     public void updateWebMenu(){
