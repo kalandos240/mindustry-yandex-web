@@ -45,7 +45,11 @@ public abstract class WebApplicationBase implements Application{
         }
 
         listen(ApplicationListener::update);
-        runnables.run();
+        try{
+            runnables.run();
+        }catch(Throwable error){
+            throw new RuntimeException("post", error);
+        }
     }
 
     public final void resize(int width, int height){
