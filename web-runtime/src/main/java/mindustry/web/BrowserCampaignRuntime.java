@@ -843,10 +843,20 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("e:basin-nuke-flags");
         }
 
+        // The real Basin objective graph and nuclear flags are complete at this point.
+        // CI must not physically tear down the remaining live cores in the same browser
+        // frame: that mutates TeamData while Basin's proximity/build graph still owns them.
+        // Arm a one-shot Logic victory predicate instead; the next real campaign state
+        // check still performs the stock local sectorCapture() path and save.
+        int enemyCores = state.rules.waveTeam.cores().size;
+        if(enemyCores <= 0) throw new IllegalStateException("e:basin-enemy-cores");
+        logic.webCampaignAttackVictory = true;
+
         captureSmokeStaged = true;
         markCaptureStaged(current.preset.name, state.wave, 0);
         markBasinObjectiveStage(blocks.positions.length);
         markBasinObjectiveFlagsReady();
+        markBasinAttackStage(enemyCores);
     }
 
     private static void stageAttackCoresForCapture(String preset){
@@ -1209,46 +1219,6 @@ public final class BrowserCampaignRuntime{
                 var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
                 enemyCoresSnapshot.each(core -> core.kill());
                 markIntersectAttackStage(enemyCores);
-            }
-
-            // Basin's two scripted nuclear targets may not be the only enemy cores.
-            // Wait for the real objective executor to apply nukeannounce/nuke1, then finish
-            // any remaining attack cores through the same stock attack victory predicate.
-            if(logic != null && current.preset == SectorPresets.basin) logic.webPhase = 109;
-            if(captureSmoke && current.preset == SectorPresets.basin
-            && captureSmokeStaged && !captureSmokeComplete){
-                // stageBasinObjectivesForCapture() already validated nukeannounce+nuke1
-                // immediately before arming captureSmokeStaged. Do not read the objective
-                // flag ObjectSet again after the real objective update: Basin's completion
-                // scripts mutate that collection during the same tick, and TeaVM's
-                // post-update contains() path produced the browser NPE seen in CI.
-                var waveTeam = state.rules.waveTeam;
-                if(waveTeam == null) throw new IllegalStateException("e:basin-wave-team-null");
-                if(state.teams == null) throw new IllegalStateException("e:basin-teams-null");
-                if(logic != null) logic.webPhase = 116;
-
-                var waveData = state.teams.get(waveTeam);
-                if(waveData == null) throw new IllegalStateException("e:basin-wave-data-null");
-                if(logic != null) logic.webPhase = 117;
-
-                int enemyCores = waveData.cores.size;
-                if(enemyCores > 0){
-                    // Basin's two pinned nuclear targets were validated against the real
-                    // map and their objective scripts completed above. Physical smoke-only
-                    // core teardown in this same frame trips Basin-specific proximity
-                    // handling; that is an artificial CI sequencing edge, not the
-                    // production objective path.
-                    //
-                    // Stage the same "no live enemy core" predicate atomically. Avoid the
-                    // Team.cores()/unregisterCore indirection here: this is a CI-only
-                    // transition and the next real Logic tick still owns attack
-                    // victory/sectorCapture().
-                    waveData.cores.clear();
-                    waveData.lastCore = null;
-                    if(logic != null) logic.webPhase = 118;
-                    markBasinAttackStage(enemyCores);
-                    if(logic != null) logic.webPhase = 119;
-                }
             }
 
             if(captureSmoke && current.preset == SectorPresets.marsh
