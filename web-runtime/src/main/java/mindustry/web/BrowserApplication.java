@@ -76,13 +76,8 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     @Override
-    public void defaultUpdate(){
-        // Split Arc's two scheduler-level operations so a failure before any
-        // ApplicationListener can still be localized without retaining stack traces.
-        if(Vars.logic != null) Vars.logic.webPhase = 96;
-        Core.settings.autosave();
-        if(Vars.logic != null) Vars.logic.webPhase = 97;
-        arc.util.Time.updateGlobal();
+    protected void framePhase(int phase){
+        if(Vars.logic != null) Vars.logic.webPhase = phase;
     }
 
     private void onAnimationFrame(double timestamp){
