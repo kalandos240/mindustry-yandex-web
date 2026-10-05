@@ -60,34 +60,37 @@ public class FastDeflaterOutputStream extends DeflaterOutputStream{
             def.setInput(bytes, offset, chunk);
 
             while(def.getBytesRead() < target){
-                long beforeIn = def.getBytesRead();
-                long beforeOut = def.getBytesWritten();
-                try{
-                    int count = def.deflate(buf, 0, buf.length);
-                    if(count > 0) out.write(buf, 0, count);
-                }catch(RuntimeException error){
-                    long produced = def.getBytesWritten() - beforeOut;
-                    if(produced > 0) out.write(buf, 0, (int)produced);
-
-                    // TeaVM 0.15 TDeflater throws JZlib Z_BUF_ERROR (-5) before it
-                    // updates its private inRead counter. JZlib total_in, exposed by
-                    // getBytesRead(), may already have consumed this entire chunk.
-                    // Treat that terminal no-progress call as success when total_in
-                    // reached our target; only fail if input is still outstanding.
-                    String message = error.getMessage();
-                    long afterIn = def.getBytesRead();
-                    if(message == null || !message.endsWith("-5")
-                    || (afterIn < target && afterIn == beforeIn && produced == 0)){
-                        throw error;
-                    }
-                }
+                if(!pump() && def.getBytesRead() < target) throw new IOException();
             }
 
-            // TeaVM 0.15 updates TDeflater.inRead only on Z_OK; a non-fatal JZlib
-            // Z_BUF_ERROR can consume the final input before throwing. Resetting to an
-            // empty input synchronizes needsInput() after total_in reached the target.
             def.setInput(buf, 0, 0);
             offset += chunk;
+        }
+    }
+
+    private boolean pump() throws IOException{
+        long beforeIn = def.getBytesRead();
+        long beforeOut = def.getBytesWritten();
+        try{
+            int count = def.deflate(buf, 0, buf.length);
+            if(count > 0) out.write(buf, 0, count);
+        }catch(RuntimeException error){
+            int produced = (int)(def.getBytesWritten() - beforeOut);
+            if(produced > 0) out.write(buf, 0, produced);
+            String message = error.getMessage();
+            if(message == null || !message.endsWith("-5")) throw error;
+        }
+        return def.getBytesRead() != beforeIn || def.getBytesWritten() != beforeOut;
+    }
+
+    @Override
+    public void finish() throws IOException{
+        if(def.finished()) return;
+        def.finish();
+        int stalls = 0;
+        while(!def.finished()){
+            if(pump()) stalls = 0;
+            else if(++stalls >= 2) throw new IOException();
         }
     }
 }
