@@ -49,7 +49,10 @@ for old, new, label in replacements:
 marker = '''    @Override
     public void update(){
 '''
-web_methods = '''    /** Web transition path: exact stock Logic.update semantics while state is menu. */
+web_methods = '''    /** Lightweight CI/runtime breadcrumb for the lean Web playing loop. */
+    public int webPhase;
+
+    /** Web transition path: exact stock Logic.update semantics while state is menu. */
     public void updateWebMenu(){
         if(!state.isMenu()){
             throw new IllegalStateException("updateWebMenu may only run in menu state");
@@ -132,6 +135,7 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
             }
         }
 
+        webPhase = 1;
         PerfCounter.frame.end();
         PerfCounter.frame.begin();
 
@@ -147,11 +151,13 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
         state.updateId ++;
         // updateTeamStats already walks Groups.unit; the Web Teams patch folds the exact
         // top-level wave-team/isEnemy count into that mandatory pass.
+        webPhase = 2;
         state.teams.updateTeamStats();
         state.enemies = state.teams.webWaveEnemies;
         // Web never installs the desktop/network MapPreviewLoader reflection callbacks;
         // do not retain or poll that no-op preview bridge in the gameplay hot path.
 
+        webPhase = 4;
         Time.update();
         logicVars.update();
 
@@ -163,8 +169,10 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
         state.envAttrs.clear();
         state.envAttrs.add(state.rules.attributes);
 
+        webPhase = 6;
         updateEntities();
 
+        webPhase = 7;
         Events.fire(Trigger.afterGameUpdate);
 
         PerfCounter.stateUpdate.end(PerfCounter.entityUpdate.latestValueNs());
