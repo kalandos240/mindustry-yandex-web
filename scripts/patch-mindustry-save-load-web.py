@@ -57,3 +57,23 @@ if text.count(old) != 1:
 
 path.write_text(text.replace(old, new, 1), encoding="utf-8")
 print("Applied TeaVM-safe MapMarkers IntMap reader without changing v13 wire format")
+
+
+# TeaVM 0.15's stock DeflaterOutputStream maps directly to JZlib and can throw
+# Z_BUF_ERROR (-5) while serializing larger logic configs. Route the two remaining
+# direct Mindustry compression sites through Arc's Web-safe bounded deflater.
+for relative in (
+    "world/blocks/logic/LogicBlock.java",
+    "game/Schematics.java",
+):
+    target = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / relative
+    if not target.is_file():
+        raise SystemExit(f"Missing pinned Mindustry compression source: {target}")
+    source = target.read_text(encoding="utf-8")
+    old = "new DeflaterOutputStream("
+    new = "new FastDeflaterOutputStream("
+    if source.count(old) != 1:
+        raise SystemExit(f"Web nested-deflater patch expected one direct DeflaterOutputStream in {relative}")
+    target.write_text(source.replace(old, new, 1), encoding="utf-8")
+
+print("Routed LogicBlock/Schematics compression through Web-safe FastDeflaterOutputStream")
