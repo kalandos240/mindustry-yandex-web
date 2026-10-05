@@ -1335,10 +1335,12 @@ public final class BrowserCampaignRuntime{
             }
 
             if(captureSmokeStaged && !captureSmokeComplete){
+                if(logic != null) logic.webPhase = 90;
                 // sectorCapture() itself is the authority for this transition: it disables
                 // waves/attack mode and writes the sector save. Do not dereference
                 // Sector.info here; the browser metadata/save path is validated below.
                 if(!state.rules.waves && !state.rules.attackMode){
+                    if(logic != null) logic.webPhase = 91;
                     if(current.save == null || current.save.file == null || !current.save.file.exists()
                     || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
                         // The stock capture save runs from inside Logic.update(), while
@@ -1352,11 +1354,13 @@ public final class BrowserCampaignRuntime{
                         if(captureSaveWaitFrames < 4) return;
                         throw new IllegalStateException("Capture save invalid");
                     }
+                    if(logic != null) logic.webPhase = 92;
                     captureSaveWaitFrames = 0;
                     SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
                     if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
                         throw new IllegalStateException("c:gz-meta");
                     }
+                    if(logic != null) logic.webPhase = 93;
                     if(current.preset == SectorPresets.basin){
                         if(!state.rules.objectiveFlags.contains("nukeannounce")
                         || !state.rules.objectiveFlags.contains("nuke1")){
@@ -1365,6 +1369,7 @@ public final class BrowserCampaignRuntime{
                         markBasinObjectiveFlagsReady();
                     }
 
+                    if(logic != null) logic.webPhase = 94;
                     captureSmokeComplete = true;
                     flushCampaignStorage();
                     markCaptureComplete(current.preset == null ? "unknown" : current.preset.name,
@@ -1419,6 +1424,7 @@ public final class BrowserCampaignRuntime{
                     }
 
                     if(progressSmoke && current.preset == SectorPresets.basin){
+                        if(logic != null) logic.webPhase = 95;
                         BrowserCampaignResearch.verifyMarshReadyAfterBasin(current);
                         returnToMenu();
                         playMarsh();
