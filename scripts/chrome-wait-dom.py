@@ -309,6 +309,22 @@ def main() -> int:
             )
             polls += 1
             message_id += 1
+
+            # Runtime failures are terminal for every current browser verifier. Do not
+            # burn the full marker timeout after the application has already exposed an
+            # authoritative error state.
+            if 'data-mindustry-web="error"' in last_html:
+                elapsed = time.monotonic() - started
+                sys.stderr.write(f"Chrome runtime entered error state after {elapsed:.3f}s and {polls} DOM poll(s).\n")
+                sys.stderr.write("Last <html> tag:\n")
+                start = last_html.find("<html")
+                end = last_html.find(">", start)
+                if start >= 0 and end >= start:
+                    sys.stderr.write(last_html[start:end + 1] + "\n")
+                else:
+                    sys.stderr.write(last_html[:1000] + "\n")
+                return 1
+
             if resize_phase == 0:
                 required = args.require
             elif resize_phase == 1:
