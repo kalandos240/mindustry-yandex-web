@@ -116,8 +116,14 @@ public final class BrowserApplication extends WebApplicationBase{
             phase = "application-frame";
             if(!platformPaused){
                 frame();
+
+                phase = "gameplay-sync";
+                if(Vars.logic != null) Vars.logic.webPhase = 100;
                 syncGameplayMarker();
+
                 if(awaitingPlatformResumeFrame){
+                    phase = "resume-frame";
+                    if(Vars.logic != null) Vars.logic.webPhase = 101;
                     awaitingPlatformResumeFrame = false;
                     int resumedSector = Vars.state != null && Vars.state.rules != null && Vars.state.rules.sector != null
                         ? Vars.state.rules.sector.id : -1;
