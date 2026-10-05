@@ -35,18 +35,15 @@ new = '''package arc.util.io;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
 
-public class FastDeflaterOutputStream extends OutputStream{
+public class FastDeflaterOutputStream extends DeflaterOutputStream{
     private static final int webInputChunk = 8192;
-    private final OutputStream out;
-    private final Deflater def = new Deflater();
-    private final byte[] buffer = new byte[65536];
+    private static final byte[] empty = {};
     private final byte[] tmp = {0};
-    private boolean done;
 
     public FastDeflaterOutputStream(OutputStream outputStream){
-        if(outputStream == null) throw new NullPointerException();
-        out = outputStream;
+        super(outputStream, new Deflater(), 65536);
     }
 
     @Override
@@ -57,10 +54,6 @@ public class FastDeflaterOutputStream extends OutputStream{
 
     @Override
     public void write(byte[] bytes, int offset, int length) throws IOException{
-        if(done) throw new IOException();
-        if(bytes == null) throw new NullPointerException();
-        if(offset < 0 || length < 0 || offset > bytes.length - length) throw new IndexOutOfBoundsException();
-
         int end = offset + length;
         while(offset < end){
             int chunk = Math.min(webInputChunk, end - offset);
@@ -68,59 +61,27 @@ public class FastDeflaterOutputStream extends OutputStream{
             def.setInput(bytes, offset, chunk);
 
             while(def.getBytesRead() < target){
-                if(!pump() && def.getBytesRead() < target){
-                    throw new IOException("Web deflater stalled");
+                long beforeIn = def.getBytesRead();
+                long beforeOut = def.getBytesWritten();
+                try{
+                    int count = def.deflate(buf, 0, buf.length);
+                    if(count > 0) out.write(buf, 0, count);
+                }catch(RuntimeException error){
+                    long produced = def.getBytesWritten() - beforeOut;
+                    if(produced > 0) out.write(buf, 0, (int)produced);
+                    String message = error.getMessage();
+                    if(message == null || !message.endsWith("-5")
+                    || (def.getBytesRead() == beforeIn && produced == 0)){
+                        throw error;
+                    }
                 }
             }
+
+            // TeaVM 0.15 updates TDeflater.inRead only on Z_OK; a non-fatal JZlib
+            // Z_BUF_ERROR can consume the final input before throwing. Resetting to an
+            // empty input synchronizes needsInput() after total_in reached the target.
+            def.setInput(empty, 0, 0);
             offset += chunk;
-        }
-    }
-
-    private boolean pump() throws IOException{
-        long beforeIn = def.getBytesRead();
-        long beforeOut = def.getBytesWritten();
-        try{
-            int count = def.deflate(buffer);
-            if(count > 0) out.write(buffer, 0, count);
-        }catch(RuntimeException error){
-            long produced = def.getBytesWritten() - beforeOut;
-            if(produced > 0) out.write(buffer, 0, (int)produced);
-            if(!isBufferError(error)) throw error;
-        }
-        return def.getBytesRead() != beforeIn || def.getBytesWritten() != beforeOut;
-    }
-
-    private static boolean isBufferError(RuntimeException error){
-        String message = error.getMessage();
-        return message != null && message.endsWith("-5");
-    }
-
-    @Override
-    public void flush() throws IOException{
-        out.flush();
-    }
-
-    public void finish() throws IOException{
-        if(done) return;
-        def.finish();
-        int stalls = 0;
-        while(!def.finished()){
-            if(pump()){
-                stalls = 0;
-            }else if(++stalls >= 2){
-                throw new IOException("Web deflater finish stalled");
-            }
-        }
-        done = true;
-    }
-
-    @Override
-    public void close() throws IOException{
-        try{
-            finish();
-        }finally{
-            def.end();
-            out.close();
         }
     }
 }
