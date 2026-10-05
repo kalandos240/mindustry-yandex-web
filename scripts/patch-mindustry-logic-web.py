@@ -330,6 +330,124 @@ for old, new, label in logic_block_replacements:
     logic_block = logic_block.replace(old, new, 1)
 LOGIC_BLOCK.write_text(logic_block, encoding="utf-8")
 
+# Basin's pinned world processor reaches its nuclear strike through stock privileged
+# mlog. Keep this temporary trace numeric-only so it is cheap in TeaVM: it narrows
+# the exact synchronous explosion subphase and, if block damage throws, encodes the
+# current tile as 700000 + x*1024 + y.
+LEXECUTOR = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "logic" / "LExecutor.java"
+lexecutor = LEXECUTOR.read_text(encoding="utf-8")
+old_explosion = '''        @Override
+        public void run(LExecutor exec){
+            if(net.client()) return;
+
+            Team t = team.team();
+            //note that there is a radius cap
+            Call.logicExplosion(t, World.unconv(x.numf()), World.unconv(y.numf()), World.unconv(Math.min(radius.numf(), 100)), damage.numf(), air.bool(), ground.bool(), pierce.bool(), effect.bool());
+        }
+'''
+new_explosion = '''        @Override
+        public void run(LExecutor exec){
+            if(net.client()) return;
+
+            if(logic != null) logic.webBuildPhase = 6400;
+            Team t = team.team();
+            //note that there is a radius cap
+            if(logic != null) logic.webBuildPhase = 6401;
+            Call.logicExplosion(t, World.unconv(x.numf()), World.unconv(y.numf()), World.unconv(Math.min(radius.numf(), 100)), damage.numf(), air.bool(), ground.bool(), pierce.bool(), effect.bool());
+            if(logic != null) logic.webBuildPhase = 6405;
+        }
+'''
+if lexecutor.count(old_explosion) != 1:
+    raise SystemExit("LExecutor Web explosion trace anchor no longer matches pinned upstream")
+lexecutor = lexecutor.replace(old_explosion, new_explosion, 1)
+
+old_logic_explosion = '''    public static void logicExplosion(Team team, float x, float y, float radius, float damage, boolean air, boolean ground, boolean pierce, boolean effect){
+        if(damage < 0f) return;
+
+        Damage.damage(team, x, y, radius, damage, pierce, air, ground, true, null);
+        if(effect){
+            if(pierce){
+                Fx.spawnShockwave.at(x, y, World.conv(radius));
+            }else{
+                Fx.dynamicExplosion.at(x, y, World.conv(radius) / 8f);
+            }
+        }
+    }
+'''
+new_logic_explosion = '''    public static void logicExplosion(Team team, float x, float y, float radius, float damage, boolean air, boolean ground, boolean pierce, boolean effect){
+        if(damage < 0f) return;
+
+        if(logic != null) logic.webBuildPhase = 6402;
+        Damage.damage(team, x, y, radius, damage, pierce, air, ground, true, null);
+        if(logic != null) logic.webBuildPhase = 6403;
+        if(effect){
+            if(pierce){
+                Fx.spawnShockwave.at(x, y, World.conv(radius));
+            }else{
+                Fx.dynamicExplosion.at(x, y, World.conv(radius) / 8f);
+            }
+        }
+        if(logic != null) logic.webBuildPhase = 6404;
+    }
+'''
+if lexecutor.count(old_logic_explosion) != 1:
+    raise SystemExit("LExecutor Web logicExplosion trace anchor no longer matches pinned upstream")
+LEXECUTOR.write_text(lexecutor.replace(old_logic_explosion, new_logic_explosion, 1), encoding="utf-8")
+
+DAMAGE = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "entities" / "Damage.java"
+damage_text = DAMAGE.read_text(encoding="utf-8")
+old_damage_tail = '''        rect.setSize(radius * 2).setCenter(x, y);
+        if(team != null){
+            Units.nearbyEnemies(team, rect, cons);
+        }else{
+            Units.nearby(rect, cons);
+        }
+
+        if(ground){
+            if(!complete){
+                tileDamage(team, World.toTile(x), World.toTile(y), radius / tilesize, damage * (source == null ? 1f : source.type.buildingDamageMultiplier), source);
+            }else{
+                completeDamage(team, x, y, radius, damage * (source == null ? 1f : source.type.buildingDamageMultiplier));
+            }
+        }
+'''
+new_damage_tail = '''        rect.setSize(radius * 2).setCenter(x, y);
+        if(logic != null) logic.webBuildPhase = 6501;
+        if(team != null){
+            Units.nearbyEnemies(team, rect, cons);
+        }else{
+            Units.nearby(rect, cons);
+        }
+
+        if(logic != null) logic.webBuildPhase = 6502;
+        if(ground){
+            if(!complete){
+                if(logic != null) logic.webBuildPhase = 6510;
+                tileDamage(team, World.toTile(x), World.toTile(y), radius / tilesize, damage * (source == null ? 1f : source.type.buildingDamageMultiplier), source);
+            }else{
+                if(logic != null) logic.webBuildPhase = 6520;
+                completeDamage(team, x, y, radius, damage * (source == null ? 1f : source.type.buildingDamageMultiplier));
+                if(logic != null) logic.webBuildPhase = 6522;
+            }
+        }
+'''
+if damage_text.count(old_damage_tail) != 1:
+    raise SystemExit("Damage Web explosion trace anchor no longer matches pinned upstream")
+damage_text = damage_text.replace(old_damage_tail, new_damage_tail, 1)
+
+old_complete_hit = '''                if(tile != null && tile.build != null && (team == null || team != tile.team()) && dx*dx + dy*dy <= trad*trad){
+                    tile.build.damage(team, damage);
+                }
+'''
+new_complete_hit = '''                if(tile != null && tile.build != null && (team == null || team != tile.team()) && dx*dx + dy*dy <= trad*trad){
+                    if(logic != null) logic.webBuildPhase = 700000 + tile.x * 1024 + tile.y;
+                    tile.build.damage(team, damage);
+                }
+'''
+if damage_text.count(old_complete_hit) != 1:
+    raise SystemExit("Damage Web completeDamage tile trace anchor no longer matches pinned upstream")
+DAMAGE.write_text(damage_text.replace(old_complete_hit, new_complete_hit, 1), encoding="utf-8")
+
 # Stock Logic scans Groups.unit once for state.enemies immediately before Teams scans
 # the same group again for per-team caches. Web folds the exact top-level wave-team
 # enemy count into updateTeamStats(), avoiding a second O(total units) pass each frame.
