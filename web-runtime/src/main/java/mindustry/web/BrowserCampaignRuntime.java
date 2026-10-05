@@ -996,13 +996,17 @@ public final class BrowserCampaignRuntime{
         objective.done();
     }
 
+    private static void writeCurrentSectorSave(){
+        control.saves.saveSector(current);
+    }
+
     private static void saveCampaignCheckpoint(){
         if(current == null || !state.isPlaying() || !state.isCampaign() || state.rules.sector != current){
             throw new IllegalStateException("Browser campaign checkpoint requires an active campaign sector");
         }
 
         diagPhase("sector-checkpoint");
-        control.saves.saveSector(current);
+        writeCurrentSectorSave();
         if(current.save == null || current.save.file == null || !current.save.file.exists()
         || current.save.file.length() < 128 || current.save.meta == null){
             throw new IllegalStateException("Campaign checkpoint did not produce a valid sector save");
@@ -1320,11 +1324,15 @@ public final class BrowserCampaignRuntime{
                 if(current.info.wasCaptured && !state.rules.waves && !state.rules.attackMode){
                     if(current.save == null || current.save.file == null || !current.save.file.exists()
                     || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
-                        // Browser-backed sector writes may finish after the capture flag
-                        // becomes visible to the frame loop. Keep the stock save path
-                        // untouched and allow a bounded number of frames for that same
-                        // save to become readable before treating it as corruption.
-                        if(++captureSaveWaitFrames < 30) return;
+                        // The stock capture save runs from inside Logic.update(), while
+                        // killed cores/objectives may still be settling. Rewrite once from
+                        // this post-frame point using the exact same already-reachable
+                        // sector-save helper, then validate the completed frame state.
+                        if(captureSaveWaitFrames++ == 0){
+                            writeCurrentSectorSave();
+                            return;
+                        }
+                        if(captureSaveWaitFrames < 4) return;
                         throw new IllegalStateException("Capture save invalid");
                     }
                     captureSaveWaitFrames = 0;
