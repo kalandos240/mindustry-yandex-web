@@ -90,7 +90,8 @@ new_post = '''        webPhase = 8;
             boolean waveVictory = state.rules.waves && state.enemies == 0
                 && state.rules.winWave > 0 && state.wave >= state.rules.winWave
                 && !spawner.isSpawning();
-            boolean attackVictory = state.rules.attackMode && !state.rules.waveTeam.isAlive();
+            boolean attackVictory = state.rules.attackMode
+                && (!state.rules.waveTeam.isAlive() || webCampaignAttackVictory);
 
             if(waveVictory || attackVictory){
                 if(state.rules.sector.preset != null
@@ -100,6 +101,9 @@ new_post = '''        webPhase = 8;
                     state.rules.waves = false;
                 }else{
                     // Same local body as stock Call.sectorCapture(), without RPC.
+                    // The browser campaign smoke may arm a one-shot victory predicate
+                    // instead of mutating live TeamData; never let it leak to a later sector.
+                    webCampaignAttackVictory = false;
                     sectorCapture();
                 }
             }
