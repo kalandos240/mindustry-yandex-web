@@ -118,6 +118,7 @@ public final class Bootstrap{
 
             @Override
             public void update(){
+                if(Vars.logic != null) Vars.logic.webPhase = 98;
                 try{
                     renderVanillaSpriteFrame();
 
@@ -132,6 +133,7 @@ public final class Bootstrap{
                     BrowserCanvas.setStatus("error", "Mindustry Web sprite frame failed: " + describe(error));
                     throw error;
                 }
+                if(Vars.logic != null) Vars.logic.webPhase = 99;
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
