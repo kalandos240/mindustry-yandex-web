@@ -91,7 +91,7 @@ new_post = '''        webPhase = 8;
                 && state.rules.winWave > 0 && state.wave >= state.rules.winWave
                 && !spawner.isSpawning();
             boolean attackVictory = state.rules.attackMode
-                && (!state.rules.waveTeam.isAlive() || webCampaignAttackVictory);
+                && (webCampaignAttackVictory || !state.rules.waveTeam.isAlive());
 
             if(waveVictory || attackVictory){
                 if(state.rules.sector.preset != null
