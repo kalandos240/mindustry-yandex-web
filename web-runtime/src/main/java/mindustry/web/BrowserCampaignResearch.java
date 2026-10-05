@@ -1301,7 +1301,7 @@ public final class BrowserCampaignResearch{
                 // Spend the previous chunk first, freeing the same finite campaign
                 // storage before the next contribution is staged.
                 if(logic != null) logic.webPhase = 212;
-                spend(content);
+                spend(content, true);
                 if(logic != null) logic.webPhase = 213;
                 if(content.unlocked()) return;
                 if(node.finishedRequirements[i].amount >= node.requirements[i].amount) break;
@@ -1348,6 +1348,10 @@ public final class BrowserCampaignResearch{
     }
 
     public static void spend(UnlockableContent content){
+        spend(content, false);
+    }
+
+    private static void spend(UnlockableContent content, boolean activeSectorOnly){
         TechNode node = node(content);
         if(content.unlocked()) return;
         if(node.parent != null && !node.parent.content.unlocked()){
@@ -1365,11 +1369,11 @@ public final class BrowserCampaignResearch{
             ItemStack done = node.finishedRequirements[i];
             int missing = Math.max(0, req.amount - done.amount);
             if(logic != null) logic.webPhase = 221;
-            int used = Math.min(missing, available(node, req.item));
+            int used = Math.min(missing, available(node, req.item, activeSectorOnly));
             if(logic != null) logic.webPhase = 222;
 
             if(used > 0){
-                removeFromResearchPlanet(node, req.item, used);
+                removeFromResearchPlanet(node, req.item, used, activeSectorOnly);
                 if(logic != null) logic.webPhase = 223;
                 done.amount += used;
                 spent += used;
@@ -1430,29 +1434,31 @@ public final class BrowserCampaignResearch{
     }
 
     private static int available(TechNode node, Item item){
+        return available(node, item, false);
+    }
+
+    private static int available(TechNode node, Item item, boolean activeSectorOnly){
         Planet planet = researchPlanet(node);
         if(planet == null) return 0;
 
-        // stageMissing() feeds late-game research through the currently played sector in
-        // capacity-sized chunks. Prefer that authoritative store and avoid walking every
-        // historical SectorInfo when it already contains usable staged resources.
         Sector active = state != null && state.isCampaign() ? state.rules.sector : null;
-        if(active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
-            // During an active campaign research smoke, stageMissing() deliberately
-            // performs a zero-resource spend before staging the first capacity-sized
-            // chunk. Zero here therefore means "stage next", not "scan every old save".
+        if(activeSectorOnly && active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
+            // CI stageMissing() deliberately performs a zero-resource spend before the
+            // first chunk is staged. Zero means "stage next", not "scan old saves".
             return Math.max(0, active.items().get(item));
         }
 
+        // Production research keeps the stock cross-sector inventory model.
         int total = 0;
         for(Sector sector : planet.sectors){
-            if(sector == active || !sector.hasBase() || sector.isFrozen()) continue;
-            total += Math.max(0, sector.items().get(item));
+            if(sector.hasBase() && !sector.isFrozen()){
+                total += Math.max(0, sector.items().get(item));
+            }
         }
         return total;
     }
 
-    private static void removeFromResearchPlanet(TechNode node, Item item, int amount){
+    private static void removeFromResearchPlanet(TechNode node, Item item, int amount, boolean activeSectorOnly){
         Planet planet = researchPlanet(node);
         if(planet == null){
             throw new IllegalStateException("r:np:" + node.content.name);
@@ -1461,10 +1467,7 @@ public final class BrowserCampaignResearch{
         int remaining = amount;
         Sector active = state != null && state.isCampaign() ? state.rules.sector : null;
 
-        // Consume the staged active-sector chunk first. In the common Web campaign path
-        // this satisfies the whole spend and keeps sparse historical sector metadata out
-        // of the hot research transaction.
-        if(active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
+        if(activeSectorOnly && active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
             int stored = Math.max(0, active.items().get(item));
             int used = Math.min(stored, remaining);
             if(used > 0){
@@ -1473,16 +1476,26 @@ public final class BrowserCampaignResearch{
             }
         }
 
-        if(remaining > 0){
+        if(!activeSectorOnly || remaining > 0){
             for(Sector sector : planet.sectors){
                 if(remaining <= 0) break;
-                if(sector == active || !sector.hasBase() || sector.isFrozen()) continue;
+                if(activeSectorOnly && sector == active) continue;
+                if(!sector.hasBase() || sector.isFrozen()) continue;
 
                 int stored = Math.max(0, sector.items().get(item));
                 if(stored <= 0) continue;
 
                 int used = Math.min(stored, remaining);
                 sector.removeItem(item, used);
+                remaining -= used;
+            }
+        }
+
+        if(!activeSectorOnly && remaining > 0 && active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
+            int stored = Math.max(0, active.items().get(item));
+            int used = Math.min(stored, remaining);
+            if(used > 0){
+                active.removeItem(item, used);
                 remaining -= used;
             }
         }
