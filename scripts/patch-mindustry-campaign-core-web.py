@@ -106,7 +106,10 @@ new_post = '''        webPhase = 8;
         }
 
         webPhase = 9;
-        if(!state.gameOver){
+        // Stock checkGameState() uses a campaign branch and a mutually-exclusive
+        // non-campaign branch. Do not run ordinary attack/wave Game Over handling after
+        // a campaign capture has already mutated attackMode/waves locally.
+        if(!state.isCampaign() && !state.gameOver){
             if(!state.rules.attackMode && state.rules.canGameOver && state.teams.playerCores().size == 0){
                 state.gameOver = true;
                 state.won = false;
