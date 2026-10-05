@@ -17,7 +17,7 @@ already_patched = (
     and "knownType = webDeclaredClass(knownType);" in text
     and "Class actualType = webDeclaredClass(value.getClass());" in text
     and "private static Class webDeclaredClass(Class type)" in text
-    and "ObjectSet.class.getName().equals(type.getName())" in text
+    and "ObjectSet.class.getName().equals(type.getName()) ? new ObjectSet() : newInstance(type)" in text
     and "isAnonymousClass()" not in text
 )
 if already_patched:
@@ -84,18 +84,26 @@ text = text.replace(anchor, helper + anchor, 1)
 if "isAnonymousClass()" in text:
     raise SystemExit("Arc Json Web patch left an unsupported isAnonymousClass() call")
 
-# TeaVM reflective Field.getType() can return a Class mirror that names the exact
-# Arc type but does not compare identical to the class literal. Arc Json already has
-# a direct-construction fast path for ObjectSet; preserve that intended path by also
-# matching the exact binary name, avoiding unsupported reflective construction.
+# ObjectSet is written as a JSON object wrapper {values:[...]}, so object reads reach
+# newInstance(type) before the later array-special-case branch. TeaVM does not expose
+# ObjectSet's constructor reflectively for Rules.objectiveFlags. Preserve Arc's exact
+# built-in type semantics by directly constructing only the exact ObjectSet binary name.
+old_object_new = '''                Object object = newInstance(type);
+'''
+new_object_new = '''                Object object = ObjectSet.class.getName().equals(type.getName()) ? new ObjectSet() : newInstance(type);
+'''
+if text.count(old_object_new) != 1:
+    raise SystemExit("Arc Json object-construction anchor no longer matches pinned source")
+text = text.replace(old_object_new, new_object_new, 1)
+
+# Keep the array path consistent too, although stock ObjectSet writes use the object
+# wrapper above.
 old_object_set = '''                ObjectSet result = type == ObjectSet.class ? new ObjectSet() : (ObjectSet)newInstance(type);
 '''
 new_object_set = '''                ObjectSet result = type == ObjectSet.class || ObjectSet.class.getName().equals(type.getName()) ? new ObjectSet() : (ObjectSet)newInstance(type);
 '''
 if old_object_set in text:
     text = text.replace(old_object_set, new_object_set, 1)
-elif "ObjectSet.class.getName().equals(type.getName())" not in text:
-    raise SystemExit("Arc Json ObjectSet direct-construction anchor no longer matches pinned source")
 
 JSON.write_text(text, encoding="utf-8")
 print("Patched Arc Json anonymous-class detection for TeaVM 0.15")
