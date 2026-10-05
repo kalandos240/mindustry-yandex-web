@@ -1438,8 +1438,10 @@ public final class BrowserCampaignResearch{
         // historical SectorInfo when it already contains usable staged resources.
         Sector active = state != null && state.isCampaign() ? state.rules.sector : null;
         if(active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
-            int activeStored = Math.max(0, active.items().get(item));
-            if(activeStored > 0) return activeStored;
+            // During an active campaign research smoke, stageMissing() deliberately
+            // performs a zero-resource spend before staging the first capacity-sized
+            // chunk. Zero here therefore means "stage next", not "scan every old save".
+            return Math.max(0, active.items().get(item));
         }
 
         int total = 0;
