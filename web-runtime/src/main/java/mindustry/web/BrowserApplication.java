@@ -115,7 +115,28 @@ public final class BrowserApplication extends WebApplicationBase{
 
             phase = "application-frame";
             if(!platformPaused){
-                frame();
+                // Keep the concrete TeaVM scheduler split into explicit stages. Besides
+                // avoiding an opaque virtual frame hop, this makes browser-only failures
+                // attributable without retaining stack traces in the release bundle.
+                phase = "frame-globals";
+                if(Vars.logic != null) Vars.logic.webPhase = 94;
+                if(Core.settings == null){
+                    if(Vars.logic != null) Vars.logic.webPhase = 95;
+                    arc.util.Time.updateGlobal();
+                }else{
+                    if(Vars.logic != null) Vars.logic.webPhase = 96;
+                    Core.settings.autosave();
+                    if(Vars.logic != null) Vars.logic.webPhase = 97;
+                    arc.util.Time.updateGlobal();
+                }
+
+                phase = "frame-listeners";
+                listen(ApplicationListener::update);
+
+                phase = "frame-post";
+                if(Vars.logic != null) Vars.logic.webPhase = 102;
+                runPostedTasks();
+                if(Vars.logic != null) Vars.logic.webPhase = 103;
 
                 phase = "gameplay-sync";
                 if(Vars.logic != null) Vars.logic.webPhase = 100;
