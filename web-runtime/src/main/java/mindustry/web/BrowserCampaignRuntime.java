@@ -100,7 +100,7 @@ public final class BrowserCampaignRuntime{
     private static void playUnlockedPreset(SectorPreset preset, SectorPreset originPreset, String actionId){
         diagnostics = false;
         if(preset == null || !preset.unlocked()){
-            throw new IllegalStateException("Campaign preset is still locked: " + actionId);
+            throw new IllegalStateException("c:locked:" + actionId);
         }
 
         boolean resume = hasSectorSave(preset);
@@ -112,7 +112,7 @@ public final class BrowserCampaignRuntime{
 
         Sector origin = originPreset == null ? null : originPreset.sector;
         if(origin == null || !origin.hasBase() || !origin.isCaptured()){
-            throw new IllegalStateException("Campaign launch origin is not captured: " + actionId);
+            throw new IllegalStateException("c:origin:" + actionId);
         }
         startPreset(preset, origin);
     }
@@ -390,12 +390,12 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("c:meta");
         }
         if(preset != SectorPresets.groundZero && !preset.unlocked()){
-            throw new IllegalStateException("Campaign preset is locked: " + preset.name);
+            throw new IllegalStateException("c:locked:" + preset.name);
         }
 
         Fi presetFile = Core.files.internal("maps/" + sector.planet.name + "/" + preset.name + "." + mapExtension);
         if(!presetFile.exists() || presetFile.length() < 128){
-            throw new IllegalStateException("Packaged campaign preset map is missing: " + preset.name);
+            throw new IllegalStateException("c:map:" + preset.name);
         }
         if(maps == null){
             throw new IllegalStateException("c:maps");
@@ -405,7 +405,7 @@ public final class BrowserCampaignRuntime{
             preset.generator = new FileMapGenerator(preset.name, preset);
         }
         if(preset.generator.map == null || !preset.generator.map.file.exists()){
-            throw new IllegalStateException("Campaign FileMapGenerator failed late Web map binding: " + preset.name);
+            throw new IllegalStateException("c:bind:" + preset.name);
         }
         markGeneratorReady(preset.generator.map.file.path());
 
@@ -618,7 +618,7 @@ public final class BrowserCampaignRuntime{
         }
         for(int i = 0; i <= 6; i++){
             if(!(state.rules.objectives.get(i) instanceof MapObjectives.TimerObjective)){
-                throw new IllegalStateException("Pinned Stronghold timer objective changed at " + i);
+                throw new IllegalStateException("e:stronghold-timer:" + i);
             }
         }
         if(!(state.rules.objectives.get(7) instanceof MapObjectives.DestroyBlocksObjective blocks)
@@ -639,7 +639,7 @@ public final class BrowserCampaignRuntime{
         for(var pos : destroy.positions){
             var build = world.build(pos.x, pos.y);
             if(build == null || build.team != state.rules.waveTeam || build.block != Blocks.coreBastion){
-                throw new IllegalStateException("Pinned Stronghold Core Bastion missing at " + pos.x + "," + pos.y);
+                throw new IllegalStateException("e:stronghold-core:" + pos.x + "," + pos.y);
             }
             build.kill();
         }
@@ -662,7 +662,7 @@ public final class BrowserCampaignRuntime{
         }
         for(int i = 0; i < 4; i++){
             if(!(state.rules.objectives.get(i) instanceof MapObjectives.TimerObjective)){
-                throw new IllegalStateException("Pinned Siege timer objective changed at " + i);
+                throw new IllegalStateException("e:siege-timer:" + i);
             }
         }
         state.rules.objectiveTimerMultiplier = 0f;
@@ -675,7 +675,7 @@ public final class BrowserCampaignRuntime{
         }
         for(int i = 0; i < 4; i++){
             if(!(state.rules.objectives.get(i) instanceof MapObjectives.TimerObjective)){
-                throw new IllegalStateException("Pinned Crossroads timer objective changed at " + i);
+                throw new IllegalStateException("e:crossroads-timer:" + i);
             }
         }
         state.rules.objectiveTimerMultiplier = 0f;
@@ -695,7 +695,7 @@ public final class BrowserCampaignRuntime{
             || timer.duration != durations[i]
             || timer.parents.size != (i == 0 ? 0 : 1)
             || (i > 0 && timer.parents.first() != state.rules.objectives.get(i - 1))){
-                throw new IllegalStateException("Pinned Origin timer/flag/parent objective changed at " + i);
+                throw new IllegalStateException("e:origin-timer:" + i);
             }
         }
         if(!state.rules.attackMode){
@@ -824,7 +824,7 @@ public final class BrowserCampaignRuntime{
         for(var pos : blocks.positions){
             var build = world.build(pos.x, pos.y);
             if(build == null || build.team != state.rules.waveTeam || build.block != Blocks.coreBastion){
-                throw new IllegalStateException("Pinned Basin Core Bastion target is missing at " + pos.x + "," + pos.y);
+                throw new IllegalStateException("e:basin-core:" + pos.x + "," + pos.y);
             }
         }
 
@@ -852,7 +852,7 @@ public final class BrowserCampaignRuntime{
     private static void stageAttackCoresForCapture(String preset){
         int enemyCores = state.rules.waveTeam.cores().size;
         if(enemyCores <= 0){
-            throw new IllegalStateException("Erekir attack smoke expected enemy cores for " + preset);
+            throw new IllegalStateException("e:cores:" + preset);
         }
         var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
         enemyCoresSnapshot.each(core -> core.kill());
@@ -910,7 +910,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("e:onset-active");
         }
         if(state.rules.objectives.all.size != 20){
-            throw new IllegalStateException("Pinned Onset objective graph changed: expected 20, got " + state.rules.objectives.all.size);
+            throw new IllegalStateException("e:onset-graph:" + state.rules.objectives.all.size);
         }
 
         var core = state.rules.defaultTeam.core();
@@ -988,13 +988,13 @@ public final class BrowserCampaignRuntime{
             "DestroyBlockObjective".equals(expectedClass) && objective instanceof MapObjectives.DestroyBlockObjective;
 
         if(objective == null || !typeMatches){
-            throw new IllegalStateException("Pinned Onset objective " + index + " changed: expected " + expectedClass);
+            throw new IllegalStateException("e:onset-obj:" + index + " exp:" + expectedClass);
         }
         if(!objective.qualified()){
-            throw new IllegalStateException("Onset objective dependency order changed at index " + index);
+            throw new IllegalStateException("e:onset-dep:" + index);
         }
         if(requireCondition && !objective.update()){
-            throw new IllegalStateException("Onset objective condition did not become true at index " + index);
+            throw new IllegalStateException("e:onset-cond:" + index);
         }
         objective.done();
     }
@@ -1148,7 +1148,7 @@ public final class BrowserCampaignRuntime{
                 if(state.rules.attackMode){
                     int enemyCores = state.rules.waveTeam.cores().size;
                     if(enemyCores <= 0){
-                        throw new IllegalStateException("Attack campaign smoke expected at least one enemy core for " + current.preset.name);
+                        throw new IllegalStateException("c:attack-core:" + current.preset.name);
                     }
                     var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
                     enemyCoresSnapshot.each(core -> core.kill());
@@ -1156,7 +1156,7 @@ public final class BrowserCampaignRuntime{
                     markCaptureStaged(current.preset.name, state.wave, 0);
                 }else{
                     if(state.rules.winWave <= 0 || state.enemies != 0 || spawner == null || spawner.isSpawning()){
-                        throw new IllegalStateException("Campaign capture smoke could not stage the stock wave victory predicate for " + current.preset.name);
+                        throw new IllegalStateException("c:wave:" + current.preset.name);
                     }
                     state.wave = state.rules.winWave;
                     captureSmokeStaged = true;
@@ -1719,7 +1719,7 @@ public final class BrowserCampaignRuntime{
                         return;
                     }
                 }else if(frames > 8){
-                    throw new IllegalStateException("Stock campaign victory predicate did not dispatch sector capture for " + current.preset.name);
+                    throw new IllegalStateException("c:no-capture:" + current.preset.name);
                 }
             }
 
