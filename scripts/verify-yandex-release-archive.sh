@@ -78,8 +78,14 @@ with zipfile.ZipFile(archive_path, "r") as archive:
             f"Erekir archive map set mismatch: missing={sorted(erekir - actual_erekir)} "
             f"extra={sorted(actual_erekir - erekir)}"
         )
-    if "assets/planets/erekir.json" not in names:
-        raise SystemExit("Erekir planet definition missing from release ZIP")
+    # Mindustry's pinned planet definitions are compiled Java content. Only Serpulo
+    # sets loadPlanetData=true, so tools:pack generates planets/serpulo.json; Erekir
+    # deliberately has no PlanetData JSON. Keep the archive verifier aligned with the
+    # staged release audit instead of requiring a file the runtime never loads.
+    if "assets/planets/serpulo.json" not in names:
+        raise SystemExit("Serpulo PlanetData missing from release ZIP")
+    if "assets/planets/erekir.json" in names:
+        raise SystemExit("unexpected Erekir PlanetData JSON in release ZIP")
 
     archive.extractall(target)
 PY
