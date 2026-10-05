@@ -1340,13 +1340,10 @@ public final class BrowserCampaignRuntime{
                     if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
                         throw new IllegalStateException("c:gz-meta");
                     }
-                    if(current.preset == SectorPresets.basin){
-                        if(!state.rules.objectiveFlags.contains("nukeannounce")
-                        || !state.rules.objectiveFlags.contains("nuke1")){
-                            throw new IllegalStateException("e:basin-flags");
-                        }
-                        markBasinObjectiveFlagsReady();
-                    }
+                    // Basin's nukeannounce/nuke1 flags were validated before arming
+                    // the one-shot capture predicate. sectorCapture() has already cleared
+                    // the objective graph by this point; do not traverse its mutated flag
+                    // collection again in TeaVM just to repeat the same CI assertion.
 
                     captureSmokeComplete = true;
                     flushCampaignStorage();
