@@ -38,10 +38,15 @@ public abstract class WebApplicationBase implements Application{
         if(!running) return;
         if(!initialized) initialize();
 
+        framePhase(94);
         if(Core.settings == null){
+            framePhase(95);
             Time.updateGlobal();
         }else{
-            defaultUpdate();
+            framePhase(96);
+            Core.settings.autosave();
+            framePhase(97);
+            Time.updateGlobal();
         }
 
         listen(ApplicationListener::update);
@@ -69,6 +74,10 @@ public abstract class WebApplicationBase implements Application{
 
     protected final boolean isRunning(){
         return running;
+    }
+
+    /** Lightweight browser-only frame diagnostic hook; default is intentionally inert. */
+    protected void framePhase(int phase){
     }
 
     protected final void listen(Cons<ApplicationListener> action){
