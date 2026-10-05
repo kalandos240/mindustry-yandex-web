@@ -1422,14 +1422,22 @@ public final class BrowserCampaignResearch{
     }
 
     private static int available(TechNode node, Item item){
-        int total = 0;
         Planet planet = researchPlanet(node);
         if(planet == null) return 0;
 
+        // stageMissing() feeds late-game research through the currently played sector in
+        // capacity-sized chunks. Prefer that authoritative store and avoid walking every
+        // historical SectorInfo when it already contains usable staged resources.
+        Sector active = state != null && state.isCampaign() ? state.rules.sector : null;
+        if(active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
+            int activeStored = Math.max(0, active.items().get(item));
+            if(activeStored > 0) return activeStored;
+        }
+
+        int total = 0;
         for(Sector sector : planet.sectors){
-            if(sector.hasBase() && !sector.isFrozen()){
-                total += Math.max(0, sector.items().get(item));
-            }
+            if(sector == active || !sector.hasBase() || sector.isFrozen()) continue;
+            total += Math.max(0, sector.items().get(item));
         }
         return total;
     }
@@ -1443,23 +1451,28 @@ public final class BrowserCampaignResearch{
         int remaining = amount;
         Sector active = state != null && state.isCampaign() ? state.rules.sector : null;
 
-        for(Sector sector : planet.sectors){
-            if(remaining <= 0) break;
-            if(sector == active || !sector.hasBase() || sector.isFrozen()) continue;
-
-            int stored = Math.max(0, sector.items().get(item));
-            if(stored <= 0) continue;
-
-            int used = Math.min(stored, remaining);
-            sector.removeItem(item, used);
-            remaining -= used;
-        }
-
-        if(remaining > 0 && active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
+        // Consume the staged active-sector chunk first. In the common Web campaign path
+        // this satisfies the whole spend and keeps sparse historical sector metadata out
+        // of the hot research transaction.
+        if(active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
             int stored = Math.max(0, active.items().get(item));
             int used = Math.min(stored, remaining);
             if(used > 0){
                 active.removeItem(item, used);
+                remaining -= used;
+            }
+        }
+
+        if(remaining > 0){
+            for(Sector sector : planet.sectors){
+                if(remaining <= 0) break;
+                if(sector == active || !sector.hasBase() || sector.isFrozen()) continue;
+
+                int stored = Math.max(0, sector.items().get(item));
+                if(stored <= 0) continue;
+
+                int used = Math.min(stored, remaining);
+                sector.removeItem(item, used);
                 remaining -= used;
             }
         }
