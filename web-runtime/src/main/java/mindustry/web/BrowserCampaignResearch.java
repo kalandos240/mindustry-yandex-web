@@ -1814,6 +1814,9 @@ public final class BrowserCampaignResearch{
     }
 
     private static void markOriginProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-carbide-crucible-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-phase-synthesizer-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-phase-fabric-unlocked", "true");
         setResearchDomAttribute("data-mindustry-erekir-payload-mass-driver-unlocked", "true");
         setResearchDomAttribute("data-mindustry-erekir-constructor-unlocked", "true");
         setResearchDomAttribute("data-mindustry-erekir-atmospheric-concentrator-unlocked", "true");
