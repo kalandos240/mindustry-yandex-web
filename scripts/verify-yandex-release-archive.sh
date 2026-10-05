@@ -170,6 +170,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-campaign-preset="groundZero"' \
   --require 'data-mindustry-campaign-state="playing"' \
   --require 'data-mindustry-campaign-save="valid"' \
+  --require 'data-mindustry-campaign-core="ready"' \
   --require 'data-mindustry-network="local-only"' > /tmp/mindustry-release-archive-serpulo.html
 
 grep -q 'data-mindustry-campaign-map-path="maps/serpulo/groundZero.msav"' /tmp/mindustry-release-archive-serpulo.html
@@ -189,6 +190,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-campaign-preset="onset"' \
   --require 'data-mindustry-campaign-state="playing"' \
   --require 'data-mindustry-campaign-save="valid"' \
+  --require 'data-mindustry-campaign-core="ready"' \
   --require 'data-mindustry-network="local-only"' > /tmp/mindustry-release-archive-erekir.html
 
 grep -q 'data-mindustry-campaign-map-path="maps/erekir/onset.msav"' /tmp/mindustry-release-archive-erekir.html
