@@ -1408,7 +1408,6 @@ public final class BrowserCampaignResearch{
         // index and evaluate the stock objective types directly instead.
         for(int i = 0; i < node.objectives.size; i++){
             var objective = node.objectives.get(i);
-            if(logic != null) logic.webPhase = 240 + i;
             if(objective == null) return false;
 
             if(objective instanceof Objectives.SectorComplete complete){
