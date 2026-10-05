@@ -1220,12 +1220,11 @@ public final class BrowserCampaignRuntime{
             && state.rules.objectiveFlags.contains("nuke1")
             && state.rules.waveTeam.cores().size > 0){
                 int enemyCores = state.rules.waveTeam.cores().size;
-                var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
 
-                // Basin's two pinned nuclear targets have already exercised real
-                // CoreBuild destruction. Removing the remaining map cores physically in
-                // the same smoke frame trips Basin-specific proximity teardown; that is an
-                // artificial CI sequencing edge, not the production objective path.
+                // Basin's two pinned nuclear targets were validated against the real map
+                // and their objective scripts completed above. Physical smoke-only core
+                // teardown in this same frame trips Basin-specific proximity handling; that
+                // is an artificial CI sequencing edge, not the production objective path.
                 //
                 // Do not call Teams.unregisterCore() repeatedly here: removing the final
                 // synthetic smoke core can enter Teams.updateEnemies() while Basin's live
