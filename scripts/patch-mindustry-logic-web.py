@@ -315,7 +315,9 @@ logic_block_replacements = [
                     executor.runOnce();
 ''',
         '''                while(accumulator >= 1f){
-                    if(logic != null) logic.webBuildPhase = 6;
+                    // Encode the exact mlog instruction about to execute without retaining
+                    // instruction class names or another diagnostic field in TeaVM output.
+                    if(logic != null) logic.webBuildPhase = 6000 + (int)executor.counter.numval;
                     executor.runOnce();
                     if(logic != null) logic.webBuildPhase = 7;
 ''',
