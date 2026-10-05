@@ -21,6 +21,7 @@ old_tick = '''        if(state.rules.fog){
             fogControl.update();
         }
 
+        webPhase = 4;
         Time.update();
 '''
 new_tick = '''        if(state.rules.fog){
@@ -38,6 +39,7 @@ new_tick = '''        if(state.rules.fog){
             universe.update();
         }
 
+        webPhase = 4;
         Time.update();
 '''
 if text.count(old_tick) != 1:
@@ -47,8 +49,7 @@ text = text.replace(old_tick, new_tick, 1)
 # The lean Web playing core intentionally does not call desktop Logic.checkGameState().
 # Restore only the stock campaign branch here, keeping it local-authoritative so the
 # browser does not retain generated multiplayer Call transport.
-old_post = '''        webPhase = 9;
-        if(!state.gameOver){
+old_post = '''        if(!state.gameOver){
             if(!state.rules.attackMode && state.rules.canGameOver && state.teams.playerCores().size == 0){
                 state.gameOver = true;
                 state.won = false;
@@ -104,6 +105,7 @@ new_post = '''        webPhase = 8;
             }
         }
 
+        webPhase = 9;
         if(!state.gameOver){
             if(!state.rules.attackMode && state.rules.canGameOver && state.teams.playerCores().size == 0){
                 state.gameOver = true;
