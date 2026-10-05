@@ -69,9 +69,16 @@ public class FastDeflaterOutputStream extends DeflaterOutputStream{
                 }catch(RuntimeException error){
                     long produced = def.getBytesWritten() - beforeOut;
                     if(produced > 0) out.write(buf, 0, (int)produced);
+
+                    // TeaVM 0.15 TDeflater throws JZlib Z_BUF_ERROR (-5) before it
+                    // updates its private inRead counter. JZlib total_in, exposed by
+                    // getBytesRead(), may already have consumed this entire chunk.
+                    // Treat that terminal no-progress call as success when total_in
+                    // reached our target; only fail if input is still outstanding.
                     String message = error.getMessage();
+                    long afterIn = def.getBytesRead();
                     if(message == null || !message.endsWith("-5")
-                    || (def.getBytesRead() == beforeIn && produced == 0)){
+                    || (afterIn < target && afterIn == beforeIn && produced == 0)){
                         throw error;
                     }
                 }
