@@ -1364,10 +1364,13 @@ public final class BrowserCampaignResearch{
             ItemStack req = node.requirements[i];
             ItemStack done = node.finishedRequirements[i];
             int missing = Math.max(0, req.amount - done.amount);
+            if(logic != null) logic.webPhase = 221;
             int used = Math.min(missing, available(node, req.item));
+            if(logic != null) logic.webPhase = 222;
 
             if(used > 0){
                 removeFromResearchPlanet(node, req.item, used);
+                if(logic != null) logic.webPhase = 223;
                 done.amount += used;
                 spent += used;
             }
@@ -1379,9 +1382,12 @@ public final class BrowserCampaignResearch{
             unlock(node);
         }
 
+        if(logic != null) logic.webPhase = 224;
         node.save();
         if(control != null) control.checkAutoUnlocks();
+        if(logic != null) logic.webPhase = 225;
         Core.settings.forceSave();
+        if(logic != null) logic.webPhase = 226;
 
         markResearch(content.name, spent, remaining(content), content.unlocked(),
             SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked(),
