@@ -1219,6 +1219,7 @@ public final class BrowserCampaignRuntime{
             && state.rules.objectiveFlags.contains("nukeannounce")
             && state.rules.objectiveFlags.contains("nuke1")
             && state.rules.waveTeam.cores().size > 0){
+                if(logic != null) logic.webPhase = 110;
                 int enemyCores = state.rules.waveTeam.cores().size;
 
                 // Basin's two pinned nuclear targets were validated against the real map
@@ -1231,10 +1232,14 @@ public final class BrowserCampaignRuntime{
                 // building graph is intentionally still intact, which produced the
                 // post-objective browser NPE. Stage the same "no live enemy core" predicate
                 // atomically; the next real Logic tick still owns attack victory/capture.
+                if(logic != null) logic.webPhase = 111;
                 var waveData = state.teams.get(state.rules.waveTeam);
+                if(logic != null) logic.webPhase = 112;
                 waveData.cores.clear();
                 waveData.lastCore = null;
+                if(logic != null) logic.webPhase = 113;
                 markBasinAttackStage(enemyCores);
+                if(logic != null) logic.webPhase = 114;
             }
 
             if(captureSmoke && current.preset == SectorPresets.marsh
