@@ -12,11 +12,15 @@ for path in (APPLICATION, VERIFY):
 application = APPLICATION.read_text(encoding="utf-8")
 old_frame = '''            }
             if(traceStartup) markFrameStage(phase, callbackIndex);
+
+            phase = "input-post-update";
 '''
 new_frame = '''                // CI-only observer; inert unless a player-input/possession smoke is requested.
                 BrowserPlayerInputSmoke.update();
             }
             if(traceStartup) markFrameStage(phase, callbackIndex);
+
+            phase = "input-post-update";
 '''
 if application.count(old_frame) != 1:
     raise SystemExit("BrowserApplication player-input post-frame anchor no longer matches")
