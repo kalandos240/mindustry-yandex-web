@@ -11,6 +11,28 @@ for path in (LOGIC, RUNTIME):
 
 logic = LOGIC.read_text(encoding="utf-8")
 
+method_start = text.index("    public void updateWebPlayingCore(){")
+method_end = text.index("    @Override\n    public void update(){", method_start)
+if method_start < 0 or method_end < 0:
+    raise SystemExit("Logic Web attack-mode guard patch: updateWebPlayingCore scope not found")
+method = text[method_start:method_end]
+old_guard = "state.isCampaign() || state.rules.attackMode || state.rules.pvp"
+new_guard = "state.isCampaign() || state.rules.pvp"
+if method.count(old_guard) != 1:
+    raise SystemExit("Logic Web attack-mode guard patch: guard token no longer matches staged updateWebPlayingCore")
+method = method.replace(old_guard, new_guard, 1)
+text = text[:method_start] + method + text[method_end:]
+
+ROOT = Path(__file__).resolve().parents[1]
+LOGIC = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "core" / "Logic.java"
+RUNTIME = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserLocalMapRuntime.java"
+
+for path in (LOGIC, RUNTIME):
+    if not path.is_file():
+        raise SystemExit(f"Missing staged attack-mode source: {path}")
+
+logic = LOGIC.read_text(encoding="utf-8")
+
 old_guard = '''        if(state.isCampaign() || state.rules.attackMode || state.rules.pvp){
 '''
 new_guard = '''        if(state.isCampaign() || state.rules.pvp){
