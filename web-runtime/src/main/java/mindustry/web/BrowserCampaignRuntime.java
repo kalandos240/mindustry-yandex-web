@@ -1226,13 +1226,15 @@ public final class BrowserCampaignRuntime{
                 // CoreBuild destruction. Removing the remaining map cores physically in
                 // the same smoke frame trips Basin-specific proximity teardown; that is an
                 // artificial CI sequencing edge, not the production objective path.
-                // Unregister only these residual smoke cores from TeamData so the stock
-                // attack-victory predicate observes the same "no enemy cores" condition.
-                enemyCoresSnapshot.each(core -> {
-                    if(core != null){
-                        state.teams.unregisterCore(core);
-                    }
-                });
+                //
+                // Do not call Teams.unregisterCore() repeatedly here: removing the final
+                // synthetic smoke core can enter Teams.updateEnemies() while Basin's live
+                // building graph is intentionally still intact, which produced the
+                // post-objective browser NPE. Stage the same "no live enemy core" predicate
+                // atomically; the next real Logic tick still owns attack victory/capture.
+                var waveData = state.teams.get(state.rules.waveTeam);
+                waveData.cores.clear();
+                waveData.lastCore = null;
                 markBasinAttackStage(enemyCores);
             }
 
