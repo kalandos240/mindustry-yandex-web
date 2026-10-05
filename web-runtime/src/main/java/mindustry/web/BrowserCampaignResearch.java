@@ -1379,7 +1379,9 @@ public final class BrowserCampaignResearch{
         }
 
         if(complete){
+            if(logic != null) logic.webPhase = 227;
             unlock(node);
+            if(logic != null) logic.webPhase = 228;
         }
 
         if(logic != null) logic.webPhase = 224;
