@@ -1169,42 +1169,22 @@ public final class BrowserCampaignRuntime{
         long beforeUpdate = state.updateId;
 
         diagPhase("logic");
-        try{
-            logic.updateWebPlayingCore();
-        }catch(Throwable error){
-            throw new RuntimeException("phase:logic", error);
-        }
+        logic.updateWebPlayingCore();
         diagPhase("logic-ready");
 
-        try{
-            pathfinder.updateWeb();
-            controlPath.updateWeb();
-        }catch(Throwable error){
-            throw new RuntimeException("phase:path", error);
-        }
+        pathfinder.updateWeb();
+        controlPath.updateWeb();
 
         diagPhase("control");
-        try{
-            control.update();
-        }catch(Throwable error){
-            throw new RuntimeException("phase:control", error);
-        }
+        control.update();
         diagPhase("control-ready");
 
         diagPhase("renderer");
-        try{
-            renderer.update();
-        }catch(Throwable error){
-            throw new RuntimeException("phase:renderer", error);
-        }
+        renderer.update();
         diagPhase("renderer-ready");
 
         diagPhase("ui");
-        try{
-            ui.update();
-        }catch(Throwable error){
-            throw new RuntimeException("phase:ui", error);
-        }
+        ui.update();
         diagPhase("ui-ready");
 
         // A HUD action can checkpoint/reset the campaign during Scene.act(). Once Back
@@ -1768,7 +1748,7 @@ public final class BrowserCampaignRuntime{
     }
 
     private static void diagPhase(String phase){
-        if(diagnostics) markPhase(phase);
+        if(diagnostics || captureSmoke || progressSmoke) markPhase(phase);
     }
 
     /** Exact byte count used by DataOutputStream.writeUTF's modified UTF-8 payload. */
