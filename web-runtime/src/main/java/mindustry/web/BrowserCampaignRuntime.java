@@ -931,6 +931,7 @@ public final class BrowserCampaignRuntime{
         markOnsetObjectiveStage(9);
         state.stats.coreItemCount.put(Items.silicon, 50);
         completeOnsetObjective(8, "CoreItemObjective", true);
+        BrowserCampaignResearch.runOnsetPostSiliconResearchSmoke(current);
 
         markOnsetObjectiveStage(10);
         state.stats.placedBlockCount.put(Blocks.tankFabricator, 1);
