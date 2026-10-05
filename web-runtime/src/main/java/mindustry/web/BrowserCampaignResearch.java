@@ -1293,18 +1293,14 @@ public final class BrowserCampaignResearch{
 
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
-        if(logic != null) logic.webPhase = 201;
         stageMissing(source, content);
-        if(logic != null) logic.webPhase = 202;
         spend(content);
-        if(logic != null) logic.webPhase = 203;
         if(!content.unlocked()){
             throw new IllegalStateException("r:u:" + content.name);
         }
     }
 
     private static void stageMissing(Sector source, UnlockableContent content){
-        if(logic != null) logic.webPhase = 211;
         TechNode node = node(content);
         Planet planet = researchPlanet(node);
         if(planet == null) throw new IllegalStateException("r:no-planet");
@@ -1315,20 +1311,14 @@ public final class BrowserCampaignResearch{
             while(node.finishedRequirements[i].amount < node.requirements[i].amount){
                 // Spend the previous chunk first, freeing the same finite campaign
                 // storage before the next contribution is staged.
-                if(logic != null) logic.webPhase = 212;
                 spend(content, true);
-                if(logic != null) logic.webPhase = 213;
                 if(content.unlocked()) return;
                 if(node.finishedRequirements[i].amount >= node.requirements[i].amount) break;
 
                 int missing = node.requirements[i].amount - node.finishedRequirements[i].amount;
                 int staged = 0;
-
-                if(logic != null) logic.webPhase = 214;
                 if(source != null && source.planet == planet && source.hasBase() && !source.isFrozen()){
-                    if(logic != null) logic.webPhase = 215;
                     staged = stageIntoSector(source, item, missing);
-                    if(logic != null) logic.webPhase = 216;
                     // Research costs can exceed one sector's storage capacity. Do not
                     // walk every historical SectorInfo just to fill the remainder in one
                     // pass: the next loop iteration spends this staged chunk, frees the
@@ -1337,16 +1327,11 @@ public final class BrowserCampaignResearch{
                     // avoids touching sparse/minimal metadata from unrelated saves.
                     if(staged > 0) continue;
                 }
-
-                if(logic != null) logic.webPhase = 217;
                 for(Sector sector : planet.sectors){
                     if(sector == source || !sector.hasBase() || sector.isFrozen()) continue;
-                    if(logic != null) logic.webPhase = 218;
                     staged += stageIntoSector(sector, item, missing - staged);
                     if(staged > 0) break;
                 }
-
-                if(logic != null) logic.webPhase = 219;
                 if(staged <= 0) throw new IllegalStateException("r:capacity");
             }
         }
@@ -1367,18 +1352,14 @@ public final class BrowserCampaignResearch{
     }
 
     private static void spend(UnlockableContent content, boolean activeSectorOnly){
-        if(logic != null) logic.webPhase = 220;
         TechNode node = node(content);
-        if(logic != null) logic.webPhase = 229;
         if(content.unlocked()) return;
         if(node.parent != null && !node.parent.content.unlocked()){
             throw new IllegalStateException("r:p:" + content.name);
         }
-        if(logic != null) logic.webPhase = 230;
         if(!objectivesComplete(node)){
             throw new IllegalStateException("r:o:" + content.name);
         }
-        if(logic != null) logic.webPhase = 231;
 
         boolean complete = true;
         int spent = 0;
@@ -1387,13 +1368,10 @@ public final class BrowserCampaignResearch{
             ItemStack req = node.requirements[i];
             ItemStack done = node.finishedRequirements[i];
             int missing = Math.max(0, req.amount - done.amount);
-            if(logic != null) logic.webPhase = 221;
             int used = Math.min(missing, available(node, req.item, activeSectorOnly));
-            if(logic != null) logic.webPhase = 222;
 
             if(used > 0){
                 removeFromResearchPlanet(node, req.item, used, activeSectorOnly);
-                if(logic != null) logic.webPhase = 223;
                 done.amount += used;
                 spent += used;
             }
@@ -1402,17 +1380,11 @@ public final class BrowserCampaignResearch{
         }
 
         if(complete){
-            if(logic != null) logic.webPhase = 227;
             unlock(node);
-            if(logic != null) logic.webPhase = 228;
         }
-
-        if(logic != null) logic.webPhase = 224;
         node.save();
         if(control != null) control.checkAutoUnlocks();
-        if(logic != null) logic.webPhase = 225;
         Core.settings.forceSave();
-        if(logic != null) logic.webPhase = 226;
 
         markResearch(content.name, spent, remaining(content), content.unlocked(),
             SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked(),
