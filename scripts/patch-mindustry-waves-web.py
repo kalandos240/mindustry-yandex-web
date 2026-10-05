@@ -10,15 +10,17 @@ for path in (LOGIC, SPAWNER):
         raise SystemExit(f"Missing pinned Mindustry wave source: {path}")
 
 text = LOGIC.read_text(encoding="utf-8")
-old_guard = '''        if(state.isCampaign() || state.rules.fog || state.rules.waves || state.rules.attackMode
-        || state.rules.pvp || state.rules.canGameOver || state.rules.weather.size != 0
-'''
-new_guard = '''        if(state.isCampaign() || state.rules.fog || state.rules.attackMode
-        || state.rules.pvp || state.rules.canGameOver || state.rules.weather.size != 0
-'''
-if text.count(old_guard) != 1:
-    raise SystemExit("Logic Web wave guard patch no longer matches staged updateWebPlayingCore")
-text = text.replace(old_guard, new_guard, 1)
+method_start = text.index("    public void updateWebPlayingCore(){")
+method_end = text.index("    @Override\n    public void update(){", method_start)
+if method_start < 0 or method_end < 0:
+    raise SystemExit("Logic Web wave guard patch: updateWebPlayingCore scope not found")
+method = text[method_start:method_end]
+old_guard = "state.rules.fog || state.rules.waves || state.rules.attackMode"
+new_guard = "state.rules.fog || state.rules.attackMode"
+if method.count(old_guard) != 1:
+    raise SystemExit("Logic Web wave guard patch: guard token no longer matches staged updateWebPlayingCore")
+method = method.replace(old_guard, new_guard, 1)
+text = text[:method_start] + method + text[method_end:]
 
 old_anchor = '''        // Weather is asserted absent above; retain the stock base rule attributes.
         state.envAttrs.clear();
