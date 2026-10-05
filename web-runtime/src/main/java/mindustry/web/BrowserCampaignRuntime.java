@@ -813,8 +813,11 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("e:basin-targets");
         }
 
-        // Preserve the real DestroyBlocks -> Timer dependency. The timer is accelerated
-        // only for CI, then MapObjectives.update() itself applies nukeannounce/nuke1.
+        // Preserve the real DestroyBlocks -> Timer dependency, but complete it with
+        // the same local-authoritative objective.update()+done() path used by the other
+        // Web campaign tutorials. MapObjectives.update() routes completion through
+        // Call.completeObjective(), which retains multiplayer RPC machinery and can
+        // dereference the intentionally absent Web net server.
         state.rules.objectiveTimerMultiplier = 0f;
         for(var pos : blocks.positions){
             var build = world.build(pos.x, pos.y);
@@ -824,9 +827,25 @@ public final class BrowserCampaignRuntime{
             build.kill();
         }
 
+        if(!blocks.qualified() || !blocks.update()){
+            throw new IllegalStateException("e:basin-destroy-state");
+        }
+        blocks.done();
+
+        if(!timer.qualified() || !timer.update()){
+            throw new IllegalStateException("e:basin-timer-state");
+        }
+        timer.done();
+
+        if(!state.rules.objectiveFlags.contains("nukeannounce")
+        || !state.rules.objectiveFlags.contains("nuke1")){
+            throw new IllegalStateException("e:basin-nuke-flags");
+        }
+
         captureSmokeStaged = true;
         markCaptureStaged(current.preset.name, state.wave, 0);
         markBasinObjectiveStage(blocks.positions.length);
+        markBasinObjectiveFlagsReady();
     }
 
     private static void stageAttackCoresForCapture(String preset){
