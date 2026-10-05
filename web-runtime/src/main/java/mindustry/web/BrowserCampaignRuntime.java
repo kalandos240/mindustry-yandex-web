@@ -1198,6 +1198,7 @@ public final class BrowserCampaignRuntime{
         }
 
         frames++;
+        diagPhase("post");
 
         if(captureSmoke || progressSmoke){
             // Intersect uses SectorPreset.attackAfterWaves: the first state check at wave 9
@@ -1335,7 +1336,9 @@ public final class BrowserCampaignRuntime{
             }
 
             if(captureSmokeStaged && !captureSmokeComplete){
+                diagPhase("capture-check");
                 if(current.info.wasCaptured && !state.rules.waves && !state.rules.attackMode){
+                    diagPhase("capture-save");
                     if(current.save == null || current.save.file == null || !current.save.file.exists()
                     || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
                         // The stock capture save runs from inside Logic.update(), while
@@ -1350,6 +1353,7 @@ public final class BrowserCampaignRuntime{
                         throw new IllegalStateException("Capture save invalid");
                     }
                     captureSaveWaitFrames = 0;
+                    diagPhase("capture-meta");
                     SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
                     if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
                         throw new IllegalStateException("c:gz-meta");
@@ -1416,6 +1420,7 @@ public final class BrowserCampaignRuntime{
                     }
 
                     if(progressSmoke && current.preset == SectorPresets.basin){
+                        diagPhase("basin-progress");
                         BrowserCampaignResearch.verifyMarshReadyAfterBasin(current);
                         returnToMenu();
                         playMarsh();
