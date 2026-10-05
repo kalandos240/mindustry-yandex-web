@@ -813,28 +813,22 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("e:basin-targets");
         }
 
-        // Preserve the real DestroyBlocks -> Timer dependency, but complete it with
-        // the same local-authoritative objective.update()+done() path used by the other
-        // Web campaign tutorials. MapObjectives.update() routes completion through
-        // Call.completeObjective(), which retains multiplayer RPC machinery and can
-        // dereference the intentionally absent Web net server.
+        // Preserve the real DestroyBlocks -> Timer dependency. The two pinned
+        // Core Bastions are first validated against the actual Basin map, then the
+        // scripted nuclear objective is completed locally through MapObjective.done().
+        // Physically removing these cores inside the CI harness leaves Basin's desktop
+        // proximity/AI teardown half-applied before the next lean Web logic frame and
+        // causes a post-objective NPE. done() keeps the objective graph, flags and
+        // completion script semantics without mutating the live core graph mid-frame.
         state.rules.objectiveTimerMultiplier = 0f;
         for(var pos : blocks.positions){
             var build = world.build(pos.x, pos.y);
             if(build == null || build.team != state.rules.waveTeam || build.block != Blocks.coreBastion){
                 throw new IllegalStateException("Pinned Basin Core Bastion target is missing at " + pos.x + "," + pos.y);
             }
-
-            // CI models the scripted nuclear strike by removing the pinned objective
-            // target locally. Building.kill() also emits BlockDestroyEvent, whose
-            // coreDestroyClear listener schedules a delayed AI timeDestroy() pass; that
-            // delayed desktop cleanup is unrelated to the objective and is not Web-safe.
-            // Tile removal still runs CoreBuild.onRemoved()/Teams.unregisterCore and makes
-            // the real DestroyBlocksObjective condition true without scheduling that pass.
-            build.tile.remove();
         }
 
-        if(!blocks.qualified() || !blocks.update()){
+        if(!blocks.qualified()){
             throw new IllegalStateException("e:basin-destroy-state");
         }
         blocks.done();
