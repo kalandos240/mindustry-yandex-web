@@ -9,7 +9,13 @@ if not PATH.is_file():
 
 text = PATH.read_text(encoding="utf-8")
 
-old = '''public class FastDeflaterOutputStream extends DeflaterOutputStream{
+old = '''package arc.util.io;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.zip.DeflaterOutputStream;
+
+public class FastDeflaterOutputStream extends DeflaterOutputStream{
     private final byte[] tmp = {0};
 
     public FastDeflaterOutputStream(OutputStream outputStream){
