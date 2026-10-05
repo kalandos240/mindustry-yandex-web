@@ -12,15 +12,17 @@ for path in (LOGIC, CONTROL):
 
 text = LOGIC.read_text(encoding="utf-8")
 
-old_guard = '''        if(state.isCampaign() || state.rules.fog || state.rules.attackMode
-        || state.rules.pvp || state.rules.canGameOver || state.rules.weather.size != 0
-'''
-new_guard = '''        if(state.isCampaign() || state.rules.fog || state.rules.attackMode
-        || state.rules.pvp || state.rules.weather.size != 0
-'''
-if text.count(old_guard) != 1:
-    raise SystemExit("Logic Web game-over guard patch no longer matches staged playing core")
-text = text.replace(old_guard, new_guard, 1)
+method_start = text.index("    public void updateWebPlayingCore(){")
+method_end = text.index("    @Override\n    public void update(){", method_start)
+if method_start < 0 or method_end < 0:
+    raise SystemExit("Logic Web game-over guard patch: updateWebPlayingCore scope not found")
+method = text[method_start:method_end]
+old_guard = "state.rules.pvp || state.rules.canGameOver || state.rules.weather.size != 0"
+new_guard = "state.rules.pvp || state.rules.weather.size != 0"
+if method.count(old_guard) != 1:
+    raise SystemExit("Logic Web game-over guard patch: guard token no longer matches staged updateWebPlayingCore")
+method = method.replace(old_guard, new_guard, 1)
+text = text[:method_start] + method + text[method_end:]
 
 # A genuine core destruction normally removes the team core during the previous entity
 # update, so stock checkGameState observes it at the end of that same frame. The browser
