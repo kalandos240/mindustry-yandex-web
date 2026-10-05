@@ -1169,22 +1169,42 @@ public final class BrowserCampaignRuntime{
         long beforeUpdate = state.updateId;
 
         diagPhase("logic");
-        logic.updateWebPlayingCore();
+        try{
+            logic.updateWebPlayingCore();
+        }catch(Throwable error){
+            throw new RuntimeException("phase:logic", error);
+        }
         diagPhase("logic-ready");
 
-        pathfinder.updateWeb();
-        controlPath.updateWeb();
+        try{
+            pathfinder.updateWeb();
+            controlPath.updateWeb();
+        }catch(Throwable error){
+            throw new RuntimeException("phase:path", error);
+        }
 
         diagPhase("control");
-        control.update();
+        try{
+            control.update();
+        }catch(Throwable error){
+            throw new RuntimeException("phase:control", error);
+        }
         diagPhase("control-ready");
 
         diagPhase("renderer");
-        renderer.update();
+        try{
+            renderer.update();
+        }catch(Throwable error){
+            throw new RuntimeException("phase:renderer", error);
+        }
         diagPhase("renderer-ready");
 
         diagPhase("ui");
-        ui.update();
+        try{
+            ui.update();
+        }catch(Throwable error){
+            throw new RuntimeException("phase:ui", error);
+        }
         diagPhase("ui-ready");
 
         // A HUD action can checkpoint/reset the campaign during Scene.act(). Once Back
