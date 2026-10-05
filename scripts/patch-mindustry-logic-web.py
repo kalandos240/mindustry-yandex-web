@@ -51,6 +51,8 @@ marker = '''    @Override
 '''
 web_methods = '''    /** Lightweight CI/runtime breadcrumb for the lean Web playing loop. */
     public int webPhase;
+    /** Last block entering Groups.build.update(); reference only, no per-frame allocation. */
+    public String webBuildName;
 
     /** Web transition path: exact stock Logic.update semantics while state is menu. */
     public void updateWebMenu(){
@@ -262,6 +264,27 @@ if text.count(old_entities) != 1:
 text = text.replace(old_entities, new_entities, 1)
 
 PATH.write_text(text, encoding="utf-8")
+
+ENTITY_GROUP = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "entities" / "EntityGroup.java"
+entity_group = ENTITY_GROUP.read_text(encoding="utf-8")
+old_group_update = '''    public void update(){
+        for(index = 0; index < array.size; index++){
+            array.items[index].update();
+        }
+    }
+'''
+new_group_update = '''    public void update(){
+        for(index = 0; index < array.size; index++){
+            if(this == Groups.build && logic != null && array.items[index] instanceof Building build){
+                logic.webBuildName = build.block == null ? "null" : build.block.name;
+            }
+            array.items[index].update();
+        }
+    }
+'''
+if entity_group.count(old_group_update) != 1:
+    raise SystemExit("EntityGroup Web build trace anchor no longer matches pinned upstream")
+ENTITY_GROUP.write_text(entity_group.replace(old_group_update, new_group_update, 1), encoding="utf-8")
 
 # Stock Logic scans Groups.unit once for state.enemies immediately before Teams scans
 # the same group again for per-team caches. Web folds the exact top-level wave-team
