@@ -149,6 +149,27 @@ if local_old not in unlockable:
 unlockable = unlockable.replace(local_old, local_new, 1)
 UNLOCKABLE.write_text(unlockable, encoding="utf-8")
 
+# Map objectives are local-authoritative in this build. Stock completion goes through
+# generated Call.completeObjective() for multiplayer replication; that RPC wrapper can
+# retain/dereference the pruned NetServer even though no remote clients exist.
+OBJECTIVES = MINDUSTRY / "game" / "MapObjectives.java"
+if not OBJECTIVES.is_file():
+    raise SystemExit(f"Missing pinned Mindustry source: {OBJECTIVES}")
+objectives = OBJECTIVES.read_text(encoding="utf-8")
+objectives_old = '''            if(obj.update() && !net.client()){
+                Call.completeObjective(all.indexOf(obj));
+            }
+'''
+objectives_new = '''            if(obj.update() && !net.client()){
+                // Web/Yandex has one local authority; apply the same objective body
+                // directly instead of traversing generated multiplayer RPC plumbing.
+                obj.done();
+            }
+'''
+if objectives_old not in objectives:
+    raise SystemExit("Single-player MapObjectives completion patch no longer matches pinned upstream")
+OBJECTIVES.write_text(objectives.replace(objectives_old, objectives_new, 1), encoding="utf-8")
+
 menu = MENU.read_text(encoding="utf-8")
 menu_replacements = [
     (
