@@ -1414,7 +1414,19 @@ public final class BrowserCampaignResearch{
     }
 
     private static boolean objectivesComplete(TechNode node){
-        return !node.objectives.contains(objective -> !objective.complete());
+        return !node.objectives.contains(objective -> {
+            if(objective == null) return true;
+
+            // SectorComplete is common in the late campaign tree. Use the same capture
+            // predicate as this browser bridge instead of repeatedly dereferencing
+            // preset.sector through the generic Objective dispatch; sequential Web
+            // campaign smoke has already proven that sector via its live save.
+            if(objective instanceof Objectives.SectorComplete complete){
+                return complete.preset == null || !captured(complete.preset);
+            }
+
+            return !objective.complete();
+        });
     }
 
     private static boolean captured(SectorPreset preset){
