@@ -185,6 +185,82 @@ if marker not in text:
     raise SystemExit("Logic Web transition-path insertion no longer matches pinned upstream")
 text = text.replace(marker, web_methods, 1)
 
+# Refine the lean Web entity-update failure boundary without retaining stack traces.
+# Values 61..68 identify the last entered stock updateEntities slice.
+old_entities = '''    protected void updateEntities(){
+        PerfCounter.entityUpdate.begin();
+
+        PerfCounter.entityMisc.begin();
+        Groups.updatePooling();
+        Groups.bullet.updatePhysics();
+        Groups.unit.updatePhysics();
+        Groups.all.update();
+        PerfCounter.entityMisc.end();
+
+        PerfCounter.unitUpdate.begin();
+        Groups.unit.update();
+        PerfCounter.unitUpdate.end();
+
+        PerfCounter.powerUpdate.begin();
+        if(!state.isEditor()) Groups.powerGraph.update();
+        PerfCounter.powerUpdate.end();
+
+        PerfCounter.buildingUpdate.begin();
+        if(!state.isEditor()) Groups.build.update();
+        PerfCounter.buildingUpdate.end();
+
+        PerfCounter.bulletUpdate.begin();
+        Groups.bullet.update();
+
+        Groups.bullet.collide();
+        PerfCounter.bulletUpdate.end();
+
+        PerfCounter.entityUpdate.end();
+    }
+'''
+new_entities = '''    protected void updateEntities(){
+        PerfCounter.entityUpdate.begin();
+
+        PerfCounter.entityMisc.begin();
+        webPhase = 61;
+        Groups.updatePooling();
+        webPhase = 62;
+        Groups.bullet.updatePhysics();
+        webPhase = 63;
+        Groups.unit.updatePhysics();
+        webPhase = 64;
+        Groups.all.update();
+        PerfCounter.entityMisc.end();
+
+        webPhase = 65;
+        PerfCounter.unitUpdate.begin();
+        Groups.unit.update();
+        PerfCounter.unitUpdate.end();
+
+        webPhase = 66;
+        PerfCounter.powerUpdate.begin();
+        if(!state.isEditor()) Groups.powerGraph.update();
+        PerfCounter.powerUpdate.end();
+
+        webPhase = 67;
+        PerfCounter.buildingUpdate.begin();
+        if(!state.isEditor()) Groups.build.update();
+        PerfCounter.buildingUpdate.end();
+
+        webPhase = 68;
+        PerfCounter.bulletUpdate.begin();
+        Groups.bullet.update();
+
+        Groups.bullet.collide();
+        PerfCounter.bulletUpdate.end();
+
+        PerfCounter.entityUpdate.end();
+    }
+'''
+if text.count(old_entities) != 1:
+    raise SystemExit("Logic Web entity subphase trace anchor no longer matches pinned upstream")
+text = text.replace(old_entities, new_entities, 1)
+
 PATH.write_text(text, encoding="utf-8")
 
 # Stock Logic scans Groups.unit once for state.enemies immediately before Teams scans
