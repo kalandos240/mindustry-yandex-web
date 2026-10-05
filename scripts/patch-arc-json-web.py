@@ -88,13 +88,22 @@ if "isAnonymousClass()" in text:
 # newInstance(type) before the later array-special-case branch. TeaVM does not expose
 # ObjectSet's constructor reflectively for Rules.objectiveFlags. Preserve Arc's exact
 # built-in type semantics by directly constructing only the exact ObjectSet binary name.
-old_object_new = '''                Object object = newInstance(type);
+old_object_new = '''                if(type == String.class || Reflect.isWrapper(type) || Enum.class.isAssignableFrom(type)){
+                    return readValue("value", type, jsonData);
+                }
+
+                Object object = newInstance(type);
 '''
-new_object_new = '''                Object object = ObjectSet.class.getName().equals(type.getName()) ? new ObjectSet() : newInstance(type);
+new_object_new = '''                if(type == String.class || Reflect.isWrapper(type) || Enum.class.isAssignableFrom(type)){
+                    return readValue("value", type, jsonData);
+                }
+
+                Object object = ObjectSet.class.getName().equals(type.getName()) ? new ObjectSet() : newInstance(type);
 '''
-if text.count(old_object_new) != 1:
+if old_object_new in text:
+    text = text.replace(old_object_new, new_object_new, 1)
+elif new_object_new not in text:
     raise SystemExit("Arc Json object-construction anchor no longer matches pinned source")
-text = text.replace(old_object_new, new_object_new, 1)
 
 # Keep the array path consistent too, although stock ObjectSet writes use the object
 # wrapper above.
