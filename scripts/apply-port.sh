@@ -61,6 +61,7 @@ python3 "$ROOT_DIR/scripts/patch-arc-audio-web.py"
 # Control/SoundControl/Music may remain reachable without any native SoLoud method.
 python3 "$ROOT_DIR/scripts/patch-arc-soloud-web.py"
 python3 "$ROOT_DIR/scripts/patch-arc-task-queue-web.py"
+python3 "$ROOT_DIR/scripts/patch-arc-deflater-web.py"
 python3 "$ROOT_DIR/scripts/patch-browser-gl-buffer-diagnostics.py"
 
 # Arc's desktop unsafe buffers allocate/free native memory through JNI. TeaVM owns
