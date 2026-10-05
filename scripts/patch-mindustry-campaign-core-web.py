@@ -63,8 +63,7 @@ old_post = '''        if(!state.gameOver){
 
         PerfCounter.stateUpdate.end(PerfCounter.entityUpdate.latestValueNs());
 '''
-new_post = '''        webPhase = 8;
-        if(state.isCampaign()){
+new_post = '''        if(state.isCampaign()){
             if(state.rules.sector == null){
                 throw new IllegalStateException("Campaign Web state check lost its active sector");
             }
