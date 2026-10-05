@@ -1414,19 +1414,29 @@ public final class BrowserCampaignResearch{
     }
 
     private static boolean objectivesComplete(TechNode node){
-        return !node.objectives.contains(objective -> {
-            if(objective == null) return true;
+        if(node == null || node.objectives == null) return false;
 
-            // SectorComplete is common in the late campaign tree. Use the same capture
-            // predicate as this browser bridge instead of repeatedly dereferencing
-            // preset.sector through the generic Objective dispatch; sequential Web
-            // campaign smoke has already proven that sector via its live save.
+        // TeaVM hit a null dispatch in Seq.contains(predicate) on Malign's mixed
+        // SectorComplete + implicit Research objective list. Walk the compact Seq by
+        // index and evaluate the stock objective types directly instead.
+        for(int i = 0; i < node.objectives.size; i++){
+            var objective = node.objectives.get(i);
+            if(logic != null) logic.webPhase = 240 + i;
+            if(objective == null) return false;
+
             if(objective instanceof Objectives.SectorComplete complete){
-                return complete.preset == null || !captured(complete.preset);
+                if(complete.preset == null || !captured(complete.preset)) return false;
+            }else if(objective instanceof Objectives.Research research){
+                if(research.content == null || !research.content.unlockedHost()) return false;
+            }else if(objective instanceof Objectives.Produce produce){
+                if(produce.content == null || !produce.content.unlockedHost()) return false;
+            }else if(objective instanceof Objectives.OnSector onSector){
+                if(onSector.preset == null || onSector.preset.sector == null || !onSector.preset.sector.hasBase()) return false;
+            }else if(!objective.complete()){
+                return false;
             }
-
-            return !objective.complete();
-        });
+        }
+        return true;
     }
 
     private static boolean captured(SectorPreset preset){
