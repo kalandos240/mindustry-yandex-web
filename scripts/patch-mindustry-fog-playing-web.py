@@ -51,7 +51,6 @@ old_tick = '''        state.teams.updateTeamStats();
         state.enemies = state.teams.webWaveEnemies;
         // Web never installs the desktop/network MapPreviewLoader reflection callbacks;
         // do not retain or poll that no-op preview bridge in the gameplay hot path.
-
         Time.update();
 '''
 new_tick = '''        state.teams.updateTeamStats();
