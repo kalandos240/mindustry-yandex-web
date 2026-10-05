@@ -136,16 +136,13 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     private static String describe(Throwable error){
-        // Keep only the primary failure plus compact Logic/build markers. Retaining the
-        // full causal-chain walker pulls extra Throwable/StringBuilder machinery into the
-        // production TeaVM graph and pushes the complete campaign bundle over its 24 MB
-        // performance gate. The lp/b/bp markers are sufficient to isolate current Web
-        // campaign failures, including Basin world-processor subphases.
-        String out = error.getClass().getName() + ":" + String.valueOf(error.getMessage())
+        // Basin is already localized to a world-processor LogicBlock. Keep only the
+        // primary message plus the lean Logic and LogicBlock subphase breadcrumbs; the
+        // temporary generic per-building name trace is intentionally gone from the
+        // production hot path and TeaVM graph.
+        String out = String.valueOf(error.getMessage())
             + " [lp=" + (Vars.logic == null ? -1 : Vars.logic.webPhase) + "]";
-        if(Vars.logic != null && Vars.logic.webBuildName != null){
-            out += " [b=" + Vars.logic.webBuildName + "] [bp=" + Vars.logic.webBuildPhase + "]";
-        }
+        if(Vars.logic != null) out += " [bp=" + Vars.logic.webBuildPhase + "]";
         return out;
     }
 
