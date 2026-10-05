@@ -1216,31 +1216,40 @@ public final class BrowserCampaignRuntime{
             // any remaining attack cores through the same stock attack victory predicate.
             if(logic != null && current.preset == SectorPresets.basin) logic.webPhase = 109;
             if(captureSmoke && current.preset == SectorPresets.basin
-            && captureSmokeStaged && !captureSmokeComplete
-            && state.rules.objectiveFlags.contains("nukeannounce")
-            && state.rules.objectiveFlags.contains("nuke1")
-            && state.rules.waveTeam.cores().size > 0){
-                if(logic != null) logic.webPhase = 110;
-                int enemyCores = state.rules.waveTeam.cores().size;
+            && captureSmokeStaged && !captureSmokeComplete){
+                var flags = state.rules.objectiveFlags;
+                if(flags == null) throw new IllegalStateException("e:basin-flags-null");
+                if(logic != null) logic.webPhase = 115;
 
-                // Basin's two pinned nuclear targets were validated against the real map
-                // and their objective scripts completed above. Physical smoke-only core
-                // teardown in this same frame trips Basin-specific proximity handling; that
-                // is an artificial CI sequencing edge, not the production objective path.
-                //
-                // Do not call Teams.unregisterCore() repeatedly here: removing the final
-                // synthetic smoke core can enter Teams.updateEnemies() while Basin's live
-                // building graph is intentionally still intact, which produced the
-                // post-objective browser NPE. Stage the same "no live enemy core" predicate
-                // atomically; the next real Logic tick still owns attack victory/capture.
-                if(logic != null) logic.webPhase = 111;
-                var waveData = state.teams.get(state.rules.waveTeam);
-                if(logic != null) logic.webPhase = 112;
-                waveData.cores.clear();
-                waveData.lastCore = null;
-                if(logic != null) logic.webPhase = 113;
-                markBasinAttackStage(enemyCores);
-                if(logic != null) logic.webPhase = 114;
+                if(flags.contains("nukeannounce") && flags.contains("nuke1")){
+                    var waveTeam = state.rules.waveTeam;
+                    if(waveTeam == null) throw new IllegalStateException("e:basin-wave-team-null");
+                    if(state.teams == null) throw new IllegalStateException("e:basin-teams-null");
+                    if(logic != null) logic.webPhase = 116;
+
+                    var waveData = state.teams.get(waveTeam);
+                    if(waveData == null) throw new IllegalStateException("e:basin-wave-data-null");
+                    if(logic != null) logic.webPhase = 117;
+
+                    int enemyCores = waveData.cores.size;
+                    if(enemyCores > 0){
+                        // Basin's two pinned nuclear targets were validated against the real
+                        // map and their objective scripts completed above. Physical smoke-only
+                        // core teardown in this same frame trips Basin-specific proximity
+                        // handling; that is an artificial CI sequencing edge, not the
+                        // production objective path.
+                        //
+                        // Stage the same "no live enemy core" predicate atomically. Avoid the
+                        // Team.cores()/unregisterCore indirection here: this is a CI-only
+                        // transition and the next real Logic tick still owns attack
+                        // victory/sectorCapture().
+                        waveData.cores.clear();
+                        waveData.lastCore = null;
+                        if(logic != null) logic.webPhase = 118;
+                        markBasinAttackStage(enemyCores);
+                        if(logic != null) logic.webPhase = 119;
+                    }
+                }
             }
 
             if(captureSmoke && current.preset == SectorPresets.marsh
