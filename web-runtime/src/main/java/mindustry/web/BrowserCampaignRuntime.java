@@ -1217,38 +1217,37 @@ public final class BrowserCampaignRuntime{
             if(logic != null && current.preset == SectorPresets.basin) logic.webPhase = 109;
             if(captureSmoke && current.preset == SectorPresets.basin
             && captureSmokeStaged && !captureSmokeComplete){
-                var flags = state.rules.objectiveFlags;
-                if(flags == null) throw new IllegalStateException("e:basin-flags-null");
-                if(logic != null) logic.webPhase = 115;
+                // stageBasinObjectivesForCapture() already validated nukeannounce+nuke1
+                // immediately before arming captureSmokeStaged. Do not read the objective
+                // flag ObjectSet again after the real objective update: Basin's completion
+                // scripts mutate that collection during the same tick, and TeaVM's
+                // post-update contains() path produced the browser NPE seen in CI.
+                var waveTeam = state.rules.waveTeam;
+                if(waveTeam == null) throw new IllegalStateException("e:basin-wave-team-null");
+                if(state.teams == null) throw new IllegalStateException("e:basin-teams-null");
+                if(logic != null) logic.webPhase = 116;
 
-                if(flags.contains("nukeannounce") && flags.contains("nuke1")){
-                    var waveTeam = state.rules.waveTeam;
-                    if(waveTeam == null) throw new IllegalStateException("e:basin-wave-team-null");
-                    if(state.teams == null) throw new IllegalStateException("e:basin-teams-null");
-                    if(logic != null) logic.webPhase = 116;
+                var waveData = state.teams.get(waveTeam);
+                if(waveData == null) throw new IllegalStateException("e:basin-wave-data-null");
+                if(logic != null) logic.webPhase = 117;
 
-                    var waveData = state.teams.get(waveTeam);
-                    if(waveData == null) throw new IllegalStateException("e:basin-wave-data-null");
-                    if(logic != null) logic.webPhase = 117;
-
-                    int enemyCores = waveData.cores.size;
-                    if(enemyCores > 0){
-                        // Basin's two pinned nuclear targets were validated against the real
-                        // map and their objective scripts completed above. Physical smoke-only
-                        // core teardown in this same frame trips Basin-specific proximity
-                        // handling; that is an artificial CI sequencing edge, not the
-                        // production objective path.
-                        //
-                        // Stage the same "no live enemy core" predicate atomically. Avoid the
-                        // Team.cores()/unregisterCore indirection here: this is a CI-only
-                        // transition and the next real Logic tick still owns attack
-                        // victory/sectorCapture().
-                        waveData.cores.clear();
-                        waveData.lastCore = null;
-                        if(logic != null) logic.webPhase = 118;
-                        markBasinAttackStage(enemyCores);
-                        if(logic != null) logic.webPhase = 119;
-                    }
+                int enemyCores = waveData.cores.size;
+                if(enemyCores > 0){
+                    // Basin's two pinned nuclear targets were validated against the real
+                    // map and their objective scripts completed above. Physical smoke-only
+                    // core teardown in this same frame trips Basin-specific proximity
+                    // handling; that is an artificial CI sequencing edge, not the
+                    // production objective path.
+                    //
+                    // Stage the same "no live enemy core" predicate atomically. Avoid the
+                    // Team.cores()/unregisterCore indirection here: this is a CI-only
+                    // transition and the next real Logic tick still owns attack
+                    // victory/sectorCapture().
+                    waveData.cores.clear();
+                    waveData.lastCore = null;
+                    if(logic != null) logic.webPhase = 118;
+                    markBasinAttackStage(enemyCores);
+                    if(logic != null) logic.webPhase = 119;
                 }
             }
 
