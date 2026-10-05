@@ -149,6 +149,7 @@ public final class BrowserApplication extends WebApplicationBase{
         out.append(" [lp=").append(Vars.logic == null ? -1 : Vars.logic.webPhase).append(']');
         if(Vars.logic != null && Vars.logic.webBuildName != null){
             out.append(" [b=").append(Vars.logic.webBuildName).append(']');
+            out.append(" [bp=").append(Vars.logic.webBuildPhase).append(']');
         }
         return out.toString();
     }
