@@ -850,6 +850,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("Pinned Aegis tungsten objective changed");
         }
         state.stats.coreItemCount.put(Items.tungsten, 100);
+        if(!Items.tungsten.unlocked()) Items.tungsten.unlock();
         if(!objective.update()) throw new IllegalStateException("Aegis tungsten objective did not become true");
         objective.done();
         if(!state.rules.objectiveFlags.contains("beginBuild")){
