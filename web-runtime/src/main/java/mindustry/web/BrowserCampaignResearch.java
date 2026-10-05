@@ -1278,8 +1278,11 @@ public final class BrowserCampaignResearch{
 
     private static void stageAndSpend(Sector source, UnlockableContent content){
         if(content.unlocked()) return;
+        if(logic != null) logic.webPhase = 201;
         stageMissing(source, content);
+        if(logic != null) logic.webPhase = 202;
         spend(content);
+        if(logic != null) logic.webPhase = 203;
         if(!content.unlocked()){
             throw new IllegalStateException("r:u:" + content.name);
         }
@@ -1304,13 +1307,20 @@ public final class BrowserCampaignResearch{
                 int staged = 0;
 
                 if(source != null && source.planet == planet && source.hasBase() && !source.isFrozen()){
-                    staged += stageIntoSector(source, item, missing - staged);
+                    staged = stageIntoSector(source, item, missing);
+                    // Research costs can exceed one sector's storage capacity. Do not
+                    // walk every historical SectorInfo just to fill the remainder in one
+                    // pass: the next loop iteration spends this staged chunk, frees the
+                    // same storage, and can stage the next chunk in the authoritative
+                    // source sector. This keeps late Erekir research deterministic and
+                    // avoids touching sparse/minimal metadata from unrelated saves.
+                    if(staged > 0) continue;
                 }
 
                 for(Sector sector : planet.sectors){
-                    if(staged >= missing) break;
                     if(sector == source || !sector.hasBase() || sector.isFrozen()) continue;
                     staged += stageIntoSector(sector, item, missing - staged);
+                    if(staged > 0) break;
                 }
 
                 if(staged <= 0) throw new IllegalStateException("r:capacity");
