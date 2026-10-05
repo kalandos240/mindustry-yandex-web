@@ -13,7 +13,7 @@ old = '''public class FastDeflaterOutputStream extends DeflaterOutputStream{
     private final byte[] tmp = {0};
 
     public FastDeflaterOutputStream(OutputStream outputStream){
-        super(outputStream);
+        super(outputStream, new java.util.zip.Deflater(), 65536);
     }
 
     @Override
