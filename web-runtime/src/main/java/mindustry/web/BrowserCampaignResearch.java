@@ -1352,14 +1352,18 @@ public final class BrowserCampaignResearch{
     }
 
     private static void spend(UnlockableContent content, boolean activeSectorOnly){
+        if(logic != null) logic.webPhase = 220;
         TechNode node = node(content);
+        if(logic != null) logic.webPhase = 229;
         if(content.unlocked()) return;
         if(node.parent != null && !node.parent.content.unlocked()){
             throw new IllegalStateException("r:p:" + content.name);
         }
+        if(logic != null) logic.webPhase = 230;
         if(!objectivesComplete(node)){
             throw new IllegalStateException("r:o:" + content.name);
         }
+        if(logic != null) logic.webPhase = 231;
 
         boolean complete = true;
         int spent = 0;
