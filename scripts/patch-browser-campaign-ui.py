@@ -1165,10 +1165,15 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.origin)){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOriginResearch();
-                erekirProgress.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
+                if(next == null && BrowserCampaignResearch.waitingForOriginPhaseFabric()){
+                    erekirProgress.setText(mindustry.content.Items.phaseFabric.localizedName + " — " +
+                        Core.bundle.get("produce", "Produce"));
+                }else{
+                    erekirProgress.setText(next == null
+                        ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                        : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                            BrowserCampaignResearch.remaining(next));
+                }
             }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin)){
                 boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.origin);
                 erekirProgress.setText(Core.bundle.get("sector.origin.name", "Origin") + " — " +
