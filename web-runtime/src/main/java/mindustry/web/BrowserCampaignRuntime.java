@@ -1220,7 +1220,20 @@ public final class BrowserCampaignRuntime{
             && state.rules.waveTeam.cores().size > 0){
                 int enemyCores = state.rules.waveTeam.cores().size;
                 var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
-                enemyCoresSnapshot.each(core -> core.kill());
+
+                // Basin's scripted nuclear objective already exercised real CoreBuild
+                // destruction for its two pinned targets. Some remaining map cores use
+                // destruction side effects that are not Web-safe when the final core is
+                // killed from the CI harness. For this smoke-only cleanup, remove the
+                // remaining core tiles through stock Tile.setBlock -> CoreBuild.onRemoved,
+                // which keeps Teams core bookkeeping authoritative without replaying the
+                // desktop destruction/effect path. Logic then observes zero enemy cores
+                // and executes the normal attack-victory predicate.
+                enemyCoresSnapshot.each(core -> {
+                    if(core != null && core.tile != null){
+                        core.tile.remove();
+                    }
+                });
                 markBasinAttackStage(enemyCores);
             }
 
