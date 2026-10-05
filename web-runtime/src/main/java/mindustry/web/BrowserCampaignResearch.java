@@ -351,25 +351,42 @@ public final class BrowserCampaignResearch{
      * Equivalent to one ResearchDialog spend action: consume every currently available
      * requirement up to the node target, persist partial progress, then unlock when complete.
      */
-    /** CI-only Onset tutorial research: preserve the stock Silicon Arc Furnace parent chain. */
+    /** CI-only Onset tutorial research through the stock Silicon Arc Furnace objective. */
     public static void runOnsetResearchSmoke(Sector source){
         if(source == null || source != SectorPresets.onset.sector){
             throw new IllegalStateException("r:5");
         }
 
+        // Direct tutorial stat staging does not emit normal item-transfer events, so model
+        // the resources that the player has actually acquired before their Research(item)
+        // dependencies are evaluated.
+        produceItem(source, Items.beryllium);
+
         stageAndSpend(source, Blocks.turbineCondenser);
         stageAndSpend(source, Blocks.plasmaBore);
         stageAndSpend(source, Blocks.beamNode);
         stageAndSpend(source, Blocks.duct);
+
+        produceItem(source, Items.graphite);
         stageAndSpend(source, Blocks.cliffCrusher);
         stageAndSpend(source, Blocks.siliconArcFurnace);
+
+        Core.settings.forceSave();
+        markOnsetResearchSmoke();
+    }
+
+    /** Continue the Onset tutorial research after its real silicon-production objective. */
+    public static void runOnsetPostSiliconResearchSmoke(Sector source){
+        if(source == null || source != SectorPresets.onset.sector){
+            throw new IllegalStateException("r:5s");
+        }
+
+        produceItem(source, Items.silicon);
         stageAndSpend(source, Blocks.tankFabricator);
         stageAndSpend(source, UnitTypes.stell);
         stageAndSpend(source, Blocks.breach);
         stageAndSpend(source, Blocks.berylliumWall);
-
         Core.settings.forceSave();
-        markOnsetResearchSmoke();
     }
 
     /** After stock Onset capture, buy the exact TechTree prerequisites for Aegis. */
