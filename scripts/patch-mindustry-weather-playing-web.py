@@ -83,7 +83,6 @@ logic = logic.replace(old_update, new_update, 1)
 # the semantic insertion point and remains unique in the staged Logic implementation.
 old_attrs = '''        state.envAttrs.clear();
         state.envAttrs.add(state.rules.attributes);
-
         updateEntities();
 '''
 new_attrs = '''        state.envAttrs.clear();
