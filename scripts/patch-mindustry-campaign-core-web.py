@@ -30,6 +30,7 @@ new_tick = '''        if(state.rules.fog){
         // Stock campaign tick order: SectorInfo tracks production/attack state first,
         // then Universe advances global campaign state before Time/GlobalVars/entities.
         if(state.isCampaign()){
+            webPhase = 3;
             if(state.rules.sector == null){
                 throw new IllegalStateException("Campaign Web tick lost its active sector");
             }
@@ -46,7 +47,8 @@ text = text.replace(old_tick, new_tick, 1)
 # The lean Web playing core intentionally does not call desktop Logic.checkGameState().
 # Restore only the stock campaign branch here, keeping it local-authoritative so the
 # browser does not retain generated multiplayer Call transport.
-old_post = '''        if(!state.gameOver){
+old_post = '''        webPhase = 9;
+        if(!state.gameOver){
             if(!state.rules.attackMode && state.rules.canGameOver && state.teams.playerCores().size == 0){
                 state.gameOver = true;
                 state.won = false;
@@ -65,7 +67,8 @@ old_post = '''        if(!state.gameOver){
 
         PerfCounter.stateUpdate.end(PerfCounter.entityUpdate.latestValueNs());
 '''
-new_post = '''        if(state.isCampaign()){
+new_post = '''        webPhase = 8;
+        if(state.isCampaign()){
             if(state.rules.sector == null){
                 throw new IllegalStateException("Campaign Web state check lost its active sector");
             }
