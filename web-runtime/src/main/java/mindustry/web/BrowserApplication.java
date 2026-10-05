@@ -147,6 +147,9 @@ public final class BrowserApplication extends WebApplicationBase{
             current = current.getCause();
         }
         out.append(" [lp=").append(Vars.logic == null ? -1 : Vars.logic.webPhase).append(']');
+        if(Vars.logic != null && Vars.logic.webBuildName != null){
+            out.append(" [b=").append(Vars.logic.webBuildName).append(']');
+        }
         return out.toString();
     }
 
