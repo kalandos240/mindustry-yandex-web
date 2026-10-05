@@ -53,6 +53,8 @@ web_methods = '''    /** Lightweight CI/runtime breadcrumb for the lean Web play
     public int webPhase;
     /** Last block entering Groups.build.update(); reference only, no per-frame allocation. */
     public String webBuildName;
+    /** Subphase inside a LogicBlock update when diagnosing privileged map processors. */
+    public int webBuildPhase;
 
     /** Web transition path: exact stock Logic.update semantics while state is menu. */
     public void updateWebMenu(){
@@ -285,6 +287,69 @@ new_group_update = '''    public void update(){
 if entity_group.count(old_group_update) != 1:
     raise SystemExit("EntityGroup Web build trace anchor no longer matches pinned upstream")
 ENTITY_GROUP.write_text(entity_group.replace(old_group_update, new_group_update, 1), encoding="utf-8")
+
+LOGIC_BLOCK = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "world" / "blocks" / "logic" / "LogicBlock.java"
+logic_block = LOGIC_BLOCK.read_text(encoding="utf-8")
+logic_block_replacements = [
+    (
+        '''        public void updateTile(){
+            checkReadCode();
+
+            executor.team = team;
+''',
+        '''        public void updateTile(){
+            if(logic != null) logic.webBuildPhase = 1;
+            checkReadCode();
+
+            if(logic != null) logic.webBuildPhase = 2;
+            executor.team = team;
+''',
+        "logic-build read/team",
+    ),
+    (
+        '''            //check for previously invalid links to add after configuration
+            boolean changed = false, updates = true;
+''',
+        '''            //check for previously invalid links to add after configuration
+            if(logic != null) logic.webBuildPhase = 3;
+            boolean changed = false, updates = true;
+''',
+        "logic-build links",
+    ),
+    (
+        '''            if(changed){
+                updateLinks();
+            }
+
+            if(!privileged){
+''',
+        '''            if(changed){
+                if(logic != null) logic.webBuildPhase = 4;
+                updateLinks();
+            }
+
+            if(logic != null) logic.webBuildPhase = 5;
+            if(!privileged){
+''',
+        "logic-build link refresh",
+    ),
+    (
+        '''                while(accumulator >= 1f){
+                    executor.runOnce();
+''',
+        '''                while(accumulator >= 1f){
+                    if(logic != null) logic.webBuildPhase = 6;
+                    executor.runOnce();
+                    if(logic != null) logic.webBuildPhase = 7;
+''',
+        "logic-build executor",
+    ),
+]
+for old, new, label in logic_block_replacements:
+    if logic_block.count(old) != 1:
+        raise SystemExit(f"LogicBlock Web subphase trace anchor no longer matches pinned upstream ({label})")
+    logic_block = logic_block.replace(old, new, 1)
+LOGIC_BLOCK.write_text(logic_block, encoding="utf-8")
 
 # Stock Logic scans Groups.unit once for state.enemies immediately before Teams scans
 # the same group again for per-team caches. Web folds the exact top-level wave-team
