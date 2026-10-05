@@ -136,22 +136,17 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     private static String describe(Throwable error){
-        StringBuilder out = new StringBuilder();
-        Throwable current = error;
-        int depth = 0;
-        // Keep the causal chain and lean Logic phase, but do not retain Java stack-trace
-        // machinery in the production TeaVM graph just for CI diagnostics.
-        while(current != null && depth++ < 6){
-            if(out.length() > 0) out.append(" <- ");
-            out.append(current.getClass().getName()).append(": ").append(String.valueOf(current.getMessage()));
-            current = current.getCause();
-        }
-        out.append(" [lp=").append(Vars.logic == null ? -1 : Vars.logic.webPhase).append(']');
+        // Keep only the primary failure plus compact Logic/build markers. Retaining the
+        // full causal-chain walker pulls extra Throwable/StringBuilder machinery into the
+        // production TeaVM graph and pushes the complete campaign bundle over its 24 MB
+        // performance gate. The lp/b/bp markers are sufficient to isolate current Web
+        // campaign failures, including Basin world-processor subphases.
+        String out = error.getClass().getName() + ":" + String.valueOf(error.getMessage())
+            + " [lp=" + (Vars.logic == null ? -1 : Vars.logic.webPhase) + "]";
         if(Vars.logic != null && Vars.logic.webBuildName != null){
-            out.append(" [b=").append(Vars.logic.webBuildName).append(']');
-            out.append(" [bp=").append(Vars.logic.webBuildPhase).append(']');
+            out += " [b=" + Vars.logic.webBuildName + "] [bp=" + Vars.logic.webBuildPhase + "]";
         }
-        return out.toString();
+        return out;
     }
 
     private void setPlatformPaused(boolean paused){
