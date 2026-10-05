@@ -1476,11 +1476,12 @@ public final class BrowserCampaignResearch{
             }
         }
 
-        if(!activeSectorOnly || remaining > 0){
+        if(!activeSectorOnly){
+            // Preserve the production bridge's original ordering: consume non-active
+            // campaign bases first, then the currently played sector last.
             for(Sector sector : planet.sectors){
                 if(remaining <= 0) break;
-                if(activeSectorOnly && sector == active) continue;
-                if(!sector.hasBase() || sector.isFrozen()) continue;
+                if(sector == active || !sector.hasBase() || sector.isFrozen()) continue;
 
                 int stored = Math.max(0, sector.items().get(item));
                 if(stored <= 0) continue;
