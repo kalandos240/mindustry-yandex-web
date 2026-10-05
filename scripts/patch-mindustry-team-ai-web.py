@@ -17,7 +17,6 @@ old_guard = '''        for(TeamData data : state.teams.getActive()){
                 throw new IllegalStateException("Web playing core received team AI/fill rules before that milestone is enabled");
             }
         }
-
 '''
 if logic.count(old_guard) != 1:
     raise SystemExit("Logic Web team-AI guard no longer matches staged playing core")
