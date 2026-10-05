@@ -848,15 +848,13 @@ public final class BrowserCampaignRuntime{
         // frame: that mutates TeamData while Basin's proximity/build graph still owns them.
         // Arm a one-shot Logic victory predicate instead; the next real campaign state
         // check still performs the stock local sectorCapture() path and save.
-        int enemyCores = state.rules.waveTeam.cores().size;
-        if(enemyCores <= 0) throw new IllegalStateException("e:basin-enemy-cores");
+        if(!state.rules.attackMode) throw new IllegalStateException("e:basin-mode");
         logic.webCampaignAttackVictory = true;
 
         captureSmokeStaged = true;
         markCaptureStaged(current.preset.name, state.wave, 0);
         markBasinObjectiveStage(blocks.positions.length);
         markBasinObjectiveFlagsReady();
-        markBasinAttackStage(enemyCores);
     }
 
     private static void stageAttackCoresForCapture(String preset){
