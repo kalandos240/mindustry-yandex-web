@@ -885,6 +885,7 @@ public final class BrowserCampaignRuntime{
     }
 
     private static void stageOnsetObjectivesForCapture(){
+        markOnsetObjectiveStage(0);
         if(current == null || current.preset != SectorPresets.onset || state.rules.objectives == null){
             throw new IllegalStateException("Onset objective capture requires active Onset objectives");
         }
@@ -895,62 +896,80 @@ public final class BrowserCampaignRuntime{
         var core = state.rules.defaultTeam.core();
         if(core == null) throw new IllegalStateException("Onset objective smoke requires a player core");
 
+        markOnsetObjectiveStage(1);
         core.items.add(Items.beryllium, 60);
         completeOnsetObjective(0, "ItemObjective", true);
 
+        markOnsetObjectiveStage(2);
         state.stats.placedBlockCount.put(Blocks.turbineCondenser, 1);
         completeOnsetObjective(1, "BuildCountObjective", true);
 
+        markOnsetObjectiveStage(3);
         state.stats.placedBlockCount.put(Blocks.plasmaBore, 1);
         completeOnsetObjective(2, "BuildCountObjective", true);
 
+        markOnsetObjectiveStage(4);
         state.stats.placedBlockCount.put(Blocks.beamNode, 1);
         completeOnsetObjective(3, "BuildCountObjective", true);
 
+        markOnsetObjectiveStage(5);
         state.stats.coreItemCount.put(Items.beryllium, 5);
         completeOnsetObjective(4, "CoreItemObjective", true);
 
+        markOnsetObjectiveStage(6);
         state.stats.coreItemCount.put(Items.beryllium, 200);
         completeOnsetObjective(5, "CoreItemObjective", true);
 
+        markOnsetObjectiveStage(7);
         state.stats.coreItemCount.put(Items.graphite, 100);
         completeOnsetObjective(6, "CoreItemObjective", true);
 
+        markOnsetObjectiveStage(8);
         BrowserCampaignResearch.runOnsetResearchSmoke(current);
         completeOnsetObjective(7, "ResearchObjective", true);
 
+        markOnsetObjectiveStage(9);
         state.stats.coreItemCount.put(Items.silicon, 50);
         completeOnsetObjective(8, "CoreItemObjective", true);
 
+        markOnsetObjectiveStage(10);
         state.stats.placedBlockCount.put(Blocks.tankFabricator, 1);
         completeOnsetObjective(9, "BuildCountObjective", true);
 
+        markOnsetObjectiveStage(11);
         UnitTypes.stell.spawn(state.rules.defaultTeam, core.x, core.y);
         completeOnsetObjective(10, "UnitCountObjective", true);
 
         // The command-mode objective is inherently a user-input gesture. CI completes
         // only this interaction-only node directly, equivalent to the headless shortcut
         // in CommandModeObjective.update(); all surrounding tutorial conditions are real.
+        markOnsetObjectiveStage(12);
         completeOnsetObjective(11, "CommandModeObjective", false);
 
+        markOnsetObjectiveStage(13);
         state.stats.placedBlockCount.put(Blocks.breach, 1);
         completeOnsetObjective(12, "BuildCountObjective", true);
 
+        markOnsetObjectiveStage(14);
         state.rules.objectiveFlags.add("breachAmmo");
         completeOnsetObjective(19, "FlagObjective", true);
 
+        markOnsetObjectiveStage(15);
         state.stats.placedBlockCount.put(Blocks.berylliumWall, 6);
         completeOnsetObjective(13, "BuildCountObjective", true);
 
         // Timers are accelerated in CI; done() still applies their real flags.
+        markOnsetObjectiveStage(16);
         completeOnsetObjective(14, "TimerObjective", false);
         if(!state.rules.objectiveFlags.contains("defStart")){
             throw new IllegalStateException("Onset defense timer did not set defStart");
         }
 
+        markOnsetObjectiveStage(17);
         state.stats.enemyUnitsDestroyed = 2;
         completeOnsetObjective(15, "DestroyUnitsObjective", true);
 
+        markOnsetObjectiveStage(18);
         var target = world.build(288, 198);
         if(target == null || target.team != state.rules.waveTeam || target.block != Blocks.coreBastion){
             throw new IllegalStateException("Pinned Onset tutorial Core Bastion target changed");
@@ -959,15 +978,22 @@ public final class BrowserCampaignRuntime{
         // post-attack tutorial nodes (build core + openMap) have completed.
         completeOnsetObjective(16, "DestroyBlockObjective", false);
 
+        markOnsetObjectiveStage(19);
         state.stats.placedBlockCount.put(Blocks.coreBastion, 1);
         completeOnsetObjective(17, "BuildCountObjective", true);
 
+        markOnsetObjectiveStage(20);
         completeOnsetObjective(18, "TimerObjective", false);
         if(!state.rules.objectiveFlags.contains("openMap")){
             throw new IllegalStateException("Onset final tutorial timer did not set openMap");
         }
 
+        markOnsetObjectiveStage(21);
         markOnsetObjectivesReady(state.rules.objectives.all.size);
+    }
+
+    private static void markOnsetObjectiveStage(int stage){
+        setRuntimeDomAttribute("data-mindustry-erekir-onset-stage", String.valueOf(stage));
     }
 
     private static void completeOnsetObjective(int index, String expectedClass, boolean requireCondition){
