@@ -824,7 +824,14 @@ public final class BrowserCampaignRuntime{
             if(build == null || build.team != state.rules.waveTeam || build.block != Blocks.coreBastion){
                 throw new IllegalStateException("Pinned Basin Core Bastion target is missing at " + pos.x + "," + pos.y);
             }
-            build.kill();
+
+            // CI models the scripted nuclear strike by removing the pinned objective
+            // target locally. Building.kill() also emits BlockDestroyEvent, whose
+            // coreDestroyClear listener schedules a delayed AI timeDestroy() pass; that
+            // delayed desktop cleanup is unrelated to the objective and is not Web-safe.
+            // Tile removal still runs CoreBuild.onRemoved()/Teams.unregisterCore and makes
+            // the real DestroyBlocksObjective condition true without scheduling that pass.
+            build.tile.remove();
         }
 
         if(!blocks.qualified() || !blocks.update()){
