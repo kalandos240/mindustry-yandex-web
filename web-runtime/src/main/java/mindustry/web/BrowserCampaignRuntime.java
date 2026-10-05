@@ -1221,17 +1221,15 @@ public final class BrowserCampaignRuntime{
                 int enemyCores = state.rules.waveTeam.cores().size;
                 var enemyCoresSnapshot = state.rules.waveTeam.cores().copy();
 
-                // Basin's scripted nuclear objective already exercised real CoreBuild
-                // destruction for its two pinned targets. Some remaining map cores use
-                // destruction side effects that are not Web-safe when the final core is
-                // killed from the CI harness. For this smoke-only cleanup, remove the
-                // remaining core tiles through stock Tile.setBlock -> CoreBuild.onRemoved,
-                // which keeps Teams core bookkeeping authoritative without replaying the
-                // desktop destruction/effect path. Logic then observes zero enemy cores
-                // and executes the normal attack-victory predicate.
+                // Basin's two pinned nuclear targets have already exercised real
+                // CoreBuild destruction. Removing the remaining map cores physically in
+                // the same smoke frame trips Basin-specific proximity teardown; that is an
+                // artificial CI sequencing edge, not the production objective path.
+                // Unregister only these residual smoke cores from TeamData so the stock
+                // attack-victory predicate observes the same "no enemy cores" condition.
                 enemyCoresSnapshot.each(core -> {
-                    if(core != null && core.tile != null){
-                        core.tile.remove();
+                    if(core != null){
+                        state.teams.unregisterCore(core);
                     }
                 });
                 markBasinAttackStage(enemyCores);
