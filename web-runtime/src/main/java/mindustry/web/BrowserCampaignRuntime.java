@@ -1214,6 +1214,7 @@ public final class BrowserCampaignRuntime{
             // Basin's two scripted nuclear targets may not be the only enemy cores.
             // Wait for the real objective executor to apply nukeannounce/nuke1, then finish
             // any remaining attack cores through the same stock attack victory predicate.
+            if(logic != null && current.preset == SectorPresets.basin) logic.webPhase = 109;
             if(captureSmoke && current.preset == SectorPresets.basin
             && captureSmokeStaged && !captureSmokeComplete
             && state.rules.objectiveFlags.contains("nukeannounce")
