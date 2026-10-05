@@ -20,6 +20,7 @@ text = text.replace(old_guard, new_guard, 1)
 old_tick = '''        if(state.rules.fog){
             fogControl.update();
         }
+
         Time.update();
 '''
 new_tick = '''        if(state.rules.fog){
