@@ -9,13 +9,17 @@ if not LOGIC.is_file():
 
 text = LOGIC.read_text(encoding="utf-8")
 
-old_guard = '''        if(state.isCampaign() || state.rules.pvp){
-'''
-new_guard = '''        if(state.rules.pvp){
-'''
-if text.count(old_guard) != 1:
-    raise SystemExit("Logic Web campaign guard no longer matches team-AI playing core")
-text = text.replace(old_guard, new_guard, 1)
+method_start = text.index("    public void updateWebPlayingCore(){")
+method_end = text.index("    @Override\n    public void update(){", method_start)
+if method_start < 0 or method_end < 0:
+    raise SystemExit("Logic Web campaign guard patch: updateWebPlayingCore scope not found")
+method = text[method_start:method_end]
+old_guard = "if(state.isCampaign() || state.rules.pvp){"
+new_guard = "if(state.rules.pvp){"
+if method.count(old_guard) != 1:
+    raise SystemExit("Logic Web campaign guard patch: guard token no longer matches staged updateWebPlayingCore")
+method = method.replace(old_guard, new_guard, 1)
+text = text[:method_start] + method + text[method_end:]
 
 old_tick = '''        if(state.rules.fog){
             fogControl.update();
