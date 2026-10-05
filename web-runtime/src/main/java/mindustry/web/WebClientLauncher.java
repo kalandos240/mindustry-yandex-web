@@ -30,21 +30,6 @@ public final class WebClientLauncher extends ClientLauncher{
     private boolean rendererRuntimeLoaded;
     private boolean controlRuntimeLoaded;
 
-    /**
-     * Web owns its frame/module lifecycle in BrowserGameplayRuntime.
-     *
-     * ClientLauncher.update() is the desktop loader/FPS/module loop: it polls the desktop
-     * AssetManager loader, may sleep for fpscap, and eventually calls ApplicationCore's
-     * module loop. None of that is authoritative in this port; Web setup drains every Arc
-     * asset queue explicitly and BrowserGameplayRuntime runs Logic/Control/Renderer/UI in
-     * browser-frame order. Leaving the inherited method reachable can stall the first
-     * playing frame before the Web gameplay listener gets control.
-     */
-    @Override
-    public void update(){
-        // Intentionally empty; BrowserGameplayRuntime is a separate ApplicationListener.
-    }
-
     @Override
     public void setup(){
         platform = this;
