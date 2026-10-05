@@ -1318,29 +1318,24 @@ public final class BrowserCampaignRuntime{
             }
 
             if(captureSmokeStaged && !captureSmokeComplete){
-                if(logic != null) logic.webPhase = 120;
                 // sectorCapture() itself is the authority for this transition: it disables
                 // waves/attack mode and writes the sector save. Do not dereference
                 // Sector.info here; the browser metadata/save path is validated below.
                 if(!state.rules.waves && !state.rules.attackMode){
-                    if(logic != null) logic.webPhase = 121;
                     if(current.save == null || current.save.file == null || !current.save.file.exists()
                     || current.save.file.length() < 128 || !SaveIO.isSaveValid(current.save.file)){
-                        if(logic != null) logic.webPhase = 122;
                         // The stock capture save runs from inside Logic.update(), while
                         // killed cores/objectives may still be settling. Rewrite once from
                         // this post-frame point using the exact same already-reachable
                         // sector-save helper, then validate the completed frame state.
                         if(captureSaveWaitFrames++ == 0){
                             writeCurrentSectorSave();
-                            if(logic != null) logic.webPhase = 123;
                             return;
                         }
                         if(captureSaveWaitFrames < 4) return;
                         throw new IllegalStateException("Capture save invalid");
                     }
                     captureSaveWaitFrames = 0;
-                    if(logic != null) logic.webPhase = 124;
                     SaveMeta captured = current.save.meta == null ? SaveIO.getMeta(current.save.file) : current.save.meta;
                     if(captured == null || captured.rules == null || captured.rules.sector == null || captured.rules.sector.id != current.id || captured.rules.sector.planet != current.planet){
                         throw new IllegalStateException("c:gz-meta");
@@ -1351,9 +1346,7 @@ public final class BrowserCampaignRuntime{
                     // collection again in TeaVM just to repeat the same CI assertion.
 
                     captureSmokeComplete = true;
-                    if(logic != null) logic.webPhase = 125;
                     flushCampaignStorage();
-                    if(logic != null) logic.webPhase = 126;
                     markCaptureComplete(current.preset == null ? "unknown" : current.preset.name,
                         current.id, state.wave, current.save.file.length());
 
