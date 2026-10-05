@@ -70,7 +70,7 @@ public final class BrowserCampaignResearch{
     private static final UnlockableContent[] nextCalderaSequence = {Blocks.heatRedirector};
     private static final UnlockableContent[] nextStrongholdSequence = {Blocks.coreCitadel};
     private static final UnlockableContent[] nextKarstSequence = {Blocks.coreAcropolis};
-    private static final UnlockableContent[] nextOriginSequence = {Blocks.payloadMassDriver, Blocks.constructor, Blocks.diffuse, Blocks.sublimate, Blocks.afflict, Blocks.electricHeater, Blocks.atmosphericConcentrator, Blocks.cyanogenSynthesizer, Blocks.tankAssembler, UnitTypes.vanquish, Blocks.shipAssembler, UnitTypes.quell, UnitTypes.disrupt, Blocks.mechAssembler, UnitTypes.tecta, UnitTypes.collaris, Blocks.disperse, Blocks.scathe, Blocks.malign, Blocks.pyrolysisGenerator, Blocks.fluxReactor, Blocks.neoplasiaReactor, Blocks.basicAssemblerModule};
+    private static final UnlockableContent[] nextOriginSequence = {Blocks.payloadMassDriver, Blocks.constructor, Blocks.diffuse, Blocks.sublimate, Blocks.afflict, Blocks.electricHeater, Blocks.atmosphericConcentrator, Blocks.cyanogenSynthesizer, Blocks.tankAssembler, UnitTypes.vanquish, Blocks.shipAssembler, UnitTypes.quell, UnitTypes.disrupt, Blocks.mechAssembler, UnitTypes.tecta, UnitTypes.collaris, Blocks.disperse, Blocks.scathe, Blocks.carbideCrucible, Blocks.phaseSynthesizer, Blocks.malign, Blocks.pyrolysisGenerator, Blocks.fluxReactor, Blocks.neoplasiaReactor, Blocks.basicAssemblerModule};
 
     private static final UnlockableContent[] nextCraterBeforeCoal = {Blocks.mechanicalDrill};
     private static final UnlockableContent[] nextCraterAfterCoal = {Blocks.combustionGenerator, Blocks.powerNode, Blocks.mender};
@@ -320,7 +320,16 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextOriginResearch(){
-        return firstLocked(nextOriginSequence);
+        UnlockableContent next = firstLocked(nextOriginSequence);
+        // Malign has an implicit Research(phase-fabric) dependency. Karst unlocks the
+        // Phase Synthesizer; after researching it, production UI must wait for the
+        // player to actually craft/discover phase fabric before offering Malign.
+        if(next == Blocks.malign && !locallyUnlocked(Items.phaseFabric)) return null;
+        return next;
+    }
+
+    public static boolean waitingForOriginPhaseFabric(){
+        return locallyUnlocked(Blocks.phaseSynthesizer) && !locallyUnlocked(Items.phaseFabric);
     }
 
     public static boolean canSpend(UnlockableContent content){
@@ -674,6 +683,12 @@ public final class BrowserCampaignResearch{
 
         stageAndSpend(source, Blocks.disperse);
         stageAndSpend(source, Blocks.scathe);
+
+        // Karst is the first sector that exposes the Phase Synthesizer. Model the
+        // stock production prerequisite before Malign's implicit Research(phase-fabric).
+        stageAndSpend(source, Blocks.carbideCrucible);
+        stageAndSpend(source, Blocks.phaseSynthesizer);
+        produceItem(source, Items.phaseFabric);
         stageAndSpend(source, Blocks.malign);
 
         stageAndSpend(source, Blocks.pyrolysisGenerator);
