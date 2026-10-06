@@ -19,6 +19,7 @@
         playerPromise: null,
         cloudPlayer: null,
         cloudReady: false,
+        cloudConflict: false,
         cloudPendingSettings: null,
         cloudUpdatedAt: 0,
         cloudSyncTimer: null,
@@ -95,6 +96,7 @@
     }
 
     async function flushCloudProgress(reason){
+        if(state.cloudConflict) return false;
         if(!state.cloudReady || !state.cloudPlayer || !state.cloudPendingSettings) return true;
         if(state.cloudSyncTimer){
             clearTimeout(state.cloudSyncTimer);
@@ -136,6 +138,10 @@
     }
 
     function settingsChanged(settings){
+        if(state.cloudConflict){
+            mark('data-yandex-cloud-state', 'conflict');
+            return false;
+        }
         if(!state.cloudReady || !validSettingsPayload(settings)) return false;
         state.cloudPendingSettings = settings;
         state.cloudUpdatedAt = Math.max(Date.now(), state.cloudUpdatedAt + 1);
@@ -210,13 +216,22 @@
             return;
         }
 
-        // Existing installs upgrading into cloud sync have no metadata yet. Preserve
-        // their local campaign progress instead of silently replacing it on rollout.
-        if(localSettings && (!remoteSettings || localUpdatedAt === 0 || localUpdatedAt > remoteUpdatedAt)){
+        // A device that has both local and cloud data but no sync timestamp has no
+        // trustworthy ordering (for example: guest play followed by Yandex sign-in).
+        // Never overwrite either side automatically; a later UI can resolve this safely.
+        if(localSettings && remoteSettings && localUpdatedAt === 0){
+            state.cloudConflict = true;
+            state.cloudUpdatedAt = remoteUpdatedAt;
+            mark('data-yandex-cloud-state', 'conflict');
+            return;
+        }
+
+        // First rollout with no cloud copy yet, or a known newer local device.
+        if(localSettings && (!remoteSettings || localUpdatedAt > remoteUpdatedAt)){
             state.cloudPendingSettings = localSettings;
             state.cloudUpdatedAt = Math.max(localUpdatedAt, Date.now());
             writeCloudMeta(state.cloudUpdatedAt);
-            await flushCloudProgress(remoteSettings ? 'initial-local-wins' : 'initial-upload');
+            await flushCloudProgress(remoteSettings ? 'local-newer' : 'initial-upload');
             return;
         }
 
