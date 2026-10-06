@@ -33,7 +33,15 @@ cat > "$SDK_STUB" <<'JS'
     const params = new URLSearchParams(location.search);
     const adSmoke = params.get('mindustryYandexAdSmoke') === '1';
     const menuAdSmoke = params.get('mindustryYandexMenuAdSmoke') === '1';
+    const cloudSmoke = params.get('mindustryYandexCloudSmoke') === '1';
     const testDevice = params.get('mindustryYandexTestDevice') === 'mobile' ? 'mobile' : 'desktop';
+    let cloudData = cloudSmoke ? {
+        mindustrySettingsV1: {
+            version: 1,
+            updatedAt: 123456,
+            settings: 'MWS1|i6:sfxvol2:25'
+        }
+    } : {};
 
     function count(name){
         const value = Number(root.getAttribute(name) || '0') + 1;
@@ -46,7 +54,7 @@ cat > "$SDK_STUB" <<'JS'
     }
 
     function schedulePauseCycle(){
-        if(adSmoke || menuAdSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
+        if(adSmoke || menuAdSmoke || cloudSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
@@ -154,9 +162,27 @@ cat > "$SDK_STUB" <<'JS'
                     }
                 },
                 async getPlayer(){
+                    count('data-yandex-test-player-count');
                     return {
-                        async setData(){},
-                        async getData(){ return {}; },
+                        isAuthorized(){ return cloudSmoke; },
+                        async setData(data, flush){
+                            if(!cloudSmoke) return;
+                            cloudData = Object.assign({}, cloudData, data || {});
+                            root.setAttribute('data-yandex-test-cloud-write', 'yes');
+                            root.setAttribute('data-yandex-test-cloud-flush', String(Boolean(flush)));
+                            const progress = cloudData.mindustrySettingsV1;
+                            if(progress && typeof progress.settings === 'string'){
+                                root.setAttribute('data-yandex-test-cloud-sfx',
+                                    progress.settings.includes('i6:sfxvol2:25') ? '25' : 'other');
+                            }
+                        },
+                        async getData(keys){
+                            if(cloudSmoke) root.setAttribute('data-yandex-test-cloud-read', 'yes');
+                            if(!keys) return cloudData;
+                            const out = {};
+                            keys.forEach(key => { if(Object.prototype.hasOwnProperty.call(cloudData, key)) out[key] = cloudData[key]; });
+                            return out;
+                        },
                         async setStats(){},
                         async getStats(){ return {}; }
                     };
@@ -183,6 +209,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --timeout 35 \
   --require 'data-yandex-test-init="yes"' \
   --require 'data-yandex-sdk="ready"' \
+  --require 'data-yandex-cloud-state="guest"' \
+  --require 'data-yandex-cloud-auth="guest"' \
   --require 'data-yandex-locale="ru"' \
   --require 'data-yandex-test-device-info="yes"' \
   --require 'data-yandex-device-type="desktop"' \
@@ -230,6 +258,24 @@ grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$DOM"
 echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + input reset + BrowserAudio + gameplay transport PASS'
+
+rm -rf /tmp/mindustry-yandex-cloud-profile
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudSmoke=1" \
+  --profile /tmp/mindustry-yandex-cloud-profile \
+  --port 9270 \
+  --timeout 55 \
+  --require 'data-yandex-sdk="ready"' \
+  --require 'data-yandex-cloud-auth="authorized"' \
+  --require 'data-yandex-test-cloud-read="yes"' \
+  --require 'data-yandex-test-cloud-write="yes"' \
+  --require 'data-yandex-test-cloud-flush="true"' \
+  --require 'data-yandex-test-cloud-sfx="25"' \
+  --require 'data-yandex-cloud-state="synced"' \
+  --require 'data-yandex-cloud-sync-reason="debounced"' \
+  --require 'data-mindustry-settings-ui="ready"' \
+  --require 'data-mindustry-web="ready"' > /tmp/mindustry-yandex-cloud-dom.html
+echo 'Yandex cloud progress: authorized cold restore -> BrowserSettings load -> debounced flushed write PASS'
 
 run_ad_lifecycle(){
   local device="$1"
