@@ -228,6 +228,90 @@
                 }
             }
 
+            globalThis.__mindustryInstallSettings = (action, sfxInitial, musicInitial, effectsInitial, qualityInitial) => {
+                if(globalThis.__mindustrySettingsInstalled) return;
+                globalThis.__mindustrySettingsInstalled = true;
+
+                const ru = root.getAttribute('data-mindustry-locale') === 'ru' || root.lang === 'ru';
+                const word = ru ? {
+                    settings:'Настройки', sfx:'Звуки', music:'Музыка', effects:'Эффекты',
+                    graphics:'Графика', on:'Вкл', off:'Выкл', quality:'Качество',
+                    performance:'Производительность', back:'Назад'
+                } : {
+                    settings:'Settings', sfx:'SFX', music:'Music', effects:'Effects',
+                    graphics:'Graphics', on:'On', off:'Off', quality:'Quality',
+                    performance:'Performance', back:'Back'
+                };
+
+                const launch = document.createElement('button');
+                const panel = document.createElement('div');
+                const title = document.createElement('div');
+                const sfx = document.createElement('button');
+                const music = document.createElement('button');
+                const effects = document.createElement('button');
+                const graphics = document.createElement('button');
+                const back = document.createElement('button');
+                const controls = [sfx, music, effects, graphics, back];
+
+                launch.textContent = word.settings;
+                title.textContent = word.settings;
+                back.textContent = word.back;
+                launch.style.cssText = 'position:fixed;right:12px;top:12px;z-index:50;min-width:124px;height:44px;font:16px sans-serif;';
+                panel.style.cssText = 'position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:#111d;color:white;font:18px sans-serif;';
+                title.style.cssText = 'font-size:24px;margin-bottom:8px;';
+                for(const button of controls){
+                    button.style.cssText = 'min-width:260px;min-height:48px;font:17px sans-serif;';
+                    panel.appendChild(button);
+                }
+                panel.insertBefore(title, sfx);
+                document.body.appendChild(launch);
+                document.body.appendChild(panel);
+
+                let sfxState = sfxInitial, musicState = musicInitial;
+                let effectsState = effectsInitial, qualityState = qualityInitial;
+                const renderSettings = () => {
+                    sfx.textContent = word.sfx + ' — ' + sfxState + '%';
+                    music.textContent = word.music + ' — ' + musicState + '%';
+                    effects.textContent = word.effects + ' — ' + (effectsState ? word.on : word.off);
+                    graphics.textContent = word.graphics + ' — ' + (qualityState ? word.quality : word.performance);
+                };
+                const nextVolume = value => value >= 100 ? 0 : Math.min(100, (Math.floor(Math.max(0, value) / 25) + 1) * 25);
+                sfx.onclick = () => { sfxState = nextVolume(sfxState); action(1, sfxState); renderSettings(); };
+                music.onclick = () => { musicState = nextVolume(musicState); action(2, musicState); renderSettings(); };
+                effects.onclick = () => { effectsState = !effectsState; action(3, effectsState ? 1 : 0); renderSettings(); };
+                graphics.onclick = () => { qualityState = !qualityState; action(4, qualityState ? 1 : 0); renderSettings(); };
+
+                const syncMenu = () => {
+                    const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
+                    const menu = loop.indexOf('menu') >= 0;
+                    if(!menu && panel.style.display !== 'none'){
+                        panel.style.display = 'none';
+                        root.setAttribute('data-mindustry-settings-panel','closed');
+                    }
+                    launch.style.display = menu && panel.style.display === 'none' ? '' : 'none';
+                };
+
+                launch.onclick = () => {
+                    renderSettings();
+                    panel.style.display = 'flex';
+                    launch.style.display = 'none';
+                    root.setAttribute('data-mindustry-settings-panel','open');
+                };
+                back.onclick = () => {
+                    panel.style.display = 'none';
+                    root.setAttribute('data-mindustry-settings-panel','closed');
+                    syncMenu();
+                };
+
+                new MutationObserver(syncMenu).observe(root, {
+                    attributes:true,
+                    attributeFilter:['data-mindustry-gameplay-loop']
+                });
+                root.setAttribute('data-mindustry-settings-ui','ready');
+                root.setAttribute('data-mindustry-settings-panel','closed');
+                syncMenu();
+            };
+
             main();
         })().catch(error => {
             const root = document.documentElement;

@@ -287,6 +287,8 @@ jobs:
             --require 'data-mindustry-renderer-init="ready"' \
             --require 'data-mindustry-control="ready"' \
             --require 'data-mindustry-gameplay-runtime="ready"' \
+            --require 'data-mindustry-settings-ui="ready"' \
+            --require 'data-mindustry-settings-panel="closed"' \
             --require 'data-mindustry-game-state-tick-smoke="ready"' \
             --require 'data-mindustry-network="local-only"' > /tmp/mindustry-web-dom.html
           cat /tmp/mindustry-web-dom.html
@@ -344,6 +346,8 @@ jobs:
             --require 'data-mindustry-renderer-init="ready"' \
             --require 'data-mindustry-control="ready"' \
             --require 'data-mindustry-gameplay-runtime="ready"' \
+            --require 'data-mindustry-settings-ui="ready"' \
+            --require 'data-mindustry-settings-panel="closed"' \
             --require 'data-mindustry-game-state-tick-smoke="ready"' \
             --require 'data-mindustry-network="local-only"' > /tmp/mindustry-web-mobile-dom.html
           grep -q 'data-mindustry-input="ready"' /tmp/mindustry-web-mobile-dom.html

@@ -31,7 +31,6 @@ old_tick = '''        state.teams.updateTeamStats();
         // Web never installs the desktop/network MapPreviewLoader reflection callbacks;
         // do not retain or poll that no-op preview bridge in the gameplay hot path.
 
-        webPhase = 4;
         Time.update();
 '''
 new_tick = '''        state.teams.updateTeamStats();
@@ -47,7 +46,6 @@ new_tick = '''        state.teams.updateTeamStats();
             fogControl.update();
         }
 
-        webPhase = 4;
         Time.update();
 '''
 if logic.count(old_tick) != 1:

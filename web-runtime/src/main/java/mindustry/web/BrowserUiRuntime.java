@@ -7,7 +7,7 @@ import arc.scene.ui.layout.*;
 import mindustry.core.*;
 import mindustry.input.*;
 import mindustry.maps.Map;
-import org.teavm.jso.JSBody;
+import org.teavm.jso.*;
 
 import static mindustry.Vars.*;
 
@@ -24,8 +24,14 @@ import static mindustry.Vars.*;
  * The small Back control is likewise local and returns directly to the stable map menu.
  */
 public final class BrowserUiRuntime{
+    @JSFunctor
+    private interface SettingsAction extends JSObject{
+        void run(int setting, int value);
+    }
+
     private static boolean initialized;
     private static TextButton localContinueButton;
+    private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
 
@@ -74,6 +80,11 @@ public final class BrowserUiRuntime{
         }
 
         buildLocalMapMenu();
+        installSettingsUi(settingsAction,
+            Core.settings.getInt("sfxvol", 100),
+            Core.settings.getInt("musicvol", 100),
+            Core.settings.getBool("effects", true),
+            qualityVisuals());
         buildLocalHudControls();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
@@ -111,6 +122,27 @@ public final class BrowserUiRuntime{
         pane.setScrollingDisabled(true, false);
         root.add(pane).width(mobile ? 320f : 380f).height(mobile ? 430f : 500f);
         ui.menuGroup.addChild(root);
+    }
+
+    private static void applySettingAction(int setting, int value){
+        switch(setting){
+            case 1 -> Core.settings.put("sfxvol", value);
+            case 2 -> Core.settings.put("musicvol", value);
+            case 3 -> Core.settings.put("effects", value != 0);
+            case 4 -> {
+                boolean enabled = value != 0;
+                Core.settings.put("animatedwater", enabled);
+                Core.settings.put("animatedshields", enabled);
+                Core.settings.put("drawlight", enabled);
+            }
+        }
+        Core.settings.forceSave();
+    }
+
+    private static boolean qualityVisuals(){
+        return Core.settings.getBool("animatedwater", !mobile)
+            && Core.settings.getBool("animatedshields", !mobile)
+            && Core.settings.getBool("drawlight", !mobile);
     }
 
     private static void buildLocalHudControls(){
@@ -178,6 +210,9 @@ public final class BrowserUiRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
     private static native void markReady();
+
+    @JSBody(params = {"action", "sfx", "music", "effects", "quality"}, script = "globalThis.__mindustryInstallSettings(action,sfx,music,effects,quality);")
+    private static native void installSettingsUi(SettingsAction action, int sfx, int music, boolean effects, boolean quality);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-menu', 'builtin-selector'); document.documentElement.setAttribute('data-mindustry-local-map-back', 'ready');")
     private static native void markLocalMapUiReady();
