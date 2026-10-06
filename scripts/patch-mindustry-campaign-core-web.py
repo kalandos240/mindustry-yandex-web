@@ -21,7 +21,6 @@ old_tick = '''        if(state.rules.fog){
             fogControl.update();
         }
 
-        webPhase = 4;
         Time.update();
 '''
 new_tick = '''        if(state.rules.fog){
@@ -31,7 +30,6 @@ new_tick = '''        if(state.rules.fog){
         // Stock campaign tick order: SectorInfo tracks production/attack state first,
         // then Universe advances global campaign state before Time/GlobalVars/entities.
         if(state.isCampaign()){
-            webPhase = 3;
             if(state.rules.sector == null){
                 throw new IllegalStateException("Campaign Web tick lost its active sector");
             }
@@ -39,7 +37,6 @@ new_tick = '''        if(state.rules.fog){
             universe.update();
         }
 
-        webPhase = 4;
         Time.update();
 '''
 if text.count(old_tick) != 1:
@@ -68,8 +65,7 @@ old_post = '''        if(!state.gameOver){
 
         PerfCounter.stateUpdate.end(PerfCounter.entityUpdate.latestValueNs());
 '''
-new_post = '''        webPhase = 8;
-        if(state.isCampaign()){
+new_post = '''        if(state.isCampaign()){
             if(state.rules.sector == null){
                 throw new IllegalStateException("Campaign Web state check lost its active sector");
             }
@@ -109,7 +105,6 @@ new_post = '''        webPhase = 8;
             }
         }
 
-        webPhase = 9;
         // Stock checkGameState() uses a campaign branch and a mutually-exclusive
         // non-campaign branch. Do not run ordinary attack/wave Game Over handling after
         // a campaign capture has already mutated attackMode/waves locally.
