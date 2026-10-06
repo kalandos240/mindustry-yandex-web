@@ -228,9 +228,68 @@
                 }
             }
 
-            globalThis.__mindustryInstallSettings = (action, sfxInitial, musicInitial, effectsInitial, qualityInitial) => {
+            globalThis.__mindustryInstallSettings = () => {
                 if(globalThis.__mindustrySettingsInstalled) return;
                 globalThis.__mindustrySettingsInstalled = true;
+
+                const storageKey = 'mindustry.web.settings.v1';
+                const header = 'MWS1|';
+                const parseSettings = () => {
+                    let payload = '';
+                    try{ payload = localStorage.getItem(storageKey) || ''; }catch(_){}
+                    if(!payload.startsWith(header)) return [];
+                    const out = [];
+                    let cursor = header.length;
+                    const part = () => {
+                        const colon = payload.indexOf(':', cursor);
+                        if(colon < 0) throw new Error('Malformed settings field');
+                        const length = Number(payload.slice(cursor, colon));
+                        const begin = colon + 1;
+                        const end = begin + length;
+                        if(!Number.isInteger(length) || length < 0 || end > payload.length) throw new Error('Malformed settings length');
+                        cursor = end;
+                        return payload.slice(begin, end);
+                    };
+                    try{
+                        while(cursor < payload.length){
+                            const type = payload[cursor++];
+                            out.push([type, part(), part()]);
+                        }
+                    }catch(_){
+                        return [];
+                    }
+                    return out;
+                };
+                const encodeSettings = records => header + records.map(record =>
+                    record[0] + record[1].length + ':' + record[1] + record[2].length + ':' + record[2]
+                ).join('');
+                let records = parseSettings();
+                const get = (key, fallback) => {
+                    for(let i = records.length - 1; i >= 0; i--){
+                        if(records[i][1] === key) return records[i][2];
+                    }
+                    return fallback;
+                };
+                const put = (type, key, value) => {
+                    const encoded = String(value);
+                    let found = false;
+                    for(let i = 0; i < records.length; i++){
+                        if(records[i][1] === key){
+                            records[i] = [type, key, encoded];
+                            found = true;
+                            break;
+                        }
+                    }
+                    if(!found) records.push([type, key, encoded]);
+                    try{
+                        localStorage.setItem(storageKey, encodeSettings(records));
+                        return true;
+                    }catch(error){
+                        root.setAttribute('data-mindustry-settings-write', 'error');
+                        console.error(error);
+                        return false;
+                    }
+                };
 
                 const ru = root.getAttribute('data-mindustry-locale') === 'ru' || root.lang === 'ru';
                 const word = ru ? {
@@ -242,6 +301,16 @@
                     graphics:'Graphics', on:'On', off:'Off', quality:'Quality',
                     performance:'Performance', back:'Back'
                 };
+
+                let sfxState = Math.max(0, Math.min(100, Number(get('sfxvol', '100')) || 0));
+                let musicState = Math.max(0, Math.min(100, Number(get('musicvol', '100')) || 0));
+                let effectsState = get('effects', '1') === '1';
+                const visualDefault = touchMobile ? '0' : '1';
+                let qualityState =
+                    get('animatedwater', visualDefault) === '1' &&
+                    get('animatedshields', visualDefault) === '1' &&
+                    get('drawlight', visualDefault) === '1';
+                let dirty = false;
 
                 const launch = document.createElement('button');
                 const panel = document.createElement('div');
@@ -267,8 +336,6 @@
                 document.body.appendChild(launch);
                 document.body.appendChild(panel);
 
-                let sfxState = sfxInitial, musicState = musicInitial;
-                let effectsState = effectsInitial, qualityState = qualityInitial;
                 const renderSettings = () => {
                     sfx.textContent = word.sfx + ' — ' + sfxState + '%';
                     music.textContent = word.music + ' — ' + musicState + '%';
@@ -276,10 +343,30 @@
                     graphics.textContent = word.graphics + ' — ' + (qualityState ? word.quality : word.performance);
                 };
                 const nextVolume = value => value >= 100 ? 0 : Math.min(100, (Math.floor(Math.max(0, value) / 25) + 1) * 25);
-                sfx.onclick = () => { sfxState = nextVolume(sfxState); action(1, sfxState); renderSettings(); };
-                music.onclick = () => { musicState = nextVolume(musicState); action(2, musicState); renderSettings(); };
-                effects.onclick = () => { effectsState = !effectsState; action(3, effectsState ? 1 : 0); renderSettings(); };
-                graphics.onclick = () => { qualityState = !qualityState; action(4, qualityState ? 1 : 0); renderSettings(); };
+                sfx.onclick = () => {
+                    sfxState = nextVolume(sfxState);
+                    dirty = put('i', 'sfxvol', sfxState) || dirty;
+                    renderSettings();
+                };
+                music.onclick = () => {
+                    musicState = nextVolume(musicState);
+                    dirty = put('i', 'musicvol', musicState) || dirty;
+                    renderSettings();
+                };
+                effects.onclick = () => {
+                    effectsState = !effectsState;
+                    dirty = put('b', 'effects', effectsState ? '1' : '0') || dirty;
+                    renderSettings();
+                };
+                graphics.onclick = () => {
+                    qualityState = !qualityState;
+                    const value = qualityState ? '1' : '0';
+                    const water = put('b', 'animatedwater', value);
+                    const shields = put('b', 'animatedshields', value);
+                    const lights = put('b', 'drawlight', value);
+                    dirty = water || shields || lights || dirty;
+                    renderSettings();
+                };
 
                 const syncMenu = () => {
                     const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
@@ -300,7 +387,12 @@
                 back.onclick = () => {
                     panel.style.display = 'none';
                     root.setAttribute('data-mindustry-settings-panel','closed');
-                    syncMenu();
+                    if(dirty){
+                        root.setAttribute('data-mindustry-settings-write','saved-reload');
+                        location.reload();
+                    }else{
+                        syncMenu();
+                    }
                 };
 
                 new MutationObserver(syncMenu).observe(root, {
@@ -309,9 +401,11 @@
                 });
                 root.setAttribute('data-mindustry-settings-ui','ready');
                 root.setAttribute('data-mindustry-settings-panel','closed');
+                root.setAttribute('data-mindustry-settings-storage','localStorage-mws1');
                 syncMenu();
             };
 
+            globalThis.__mindustryInstallSettings();
             main();
         })().catch(error => {
             const root = document.documentElement;
