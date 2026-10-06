@@ -303,6 +303,8 @@ run_ad_lifecycle(){
 run_ad_lifecycle desktop 9266
 run_ad_lifecycle mobile 9267
 
+curl -fsS -X DELETE "http://127.0.0.1:$PORT/__cloud" >/dev/null
+
 run_cloud_roundtrip(){
   local save_profile="/tmp/mindustry-yandex-cloud-save-profile"
   local restore_profile="/tmp/mindustry-yandex-cloud-restore-profile"
