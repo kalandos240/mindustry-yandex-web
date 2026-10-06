@@ -16,8 +16,15 @@
         adWaitingForResume: false,
         adInFlight: false,
         initPromise: null,
-        playerPromise: null
+        playerPromise: null,
+        cloudSyncPromise: null,
+        cloudLastPayload: ''
     };
+
+    const cloudKey = 'mindustryWebCheckpointV1';
+    const settingsKey = 'mindustry.web.settings.v1';
+    const cloudBudgetBytes = 190 * 1024;
+    const cloudFilePattern = /^saves\/(?:web-local-survival|sector-(?:serpulo|erekir)-\d+)\.msav$/;
 
     function mark(name, value){
         root.setAttribute(name, value);
@@ -65,7 +72,9 @@
         // on mobile where game_api_pause may be followed by tab/app suspension.
         const storage = globalThis.__mindustryStorage;
         if(storage && typeof storage.lifecycleFlush === 'function'){
-            storage.lifecycleFlush('yandex-pause');
+            storage.lifecycleFlush('yandex-pause').then(durable => {
+                if(durable) syncCloudCheckpoint('yandex-pause', true);
+            });
         }
 
         dispatch('mindustry:yandex-pause');
@@ -257,11 +266,6 @@
     }
 
     async function showMenuFullscreenAdv(){
-        if(!state.ysdk || !state.ysdk.adv || typeof state.ysdk.adv.showFullscreenAdv !== 'function'){
-            mark('data-yandex-menu-ad-state', 'unavailable');
-            return false;
-        }
-
         // This path is called only after the user's explicit Back action has already
         // saved/reset the Mindustry world. Keep GameplayAPI stopped for the menu instead
         // of restoring the pre-ad gameplay state when game_api_resume arrives.
@@ -273,6 +277,13 @@
             const durable = await storage.lifecycleFlush('before-menu-ad');
             mark('data-yandex-menu-ad-storage', durable ? 'ready' : 'error');
             if(!durable) return false;
+        }
+
+        await syncCloudCheckpoint('menu-transition', true);
+
+        if(!state.ysdk || !state.ysdk.adv || typeof state.ysdk.adv.showFullscreenAdv !== 'function'){
+            mark('data-yandex-menu-ad-state', 'unavailable');
+            return false;
         }
 
         // The durability barrier is asynchronous. If the player already started another
@@ -297,6 +308,215 @@
         return state.playerPromise;
     }
 
+    function withTimeout(promise, milliseconds, label){
+        let timer = 0;
+        return Promise.race([
+            Promise.resolve(promise),
+            new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error(label + ' timed out')), milliseconds);
+            })
+        ]).finally(() => clearTimeout(timer));
+    }
+
+    function settingsValue(payload, wanted){
+        if(typeof payload !== 'string' || !payload.startsWith('MWS1|')) return '';
+        let cursor = 5;
+        const part = () => {
+            const colon = payload.indexOf(':', cursor);
+            if(colon < 0) throw new Error('Malformed browser settings length');
+            const length = Number(payload.slice(cursor, colon));
+            const start = colon + 1;
+            const end = start + length;
+            if(!Number.isInteger(length) || length < 0 || end > payload.length){
+                throw new Error('Malformed browser settings field');
+            }
+            cursor = end;
+            return payload.slice(start, end);
+        };
+        while(cursor < payload.length){
+            cursor++; // value type
+            const key = part();
+            const value = part();
+            if(key === wanted) return value;
+        }
+        return '';
+    }
+
+    function bytesToBase64(bytes){
+        let binary = '';
+        const chunk = 0x4000;
+        for(let offset = 0; offset < bytes.length; offset += chunk){
+            binary += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + chunk)));
+        }
+        return btoa(binary);
+    }
+
+    function base64ToBytes(value){
+        const binary = atob(String(value || ''));
+        const out = new Uint8Array(binary.length);
+        for(let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i) & 0xff;
+        return out;
+    }
+
+    function encodedBytes(value){
+        return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    }
+
+    function buildCloudCheckpoint(){
+        const storage = globalThis.__mindustryStorage;
+        if(!storage) return null;
+
+        let settings = '';
+        try{ settings = localStorage.getItem(settingsKey) || ''; }catch(_ignored){}
+        if(settings && !settings.startsWith('MWS1|')) settings = '';
+
+        let lastSector = '';
+        try{ lastSector = settingsValue(settings, 'last-sector-save'); }catch(_ignored){}
+        const campaignPath = /^sector-(?:serpulo|erekir)-\d+$/.test(lastSector)
+            ? 'saves/' + lastSector + '.msav' : '';
+        const localPath = 'saves/web-local-survival.msav';
+        const files = Object.create(null);
+
+        const add = path => {
+            if(!path || !storage.exists(path)) return;
+            const bytes = storage.get(path);
+            if(bytes && bytes.byteLength >= 128) files[path] = bytesToBase64(bytes);
+        };
+        add(campaignPath);
+        add(localPath);
+
+        const compact = () => ({schema: 1, settings, files});
+        let stable = compact();
+        if(encodedBytes(stable) > cloudBudgetBytes && files[localPath]){
+            delete files[localPath];
+            stable = compact();
+        }
+        if(encodedBytes(stable) > cloudBudgetBytes && campaignPath && files[campaignPath]){
+            delete files[campaignPath];
+            stable = compact();
+        }
+        const bytes = encodedBytes(stable);
+        if(bytes > cloudBudgetBytes){
+            mark('data-yandex-cloud-state', 'too-large');
+            mark('data-yandex-cloud-bytes', String(bytes));
+            return null;
+        }
+
+        const canonical = JSON.stringify(stable);
+        return {
+            canonical,
+            bytes,
+            snapshot: {
+                schema: 1,
+                savedAt: Date.now(),
+                settings,
+                files
+            }
+        };
+    }
+
+    async function syncCloudCheckpoint(reason, flush = true){
+        if(!state.available){
+            mark('data-yandex-cloud-state', 'unavailable');
+            return false;
+        }
+        if(state.cloudSyncPromise) return state.cloudSyncPromise;
+
+        state.cloudSyncPromise = (async () => {
+            const built = buildCloudCheckpoint();
+            if(!built) return false;
+            if(built.canonical === state.cloudLastPayload){
+                mark('data-yandex-cloud-state', 'unchanged');
+                return true;
+            }
+
+            const player = await withTimeout(getPlayer(), 2500, 'Yandex player');
+            if(!player || typeof player.setData !== 'function'){
+                mark('data-yandex-cloud-state', 'player-unavailable');
+                return false;
+            }
+
+            mark('data-yandex-cloud-state', 'saving');
+            await withTimeout(player.setData({[cloudKey]: built.snapshot}, Boolean(flush)), 3500, 'Yandex cloud save');
+            state.cloudLastPayload = built.canonical;
+            mark('data-yandex-cloud-state', 'saved');
+            mark('data-yandex-cloud-reason', String(reason || 'unknown'));
+            mark('data-yandex-cloud-bytes', String(built.bytes));
+            mark('data-yandex-cloud-files', String(Object.keys(built.snapshot.files).length));
+            return true;
+        })().catch(error => {
+            mark('data-yandex-cloud-state', 'error');
+            mark('data-yandex-cloud-error', String(error && error.message ? error.message : error));
+            console.info('Yandex cloud checkpoint save unavailable:', error && error.message ? error.message : error);
+            return false;
+        }).finally(() => {
+            state.cloudSyncPromise = null;
+        });
+
+        return state.cloudSyncPromise;
+    }
+
+    async function restoreCloudCheckpoint(){
+        if(!state.available){
+            mark('data-yandex-cloud-restore', 'unavailable');
+            return false;
+        }
+
+        const storage = globalThis.__mindustryStorage;
+        if(!storage){
+            mark('data-yandex-cloud-restore', 'storage-unavailable');
+            return false;
+        }
+
+        if(storage.paths().some(path => cloudFilePattern.test(path))){
+            mark('data-yandex-cloud-restore', 'skipped-local-present');
+            return false;
+        }
+
+        try{
+            const player = await withTimeout(getPlayer(), 2500, 'Yandex player');
+            if(!player || typeof player.getData !== 'function'){
+                mark('data-yandex-cloud-restore', 'player-unavailable');
+                return false;
+            }
+
+            mark('data-yandex-cloud-restore', 'loading');
+            const data = await withTimeout(player.getData([cloudKey]), 3500, 'Yandex cloud load');
+            const snapshot = data && data[cloudKey];
+            if(!snapshot || snapshot.schema !== 1){
+                mark('data-yandex-cloud-restore', 'empty');
+                return false;
+            }
+
+            if(snapshot.settings){
+                if(typeof snapshot.settings !== 'string' || !snapshot.settings.startsWith('MWS1|')){
+                    throw new Error('Invalid cloud settings payload');
+                }
+                localStorage.setItem(settingsKey, snapshot.settings);
+            }
+
+            let restoredFiles = 0;
+            const files = snapshot.files && typeof snapshot.files === 'object' ? snapshot.files : {};
+            for(const [path, encoded] of Object.entries(files)){
+                if(!cloudFilePattern.test(path)) continue;
+                const bytes = base64ToBytes(encoded);
+                if(bytes.byteLength < 128) continue;
+                storage.put(path, bytes, bytes.byteLength);
+                restoredFiles++;
+            }
+            await storage.flush();
+            mark('data-yandex-cloud-restore', 'ready');
+            mark('data-yandex-cloud-restored-files', String(restoredFiles));
+            mark('data-yandex-cloud-restored-settings', snapshot.settings ? 'yes' : 'no');
+            return true;
+        }catch(error){
+            mark('data-yandex-cloud-restore', 'error');
+            mark('data-yandex-cloud-restore-error', String(error && error.message ? error.message : error));
+            console.info('Yandex cloud checkpoint restore unavailable:', error && error.message ? error.message : error);
+            return false;
+        }
+    }
+
     globalThis.__mindustryYandex = Object.assign(state, {
         init,
         loadingReady,
@@ -304,6 +524,8 @@
         gameplayStop,
         showFullscreenAdv,
         showMenuFullscreenAdv,
-        getPlayer
+        getPlayer,
+        syncCloudCheckpoint,
+        restoreCloudCheckpoint
     });
 })();
