@@ -26,7 +26,7 @@ import static mindustry.Vars.*;
 public final class BrowserUiRuntime{
     @JSFunctor
     private interface SettingsAction extends JSObject{
-        String run(int action);
+        void run(int action);
     }
 
     private static boolean initialized;
@@ -80,7 +80,11 @@ public final class BrowserUiRuntime{
         }
 
         buildLocalMapMenu();
-        installSettingsUi(settingsAction);
+        installSettingsUi(settingsAction,
+            Core.settings.getInt("sfxvol", 100),
+            Core.settings.getInt("musicvol", 100),
+            Core.settings.getBool("effects", true),
+            qualityVisuals());
         buildLocalHudControls();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
@@ -120,7 +124,7 @@ public final class BrowserUiRuntime{
         ui.menuGroup.addChild(root);
     }
 
-    private static String applySettingAction(int action){
+    private static void applySettingAction(int action){
         switch(action){
             case 1 -> Core.settings.put("sfxvol", nextVolume(Core.settings.getInt("sfxvol", 100)));
             case 2 -> Core.settings.put("musicvol", nextVolume(Core.settings.getInt("musicvol", 100)));
@@ -132,11 +136,7 @@ public final class BrowserUiRuntime{
                 Core.settings.put("drawlight", !quality);
             }
         }
-        if(action != 0) Core.settings.forceSave();
-        return Core.settings.getInt("sfxvol", 100) + "," +
-            Core.settings.getInt("musicvol", 100) + "," +
-            (Core.settings.getBool("effects", true) ? "1" : "0") + "," +
-            (qualityVisuals() ? "1" : "0");
+        Core.settings.forceSave();
     }
 
     private static int nextVolume(int value){
@@ -215,8 +215,8 @@ public final class BrowserUiRuntime{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
     private static native void markReady();
 
-    @JSBody(params = {"action"}, script = "globalThis.__mindustryInstallSettings(action);")
-    private static native void installSettingsUi(SettingsAction action);
+    @JSBody(params = {"action", "sfx", "music", "effects", "quality"}, script = "globalThis.__mindustryInstallSettings(action,sfx,music,effects,quality);")
+    private static native void installSettingsUi(SettingsAction action, int sfx, int music, boolean effects, boolean quality);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-menu', 'builtin-selector'); document.documentElement.setAttribute('data-mindustry-local-map-back', 'ready');")
     private static native void markLocalMapUiReady();
