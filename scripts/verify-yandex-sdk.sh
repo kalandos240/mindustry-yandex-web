@@ -33,7 +33,17 @@ cat > "$SDK_STUB" <<'JS'
     const params = new URLSearchParams(location.search);
     const adSmoke = params.get('mindustryYandexAdSmoke') === '1';
     const menuAdSmoke = params.get('mindustryYandexMenuAdSmoke') === '1';
+    const cloudBootSmoke = params.get('mindustryYandexCloudBootSmoke') === '1';
     const testDevice = params.get('mindustryYandexTestDevice') === 'mobile' ? 'mobile' : 'desktop';
+    const playerData = Object.create(null);
+    if(cloudBootSmoke){
+        playerData.mindustryWebCheckpointV1 = {
+            schema: 1,
+            savedAt: 1760000000000,
+            settings: 'MWS1|i8:musicvol2:25',
+            files: {}
+        };
+    }
 
     function count(name){
         const value = Number(root.getAttribute(name) || '0') + 1;
@@ -155,8 +165,35 @@ cat > "$SDK_STUB" <<'JS'
                 },
                 async getPlayer(){
                     return {
-                        async setData(){},
-                        async getData(){ return {}; },
+                        async setData(data, flush){
+                            Object.assign(playerData, data || {});
+                            count('data-yandex-test-cloud-set-count');
+                            root.setAttribute('data-yandex-test-cloud-flush', flush === true ? 'true' : 'false');
+                            const snapshot = data && data.mindustryWebCheckpointV1;
+                            if(snapshot){
+                                const payloadBytes = new TextEncoder().encode(JSON.stringify(snapshot)).byteLength;
+                                root.setAttribute('data-yandex-test-cloud-bytes', String(payloadBytes));
+                                root.setAttribute('data-yandex-test-cloud-under-limit', payloadBytes < 200 * 1024 ? 'yes' : 'no');
+                                root.setAttribute('data-yandex-test-cloud-settings',
+                                    typeof snapshot.settings === 'string' && snapshot.settings.startsWith('MWS1|') ? 'yes' : 'no');
+                                const files = snapshot.files && typeof snapshot.files === 'object' ? snapshot.files : {};
+                                const campaign = files['saves/sector-serpulo-170.msav'];
+                                if(campaign){
+                                    const raw = atob(campaign);
+                                    root.setAttribute('data-yandex-test-cloud-campaign-file', raw.length >= 128 ? 'yes' : 'invalid');
+                                    root.setAttribute('data-yandex-test-cloud-campaign-bytes', String(raw.length));
+                                }
+                            }
+                        },
+                        async getData(keys){
+                            count('data-yandex-test-cloud-get-count');
+                            if(!Array.isArray(keys)) return {...playerData};
+                            const out = {};
+                            for(const key of keys){
+                                if(Object.prototype.hasOwnProperty.call(playerData, key)) out[key] = playerData[key];
+                            }
+                            return out;
+                        },
                         async setStats(){},
                         async getStats(){ return {}; }
                     };
@@ -230,6 +267,24 @@ grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$DOM"
 echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + input reset + BrowserAudio + gameplay transport PASS'
+
+CLOUD_PROFILE="/tmp/mindustry-yandex-cloud-boot-profile"
+CLOUD_DOM="/tmp/mindustry-yandex-cloud-boot-dom.html"
+rm -rf "$CLOUD_PROFILE"
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudBootSmoke=1" \
+  --profile "$CLOUD_PROFILE" \
+  --port 9270 \
+  --timeout 45 \
+  --require 'data-yandex-sdk="ready"' \
+  --require 'data-yandex-cloud-restore="ready"' \
+  --require 'data-yandex-cloud-restored-settings="yes"' \
+  --require 'data-yandex-cloud-restored-files="0"' \
+  --require 'data-yandex-test-cloud-get-count="1"' \
+  --require 'data-mindustry-settings-ui="ready"' \
+  --require 'data-mindustry-settings-music-value="25"' \
+  --require 'data-mindustry-web="ready"' > "$CLOUD_DOM"
+echo 'Yandex cloud boot restore: player.getData -> BrowserSettings before TeaVM -> musicvol=25 PASS'
 
 run_ad_lifecycle(){
   local device="$1"
@@ -312,6 +367,11 @@ run_menu_ad_transition(){
     --require 'data-yandex-test-menu-ad-call="yes"' \
     --require 'data-yandex-test-menu-ad-gameplay-before="stopped"' \
     --require 'data-yandex-menu-ad-storage="ready"' \
+    --require 'data-yandex-test-cloud-set-count="1"' \
+    --require 'data-yandex-test-cloud-flush="true"' \
+    --require 'data-yandex-test-cloud-under-limit="yes"' \
+    --require 'data-yandex-test-cloud-settings="yes"' \
+    --require 'data-yandex-test-cloud-campaign-file="yes"' \
     --require 'data-yandex-menu-ad-state="closed-shown"' \
     --require 'data-yandex-test-ad-pause-sent="yes"' \
     --require 'data-yandex-test-ad-close="yes"' \
@@ -333,7 +393,9 @@ run_menu_ad_transition(){
   fi
   grep -q 'data-yandex-test-gameplay-start-count="1"' "$dom"
   grep -q 'data-yandex-test-gameplay-stop-count="1"' "$dom"
-  echo "Yandex menu interstitial ($device): campaign autosave -> durable storage -> menu-only ad -> no gameplay restart PASS"
+  grep -Eq 'data-yandex-test-cloud-campaign-bytes="[1-9][0-9]{2,}"' "$dom"
+  grep -Eq 'data-yandex-test-cloud-bytes="[1-9][0-9]*"' "$dom"
+  echo "Yandex menu interstitial ($device): campaign autosave -> durable storage -> bounded cloud checkpoint -> menu-only ad -> no gameplay restart PASS"
 }
 
 run_menu_ad_transition desktop 9268
