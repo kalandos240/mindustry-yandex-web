@@ -277,6 +277,33 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-web="ready"' > /tmp/mindustry-yandex-cloud-dom.html
 echo 'Yandex cloud progress: authorized cold restore -> BrowserSettings load -> debounced flushed write PASS'
 
+rm -rf /tmp/mindustry-yandex-cloud-conflict-profile
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en" \
+  --profile /tmp/mindustry-yandex-cloud-conflict-profile \
+  --port 9271 \
+  --timeout 40 \
+  --require 'data-yandex-cloud-state="guest"' \
+  --require 'data-mindustry-settings-ui="ready"' \
+  --require 'data-mindustry-web="ready"' >/tmp/mindustry-yandex-cloud-conflict-guest.html
+
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudSmoke=1" \
+  --profile /tmp/mindustry-yandex-cloud-conflict-profile \
+  --port 9272 \
+  --timeout 45 \
+  --require 'data-yandex-cloud-auth="authorized"' \
+  --require 'data-yandex-test-cloud-read="yes"' \
+  --require 'data-yandex-cloud-state="conflict"' \
+  --require 'data-mindustry-settings-ui="ready"' \
+  --require 'data-mindustry-web="ready"' >/tmp/mindustry-yandex-cloud-conflict.html
+if grep -q 'data-yandex-test-cloud-write="yes"' /tmp/mindustry-yandex-cloud-conflict.html; then
+  echo 'Yandex cloud first-contact conflict incorrectly overwrote remote progress.' >&2
+  grep -o '<html[^>]*>' /tmp/mindustry-yandex-cloud-conflict.html >&2 || true
+  exit 1
+fi
+echo 'Yandex cloud progress: guest-local + preexisting remote first contact remains non-destructive PASS'
+
 run_ad_lifecycle(){
   local device="$1"
   local cdp="$2"
