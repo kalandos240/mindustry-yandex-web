@@ -154,14 +154,7 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     private static String describe(Throwable error){
-        // Basin is already localized to a world-processor LogicBlock. Keep only the
-        // primary message plus the lean Logic and LogicBlock subphase breadcrumbs; the
-        // temporary generic per-building name trace is intentionally gone from the
-        // production hot path and TeaVM graph.
-        String out = String.valueOf(error.getMessage())
-            + " [lp=" + (Vars.logic == null ? -1 : Vars.logic.webPhase) + "]";
-        if(Vars.logic != null) out += " [bp=" + Vars.logic.webBuildPhase + "]";
-        return out;
+        return String.valueOf(error.getMessage());
     }
 
     private void setPlatformPaused(boolean paused){
