@@ -85,6 +85,7 @@ public final class BrowserUiRuntime{
             Core.settings.getInt("musicvol", 100),
             Core.settings.getBool("effects", true),
             qualityVisuals());
+        installLocalModeUi(settingsAction, BrowserLocalMapRuntime.customModeCode());
         buildLocalHudControls();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
@@ -135,6 +136,7 @@ public final class BrowserUiRuntime{
                 Core.settings.put("animatedshields", enabled);
                 Core.settings.put("drawlight", enabled);
             }
+            case 5 -> Core.settings.put("localgamemode", value == 1 ? 1 : 0);
         }
         Core.settings.forceSave();
     }
@@ -222,6 +224,9 @@ public final class BrowserUiRuntime{
 
     @JSBody(params = {"action", "sfx", "music", "effects", "quality"}, script = "globalThis.__mindustryInstallSettings(action,sfx,music,effects,quality);")
     private static native void installSettingsUi(SettingsAction action, int sfx, int music, boolean effects, boolean quality);
+
+    @JSBody(params = {"action", "mode"}, script = "globalThis.__mindustryInstallLocalMode(action,mode);")
+    private static native void installLocalModeUi(SettingsAction action, int mode);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-menu', 'builtin-selector'); document.documentElement.setAttribute('data-mindustry-local-map-back', 'ready');")
     private static native void markLocalMapUiReady();
