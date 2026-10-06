@@ -343,10 +343,17 @@
     }
 
     function bytesToBase64(bytes){
+        // TeaVM exposes Java byte[] as Int8Array, so values >= 0x80 arrive as
+        // negative numbers. String.fromCharCode(-1) becomes U+FFFF, which btoa()
+        // rejects because it only accepts Latin-1 code units. Reinterpret the exact
+        // same backing bytes as unsigned before constructing the binary string.
+        const unsigned = bytes instanceof Uint8Array
+            ? bytes
+            : new Uint8Array(bytes.buffer, bytes.byteOffset || 0, bytes.byteLength);
         let binary = '';
         const chunk = 0x4000;
-        for(let offset = 0; offset < bytes.length; offset += chunk){
-            binary += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + chunk)));
+        for(let offset = 0; offset < unsigned.length; offset += chunk){
+            binary += String.fromCharCode(...unsigned.subarray(offset, Math.min(unsigned.length, offset + chunk)));
         }
         return btoa(binary);
     }
