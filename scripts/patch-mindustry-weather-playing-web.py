@@ -31,16 +31,14 @@ if logic.count(old_create) != 1:
     raise SystemExit("Logic Web weather local-create anchor no longer matches pinned upstream")
 logic = logic.replace(old_create, new_create, 1)
 
-old_update = '''        webPhase = 4;
-        Time.update();
+old_update = '''        Time.update();
         logicVars.update();
 
         if(!state.isEditor()){
             state.rules.objectives.update();
         }
 '''
-new_update = '''        webPhase = 4;
-        Time.update();
+new_update = '''        Time.update();
         logicVars.update();
 
         // Stock Logic.update order: local-authoritative weather scheduling runs after
@@ -64,14 +62,12 @@ logic = logic.replace(old_update, new_update, 1)
 old_attrs = '''        state.envAttrs.clear();
         state.envAttrs.add(state.rules.attributes);
 
-        webPhase = 6;
         updateEntities();
 '''
 new_attrs = '''        state.envAttrs.clear();
         state.envAttrs.add(state.rules.attributes);
         Groups.weather.each(w -> state.envAttrs.add(w.weather.attrs, w.opacity));
 
-        webPhase = 6;
         updateEntities();
 '''
 if logic.count(old_attrs) != 1:
