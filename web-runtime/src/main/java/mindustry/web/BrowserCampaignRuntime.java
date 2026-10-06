@@ -578,7 +578,7 @@ public final class BrowserCampaignRuntime{
         || state.rules.sector != current || state.gameOver || state.rules.pauseDisabled) return;
         pauseUpdateId = state.updateId;
         pausedFrames = 0;
-        state.set(GameState.State.paused);
+        state.set(mindustry.core.GameState.State.paused);
         markPaused(pauseUpdateId);
     }
 
@@ -589,7 +589,7 @@ public final class BrowserCampaignRuntime{
         if(pauseUpdateId != 0L && frozenUpdateId != pauseUpdateId){
             throw new IllegalStateException("c:pause-clock");
         }
-        state.set(GameState.State.playing);
+        state.set(mindustry.core.GameState.State.playing);
         markPauseResumed(frozenUpdateId);
     }
 
