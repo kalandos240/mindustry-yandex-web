@@ -16,8 +16,19 @@
         adWaitingForResume: false,
         adInFlight: false,
         initPromise: null,
-        playerPromise: null
+        playerPromise: null,
+        cloudPlayer: null,
+        cloudReady: false,
+        cloudPendingSettings: null,
+        cloudUpdatedAt: 0,
+        cloudSyncTimer: null,
+        cloudSyncPromise: null
     };
+
+    const settingsStorageKey = 'mindustry.web.settings.v1';
+    const cloudMetaStorageKey = 'mindustry.web.cloud.settings.v1';
+    const cloudDataKey = 'mindustrySettingsV1';
+    const cloudByteLimit = 180 * 1024;
 
     function mark(name, value){
         root.setAttribute(name, value);
@@ -57,6 +68,162 @@
         return '';
     }
 
+    function readCloudMeta(){
+        try{
+            const value = JSON.parse(localStorage.getItem(cloudMetaStorageKey) || '{}');
+            return value && typeof value === 'object' ? value : {};
+        }catch(_ignored){
+            return {};
+        }
+    }
+
+    function writeCloudMeta(updatedAt){
+        try{
+            localStorage.setItem(cloudMetaStorageKey, JSON.stringify({updatedAt}));
+        }catch(_ignored){}
+    }
+
+    function validSettingsPayload(value){
+        return typeof value === 'string' && value.startsWith('MWS1|');
+    }
+
+    function cloudPayloadBytes(settings){
+        const data = JSON.stringify({
+            [cloudDataKey]: {version: 1, updatedAt: state.cloudUpdatedAt, settings}
+        });
+        return new TextEncoder().encode(data).length;
+    }
+
+    async function flushCloudProgress(reason){
+        if(!state.cloudReady || !state.cloudPlayer || !state.cloudPendingSettings) return true;
+        if(state.cloudSyncTimer){
+            clearTimeout(state.cloudSyncTimer);
+            state.cloudSyncTimer = null;
+        }
+
+        if(state.cloudSyncPromise){
+            await state.cloudSyncPromise;
+            if(!state.cloudPendingSettings) return true;
+        }
+
+        const settings = state.cloudPendingSettings;
+        const updatedAt = state.cloudUpdatedAt;
+        const bytes = cloudPayloadBytes(settings);
+        mark('data-yandex-cloud-bytes', String(bytes));
+        if(bytes > cloudByteLimit){
+            mark('data-yandex-cloud-state', 'oversize');
+            return false;
+        }
+
+        state.cloudPendingSettings = null;
+        mark('data-yandex-cloud-state', 'syncing');
+        state.cloudSyncPromise = state.cloudPlayer.setData({
+            [cloudDataKey]: {version: 1, updatedAt, settings}
+        }, true).then(() => {
+            writeCloudMeta(updatedAt);
+            mark('data-yandex-cloud-state', 'synced');
+            mark('data-yandex-cloud-sync-reason', reason || 'scheduled');
+            return true;
+        }).catch(error => {
+            if(!state.cloudPendingSettings) state.cloudPendingSettings = settings;
+            mark('data-yandex-cloud-state', 'error');
+            console.info('Yandex cloud progress sync failed:', error && error.message ? error.message : error);
+            return false;
+        }).finally(() => {
+            state.cloudSyncPromise = null;
+        });
+        return state.cloudSyncPromise;
+    }
+
+    function settingsChanged(settings){
+        if(!state.cloudReady || !validSettingsPayload(settings)) return false;
+        state.cloudPendingSettings = settings;
+        state.cloudUpdatedAt = Math.max(Date.now(), state.cloudUpdatedAt + 1);
+        writeCloudMeta(state.cloudUpdatedAt);
+        mark('data-yandex-cloud-state', 'pending');
+        if(state.cloudSyncTimer) clearTimeout(state.cloudSyncTimer);
+        state.cloudSyncTimer = setTimeout(() => {
+            state.cloudSyncTimer = null;
+            flushCloudProgress('debounced');
+        }, 10000);
+        return true;
+    }
+
+    async function initCloudProgress(){
+        mark('data-yandex-cloud-state', 'loading');
+
+        let player;
+        try{
+            player = await getPlayer();
+        }catch(error){
+            mark('data-yandex-cloud-state', 'player-error');
+            console.info('Yandex Player unavailable for cloud progress:', error && error.message ? error.message : error);
+            return;
+        }
+
+        if(!player || typeof player.isAuthorized !== 'function' || !player.isAuthorized()){
+            mark('data-yandex-cloud-state', 'guest');
+            mark('data-yandex-cloud-auth', 'guest');
+            return;
+        }
+        if(typeof player.getData !== 'function' || typeof player.setData !== 'function'){
+            mark('data-yandex-cloud-state', 'unsupported');
+            return;
+        }
+
+        state.cloudPlayer = player;
+        state.cloudReady = true;
+        mark('data-yandex-cloud-auth', 'authorized');
+
+        const localSettings = localStorage.getItem(settingsStorageKey);
+        const localMeta = readCloudMeta();
+        const localUpdatedAt = Number(localMeta.updatedAt) || 0;
+
+        let remote = null;
+        try{
+            const data = await player.getData([cloudDataKey]);
+            remote = data && data[cloudDataKey];
+        }catch(error){
+            mark('data-yandex-cloud-state', 'read-error');
+            console.info('Yandex cloud progress read failed:', error && error.message ? error.message : error);
+            return;
+        }
+
+        const remoteSettings = remote && validSettingsPayload(remote.settings) ? remote.settings : null;
+        const remoteUpdatedAt = remoteSettings ? Number(remote.updatedAt) || 0 : 0;
+
+        // Fresh browser/device: cloud wins before TeaVM loads Core.settings.
+        if(remoteSettings && !localSettings){
+            localStorage.setItem(settingsStorageKey, remoteSettings);
+            state.cloudUpdatedAt = remoteUpdatedAt;
+            writeCloudMeta(remoteUpdatedAt);
+            mark('data-yandex-cloud-state', 'restored');
+            return;
+        }
+
+        // Once this device has a cloud timestamp, use last-write-wins at startup.
+        if(remoteSettings && localUpdatedAt > 0 && remoteUpdatedAt > localUpdatedAt){
+            localStorage.setItem(settingsStorageKey, remoteSettings);
+            state.cloudUpdatedAt = remoteUpdatedAt;
+            writeCloudMeta(remoteUpdatedAt);
+            mark('data-yandex-cloud-state', 'restored');
+            return;
+        }
+
+        // Existing installs upgrading into cloud sync have no metadata yet. Preserve
+        // their local campaign progress instead of silently replacing it on rollout.
+        if(localSettings && (!remoteSettings || localUpdatedAt === 0 || localUpdatedAt > remoteUpdatedAt)){
+            state.cloudPendingSettings = localSettings;
+            state.cloudUpdatedAt = Math.max(localUpdatedAt, Date.now());
+            writeCloudMeta(state.cloudUpdatedAt);
+            await flushCloudProgress(remoteSettings ? 'initial-local-wins' : 'initial-upload');
+            return;
+        }
+
+        state.cloudUpdatedAt = Math.max(localUpdatedAt, remoteUpdatedAt);
+        mark('data-yandex-cloud-state', remoteSettings ? 'ready' : 'empty');
+    }
+
     function onPlatformPause(){
         state.paused = true;
         mark('data-yandex-game-state', 'paused');
@@ -67,6 +234,7 @@
         if(storage && typeof storage.lifecycleFlush === 'function'){
             storage.lifecycleFlush('yandex-pause');
         }
+        flushCloudProgress('yandex-pause');
 
         dispatch('mindustry:yandex-pause');
     }
@@ -121,6 +289,8 @@
                     ysdk.on('game_api_pause', onPlatformPause);
                     ysdk.on('game_api_resume', onPlatformResume);
                 }
+
+                await initCloudProgress();
 
                 mark('data-yandex-sdk', 'ready');
                 mark('data-yandex-locale', state.locale);
@@ -274,6 +444,7 @@
             mark('data-yandex-menu-ad-storage', durable ? 'ready' : 'error');
             if(!durable) return false;
         }
+        await flushCloudProgress('before-menu-ad');
 
         // The durability barrier is asynchronous. If the player already started another
         // sector/map while it was completing, this is no longer a menu transition and
@@ -304,6 +475,8 @@
         gameplayStop,
         showFullscreenAdv,
         showMenuFullscreenAdv,
-        getPlayer
+        getPlayer,
+        settingsChanged,
+        flushCloudProgress
     });
 })();
