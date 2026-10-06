@@ -26,8 +26,7 @@ import static mindustry.Vars.*;
 public final class BrowserUiRuntime{
     private static boolean initialized, settingsOpen;
     private static TextButton localContinueButton;
-    private static Label sfxValue, musicValue;
-    private static TextButton effectsValue, waterValue, shieldsValue, lightsValue;
+    private static TextButton sfxValue, musicValue, effectsValue, visualsValue;
 
     private BrowserUiRuntime(){}
 
@@ -130,78 +129,89 @@ public final class BrowserUiRuntime{
         overlay.setFillParent(true);
         overlay.touchable = Touchable.enabled;
         overlay.visible(() -> state.isMenu() && settingsOpen);
-        overlay.defaults().pad(4f);
+        overlay.defaults().width(mobile ? 280f : 240f).height(mobile ? 54f : 44f).pad(4f);
 
-        overlay.add(Core.bundle.get("settings", "Settings")).colspan(4).padBottom(8f);
+        overlay.add(Core.bundle.get("settings", "Settings")).padBottom(8f);
         overlay.row();
 
-        sfxValue = addVolumeRow(overlay, Core.bundle.get("setting.sfxvol.name", "SFX Volume"), "sfxvol", 100);
-        musicValue = addVolumeRow(overlay, Core.bundle.get("setting.musicvol.name", "Music Volume"), "musicvol", 100);
+        sfxValue = new TextButton("");
+        sfxValue.clicked(BrowserUiRuntime::cycleSfx);
+        overlay.add(sfxValue);
+        overlay.row();
 
-        effectsValue = addToggleRow(overlay, Core.bundle.get("setting.effects.name", "Effects"), "effects", true);
-        waterValue = addToggleRow(overlay, Core.bundle.get("setting.animatedwater.name", "Animated Water"),
-            "animatedwater", !mobile);
-        shieldsValue = addToggleRow(overlay, Core.bundle.get("setting.animatedshields.name", "Animated Shields"),
-            "animatedshields", !mobile);
-        lightsValue = addToggleRow(overlay, Core.bundle.get("setting.drawlight.name", "Lighting"),
-            "drawlight", !mobile);
+        musicValue = new TextButton("");
+        musicValue.clicked(BrowserUiRuntime::cycleMusic);
+        overlay.add(musicValue);
+        overlay.row();
 
-        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::closeSettings)
-            .colspan(4)
-            .size(mobile ? 220f : 190f, mobile ? 58f : 48f)
-            .padTop(10f);
+        effectsValue = new TextButton("");
+        effectsValue.clicked(BrowserUiRuntime::toggleEffects);
+        overlay.add(effectsValue);
+        overlay.row();
 
+        visualsValue = new TextButton("");
+        visualsValue.clicked(BrowserUiRuntime::toggleVisuals);
+        overlay.add(visualsValue);
+        overlay.row();
+
+        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::closeSettings).padTop(8f);
         ui.menuGroup.addChild(overlay);
+
         refreshSettingsUi();
         markSettingsUi("closed");
     }
 
-    private static Label addVolumeRow(Table table, String label, String key, int fallback){
-        Label value = new Label("");
-        table.add(label).left().growX();
-        table.button("-", () -> adjustVolume(key, fallback, -10, value))
-            .size(mobile ? 58f : 46f, mobile ? 50f : 40f);
-        table.add(value).width(mobile ? 72f : 60f);
-        table.button("+", () -> adjustVolume(key, fallback, 10, value))
-            .size(mobile ? 58f : 46f, mobile ? 50f : 40f);
-        table.row();
-        return value;
+    private static void cycleSfx(){
+        Core.settings.put("sfxvol", nextVolume(Core.settings.getInt("sfxvol", 100)));
+        saveSettings();
     }
 
-    private static TextButton addToggleRow(Table table, String label, String key, boolean fallback){
-        TextButton value = new TextButton("");
-        value.clicked(() -> {
-            Core.settings.put(key, !Core.settings.getBool(key, fallback));
-            Core.settings.forceSave();
-            refreshSettingsUi();
-        });
-        table.add(label).left().growX().colspan(3);
-        table.add(value).width(mobile ? 132f : 112f).height(mobile ? 50f : 40f);
-        table.row();
-        return value;
+    private static void cycleMusic(){
+        Core.settings.put("musicvol", nextVolume(Core.settings.getInt("musicvol", 100)));
+        saveSettings();
     }
 
-    private static void adjustVolume(String key, int fallback, int delta, Label value){
-        int current = Core.settings.getInt(key, fallback);
-        int next = Math.max(0, Math.min(100, current + delta));
-        Core.settings.put(key, next);
+    private static int nextVolume(int value){
+        return value >= 100 ? 0 : Math.min(100, ((Math.max(0, value) / 25) + 1) * 25);
+    }
+
+    private static void toggleEffects(){
+        Core.settings.put("effects", !Core.settings.getBool("effects", true));
+        saveSettings();
+    }
+
+    private static void toggleVisuals(){
+        boolean quality = qualityVisuals();
+        Core.settings.put("animatedwater", !quality);
+        Core.settings.put("animatedshields", !quality);
+        Core.settings.put("drawlight", !quality);
+        saveSettings();
+    }
+
+    private static boolean qualityVisuals(){
+        return Core.settings.getBool("animatedwater", !mobile)
+            && Core.settings.getBool("animatedshields", !mobile)
+            && Core.settings.getBool("drawlight", !mobile);
+    }
+
+    private static void saveSettings(){
         Core.settings.forceSave();
-        value.setText(next + "%");
+        refreshSettingsUi();
     }
 
     private static void refreshSettingsUi(){
-        if(sfxValue != null) sfxValue.setText(Core.settings.getInt("sfxvol", 100) + "%");
-        if(musicValue != null) musicValue.setText(Core.settings.getInt("musicvol", 100) + "%");
-        refreshToggle(effectsValue, "effects", true);
-        refreshToggle(waterValue, "animatedwater", !mobile);
-        refreshToggle(shieldsValue, "animatedshields", !mobile);
-        refreshToggle(lightsValue, "drawlight", !mobile);
+        if(sfxValue != null) sfxValue.setText(Core.bundle.get("setting.sfxvol.name", "SFX Volume") +
+            " — " + Core.settings.getInt("sfxvol", 100) + "%");
+        if(musicValue != null) musicValue.setText(Core.bundle.get("setting.musicvol.name", "Music Volume") +
+            " — " + Core.settings.getInt("musicvol", 100) + "%");
+        if(effectsValue != null) effectsValue.setText(Core.bundle.get("setting.effects.name", "Effects") +
+            " — " + onOff(Core.settings.getBool("effects", true)));
+        if(visualsValue != null) visualsValue.setText(Core.bundle.get("graphics", "Graphics") +
+            " — " + (qualityVisuals() ? Core.bundle.get("high", "Quality") : Core.bundle.get("low", "Performance")));
     }
 
-    private static void refreshToggle(TextButton button, String key, boolean fallback){
-        if(button == null) return;
-        button.setText(Core.bundle.get(Core.settings.getBool(key, fallback) ? "on" : "off",
-            Core.settings.getBool(key, fallback) ? "On" : "Off"));
+    private static String onOff(boolean enabled){
+        return Core.bundle.get(enabled ? "on" : "off", enabled ? "On" : "Off");
     }
 
     private static void openSettings(){
