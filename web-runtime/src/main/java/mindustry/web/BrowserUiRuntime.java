@@ -157,10 +157,34 @@ public final class BrowserUiRuntime{
         controls.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
-        controls.button(Core.bundle.get("pause", "Pause"), BrowserLocalMapRuntime::pause)
+        controls.button(Core.bundle.get("pause", "Pause"), BrowserUiRuntime::pauseActiveSession)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
         ui.hudGroup.addChild(controls);
+    }
+
+    private static void pauseActiveSession(){
+        if(BrowserCampaignRuntime.active()){
+            BrowserCampaignRuntime.pause();
+        }else{
+            BrowserLocalMapRuntime.pause();
+        }
+    }
+
+    private static void resumeActiveSession(){
+        if(BrowserCampaignRuntime.active()){
+            BrowserCampaignRuntime.resume();
+        }else{
+            BrowserLocalMapRuntime.resume();
+        }
+    }
+
+    private static void saveActiveSession(){
+        if(BrowserCampaignRuntime.active()){
+            BrowserCampaignRuntime.saveCurrentSession();
+        }else{
+            BrowserLocalMapRuntime.saveLocalSession();
+        }
     }
 
     private static void returnToMenuWithAd(){
@@ -176,13 +200,14 @@ public final class BrowserUiRuntime{
         Table overlay = new Table();
         overlay.setFillParent(true);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> BrowserLocalMapRuntime.active() && state.isPaused() && !state.gameOver);
+        overlay.visible(() -> (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
+            && state.isPaused() && !state.gameOver);
         overlay.add(Core.bundle.get("pause", "Paused")).padBottom(12f);
         overlay.row();
-        overlay.button(Core.bundle.get("resume", "Resume"), BrowserLocalMapRuntime::resume)
+        overlay.button(Core.bundle.get("resume", "Resume"), BrowserUiRuntime::resumeActiveSession)
             .size(mobile ? 180f : 156f, mobile ? 58f : 48f);
         overlay.row();
-        overlay.button(Core.bundle.get("savegame", "Save Game"), BrowserLocalMapRuntime::saveLocalSession)
+        overlay.button(Core.bundle.get("savegame", "Save Game"), BrowserUiRuntime::saveActiveSession)
             .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
             .padTop(8f);
         overlay.row();
