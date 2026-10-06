@@ -610,6 +610,7 @@ public final class BrowserCampaignRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
         markReturnedToMenu();
+        BrowserYandex.showTransitionAdv();
     }
 
     private static void stageStrongholdObjectives(){
