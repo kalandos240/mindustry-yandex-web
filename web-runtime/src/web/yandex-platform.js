@@ -256,6 +256,14 @@
         return true;
     }
 
+    function showTransitionAdv(){
+        // Returning to the menu is a logical pause, so do not restore GameplayAPI after
+        // the interstitial closes even if BrowserApplication has not sampled menu state yet.
+        if(state.gameplayActive) gameplayStop();
+        mark('data-yandex-ad-placement', 'return-to-menu');
+        return showFullscreenAdv();
+    }
+
     async function getPlayer(){
         if(!state.ysdk || typeof state.ysdk.getPlayer !== 'function') return null;
         if(!state.playerPromise) state.playerPromise = state.ysdk.getPlayer();
@@ -268,6 +276,7 @@
         gameplayStart,
         gameplayStop,
         showFullscreenAdv,
+        showTransitionAdv,
         getPlayer
     });
 })();
