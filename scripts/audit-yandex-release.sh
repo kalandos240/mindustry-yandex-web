@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="$ROOT_DIR/web-runtime/build/web"
 INDEX="$WEB_DIR/index.html"
 PLATFORM="$WEB_DIR/yandex-platform.js"
+CLOUD="$WEB_DIR/browser-cloud.js"
 MANIFEST="$WEB_DIR/assets-manifest.js"
 PLANETS_SOURCE="$ROOT_DIR/work/Mindustry/core/src/mindustry/content/Planets.java"
 SERPULO_DATA="$WEB_DIR/assets/planets/serpulo.json"
@@ -18,6 +19,7 @@ fail(){
 [ -d "$WEB_DIR" ] || fail "staged Web directory is missing"
 [ -s "$INDEX" ] || fail "index.html is not in archive root"
 [ -s "$PLATFORM" ] || fail "yandex-platform.js is missing"
+[ -s "$CLOUD" ] || fail "browser-cloud.js is missing"
 [ -s "$WEB_DIR/mindustry.js" ] || fail "mindustry.js is missing"
 [ -s "$MANIFEST" ] || fail "assets-manifest.js is missing"
 if find "$WEB_DIR" -type f -name '*.map' -print -quit | grep -q .; then
@@ -139,6 +141,9 @@ grep -Fq 'LoadingAPI' "$PLATFORM" || fail "LoadingAPI.ready integration missing"
 grep -Fq 'GameplayAPI' "$PLATFORM" || fail "GameplayAPI integration missing"
 grep -Fq 'showFullscreenAdv' "$PLATFORM" || fail "Yandex fullscreen advertisement integration missing"
 grep -Fq 'getPlayer' "$PLATFORM" || fail "Yandex Player bridge missing"
+grep -Fq 'player.getData' "$CLOUD" || fail "Yandex cloud getData integration missing"
+grep -Fq 'player.setData' "$CLOUD" || fail "Yandex cloud setData integration missing"
+grep -Fq '190 * 1024' "$CLOUD" || fail "Yandex cloud payload safety budget missing"
 
 # Mobile/browser UX requirements: full active area, no page scroll/swipe refresh,
 # no long-tap selection/context menu, touch-first canvas.
