@@ -131,8 +131,8 @@ public final class BrowserGameplayRuntime{
         }
 
         if(state.isPaused()){
-            if(smokeMode || !BrowserLocalMapRuntime.active()){
-                throw new IllegalStateException("Web entered paused state outside a production local-map session");
+            if(smokeMode || (!BrowserLocalMapRuntime.active() && !BrowserCampaignRuntime.active())){
+                throw new IllegalStateException("Web entered paused state outside production single-player");
             }
             BrowserLocalMapRuntime.updatePausedFrame();
             return;
