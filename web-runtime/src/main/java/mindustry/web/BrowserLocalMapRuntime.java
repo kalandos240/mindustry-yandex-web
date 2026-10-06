@@ -179,9 +179,9 @@ public final class BrowserLocalMapRuntime{
         mindustry.entities.Effect.webResetEffectBudget();
 
         Gamemode mode = selectedMode();
-        if(!mode.valid(map)){
-            throw new IllegalStateException("Selected browser custom mode is invalid for map " + slug + ": " + mode.name());
-        }
+        // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
+        // reads Map.spawns, which is still zero before the MSAV body is loaded here.
+        // The packaged-map world load below is the authoritative validation boundary.
         Rules rules = map.applyRules(mode);
         stageCoreRules(rules);
         if(mode == Gamemode.sandbox && (!rules.infiniteResources || !rules.waves || rules.waveTimer)){
