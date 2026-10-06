@@ -1297,7 +1297,7 @@ text = text.replace(old_pane, new_pane, 1)
 old_hud = '''        controls.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
-        controls.button(Core.bundle.get("pause", "Pause"), BrowserLocalMapRuntime::pause)
+        controls.button(Core.bundle.get("pause", "Pause"), BrowserUiRuntime::pauseActiveSession)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
 '''
@@ -1313,9 +1313,8 @@ new_hud = '''        boolean[] campaignBackUiSmoke = {false};
 
         controls.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 148f : 116f, mobile ? 56f : 44f).pad(8f);
-        controls.button(Core.bundle.get("pause", "Pause"), BrowserLocalMapRuntime::pause)
+        controls.button(Core.bundle.get("pause", "Pause"), BrowserUiRuntime::pauseActiveSession)
             .size(mobile ? 148f : 116f, mobile ? 56f : 44f)
-            .disabled(button -> BrowserCampaignRuntime.active())
             .pad(8f);
 '''
 if text.count(old_hud) != 1:
