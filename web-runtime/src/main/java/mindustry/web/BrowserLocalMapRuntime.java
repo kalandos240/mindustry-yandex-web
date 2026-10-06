@@ -218,6 +218,8 @@ public final class BrowserLocalMapRuntime{
         state.map = map;
         state.rules.sector = null;
         state.rules.editor = false;
+        markModeRules(selectedMode.name(), state.rules.waves, state.rules.waveTimer,
+            state.rules.infiniteResources, state.rules.allowEditRules);
 
         current = map;
         frames = 0;
@@ -248,7 +250,7 @@ public final class BrowserLocalMapRuntime{
             // Test-only acceleration for the existing packaged-map smoke. Normal
             // production preserves the selected map's stock survival countdown.
             String testMap = requestedTestMap();
-            if(testMap != null && !testMap.isEmpty()){
+            if(testMap != null && !testMap.isEmpty() && selectedMode == Gamemode.survival){
                 if(!state.rules.waves || state.rules.spawns.isEmpty()){
                     throw new IllegalStateException("Packaged-map smoke requires enabled survival waves and spawn groups");
                 }
@@ -538,6 +540,8 @@ public final class BrowserLocalMapRuntime{
         state.map = builtin;
         state.rules.sector = null;
         state.rules.editor = false;
+        markModeRules(selectedMode.name(), state.rules.waves, state.rules.waveTimer,
+            state.rules.infiniteResources, state.rules.allowEditRules);
 
         if(state.rules.defaultTeam.core() == null){
             throw new IllegalStateException("Browser local save restored no core for default team");
@@ -717,6 +721,14 @@ public final class BrowserLocalMapRuntime{
         String requested = requestedTestMap();
         if(requested == null || requested.isEmpty()) return;
 
+        if(sandboxSmokeRequested()){
+            selectedMode = Gamemode.sandbox;
+            Core.settings.put("localsandbox", true);
+            Core.settings.forceSave();
+            markMode(selectedMode.name());
+            BrowserUiRuntime.syncLocalModeUi();
+        }
+
         Map map = bySlug(requested);
         if(map == null){
             throw new IllegalArgumentException("Unknown mindustryMapSmoke built-in map: " + requested);
@@ -854,11 +866,17 @@ public final class BrowserLocalMapRuntime{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPerfSmoke') === '1';")
     private static native boolean perfSmokeRequested();
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustrySandboxSmoke') === '1';")
+    private static native boolean sandboxSmokeRequested();
+
     @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-map-catalog', 'ready'); document.documentElement.setAttribute('data-mindustry-map-count', String(count)); document.documentElement.setAttribute('data-mindustry-map-source', 'pinned-builtin-local-only');")
     private static native void markCatalogReady(int count);
 
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-local-mode', mode);")
     private static native void markMode(String mode);
+
+    @JSBody(params = {"mode", "waves", "waveTimer", "infinite", "editRules"}, script = "const r=document.documentElement; r.setAttribute('data-mindustry-local-mode-rules',mode); r.setAttribute('data-mindustry-local-mode-waves',waves?'true':'false'); r.setAttribute('data-mindustry-local-mode-wave-timer',waveTimer?'true':'false'); r.setAttribute('data-mindustry-local-mode-infinite',infinite?'true':'false'); r.setAttribute('data-mindustry-local-mode-edit-rules',editRules?'true':'false');")
+    private static native void markModeRules(String mode, boolean waves, boolean waveTimer, boolean infinite, boolean editRules);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-map-catalog-policy','lazy-msav-metadata'); document.documentElement.setAttribute('data-mindustry-map-metadata-loaded','0');")
     private static native void markCatalogPolicy();
