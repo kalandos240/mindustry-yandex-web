@@ -5,6 +5,7 @@
     const STORE = 'files';
     const root = document.documentElement;
     const memory = Object.create(null);
+    const memoryUpdated = Object.create(null);
     let db = null;
     let initPromise = null;
     let writeGeneration = 0;
@@ -131,6 +132,7 @@
                     for(const record of request.result || []){
                         const path = normalize(record.path);
                         memory[path] = adoptHydratedBytes(record.data);
+                        memoryUpdated[path] = Number(record.updated) || 0;
                     }
                     root.setAttribute('data-mindustry-storage-hydration-policy', 'adopt-idb-buffer');
                     root.setAttribute('data-mindustry-storage-hydrated-files', String((request.result || []).length));
@@ -157,9 +159,11 @@
     function put(path, bytes, logicalLength){
         const key = normalize(path);
         const value = copyBytes(bytes, logicalLength);
+        const updated = Date.now();
         memory[key] = value;
+        memoryUpdated[key] = updated;
         writeGeneration++;
-        const request = mutate(store => store.put({path: key, data: value}));
+        const request = mutate(store => store.put({path: key, data: value, updated}));
         request.onerror = () => console.error('Mindustry IndexedDB write failed:', request.error);
         return true;
     }
@@ -168,6 +172,7 @@
         const key = normalize(path);
         const existed = Object.prototype.hasOwnProperty.call(memory, key);
         delete memory[key];
+        delete memoryUpdated[key];
         writeGeneration++;
         const request = mutate(store => store.delete(key));
         request.onerror = () => console.error('Mindustry IndexedDB delete failed:', request.error);
@@ -178,7 +183,10 @@
         const key = normalize(path);
         const prefix = key ? key + '/' : '';
         const keys = Object.keys(memory).filter(candidate => candidate === key || candidate.startsWith(prefix));
-        for(const candidate of keys) delete memory[candidate];
+        for(const candidate of keys){
+            delete memory[candidate];
+            delete memoryUpdated[candidate];
+        }
         if(keys.length){
             writeGeneration++;
             mutate(store => {
@@ -205,6 +213,49 @@
     function byteLength(path){
         const value = memory[normalize(path)];
         return value ? value.byteLength : 0;
+    }
+
+    function updatedAt(path){
+        return Number(memoryUpdated[normalize(path)]) || 0;
+    }
+
+    function generation(){
+        return writeGeneration;
+    }
+
+    async function importRecords(records){
+        if(!db) throw new Error('Mindustry persistent storage is not initialized');
+        if(!Array.isArray(records) || records.length === 0) return 0;
+
+        const prepared = [];
+        for(const record of records){
+            if(!record || typeof record.path !== 'string' || record.data == null) continue;
+            const path = normalize(record.path);
+            const data = copyBytes(record.data);
+            const updated = Math.max(0, Number(record.updated) || 0);
+            prepared.push({path, data, updated});
+        }
+        if(!prepared.length) return 0;
+
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readwrite');
+            const store = tx.objectStore(STORE);
+            for(const record of prepared){
+                store.put({path: record.path, data: record.data, updated: record.updated});
+            }
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(tx.error || new Error('Mindustry cloud import failed'));
+            tx.onabort = () => reject(tx.error || new Error('Mindustry cloud import aborted'));
+        });
+
+        for(const record of prepared){
+            memory[record.path] = record.data;
+            memoryUpdated[record.path] = record.updated;
+        }
+        writeGeneration++;
+        durableGeneration = writeGeneration;
+        root.setAttribute('data-mindustry-storage-cloud-imported-files', String(prepared.length));
+        return prepared.length;
     }
 
     function flush(){
@@ -269,7 +320,7 @@
         });
     }
 
-    const api = {init, get, put, remove, removeTree, exists, hasChildren, paths, byteLength, flush, lifecycleFlush};
+    const api = {init, get, put, remove, removeTree, exists, hasChildren, paths, byteLength, updatedAt, generation, importRecords, flush, lifecycleFlush};
     globalThis.__mindustryStorage = api;
 
     // Browser/Yandex lifecycle boundaries can freeze or destroy a mobile page before
