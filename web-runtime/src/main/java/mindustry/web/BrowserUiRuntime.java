@@ -7,7 +7,7 @@ import arc.scene.ui.layout.*;
 import mindustry.core.*;
 import mindustry.input.*;
 import mindustry.maps.Map;
-import org.teavm.jso.JSBody;
+import org.teavm.jso.*;
 
 import static mindustry.Vars.*;
 
@@ -24,9 +24,14 @@ import static mindustry.Vars.*;
  * The small Back control is likewise local and returns directly to the stable map menu.
  */
 public final class BrowserUiRuntime{
-    private static boolean initialized, settingsOpen;
+    @JSFunctor
+    private interface SettingsAction extends JSObject{
+        String run(int action);
+    }
+
+    private static boolean initialized;
     private static TextButton localContinueButton;
-    private static TextButton sfxValue, musicValue, effectsValue, visualsValue;
+    private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
 
@@ -75,7 +80,7 @@ public final class BrowserUiRuntime{
         }
 
         buildLocalMapMenu();
-        buildLeanSettingsMenu();
+        installSettingsUi(settingsAction);
         buildLocalHudControls();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
@@ -115,115 +120,33 @@ public final class BrowserUiRuntime{
         ui.menuGroup.addChild(root);
     }
 
-    private static void buildLeanSettingsMenu(){
-        Table launcher = new Table();
-        launcher.setFillParent(true);
-        launcher.top().right();
-        launcher.visible(() -> state.isMenu() && !settingsOpen);
-        launcher.button(Core.bundle.get("settings", "Settings"), BrowserUiRuntime::openSettings)
-            .size(mobile ? 148f : 124f, mobile ? 56f : 44f)
-            .pad(8f);
-        ui.menuGroup.addChild(launcher);
-
-        Table overlay = new Table();
-        overlay.setFillParent(true);
-        overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> state.isMenu() && settingsOpen);
-        overlay.defaults().width(mobile ? 280f : 240f).height(mobile ? 54f : 44f).pad(4f);
-
-        overlay.add(Core.bundle.get("settings", "Settings")).padBottom(8f);
-        overlay.row();
-
-        sfxValue = new TextButton("");
-        sfxValue.clicked(BrowserUiRuntime::cycleSfx);
-        overlay.add(sfxValue);
-        overlay.row();
-
-        musicValue = new TextButton("");
-        musicValue.clicked(BrowserUiRuntime::cycleMusic);
-        overlay.add(musicValue);
-        overlay.row();
-
-        effectsValue = new TextButton("");
-        effectsValue.clicked(BrowserUiRuntime::toggleEffects);
-        overlay.add(effectsValue);
-        overlay.row();
-
-        visualsValue = new TextButton("");
-        visualsValue.clicked(BrowserUiRuntime::toggleVisuals);
-        overlay.add(visualsValue);
-        overlay.row();
-
-        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::closeSettings).padTop(8f);
-        ui.menuGroup.addChild(overlay);
-
-        refreshSettingsUi();
-        markSettingsUi("closed");
-    }
-
-    private static void cycleSfx(){
-        Core.settings.put("sfxvol", nextVolume(Core.settings.getInt("sfxvol", 100)));
-        saveSettings();
-    }
-
-    private static void cycleMusic(){
-        Core.settings.put("musicvol", nextVolume(Core.settings.getInt("musicvol", 100)));
-        saveSettings();
+    private static String applySettingAction(int action){
+        switch(action){
+            case 1 -> Core.settings.put("sfxvol", nextVolume(Core.settings.getInt("sfxvol", 100)));
+            case 2 -> Core.settings.put("musicvol", nextVolume(Core.settings.getInt("musicvol", 100)));
+            case 3 -> Core.settings.put("effects", !Core.settings.getBool("effects", true));
+            case 4 -> {
+                boolean quality = qualityVisuals();
+                Core.settings.put("animatedwater", !quality);
+                Core.settings.put("animatedshields", !quality);
+                Core.settings.put("drawlight", !quality);
+            }
+        }
+        if(action != 0) Core.settings.forceSave();
+        return Core.settings.getInt("sfxvol", 100) + "," +
+            Core.settings.getInt("musicvol", 100) + "," +
+            (Core.settings.getBool("effects", true) ? "1" : "0") + "," +
+            (qualityVisuals() ? "1" : "0");
     }
 
     private static int nextVolume(int value){
         return value >= 100 ? 0 : Math.min(100, ((Math.max(0, value) / 25) + 1) * 25);
     }
 
-    private static void toggleEffects(){
-        Core.settings.put("effects", !Core.settings.getBool("effects", true));
-        saveSettings();
-    }
-
-    private static void toggleVisuals(){
-        boolean quality = qualityVisuals();
-        Core.settings.put("animatedwater", !quality);
-        Core.settings.put("animatedshields", !quality);
-        Core.settings.put("drawlight", !quality);
-        saveSettings();
-    }
-
     private static boolean qualityVisuals(){
         return Core.settings.getBool("animatedwater", !mobile)
             && Core.settings.getBool("animatedshields", !mobile)
             && Core.settings.getBool("drawlight", !mobile);
-    }
-
-    private static void saveSettings(){
-        Core.settings.forceSave();
-        refreshSettingsUi();
-    }
-
-    private static void refreshSettingsUi(){
-        if(sfxValue != null) sfxValue.setText(Core.bundle.get("setting.sfxvol.name", "SFX Volume") +
-            " — " + Core.settings.getInt("sfxvol", 100) + "%");
-        if(musicValue != null) musicValue.setText(Core.bundle.get("setting.musicvol.name", "Music Volume") +
-            " — " + Core.settings.getInt("musicvol", 100) + "%");
-        if(effectsValue != null) effectsValue.setText(Core.bundle.get("setting.effects.name", "Effects") +
-            " — " + onOff(Core.settings.getBool("effects", true)));
-        if(visualsValue != null) visualsValue.setText(Core.bundle.get("graphics", "Graphics") +
-            " — " + (qualityVisuals() ? Core.bundle.get("high", "Quality") : Core.bundle.get("low", "Performance")));
-    }
-
-    private static String onOff(boolean enabled){
-        return Core.bundle.get(enabled ? "on" : "off", enabled ? "On" : "Off");
-    }
-
-    private static void openSettings(){
-        refreshSettingsUi();
-        settingsOpen = true;
-        markSettingsUi("open");
-    }
-
-    private static void closeSettings(){
-        Core.settings.forceSave();
-        settingsOpen = false;
-        markSettingsUi("closed");
     }
 
     private static void buildLocalHudControls(){
@@ -292,8 +215,81 @@ public final class BrowserUiRuntime{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
     private static native void markReady();
 
-    @JSBody(params = {"state"}, script = "document.documentElement.setAttribute('data-mindustry-settings-ui','ready'); document.documentElement.setAttribute('data-mindustry-settings-panel',state);")
-    private static native void markSettingsUi(String state);
+    @JSBody(params = {"action"}, script = """
+        const root = document.documentElement;
+        const ru = root.getAttribute('data-mindustry-locale') === 'ru' || root.lang === 'ru';
+        const word = ru ? {
+            settings:'Настройки', sfx:'Звуки', music:'Музыка', effects:'Эффекты',
+            graphics:'Графика', on:'Вкл', off:'Выкл', quality:'Качество',
+            performance:'Производительность', back:'Назад'
+        } : {
+            settings:'Settings', sfx:'SFX', music:'Music', effects:'Effects',
+            graphics:'Graphics', on:'On', off:'Off', quality:'Quality',
+            performance:'Performance', back:'Back'
+        };
+
+        const launch = document.createElement('button');
+        const panel = document.createElement('div');
+        const title = document.createElement('div');
+        const sfx = document.createElement('button');
+        const music = document.createElement('button');
+        const effects = document.createElement('button');
+        const graphics = document.createElement('button');
+        const back = document.createElement('button');
+        const controls = [sfx, music, effects, graphics, back];
+
+        launch.textContent = word.settings;
+        title.textContent = word.settings;
+        back.textContent = word.back;
+        launch.style.cssText = 'position:fixed;right:12px;top:12px;z-index:50;min-width:124px;height:44px;font:16px sans-serif;';
+        panel.style.cssText = 'position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:#111d;color:white;font:18px sans-serif;';
+        title.style.cssText = 'font-size:24px;margin-bottom:8px;';
+        for(const button of controls){
+            button.style.cssText = 'min-width:260px;min-height:48px;font:17px sans-serif;';
+            panel.appendChild(button);
+        }
+        panel.insertBefore(title, sfx);
+        document.body.appendChild(launch);
+        document.body.appendChild(panel);
+
+        const refresh = code => {
+            const values = String(action(code)).split(',');
+            sfx.textContent = word.sfx + ' — ' + values[0] + '%';
+            music.textContent = word.music + ' — ' + values[1] + '%';
+            effects.textContent = word.effects + ' — ' + (values[2] === '1' ? word.on : word.off);
+            graphics.textContent = word.graphics + ' — ' + (values[3] === '1' ? word.quality : word.performance);
+        };
+        sfx.onclick = () => refresh(1);
+        music.onclick = () => refresh(2);
+        effects.onclick = () => refresh(3);
+        graphics.onclick = () => refresh(4);
+        launch.onclick = () => {
+            refresh(0);
+            panel.style.display = 'flex';
+            launch.style.display = 'none';
+            root.setAttribute('data-mindustry-settings-panel','open');
+        };
+        back.onclick = () => {
+            panel.style.display = 'none';
+            root.setAttribute('data-mindustry-settings-panel','closed');
+            syncMenu();
+        };
+
+        const syncMenu = () => {
+            const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
+            const menu = loop.indexOf('menu') >= 0;
+            if(!menu && panel.style.display !== 'none'){
+                panel.style.display = 'none';
+                root.setAttribute('data-mindustry-settings-panel','closed');
+            }
+            launch.style.display = menu && panel.style.display === 'none' ? '' : 'none';
+        };
+        new MutationObserver(syncMenu).observe(root, {attributes:true, attributeFilter:['data-mindustry-gameplay-loop']});
+        root.setAttribute('data-mindustry-settings-ui','ready');
+        root.setAttribute('data-mindustry-settings-panel','closed');
+        syncMenu();
+        """)
+    private static native void installSettingsUi(SettingsAction action);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-menu', 'builtin-selector'); document.documentElement.setAttribute('data-mindustry-local-map-back', 'ready');")
     private static native void markLocalMapUiReady();
