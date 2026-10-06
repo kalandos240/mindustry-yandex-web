@@ -24,8 +24,10 @@ import static mindustry.Vars.*;
  * The small Back control is likewise local and returns directly to the stable map menu.
  */
 public final class BrowserUiRuntime{
-    private static boolean initialized;
+    private static boolean initialized, settingsOpen;
     private static TextButton localContinueButton;
+    private static Label sfxValue, musicValue;
+    private static TextButton effectsValue, waterValue, shieldsValue, lightsValue;
 
     private BrowserUiRuntime(){}
 
@@ -74,6 +76,7 @@ public final class BrowserUiRuntime{
         }
 
         buildLocalMapMenu();
+        buildLeanSettingsMenu();
         buildLocalHudControls();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
@@ -111,6 +114,106 @@ public final class BrowserUiRuntime{
         pane.setScrollingDisabled(true, false);
         root.add(pane).width(mobile ? 320f : 380f).height(mobile ? 430f : 500f);
         ui.menuGroup.addChild(root);
+    }
+
+    private static void buildLeanSettingsMenu(){
+        Table launcher = new Table();
+        launcher.setFillParent(true);
+        launcher.top().right();
+        launcher.visible(() -> state.isMenu() && !settingsOpen);
+        launcher.button(Core.bundle.get("settings", "Settings"), BrowserUiRuntime::openSettings)
+            .size(mobile ? 148f : 124f, mobile ? 56f : 44f)
+            .pad(8f);
+        ui.menuGroup.addChild(launcher);
+
+        Table overlay = new Table();
+        overlay.setFillParent(true);
+        overlay.touchable = Touchable.enabled;
+        overlay.visible(() -> state.isMenu() && settingsOpen);
+        overlay.defaults().pad(4f);
+
+        overlay.add(Core.bundle.get("settings", "Settings")).colspan(4).padBottom(8f);
+        overlay.row();
+
+        sfxValue = addVolumeRow(overlay, Core.bundle.get("setting.sfxvol.name", "SFX Volume"), "sfxvol", 100);
+        musicValue = addVolumeRow(overlay, Core.bundle.get("setting.musicvol.name", "Music Volume"), "musicvol", 100);
+
+        effectsValue = addToggleRow(overlay, Core.bundle.get("setting.effects.name", "Effects"), "effects", true);
+        waterValue = addToggleRow(overlay, Core.bundle.get("setting.animatedwater.name", "Animated Water"),
+            "animatedwater", !mobile);
+        shieldsValue = addToggleRow(overlay, Core.bundle.get("setting.animatedshields.name", "Animated Shields"),
+            "animatedshields", !mobile);
+        lightsValue = addToggleRow(overlay, Core.bundle.get("setting.drawlight.name", "Lighting"),
+            "drawlight", !mobile);
+
+        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::closeSettings)
+            .colspan(4)
+            .size(mobile ? 220f : 190f, mobile ? 58f : 48f)
+            .padTop(10f);
+
+        ui.menuGroup.addChild(overlay);
+        refreshSettingsUi();
+        markSettingsUi("closed");
+    }
+
+    private static Label addVolumeRow(Table table, String label, String key, int fallback){
+        Label value = new Label("");
+        table.add(label).left().growX();
+        table.button("-", () -> adjustVolume(key, fallback, -10, value))
+            .size(mobile ? 58f : 46f, mobile ? 50f : 40f);
+        table.add(value).width(mobile ? 72f : 60f);
+        table.button("+", () -> adjustVolume(key, fallback, 10, value))
+            .size(mobile ? 58f : 46f, mobile ? 50f : 40f);
+        table.row();
+        return value;
+    }
+
+    private static TextButton addToggleRow(Table table, String label, String key, boolean fallback){
+        TextButton value = new TextButton("");
+        value.clicked(() -> {
+            Core.settings.put(key, !Core.settings.getBool(key, fallback));
+            Core.settings.forceSave();
+            refreshSettingsUi();
+        });
+        table.add(label).left().growX().colspan(3);
+        table.add(value).width(mobile ? 132f : 112f).height(mobile ? 50f : 40f);
+        table.row();
+        return value;
+    }
+
+    private static void adjustVolume(String key, int fallback, int delta, Label value){
+        int current = Core.settings.getInt(key, fallback);
+        int next = Math.max(0, Math.min(100, current + delta));
+        Core.settings.put(key, next);
+        Core.settings.forceSave();
+        value.setText(next + "%");
+    }
+
+    private static void refreshSettingsUi(){
+        if(sfxValue != null) sfxValue.setText(Core.settings.getInt("sfxvol", 100) + "%");
+        if(musicValue != null) musicValue.setText(Core.settings.getInt("musicvol", 100) + "%");
+        refreshToggle(effectsValue, "effects", true);
+        refreshToggle(waterValue, "animatedwater", !mobile);
+        refreshToggle(shieldsValue, "animatedshields", !mobile);
+        refreshToggle(lightsValue, "drawlight", !mobile);
+    }
+
+    private static void refreshToggle(TextButton button, String key, boolean fallback){
+        if(button == null) return;
+        button.setText(Core.bundle.get(Core.settings.getBool(key, fallback) ? "on" : "off",
+            Core.settings.getBool(key, fallback) ? "On" : "Off"));
+    }
+
+    private static void openSettings(){
+        refreshSettingsUi();
+        settingsOpen = true;
+        markSettingsUi("open");
+    }
+
+    private static void closeSettings(){
+        Core.settings.forceSave();
+        settingsOpen = false;
+        markSettingsUi("closed");
     }
 
     private static void buildLocalHudControls(){
@@ -178,6 +281,9 @@ public final class BrowserUiRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
     private static native void markReady();
+
+    @JSBody(params = {"state"}, script = "document.documentElement.setAttribute('data-mindustry-settings-ui','ready'); document.documentElement.setAttribute('data-mindustry-settings-panel',state);")
+    private static native void markSettingsUi(String state);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-menu', 'builtin-selector'); document.documentElement.setAttribute('data-mindustry-local-map-back', 'ready');")
     private static native void markLocalMapUiReady();
