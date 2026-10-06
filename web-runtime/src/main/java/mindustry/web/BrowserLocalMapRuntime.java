@@ -94,6 +94,15 @@ public final class BrowserLocalMapRuntime{
             }
         }
 
+        String requestedMode = requestedTestMode();
+        if("sandbox".equals(requestedMode)){
+            Core.settings.put("localgamemode", 1);
+        }else if("survival".equals(requestedMode)){
+            Core.settings.put("localgamemode", 0);
+        }else if(requestedMode != null && !requestedMode.isEmpty()){
+            throw new IllegalArgumentException("Unknown mindustryLocalMode: " + requestedMode);
+        }
+
         initialized = true;
         markCatalogReady(builtinSlugs.length);
         markCatalogPolicy();
@@ -704,17 +713,6 @@ public final class BrowserLocalMapRuntime{
             markContinueSmokeRequested();
             continueSaved();
             return;
-        }
-
-        String requestedMode = requestedTestMode();
-        if("sandbox".equals(requestedMode)){
-            Core.settings.put("localgamemode", 1);
-            Core.settings.forceSave();
-        }else if("survival".equals(requestedMode)){
-            Core.settings.put("localgamemode", 0);
-            Core.settings.forceSave();
-        }else if(requestedMode != null && !requestedMode.isEmpty()){
-            throw new IllegalArgumentException("Unknown mindustryLocalMode: " + requestedMode);
         }
 
         String requested = requestedTestMap();
