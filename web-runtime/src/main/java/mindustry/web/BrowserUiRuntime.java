@@ -5,6 +5,7 @@ import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import mindustry.core.*;
+import mindustry.game.*;
 import mindustry.input.*;
 import mindustry.maps.Map;
 import org.teavm.jso.*;
@@ -30,7 +31,7 @@ public final class BrowserUiRuntime{
     }
 
     private static boolean initialized;
-    private static TextButton localContinueButton;
+    private static TextButton localContinueButton, localModeButton;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
@@ -101,6 +102,14 @@ public final class BrowserUiRuntime{
         root.defaults().pad(4f);
         root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
         root.row();
+        localModeButton = new TextButton("");
+        localModeButton.clicked(BrowserLocalMapRuntime::toggleMode);
+        root.add(localModeButton)
+            .width(mobile ? 320f : 380f)
+            .height(mobile ? 54f : 46f)
+            .padBottom(4f);
+        root.row();
+        syncLocalModeUi();
         localContinueButton = new TextButton(Core.bundle.get("continue", "Continue"));
         localContinueButton.clicked(BrowserLocalMapRuntime::continueSaved);
         localContinueButton.setDisabled(!BrowserSaveRuntime.hasLocalSession());
@@ -215,6 +224,12 @@ public final class BrowserUiRuntime{
         boolean available = BrowserSaveRuntime.hasLocalSession();
         if(localContinueButton != null) localContinueButton.setDisabled(!available);
         markLocalSaveUiReady(available ? "available" : "empty");
+    }
+
+    public static void syncLocalModeUi(){
+        if(localModeButton == null) return;
+        Gamemode mode = BrowserLocalMapRuntime.selectedMode();
+        localModeButton.setText(Core.bundle.get("mode." + mode.name() + ".name", mode.name()));
     }
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
