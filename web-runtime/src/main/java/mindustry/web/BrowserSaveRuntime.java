@@ -545,7 +545,7 @@ public final class BrowserSaveRuntime{
     @JSBody(params = {"map", "wave", "version", "width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-load', 'ready'); document.documentElement.setAttribute('data-mindustry-local-save-load-map-name', map); document.documentElement.setAttribute('data-mindustry-local-save-load-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-save-load-version', String(version)); document.documentElement.setAttribute('data-mindustry-local-save-load-world', String(width) + 'x' + String(height));")
     private static native void markLocalSessionLoaded(String map, int wave, int version, int width, int height);
 
-    @JSBody(script = "globalThis.__mindustryStorage.flush().then(function(){document.documentElement.setAttribute('data-mindustry-local-save-flush','ready');}).catch(function(e){document.documentElement.setAttribute('data-mindustry-local-save-flush','error');});")
+    @JSBody(script = "globalThis.__mindustryStorage.flush().then(function(){document.documentElement.setAttribute('data-mindustry-local-save-flush','ready'); var c=globalThis.__mindustryCloud; if(c&&c.flush)c.flush('local-save').catch(function(){});}).catch(function(e){document.documentElement.setAttribute('data-mindustry-local-save-flush','error');});")
     private static native void flushLocalSessionStorage();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustrySmoke') === '1';")
