@@ -14,6 +14,7 @@ command -v google-chrome >/dev/null
 [ -s "$WEB_DIR/yandex-platform.js" ]
 [ -s "$WEB_DIR/browser-storage.js" ]
 [ -s "$WEB_DIR/browser-audio.js" ]
+[ -s "$WEB_DIR/browser-cloud.js" ]
 [ ! -e "$SDK_STUB" ]
 
 cleanup(){
@@ -32,6 +33,7 @@ cat > "$SDK_STUB" <<'JS'
 
     const params = new URLSearchParams(location.search);
     const adSmoke = params.get('mindustryYandexAdSmoke') === '1';
+    const cloudSmoke = params.get('mindustryYandexCloudSmoke') === '1';
     const testDevice = params.get('mindustryYandexTestDevice') === 'mobile' ? 'mobile' : 'desktop';
 
     function count(name){
@@ -45,7 +47,7 @@ cat > "$SDK_STUB" <<'JS'
     }
 
     function schedulePauseCycle(){
-        if(adSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
+        if(adSmoke || cloudSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
@@ -148,8 +150,28 @@ cat > "$SDK_STUB" <<'JS'
                 },
                 async getPlayer(){
                     return {
-                        async setData(){},
-                        async getData(){ return {}; },
+                        async setData(data, flush){
+                            count('data-yandex-test-cloud-set-count');
+                            root.setAttribute('data-yandex-test-cloud-flush', flush ? 'true' : 'false');
+                            const response = await fetch('/__cloud', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify(data)
+                            });
+                            if(!response.ok) throw new Error('test cloud write failed: ' + response.status);
+                        },
+                        async getData(keys){
+                            count('data-yandex-test-cloud-get-count');
+                            const response = await fetch('/__cloud', {cache: 'no-store'});
+                            if(!response.ok) throw new Error('test cloud read failed: ' + response.status);
+                            const data = await response.json();
+                            if(!Array.isArray(keys)) return data;
+                            const selected = {};
+                            for(const key of keys){
+                                if(Object.prototype.hasOwnProperty.call(data, key)) selected[key] = data[key];
+                            }
+                            return selected;
+                        },
                         async setStats(){},
                         async getStats(){ return {}; }
                     };
@@ -162,7 +184,7 @@ JS
 
 rm -rf "$PROFILE"
 cd "$WEB_DIR"
-python3 -m http.server "$PORT" --bind 127.0.0.1 >/tmp/mindustry-yandex-sdk-http.log 2>&1 &
+python3 "$ROOT_DIR/scripts/yandex-sdk-test-server.py" --root "$WEB_DIR" --port "$PORT" >/tmp/mindustry-yandex-sdk-http.log 2>&1 &
 server_pid=$!
 for i in {1..30}; do
   if curl -fsS "http://127.0.0.1:$PORT/index.html" >/dev/null; then break; fi
@@ -281,4 +303,52 @@ run_ad_lifecycle(){
 run_ad_lifecycle desktop 9266
 run_ad_lifecycle mobile 9267
 
-echo 'Yandex lifecycle matrix: desktop + mobile fullscreen-ad pause/resume race PASS'
+run_cloud_roundtrip(){
+  local save_profile="/tmp/mindustry-yandex-cloud-save-profile"
+  local restore_profile="/tmp/mindustry-yandex-cloud-restore-profile"
+  local save_dom="/tmp/mindustry-yandex-cloud-save.html"
+  local restore_dom="/tmp/mindustry-yandex-cloud-restore.html"
+  rm -rf "$save_profile" "$restore_profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudSmoke=1&mindustryMapSmoke=maze&mindustryPauseSmoke=1&mindustrySaveSmoke=1&mindustryAutoSaveExitSmoke=1" \
+    --profile "$save_profile" \
+    --port 9268 \
+    --timeout 90 \
+    --require 'data-yandex-sdk="ready"' \
+    --require 'data-yandex-cloud-policy="settings-recent-msav-190k"' \
+    --require 'data-mindustry-local-save-state="saved"' \
+    --require 'data-mindustry-local-save-slot="available"' \
+    --require 'data-mindustry-local-save-flush="ready"' \
+    --require 'data-yandex-cloud-uploaded="yes"' \
+    --require 'data-yandex-cloud-state="synced"' \
+    --require 'data-yandex-test-cloud-flush="true"' \
+    --require 'data-mindustry-network="yandex-sdk-only"' > "$save_dom"
+
+  grep -Eq 'data-yandex-test-cloud-set-count="[1-9][0-9]*"' "$save_dom"
+  grep -Eq 'data-yandex-cloud-files="[1-9][0-9]*"' "$save_dom"
+  grep -Eq 'data-yandex-cloud-payload-bytes="[1-9][0-9]*"' "$save_dom"
+  grep -Eq 'data-mindustry-local-save-bytes="[1-9][0-9]*"' "$save_dom"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudSmoke=1&mindustryContinueSmoke=1&mindustryAutoSaveExitSmoke=1" \
+    --profile "$restore_profile" \
+    --port 9269 \
+    --timeout 90 \
+    --require 'data-yandex-sdk="ready"' \
+    --require 'data-yandex-cloud-restored="yes"' \
+    --require 'data-mindustry-storage-cloud-imported-files="1"' \
+    --require 'data-mindustry-local-save-slot="available"' \
+    --require 'data-mindustry-local-continue-smoke="requested"' \
+    --require 'data-mindustry-local-save-load="ready"' \
+    --require 'data-mindustry-local-map-state="playing"' \
+    --require 'data-mindustry-network="yandex-sdk-only"' > "$restore_dom"
+
+  grep -Eq 'data-yandex-test-cloud-get-count="[1-9][0-9]*"' "$restore_dom"
+  grep -Eq 'data-mindustry-local-save-load-wave="[1-9][0-9]*"' "$restore_dom"
+  echo 'Yandex cloud save: real local survival MSAV -> Player.setData -> clean Chrome profile Player.getData -> pre-TeaVM restore -> Continue PASS'
+}
+
+run_cloud_roundtrip
+
+echo 'Yandex lifecycle matrix: desktop + mobile fullscreen-ad pause/resume + cross-profile cloud save PASS'
