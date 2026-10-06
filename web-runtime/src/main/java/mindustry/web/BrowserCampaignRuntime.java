@@ -25,6 +25,7 @@ public final class BrowserCampaignRuntime{
     private static boolean diagnosticsQueryCached;
     private static boolean diagnosticsQueryValue;
     private static boolean saveSmoke;
+    private static boolean pauseSmoke;
     private static boolean captureSmoke;
     private static boolean progressSmoke;
     private static boolean coreReadyMarked;
@@ -41,7 +42,9 @@ public final class BrowserCampaignRuntime{
     private static boolean crossroadsObjectivesStaged;
     private static boolean originObjectivesStaged;
     private static Sector current;
-    private static int frames;
+    private static int frames, pausedFrames;
+    private static long pauseUpdateId;
+    private static boolean pauseSmokeArmed;
 
     private BrowserCampaignRuntime(){}
 
@@ -376,6 +379,12 @@ public final class BrowserCampaignRuntime{
         crossroadsObjectivesStaged = false;
         originObjectivesStaged = false;
         coreReadyMarked = false;
+        pauseUpdateId = 0L;
+        pausedFrames = 0;
+        pauseSmokeArmed = false;
+        pauseUpdateId = 0L;
+        pausedFrames = 0;
+        pauseSmokeArmed = false;
 
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
@@ -564,10 +573,86 @@ public final class BrowserCampaignRuntime{
             expectedBytes, state.wave, loadedTickMillis);
     }
 
+    public static void pause(){
+        if(!active || current == null || !state.isPlaying() || !state.isCampaign()
+        || state.rules.sector != current || state.gameOver || state.rules.pauseDisabled) return;
+        pauseUpdateId = state.updateId;
+        pausedFrames = 0;
+        state.set(GameState.State.paused);
+        markPaused(pauseUpdateId);
+    }
+
+    public static void resume(){
+        if(!active || current == null || !state.isPaused() || !state.isCampaign()
+        || state.rules.sector != current || state.gameOver) return;
+        long frozenUpdateId = state.updateId;
+        if(pauseUpdateId != 0L && frozenUpdateId != pauseUpdateId){
+            throw new IllegalStateException("c:pause-clock");
+        }
+        state.set(GameState.State.playing);
+        markPauseResumed(frozenUpdateId);
+    }
+
+    public static void saveCurrentSession(){
+        if(!active || current == null || (!state.isPlaying() && !state.isPaused())
+        || !state.isCampaign() || state.rules.sector != current){
+            return;
+        }
+
+        writeCurrentSectorSave();
+        if(current.save == null || current.save.file == null || !current.save.file.exists()
+        || current.save.file.length() < 128 || current.save.meta == null){
+            throw new IllegalStateException("c:manual-save");
+        }
+
+        SaveMeta meta = current.save.meta;
+        if(meta.version != 13 || meta.rules == null || meta.rules.sector == null
+        || meta.rules.sector.id != current.id || meta.rules.sector.planet != current.planet){
+            throw new IllegalStateException("c:manual-meta");
+        }
+
+        current.save.setAutosave(true);
+        markManualSaved(state.wave, Math.round(state.tick * 1000d), state.updateId, current.save.file.length());
+        flushCampaignStorage();
+    }
+
+    public static void updatePausedFrame(){
+        if(!active || current == null || !state.isPaused() || !state.isCampaign()
+        || state.rules.sector != current || state.gameOver){
+            throw new IllegalStateException("c:paused-frame");
+        }
+
+        long beforeUpdateId = state.updateId;
+        renderer.update();
+        ui.update();
+
+        if(!active || current == null || state.isMenu()) return;
+        if(state.isPlaying()){
+            if(state.updateId != beforeUpdateId){
+                throw new IllegalStateException("c:pause-resume-clock");
+            }
+            return;
+        }
+        if(!state.isPaused() || state.updateId != beforeUpdateId || state.updateId != pauseUpdateId){
+            throw new IllegalStateException("c:pause-advanced");
+        }
+
+        pausedFrames++;
+        if(pauseSmoke && pauseSmokeArmed && pausedFrames == 1){
+            saveCurrentSession();
+            markPauseSaved(state.updateId);
+        }
+        if(pauseSmoke && pauseSmokeArmed && pausedFrames >= 2){
+            markPauseClockFrozen(state.updateId);
+            resume();
+            markPauseSmokeReady(state.updateId);
+        }
+    }
+
     /** Normal user Back: checkpoint the live sector before returning to the lean menu. */
     public static void returnToMenu(){
         if(!active || current == null) return;
-        if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != current){
+        if((!state.isPlaying() && !state.isPaused()) || !state.isCampaign() || state.rules.sector != current){
             throw new IllegalStateException("c:back");
         }
 
@@ -607,6 +692,9 @@ public final class BrowserCampaignRuntime{
         crossroadsObjectivesStaged = false;
         originObjectivesStaged = false;
         coreReadyMarked = false;
+        pauseUpdateId = 0L;
+        pausedFrames = 0;
+        pauseSmokeArmed = false;
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
         markReturnedToMenu();
@@ -1709,6 +1797,12 @@ public final class BrowserCampaignRuntime{
         }
 
         if(diagnostics) markFrame(frames, state.updateId, state.wave);
+        if(pauseSmoke && !pauseSmokeArmed && frames >= 3){
+            pauseSmokeArmed = true;
+            markPauseSmokeArmed();
+            pause();
+            return;
+        }
         if(frames >= 3 && !coreReadyMarked){
             if(saveSmoke && !saveSmokeArmed){
                 saveSmokeArmed = true;
@@ -1726,12 +1820,13 @@ public final class BrowserCampaignRuntime{
 
     private static void cacheSmokeFlags(){
         saveSmoke = saveSmokeRequested();
+        pauseSmoke = pauseSmokeRequested();
         captureSmoke = captureSmokeRequested();
         progressSmoke = progressSmokeRequested();
     }
 
     private static void diagPhase(String phase){
-        if(diagnostics || captureSmoke || progressSmoke) markPhase(phase);
+        if(diagnostics || pauseSmoke || captureSmoke || progressSmoke) markPhase(phase);
     }
 
     /** Exact byte count used by DataOutputStream.writeUTF's modified UTF-8 payload. */
@@ -1760,7 +1855,7 @@ public final class BrowserCampaignRuntime{
     @JSBody(script = "return document.documentElement.getAttribute('data-mindustry-campaign-assets') === 'ready';")
     private static native boolean campaignAssetsReadyNative();
 
-    @JSBody(script = "var p=new URLSearchParams(location.search); return p.has('mindustryCampaignSmoke') || p.has('mindustryCampaignContinueSmoke') || p.has('mindustryCampaignSaveSmoke') || p.has('mindustryCampaignCaptureSmoke') || p.has('mindustryCampaignProgressSmoke') || p.has('mindustryCampaignUiBackSmoke');")
+    @JSBody(script = "var p=new URLSearchParams(location.search); return p.has('mindustryCampaignSmoke') || p.has('mindustryCampaignContinueSmoke') || p.has('mindustryCampaignSaveSmoke') || p.has('mindustryCampaignPauseSmoke') || p.has('mindustryCampaignCaptureSmoke') || p.has('mindustryCampaignProgressSmoke') || p.has('mindustryCampaignUiBackSmoke');")
     private static native boolean diagnosticsRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSmoke') || '';")
@@ -1771,6 +1866,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSaveSmoke') === '1';")
     private static native boolean saveSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignPauseSmoke') === '1';")
+    private static native boolean pauseSmokeRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignCaptureSmoke') === '1';")
     private static native boolean captureSmokeRequested();
@@ -1965,6 +2063,45 @@ public final class BrowserCampaignRuntime{
 
     private static void markProductionAction(String action){
         setRuntimeDomAttribute("data-mindustry-campaign-production-action", action);
+    }
+
+    private static void markPaused(long updateId){
+        setRuntimeDomAttribute("data-mindustry-campaign-pause", "ready");
+        setRuntimeDomAttribute("data-mindustry-campaign-pause-update-id", String.valueOf(updateId));
+        setRuntimeDomAttribute("data-mindustry-campaign-state", "paused");
+    }
+
+    private static void markPauseResumed(long updateId){
+        setRuntimeDomAttribute("data-mindustry-campaign-pause-resumed", "yes");
+        setRuntimeDomAttribute("data-mindustry-campaign-resume-update-id", String.valueOf(updateId));
+        setRuntimeDomAttribute("data-mindustry-campaign-state", "playing");
+    }
+
+    private static void markManualSaved(int wave, long tickMillis, long updateId, long bytes){
+        setRuntimeDomAttribute("data-mindustry-campaign-manual-save", "ready");
+        setRuntimeDomAttribute("data-mindustry-campaign-manual-save-wave", String.valueOf(wave));
+        setRuntimeDomAttribute("data-mindustry-campaign-manual-save-tick-ms", String.valueOf(tickMillis));
+        setRuntimeDomAttribute("data-mindustry-campaign-manual-save-update-id", String.valueOf(updateId));
+        setRuntimeDomAttribute("data-mindustry-campaign-manual-save-bytes", String.valueOf(bytes));
+    }
+
+    private static void markPauseSmokeArmed(){
+        setRuntimeDomAttribute("data-mindustry-campaign-pause-smoke", "armed");
+    }
+
+    private static void markPauseSaved(long updateId){
+        setRuntimeDomAttribute("data-mindustry-campaign-save-during-pause", "true");
+        setRuntimeDomAttribute("data-mindustry-campaign-save-during-pause-update-id", String.valueOf(updateId));
+    }
+
+    private static void markPauseClockFrozen(long updateId){
+        setRuntimeDomAttribute("data-mindustry-campaign-pause-clock", "frozen");
+        setRuntimeDomAttribute("data-mindustry-campaign-pause-frozen-update-id", String.valueOf(updateId));
+    }
+
+    private static void markPauseSmokeReady(long updateId){
+        setRuntimeDomAttribute("data-mindustry-campaign-pause-smoke", "ready");
+        setRuntimeDomAttribute("data-mindustry-campaign-pause-smoke-update-id", String.valueOf(updateId));
     }
 
     private static void markBackAutoSaved(int wave, long tickMillis, long bytes){
