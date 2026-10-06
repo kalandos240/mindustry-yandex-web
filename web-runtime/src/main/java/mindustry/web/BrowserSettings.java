@@ -139,9 +139,11 @@ public final class BrowserSettings extends Settings{
             appendPart(payload, encoded);
         }
 
-        if(!storageSet(storageKey, payload.toString())){
+        String encoded = payload.toString();
+        if(!storageSet(storageKey, encoded)){
             throw new IllegalStateException("Browser localStorage is unavailable");
         }
+        notifyCloudProgress(encoded);
     }
 
     private static void appendPart(StringBuilder out, String value){
@@ -196,4 +198,7 @@ public final class BrowserSettings extends Settings{
 
     @JSBody(params = {"key", "value"}, script = "try { window.localStorage.setItem(key, value); return true; } catch (e) { return false; }")
     private static native boolean storageSet(String key, String value);
+
+    @JSBody(params = {"settings"}, script = "var y=globalThis.__mindustryYandex; if(y&&y.settingsChanged) y.settingsChanged(settings);")
+    private static native void notifyCloudProgress(String settings);
 }
