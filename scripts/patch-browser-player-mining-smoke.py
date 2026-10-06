@@ -19,17 +19,44 @@ for path in (APPLICATION, VERIFY, SMOKE, BUILD_SMOKE):
 build_smoke = BUILD_SMOKE.read_text(encoding="utf-8")
 old_release = '''        if(stage == 5){
             // Browser DOM input is queued after this smoke observer. Keep the physical
-            // left button held until the next normal DesktopInput update has consumed
-            // the exact select binding and entered stock placing mode. Only then may the
-            // release edge flush linePlans into the player's real BuildPlan queue.
+            // left button held until DesktopInput has both entered placing mode *and*
+            // produced the real preview linePlan for our target tile. Seeing only the
+            // mode is insufficient on slow/headless TeaVM: camera follow can shift the
+            // world point between pointerdown and updateLine(), leaving linePlans empty.
             boolean placing = control.input instanceof DesktopInput &&
                 ((DesktopInput)control.input).mode == PlaceMode.placing;
-            if(!Core.input.keyDown(Binding.select) || !placing){
+            boolean targetPreview = false;
+            for(BuildPlan plan : control.input.linePlans){
+                if(!plan.breaking && plan.block == Blocks.conveyor && plan.x == targetX && plan.y == targetY){
+                    targetPreview = true;
+                    break;
+                }
+            }
+
+            if(!Core.input.keyDown(Binding.select) || !placing || !targetPreview){
+                // Re-project the exact chosen tile while the button stays held. A DOM
+                // pointermove becomes a stock drag event, allowing updateLine() to
+                // converge even if the camera moved after the original projection.
+                Vec2 projected = Core.camera.project(new Vec2(
+                    targetX * tilesize + tilesize / 2f,
+                    targetY * tilesize + tilesize / 2f
+                ));
+                if(Math.abs(projected.x - targetScreenX) > 0.5f ||
+                Math.abs(projected.y - targetScreenY) > 0.5f || !targetPreview){
+                    targetScreenX = projected.x;
+                    targetScreenY = projected.y;
+                    dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, true);
+                }
+
                 if(++uiFrames >= maxUiFrames){
                     releasePointer();
-                    throw new IllegalStateException("DOM left-click never reached confirmed DesktopInput placing mode");
+                    throw new IllegalStateException(
+                        "build:no-line-plan s=" +
+                        Core.input.keyDown(Binding.select) + ", p=" + placing +
+                        ", t=" + targetPreview + ", n=" + control.input.linePlans.size
+                    );
                 }
-                markWaiting("world-down", uiFrames);
+                markWaiting(targetPreview ? "world-down" : "world-line-plan", uiFrames);
                 return;
             }
 
@@ -44,34 +71,68 @@ old_release = '''        if(stage == 5){
         Tile tile = world.tile(targetX, targetY);
 '''
 new_release = '''        if(stage == 5){
-            // Browser DOM input is queued after this smoke observer. First prove stock
-            // DesktopInput consumed the physical down edge and entered placing mode.
+            // First prove the real stock placement preview exists on the exact target.
+            // This includes the camera-drift recovery added by the preceding overlay.
             boolean placing = control.input instanceof DesktopInput &&
                 ((DesktopInput)control.input).mode == PlaceMode.placing;
-            if(!Core.input.keyDown(Binding.select) || !placing){
+            boolean targetPreview = false;
+            for(BuildPlan plan : control.input.linePlans){
+                if(!plan.breaking && plan.block == Blocks.conveyor && plan.x == targetX && plan.y == targetY){
+                    targetPreview = true;
+                    break;
+                }
+            }
+
+            if(!Core.input.keyDown(Binding.select) || !placing || !targetPreview){
+                Vec2 projected = Core.camera.project(new Vec2(
+                    targetX * tilesize + tilesize / 2f,
+                    targetY * tilesize + tilesize / 2f
+                ));
+                if(Math.abs(projected.x - targetScreenX) > 0.5f ||
+                Math.abs(projected.y - targetScreenY) > 0.5f || !targetPreview){
+                    targetScreenX = projected.x;
+                    targetScreenY = projected.y;
+                    dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, true);
+                }
+
                 if(++uiFrames >= maxUiFrames){
                     releasePointer();
-                    throw new IllegalStateException("DOM left-click never reached confirmed DesktopInput placing mode");
+                    throw new IllegalStateException(
+                        "build:no-line-plan s=" +
+                        Core.input.keyDown(Binding.select) + ", p=" + placing +
+                        ", t=" + targetPreview + ", n=" + control.input.linePlans.size
+                    );
                 }
-                markWaiting("world-down", uiFrames);
+                markWaiting(targetPreview ? "world-down" : "world-line-plan", uiFrames);
                 return;
             }
 
-            // Do not release in the same observer callback that first sees placing. Keep
-            // one complete stock application frame with select held so updateLine/linePlans
-            // cannot be collapsed by a slow/headless TeaVM event turn.
+            // Retain one complete additional stock application frame with the exact
+            // target preview and select binding held. This prevents a slow TeaVM event
+            // turn from collapsing preview creation and the release edge together.
             uiFrames = 0;
             stage = -5;
-            markStage("world-down-confirmed", targetScreenX, targetScreenY);
+            markStage("world-line-plan-confirmed", targetScreenX, targetScreenY);
             return;
         }
 
         if(stage == -5){
             boolean placing = control.input instanceof DesktopInput &&
                 ((DesktopInput)control.input).mode == PlaceMode.placing;
-            if(!Core.input.keyDown(Binding.select) || !placing){
+            boolean targetPreview = false;
+            for(BuildPlan plan : control.input.linePlans){
+                if(!plan.breaking && plan.block == Blocks.conveyor && plan.x == targetX && plan.y == targetY){
+                    targetPreview = true;
+                    break;
+                }
+            }
+            if(!Core.input.keyDown(Binding.select) || !placing || !targetPreview){
                 releasePointer();
-                throw new IllegalStateException("Stock DesktopInput lost placing mode before confirmed DOM release");
+                throw new IllegalStateException(
+                    "build:lost-line-plan s=" +
+                    Core.input.keyDown(Binding.select) + ", p=" + placing +
+                    ", t=" + targetPreview + ", n=" + control.input.linePlans.size
+                );
             }
 
             dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
@@ -87,7 +148,7 @@ new_release = '''        if(stage == 5){
                 ((DesktopInput)control.input).mode == PlaceMode.placing;
             if(Core.input.keyDown(Binding.select) || stillPlacing){
                 if(++uiFrames >= maxUiFrames){
-                    throw new IllegalStateException("DOM left-click release never left confirmed DesktopInput placing mode");
+                    throw new IllegalStateException("build:release-stuck");
                 }
                 markWaiting("world-release", uiFrames);
                 return;

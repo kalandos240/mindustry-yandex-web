@@ -35,9 +35,10 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         boolean[] campaignContinue = {BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.groundZero)};
         campaignButton.setText(Core.bundle.get(campaignContinue[0] ? "continue" : "play",
             campaignContinue[0] ? "Continue" : "Play"));
-        if(BrowserCampaignRuntime.diagnosticsEnabled()){
-            markCampaignUiAction(campaignContinue[0] ? "continue" : "play");
-        }
+        // Production cold-boot verification needs to observe the actual menu state
+        // without enabling any smoke/diagnostic query. This marker changes only when the
+        // button state changes, so it is not part of the frame hot path.
+        markCampaignUiAction(campaignContinue[0] ? "continue" : "play");
         campaignButton.clicked(BrowserCampaignRuntime::playGroundZero);
                 root.add(campaignButton).width(campaignWidth).height(campaignHeight).padBottom(8f);
         root.row();
@@ -409,9 +410,7 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                             campaignContinue[0] = hasSave;
                             campaignButton.setText(Core.bundle.get(hasSave ? "continue" : "play",
                                 hasSave ? "Continue" : "Play"));
-                            if(BrowserCampaignRuntime.diagnosticsEnabled()){
-                                markCampaignUiAction(hasSave ? "continue" : "play");
-                            }
+                            markCampaignUiAction(hasSave ? "continue" : "play");
                         }
 
             // conveyorResearch
@@ -1166,10 +1165,15 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                     Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
             }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.origin)){
                 mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOriginResearch();
-                erekirProgress.setText(next == null
-                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
-                        BrowserCampaignResearch.remaining(next));
+                if(next == null && BrowserCampaignResearch.waitingForOriginPhaseFabric()){
+                    erekirProgress.setText(mindustry.content.Items.phaseFabric.localizedName + " — " +
+                        Core.bundle.get("produce", "Produce"));
+                }else{
+                    erekirProgress.setText(next == null
+                        ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                        : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                            BrowserCampaignResearch.remaining(next));
+                }
             }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin)){
                 boolean saved = BrowserCampaignRuntime.hasSave(mindustry.content.SectorPresets.origin);
                 erekirProgress.setText(Core.bundle.get("sector.origin.name", "Origin") + " — " +

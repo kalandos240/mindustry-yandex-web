@@ -10,34 +10,20 @@ for path in (APPLICATION, VERIFY):
         raise SystemExit(f"Missing player-input smoke source: {path}")
 
 application = APPLICATION.read_text(encoding="utf-8")
-old_frame = '''            if(!platformPaused){
-                frame();
-                syncGameplayMarker();
-                if(awaitingPlatformResumeFrame){
-                    awaitingPlatformResumeFrame = false;
-                    int resumedSector = Vars.state != null && Vars.state.rules != null && Vars.state.rules.sector != null
-                        ? Vars.state.rules.sector.id : -1;
-                    BrowserYandex.markResumeFrame(browserFrameCallbacks,
-                        Vars.state != null && Vars.state.isPlaying(), resumedSector);
-                }
-            }
+old_frame = '''            }
+            if(traceStartup) markFrameStage(phase, callbackIndex);
+
+            phase = "input-post-update";
 '''
-new_frame = '''            if(!platformPaused){
-                frame();
-                syncGameplayMarker();
-                if(awaitingPlatformResumeFrame){
-                    awaitingPlatformResumeFrame = false;
-                    int resumedSector = Vars.state != null && Vars.state.rules != null && Vars.state.rules.sector != null
-                        ? Vars.state.rules.sector.id : -1;
-                    BrowserYandex.markResumeFrame(browserFrameCallbacks,
-                        Vars.state != null && Vars.state.isPlaying(), resumedSector);
-                }
-                // CI-only observer; inert unless a player-input/possession smoke is requested.
+new_frame = '''                // CI-only observer; inert unless a player-input/possession smoke is requested.
                 BrowserPlayerInputSmoke.update();
             }
+            if(traceStartup) markFrameStage(phase, callbackIndex);
+
+            phase = "input-post-update";
 '''
 if application.count(old_frame) != 1:
-    raise SystemExit("BrowserApplication player-input frame hook anchor no longer matches")
+    raise SystemExit("BrowserApplication player-input post-frame anchor no longer matches")
 APPLICATION.write_text(application.replace(old_frame, new_frame, 1), encoding="utf-8")
 
 # Earlier development versions wrapped Logic.updateEntities()/PlayerComp spawn in broad

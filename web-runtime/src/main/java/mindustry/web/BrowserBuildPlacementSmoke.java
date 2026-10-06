@@ -63,7 +63,7 @@ public final class BrowserBuildPlacementSmoke{
             spawnFrames++;
             markWaiting("unit", spawnFrames);
             if(spawnFrames >= maxSpawnFrames){
-                throw new IllegalStateException("Build-placement smoke never received a real local builder unit");
+                throw new IllegalStateException("build:no-player");
             }
             return;
         }
@@ -72,7 +72,7 @@ public final class BrowserBuildPlacementSmoke{
             Element button = Core.scene == null ? null : Core.scene.find("web-block-conveyor");
             if(button == null || button.getWidth() <= 1f || button.getHeight() <= 1f){
                 if(++uiFrames >= maxUiFrames){
-                    throw new IllegalStateException("Build-placement smoke could not resolve laid-out web-block-conveyor palette button");
+                    throw new IllegalStateException("build:no-palette");
                 }
                 markWaiting("palette", uiFrames);
                 return;
@@ -87,7 +87,7 @@ public final class BrowserBuildPlacementSmoke{
 
         if(stage == 1){
             Element button = Core.scene.find("web-block-conveyor");
-            if(button == null) throw new IllegalStateException("Conveyor palette button disappeared before DOM pointerdown");
+            if(button == null) throw new IllegalStateException("build:palette-down");
             Vec2 point = button.localToStageCoordinates(new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
             dispatchPointer("pointerdown", point.x, point.y, 0, true);
             pointerDown = true;
@@ -98,7 +98,7 @@ public final class BrowserBuildPlacementSmoke{
 
         if(stage == 2){
             Element button = Core.scene.find("web-block-conveyor");
-            if(button == null) throw new IllegalStateException("Conveyor palette button disappeared before DOM pointerup");
+            if(button == null) throw new IllegalStateException("build:palette-up");
             Vec2 point = button.localToStageCoordinates(new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
             dispatchPointer("pointerup", point.x, point.y, 0, false);
             pointerDown = false;
@@ -110,14 +110,14 @@ public final class BrowserBuildPlacementSmoke{
         if(stage == 3){
             if(control == null || control.input == null || control.input.block != Blocks.conveyor){
                 if(++uiFrames >= maxUiFrames){
-                    throw new IllegalStateException("DOM click on real conveyor palette button did not select Blocks.conveyor");
+                    throw new IllegalStateException("build:not-selected");
                 }
                 markWaiting("selection", uiFrames);
                 return;
             }
 
             if(!findTarget(unit)){
-                throw new IllegalStateException("Build-placement smoke found no visible valid conveyor tile within local builder range");
+                throw new IllegalStateException("build:no-target");
             }
 
             dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
@@ -155,7 +155,7 @@ public final class BrowserBuildPlacementSmoke{
         }
 
         Tile tile = world.tile(targetX, targetY);
-        if(tile == null) throw new IllegalStateException("Build target tile disappeared from loaded world");
+        if(tile == null) throw new IllegalStateException("build:target-lost");
 
         if(removeAfterBuild && stage >= 7){
             updateRemoval(unit, tile);
@@ -184,14 +184,14 @@ public final class BrowserBuildPlacementSmoke{
 
         if(tile.block() == Blocks.conveyor && tile.build != null && tile.build.team == player.team()){
             if(!planObserved){
-                throw new IllegalStateException("Conveyor completed without smoke observing the stock player BuildPlan");
+                throw new IllegalStateException("build:no-plan");
             }
             if(!buildSoundObserved){
-                throw new IllegalStateException("Conveyor completed without an observed stock loopBuild BrowserAudio voice");
+                throw new IllegalStateException("build:no-audio");
             }
             if(removeAfterBuild){
                 if(control.input.block != Blocks.conveyor){
-                    throw new IllegalStateException("Conveyor selection disappeared before stock right-click deselect test");
+                    throw new IllegalStateException("build:selection-lost");
                 }
                 uiFrames = 0;
                 stage = 7;
@@ -221,7 +221,7 @@ public final class BrowserBuildPlacementSmoke{
 
     private static void updateRotate(Tile tile){
         if(tile.build == null || tile.block() != Blocks.conveyor){
-            throw new IllegalStateException("Rotate smoke lost the completed conveyor");
+            throw new IllegalStateException("build:rotate-lost");
         }
 
         if(stage == 20){
@@ -235,7 +235,7 @@ public final class BrowserBuildPlacementSmoke{
         }
 
         if(stage == 21){
-            if(Core.scene.hasMouse()) throw new IllegalStateException("Rotate target is covered by an Arc Scene actor");
+            if(Core.scene.hasMouse()) throw new IllegalStateException("build:rotate-ui");
             dispatchKey("keydown", "KeyR", "r");
             uiFrames = 0;
             stage = 22;
@@ -249,7 +249,7 @@ public final class BrowserBuildPlacementSmoke{
             if(!Core.input.keyDown(Binding.rotatePlaced)){
                 if(++uiFrames >= maxUiFrames){
                     dispatchKey("keyup", "KeyR", "r");
-                    throw new IllegalStateException("DOM KeyR never reached stock rotatePlaced binding");
+                    throw new IllegalStateException("build:no-rotate");
                 }
                 return;
             }
@@ -311,7 +311,7 @@ public final class BrowserBuildPlacementSmoke{
         }
 
         if(stage == 8){
-            if(Core.scene.hasMouse()) throw new IllegalStateException("Removal target is covered by an Arc Scene actor");
+            if(Core.scene.hasMouse()) throw new IllegalStateException("build:remove-ui");
             dispatchPointer("pointerdown", targetScreenX, targetScreenY, 2, true);
             pointerDown = true;
             pointerButton = 2;
@@ -331,7 +331,7 @@ public final class BrowserBuildPlacementSmoke{
         if(stage == 10){
             if(control.input.block != null){
                 if(++uiFrames >= maxUiFrames){
-                    throw new IllegalStateException("First stock right-click did not deselect the conveyor palette block");
+                    throw new IllegalStateException("build:no-deselect");
                 }
                 return;
             }
@@ -345,12 +345,12 @@ public final class BrowserBuildPlacementSmoke{
         if(stage == 11){
             Tile current = world.tile(targetX, targetY);
             if(current == null || current.block() != Blocks.conveyor || current.build == null){
-                throw new IllegalStateException("Removal target changed before stock break gesture");
+                throw new IllegalStateException("build:remove-changed");
             }
             if(!Build.validBreak(player.team(), targetX, targetY)){
-                throw new IllegalStateException("Stock Build.validBreak rejected the constructed conveyor");
+                throw new IllegalStateException("build:invalid-break");
             }
-            if(Core.scene.hasMouse()) throw new IllegalStateException("Break target is covered by an Arc Scene actor");
+            if(Core.scene.hasMouse()) throw new IllegalStateException("build:break-ui");
 
             // Refresh projection immediately before every gesture. The camera can move a
             // fraction while the builder finishes construction; stale screen coordinates
@@ -372,7 +372,7 @@ public final class BrowserBuildPlacementSmoke{
             if(!Core.input.keyDown(Binding.breakBlock) || !control.input.isBreaking()){
                 if(++uiFrames >= maxUiFrames){
                     releasePointer();
-                    throw new IllegalStateException("Stock right-click never entered confirmed DesktopInput breaking mode");
+                    throw new IllegalStateException("build:no-breaking");
                 }
                 return;
             }
@@ -394,7 +394,7 @@ public final class BrowserBuildPlacementSmoke{
 
             if(tile.block() == Blocks.air && tile.build == null){
                 if(!breakPlanObserved){
-                    throw new IllegalStateException("Conveyor disappeared without smoke observing a stock breaking BuildPlan");
+                    throw new IllegalStateException("build:no-break-plan");
                 }
                 completed = true;
                 markRemoved(targetX, targetY, breakFrames, unit.id, unit.type.name);
@@ -406,7 +406,7 @@ public final class BrowserBuildPlacementSmoke{
             if(control.input.isBreaking() || Core.input.keyDown(Binding.breakBlock)){
                 if(++uiFrames >= maxUiFrames){
                     releasePointer();
-                    throw new IllegalStateException("Stock right-click release never left DesktopInput breaking mode");
+                    throw new IllegalStateException("build:break-release");
                 }
                 return;
             }
@@ -433,7 +433,7 @@ public final class BrowserBuildPlacementSmoke{
 
         if(tile.block() == Blocks.air && tile.build == null){
             if(!breakPlanObserved){
-                throw new IllegalStateException("Conveyor disappeared without smoke observing a stock breaking BuildPlan");
+                throw new IllegalStateException("build:no-break-plan");
             }
             completed = true;
             markRemoved(targetX, targetY, breakFrames, unit.id, unit.type.name);

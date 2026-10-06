@@ -15,7 +15,7 @@ import static mindustry.Vars.*;
  *
  * This keeps the stock TechNode requirements/objectives/unlock persistence semantics,
  * but avoids pulling the desktop ResearchDialog tree/layout graph into the Yandex build.
- * Research resources are consumed from live sector storage on the TechNode's owning planet
+ * Research resources are consumed from live sector storage@the TechNode's owning planet
  * through Sector.removeItem(), matching the stock ResearchDialog inventory model.
  */
 public final class BrowserCampaignResearch{
@@ -55,7 +55,7 @@ public final class BrowserCampaignResearch{
     private static final UnlockableContent[] nextExtractionSequence = {Blocks.multiplicativeReconstructor, UnitTypes.fortress};
     private static final UnlockableContent[] nextCoastlineSequence = {Blocks.itemBridge, Blocks.titaniumConveyor, Blocks.payloadConveyor};
     private static final UnlockableContent[] nextNavalFortressSequence = {Blocks.massDriver, UnitTypes.retusa, UnitTypes.oxynoe, UnitTypes.bryde, Blocks.cyclone, Blocks.ripple};
-    private static final UnlockableContent[] nextMycelialSequence = {UnitTypes.crawler, UnitTypes.atrax, UnitTypes.spiroct, UnitTypes.arkyid, Blocks.exponentialReconstructor};
+    private static final UnlockableContent[] nextMycelialSequence = {UnitTypes.crawler, UnitTypes.atrax, UnitTypes.spiroct, Blocks.exponentialReconstructor, UnitTypes.arkyid};
     private static final UnlockableContent[] nextLittoralSequence = {UnitTypes.sei, Blocks.spectre};
     private static final UnlockableContent[] nextTerminalSequence = {Blocks.advancedLaunchPad, Blocks.massDriver, Blocks.impactReactor, Blocks.tetrativeReconstructor, UnitTypes.omura};
     private static final UnlockableContent[] nextAtollsSequence = {UnitTypes.poly, UnitTypes.mega};
@@ -70,7 +70,7 @@ public final class BrowserCampaignResearch{
     private static final UnlockableContent[] nextCalderaSequence = {Blocks.heatRedirector};
     private static final UnlockableContent[] nextStrongholdSequence = {Blocks.coreCitadel};
     private static final UnlockableContent[] nextKarstSequence = {Blocks.coreAcropolis};
-    private static final UnlockableContent[] nextOriginSequence = {Blocks.payloadMassDriver, Blocks.constructor, Blocks.diffuse, Blocks.sublimate, Blocks.afflict, Blocks.electricHeater, Blocks.atmosphericConcentrator, Blocks.cyanogenSynthesizer, Blocks.tankAssembler, UnitTypes.vanquish, Blocks.shipAssembler, UnitTypes.quell, UnitTypes.disrupt, Blocks.mechAssembler, UnitTypes.tecta, UnitTypes.collaris, Blocks.disperse, Blocks.scathe, Blocks.malign, Blocks.pyrolysisGenerator, Blocks.fluxReactor, Blocks.neoplasiaReactor, Blocks.basicAssemblerModule};
+    private static final UnlockableContent[] nextOriginSequence = {Blocks.payloadMassDriver, Blocks.constructor, Blocks.diffuse, Blocks.sublimate, Blocks.afflict, Blocks.electricHeater, Blocks.atmosphericConcentrator, Blocks.cyanogenSynthesizer, Blocks.tankAssembler, UnitTypes.vanquish, Blocks.shipAssembler, UnitTypes.quell, UnitTypes.disrupt, Blocks.mechAssembler, UnitTypes.tecta, UnitTypes.collaris, Blocks.disperse, Blocks.scathe, Blocks.carbideCrucible, Blocks.phaseSynthesizer, Blocks.malign, Blocks.pyrolysisGenerator, Blocks.fluxReactor, Blocks.neoplasiaReactor, Blocks.basicAssemblerModule};
 
     private static final UnlockableContent[] nextCraterBeforeCoal = {Blocks.mechanicalDrill};
     private static final UnlockableContent[] nextCraterAfterCoal = {Blocks.combustionGenerator, Blocks.powerNode, Blocks.mender};
@@ -111,7 +111,7 @@ public final class BrowserCampaignResearch{
         UnlockableContent next = nextCraterResearch();
         if(next == null){
             if(waitingForCraterCoal()){
-                throw new IllegalStateException("Cratered Battleground progression is waiting for coal production");
+                throw new IllegalStateException("r:1");
             }
             return;
         }
@@ -131,7 +131,7 @@ public final class BrowserCampaignResearch{
     /**
      * Stock path from captured Ruinous Shores to Windswept Islands. Hail is nested
      * below Duo -> Scatter, so those parent nodes are included explicitly instead of
-     * relying on unlock() to silently backfill them.
+     * relying@unlock() to silently backfill them.
      */
     public static UnlockableContent nextWindsweptResearch(){
         return firstLocked(nextWindsweptSequence);
@@ -168,7 +168,7 @@ public final class BrowserCampaignResearch{
         UnlockableContent next = nextImpactResearch();
         if(next == null){
             if(waitingForImpactThorium()){
-                throw new IllegalStateException("Impact 0078 progression is waiting for thorium production");
+                throw new IllegalStateException("r:2");
             }
             return;
         }
@@ -194,7 +194,7 @@ public final class BrowserCampaignResearch{
         UnlockableContent next = nextNuclearResearch();
         if(next == null){
             if(waitingForNuclearPlastanium()){
-                throw new IllegalStateException("Nuclear Complex progression is waiting for plastanium production");
+                throw new IllegalStateException("r:3");
             }
             return;
         }
@@ -216,7 +216,7 @@ public final class BrowserCampaignResearch{
         UnlockableContent next = nextDesolateResearch();
         if(next == null){
             if(waitingForDesolateCryofluid()){
-                throw new IllegalStateException("Desolate Rift progression is waiting for cryofluid production");
+                throw new IllegalStateException("r:4");
             }
             return;
         }
@@ -320,7 +320,16 @@ public final class BrowserCampaignResearch{
     }
 
     public static UnlockableContent nextOriginResearch(){
-        return firstLocked(nextOriginSequence);
+        UnlockableContent next = firstLocked(nextOriginSequence);
+        // Malign has an implicit Research(phase-fabric) dependency. Karst unlocks the
+        // Phase Synthesizer; after researching it, production UI must wait for the
+        // player to actually craft/discover phase fabric before offering Malign.
+        if(next == Blocks.malign && !locallyUnlocked(Items.phaseFabric)) return null;
+        return next;
+    }
+
+    public static boolean waitingForOriginPhaseFabric(){
+        return locallyUnlocked(Blocks.phaseSynthesizer) && !locallyUnlocked(Items.phaseFabric);
     }
 
     public static boolean canSpend(UnlockableContent content){
@@ -351,31 +360,48 @@ public final class BrowserCampaignResearch{
      * Equivalent to one ResearchDialog spend action: consume every currently available
      * requirement up to the node target, persist partial progress, then unlock when complete.
      */
-    /** CI-only Onset tutorial research: preserve the stock Silicon Arc Furnace parent chain. */
+    /** CI-only Onset tutorial research through the stock Silicon Arc Furnace objective. */
     public static void runOnsetResearchSmoke(Sector source){
         if(source == null || source != SectorPresets.onset.sector){
-            throw new IllegalStateException("Onset objective smoke requires active Onset");
+            throw new IllegalStateException("r:5");
         }
+
+        // Direct tutorial stat staging does not emit normal item-transfer events, so model
+        // the resources that the player has actually acquired before their Research(item)
+        // dependencies are evaluated.
+        produceItem(source, Items.beryllium);
 
         stageAndSpend(source, Blocks.turbineCondenser);
         stageAndSpend(source, Blocks.plasmaBore);
         stageAndSpend(source, Blocks.beamNode);
         stageAndSpend(source, Blocks.duct);
+
+        produceItem(source, Items.graphite);
         stageAndSpend(source, Blocks.cliffCrusher);
         stageAndSpend(source, Blocks.siliconArcFurnace);
-        stageAndSpend(source, Blocks.tankFabricator);
-        stageAndSpend(source, UnitTypes.stell);
-        stageAndSpend(source, Blocks.breach);
-        stageAndSpend(source, Blocks.berylliumWall);
 
         Core.settings.forceSave();
         markOnsetResearchSmoke();
     }
 
+    /** Continue the Onset tutorial research after its real silicon-production objective. */
+    public static void runOnsetPostSiliconResearchSmoke(Sector source){
+        if(source == null || source != SectorPresets.onset.sector){
+            throw new IllegalStateException("r:5s");
+        }
+
+        produceItem(source, Items.silicon);
+        stageAndSpend(source, Blocks.tankFabricator);
+        stageAndSpend(source, UnitTypes.stell);
+        stageAndSpend(source, Blocks.breach);
+        stageAndSpend(source, Blocks.berylliumWall);
+        Core.settings.forceSave();
+    }
+
     /** After stock Onset capture, buy the exact TechTree prerequisites for Aegis. */
     public static void runAegisProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.onset.sector || !onsetCaptured()){
-            throw new IllegalStateException("Aegis progression requires captured Onset");
+            throw new IllegalStateException("r:6");
         }
 
         stageAndSpend(source, Blocks.duct);
@@ -384,7 +410,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.aegis)){
-            throw new IllegalStateException("Aegis did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:7");
         }
 
         Core.settings.forceSave();
@@ -393,18 +419,18 @@ public final class BrowserCampaignResearch{
 
     public static void verifyLakeReadyAfterAegis(Sector source){
         if(source == null || source != SectorPresets.aegis.sector || !isCaptured(SectorPresets.aegis)){
-            throw new IllegalStateException("Lake progression requires captured Aegis");
+            throw new IllegalStateException("r:8");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.lake)){
-            throw new IllegalStateException("Lake did not auto-unlock after captured Aegis");
+            throw new IllegalStateException("r:9");
         }
         markLakeReadySmoke();
     }
 
     public static void runIntersectProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.lake.sector || !isCaptured(SectorPresets.lake)){
-            throw new IllegalStateException("Intersect progression requires captured Lake");
+            throw new IllegalStateException("r:10");
         }
 
         stageAndSpend(source, Blocks.turbineCondenser);
@@ -415,7 +441,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.intersect)){
-            throw new IllegalStateException("Intersect did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:11");
         }
 
         Core.settings.forceSave();
@@ -424,14 +450,14 @@ public final class BrowserCampaignResearch{
 
     public static void runAtlasProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.intersect.sector || !isCaptured(SectorPresets.intersect)){
-            throw new IllegalStateException("Atlas progression requires captured Intersect");
+            throw new IllegalStateException("r:12");
         }
 
         stageAndSpend(source, Blocks.mechFabricator);
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.atlas)){
-            throw new IllegalStateException("Atlas did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:13");
         }
 
         Core.settings.forceSave();
@@ -440,7 +466,7 @@ public final class BrowserCampaignResearch{
 
     public static void runSplitProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.atlas.sector || !isCaptured(SectorPresets.atlas)){
-            throw new IllegalStateException("Split progression requires captured Atlas");
+            throw new IllegalStateException("r:14");
         }
 
         stageAndSpend(source, Blocks.reinforcedPayloadConveyor);
@@ -449,7 +475,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.split)){
-            throw new IllegalStateException("Split did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:15");
         }
 
         Core.settings.forceSave();
@@ -458,32 +484,32 @@ public final class BrowserCampaignResearch{
 
     public static void verifyBasinReadyAfterAtlas(Sector source){
         if(source == null || source != SectorPresets.split.sector || !isCaptured(SectorPresets.split)){
-            throw new IllegalStateException("Basin smoke order requires captured Split");
+            throw new IllegalStateException("r:16");
         }
         if(!isCaptured(SectorPresets.atlas)){
-            throw new IllegalStateException("Basin requires captured Atlas");
+            throw new IllegalStateException("r:17");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.basin)){
-            throw new IllegalStateException("Basin did not auto-unlock after captured Atlas");
+            throw new IllegalStateException("r:18");
         }
         markBasinReadySmoke();
     }
 
     public static void verifyMarshReadyAfterBasin(Sector source){
         if(source == null || source != SectorPresets.basin.sector || !isCaptured(SectorPresets.basin)){
-            throw new IllegalStateException("Marsh progression requires captured Basin");
+            throw new IllegalStateException("r:19");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.marsh)){
-            throw new IllegalStateException("Marsh did not auto-unlock after captured Basin");
+            throw new IllegalStateException("r:20");
         }
         markMarshReadySmoke();
     }
 
     public static void runMarshResearchSmoke(Sector source){
         if(source == null || source != SectorPresets.marsh.sector){
-            throw new IllegalStateException("Marsh objective smoke requires active Marsh");
+            throw new IllegalStateException("r:21");
         }
 
         stageAndSpend(source, Blocks.electrolyzer);
@@ -503,21 +529,21 @@ public final class BrowserCampaignResearch{
 
     public static void verifyPeaksReadyAfterMarsh(Sector source){
         if(source == null || source != SectorPresets.marsh.sector || !isCaptured(SectorPresets.marsh)){
-            throw new IllegalStateException("Peaks progression requires captured Marsh");
+            throw new IllegalStateException("r:22");
         }
         if(!isCaptured(SectorPresets.split)){
-            throw new IllegalStateException("Peaks also requires captured Split");
+            throw new IllegalStateException("r:23");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.peaks)){
-            throw new IllegalStateException("Peaks did not auto-unlock after stock sector prerequisites completed");
+            throw new IllegalStateException("r:24");
         }
         markPeaksReadySmoke();
     }
 
     public static void runPeaksResearchSmoke(Sector source){
         if(source == null || source != SectorPresets.peaks.sector){
-            throw new IllegalStateException("Peaks objective smoke requires active Peaks");
+            throw new IllegalStateException("r:25");
         }
 
         stageAndSpend(source, Blocks.beamTower);
@@ -532,17 +558,17 @@ public final class BrowserCampaignResearch{
 
     public static void runRavineProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.peaks.sector || !isCaptured(SectorPresets.peaks)){
-            throw new IllegalStateException("Ravine smoke order requires captured Peaks");
+            throw new IllegalStateException("r:26");
         }
         if(!isCaptured(SectorPresets.marsh)){
-            throw new IllegalStateException("Ravine requires captured Marsh");
+            throw new IllegalStateException("r:27");
         }
 
         if(!Liquids.slag.unlocked()) Liquids.slag.unlock();
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.ravine)){
-            throw new IllegalStateException("Ravine did not auto-unlock after slag production objective completed");
+            throw new IllegalStateException("r:28");
         }
         Core.settings.forceSave();
         markRavineProgressSmoke();
@@ -550,17 +576,17 @@ public final class BrowserCampaignResearch{
 
     public static void runCalderaProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.ravine.sector || !isCaptured(SectorPresets.ravine)){
-            throw new IllegalStateException("Caldera progression requires captured Ravine");
+            throw new IllegalStateException("r:29");
         }
         if(!isCaptured(SectorPresets.peaks)){
-            throw new IllegalStateException("Caldera also requires captured Peaks");
+            throw new IllegalStateException("r:30");
         }
 
         stageAndSpend(source, Blocks.heatRedirector);
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.caldera)){
-            throw new IllegalStateException("Caldera did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:31");
         }
         Core.settings.forceSave();
         markCalderaProgressSmoke();
@@ -568,14 +594,14 @@ public final class BrowserCampaignResearch{
 
     public static void runStrongholdProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.caldera.sector || !isCaptured(SectorPresets.caldera)){
-            throw new IllegalStateException("Stronghold progression requires captured Caldera");
+            throw new IllegalStateException("r:32");
         }
 
         stageAndSpend(source, Blocks.coreCitadel);
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.stronghold)){
-            throw new IllegalStateException("Stronghold did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:33");
         }
         Core.settings.forceSave();
         markStrongholdProgressSmoke();
@@ -583,47 +609,47 @@ public final class BrowserCampaignResearch{
 
     public static void verifyCreviceReadyAfterStronghold(Sector source){
         if(source == null || source != SectorPresets.stronghold.sector || !isCaptured(SectorPresets.stronghold)){
-            throw new IllegalStateException("Crevice progression requires captured Stronghold");
+            throw new IllegalStateException("r:34");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.crevice)){
-            throw new IllegalStateException("Crevice did not auto-unlock after captured Stronghold");
+            throw new IllegalStateException("r:35");
         }
         markCreviceReadySmoke();
     }
 
     public static void verifySiegeReadyAfterCrevice(Sector source){
         if(source == null || source != SectorPresets.crevice.sector || !isCaptured(SectorPresets.crevice)){
-            throw new IllegalStateException("Siege progression requires captured Crevice");
+            throw new IllegalStateException("r:36");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.siege)){
-            throw new IllegalStateException("Siege did not auto-unlock after captured Crevice");
+            throw new IllegalStateException("r:37");
         }
         markSiegeReadySmoke();
     }
 
     public static void verifyCrossroadsReadyAfterSiege(Sector source){
         if(source == null || source != SectorPresets.siege.sector || !isCaptured(SectorPresets.siege)){
-            throw new IllegalStateException("Crossroads progression requires captured Siege");
+            throw new IllegalStateException("r:38");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.crossroads)){
-            throw new IllegalStateException("Crossroads did not auto-unlock after captured Siege");
+            throw new IllegalStateException("r:39");
         }
         markCrossroadsReadySmoke();
     }
 
     public static void runKarstProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.crossroads.sector || !isCaptured(SectorPresets.crossroads)){
-            throw new IllegalStateException("Karst progression requires captured Crossroads");
+            throw new IllegalStateException("r:40");
         }
 
         stageAndSpend(source, Blocks.coreAcropolis);
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.karst)){
-            throw new IllegalStateException("Karst did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:41");
         }
         Core.settings.forceSave();
         markKarstProgressSmoke();
@@ -631,7 +657,7 @@ public final class BrowserCampaignResearch{
 
     public static void runOriginProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.karst.sector || !isCaptured(SectorPresets.karst)){
-            throw new IllegalStateException("Origin progression requires captured Karst");
+            throw new IllegalStateException("r:42");
         }
 
         stageAndSpend(source, Blocks.payloadMassDriver);
@@ -657,6 +683,12 @@ public final class BrowserCampaignResearch{
 
         stageAndSpend(source, Blocks.disperse);
         stageAndSpend(source, Blocks.scathe);
+
+        // Karst is the first sector that exposes the Phase Synthesizer. Model the
+        // stock production prerequisite before Malign's implicit Research(phase-fabric).
+        stageAndSpend(source, Blocks.carbideCrucible);
+        stageAndSpend(source, Blocks.phaseSynthesizer);
+        produceItem(source, Items.phaseFabric);
         stageAndSpend(source, Blocks.malign);
 
         stageAndSpend(source, Blocks.pyrolysisGenerator);
@@ -667,7 +699,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.origin)){
-            throw new IllegalStateException("Origin did not auto-unlock after stock final prerequisites completed");
+            throw new IllegalStateException("r:43");
         }
         Core.settings.forceSave();
         markOriginProgressSmoke();
@@ -676,30 +708,30 @@ public final class BrowserCampaignResearch{
     /** CI-only helper: supply exactly the missing early research resources, then use the production spend path. */
     public static void runEarlyProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.groundZero.sector || !groundZeroCaptured()){
-            throw new IllegalStateException("Early campaign progress smoke requires captured Ground Zero");
+            throw new IllegalStateException("r:44");
         }
 
         stageMissing(source, Blocks.conveyor);
         spend(Blocks.conveyor);
         if(!Blocks.conveyor.unlocked()){
-            throw new IllegalStateException("Conveyor did not unlock through stock TechNode research");
+            throw new IllegalStateException("r:45");
         }
 
         stageMissing(source, Blocks.junction);
         spend(Blocks.junction);
         if(!Blocks.junction.unlocked()){
-            throw new IllegalStateException("Junction did not unlock through stock TechNode research");
+            throw new IllegalStateException("r:46");
         }
 
         stageMissing(source, Blocks.router);
         spend(Blocks.router);
         if(!Blocks.router.unlocked()){
-            throw new IllegalStateException("Router did not unlock through stock TechNode research");
+            throw new IllegalStateException("r:47");
         }
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.frozenForest)){
-            throw new IllegalStateException("Frozen Forest did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:48");
         }
 
         Core.settings.forceSave();
@@ -713,19 +745,22 @@ public final class BrowserCampaignResearch{
      */
     public static void runCraterProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.frozenForest.sector || !captured(SectorPresets.frozenForest)){
-            throw new IllegalStateException("Crater progression smoke requires captured Frozen Forest");
+            throw new IllegalStateException("r:49");
         }
 
         stageAndSpend(source, Blocks.mechanicalDrill);
 
-        // In production, Control.update() unlocks every item present in the campaign core.
-        // The smoke supplies one produced coal deterministically and invokes that same
-        // UnlockableContent state transition so Research(coal) is not bypassed.
-        if(!Items.coal.unlocked()){
-            ItemSeq produced = new ItemSeq();
-            produced.add(Items.coal, 1);
-            source.addItems(produced);
-            Items.coal.unlock();
+        // Frozen Forest is the first early Serpulo milestone that supplies lead/coal
+        // to the campaign economy. The smoke fast-forwards combat, so explicitly model
+        // those produced resources before buying power. TechNode also adds implicit
+        // Research(item) objectives for a block's build dependencies (lead here), not
+        // only the explicit Research(coal) objective declared in SerpuloTechTree.
+        produceItem(source, Items.lead);
+        produceItem(source, Items.coal);
+
+        TechNode combustion = node(Blocks.combustionGenerator);
+        if(!Items.lead.unlockedHost() || !Items.coal.unlockedHost() || !objectivesComplete(combustion)){
+            throw new IllegalStateException("r:pd");
         }
 
         stageAndSpend(source, Blocks.combustionGenerator);
@@ -734,7 +769,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.crateredBattleground)){
-            throw new IllegalStateException("Cratered Battleground did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:50");
         }
 
         Core.settings.forceSave();
@@ -745,17 +780,26 @@ public final class BrowserCampaignResearch{
     public static void runRuinousProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.crateredBattleground.sector
         || !captured(SectorPresets.crateredBattleground)){
-            throw new IllegalStateException("Ruinous Shores progression smoke requires captured Cratered Battleground");
+            throw new IllegalStateException("r:51");
         }
 
         stageAndSpend(source, Blocks.graphitePress);
+        produceItem(source, Items.graphite);
+
+        stageAndSpend(source, Blocks.pyratiteMixer);
+        produceItem(source, Items.pyratite);
+
         stageAndSpend(source, Blocks.siliconSmelter);
+        produceItem(source, Items.silicon);
+
         stageAndSpend(source, Blocks.kiln);
+        produceItem(source, Items.metaglass);
+
         stageAndSpend(source, Blocks.mechanicalPump);
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.ruinousShores)){
-            throw new IllegalStateException("Ruinous Shores did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:52");
         }
 
         Core.settings.forceSave();
@@ -766,7 +810,7 @@ public final class BrowserCampaignResearch{
     public static void runWindsweptProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.ruinousShores.sector
         || !captured(SectorPresets.ruinousShores)){
-            throw new IllegalStateException("Windswept Islands progression smoke requires captured Ruinous Shores");
+            throw new IllegalStateException("r:53");
         }
 
         stageAndSpend(source, Blocks.pneumaticDrill);
@@ -778,7 +822,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.windsweptIslands)){
-            throw new IllegalStateException("Windswept Islands did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:54");
         }
 
         Core.settings.forceSave();
@@ -788,11 +832,11 @@ public final class BrowserCampaignResearch{
     public static void verifyBiomassReadyAfterWindswept(Sector source){
         if(source == null || source != SectorPresets.windsweptIslands.sector
         || !captured(SectorPresets.windsweptIslands)){
-            throw new IllegalStateException("Biomass Facility progression requires captured Windswept Islands");
+            throw new IllegalStateException("r:55");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.biomassFacility)){
-            throw new IllegalStateException("Biomass Facility did not auto-unlock from stock prerequisites");
+            throw new IllegalStateException("r:56");
         }
         markBiomassReadySmoke();
     }
@@ -800,14 +844,14 @@ public final class BrowserCampaignResearch{
     public static void runFungalProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.biomassFacility.sector
         || !captured(SectorPresets.biomassFacility)){
-            throw new IllegalStateException("Fungal Pass progression requires captured Biomass Facility");
+            throw new IllegalStateException("r:57");
         }
 
         stageAndSpend(source, Blocks.groundFactory);
         stageAndSpend(source, UnitTypes.dagger);
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.fungalPass)){
-            throw new IllegalStateException("Fungal Pass did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:58");
         }
         Core.settings.forceSave();
         markFungalProgressSmoke();
@@ -816,12 +860,13 @@ public final class BrowserCampaignResearch{
     public static void runFrontierProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.fungalPass.sector
         || !captured(SectorPresets.fungalPass)){
-            throw new IllegalStateException("Frontier progression requires captured Fungal Pass");
+            throw new IllegalStateException("r:59");
         }
         if(!isCaptured(SectorPresets.biomassFacility)){
-            throw new IllegalStateException("Frontier progression also requires captured Biomass Facility");
+            throw new IllegalStateException("r:60");
         }
 
+        produceItem(source, Items.sporePod);
         stageAndSpend(source, Blocks.airFactory);
         stageAndSpend(source, Blocks.additiveReconstructor);
         stageAndSpend(source, UnitTypes.mace);
@@ -830,7 +875,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.frontier)){
-            throw new IllegalStateException("Frontier did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:61");
         }
         Core.settings.forceSave();
         markFrontierProgressSmoke();
@@ -839,20 +884,21 @@ public final class BrowserCampaignResearch{
     public static void runSaltProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.frontier.sector
         || !captured(SectorPresets.frontier)){
-            throw new IllegalStateException("Salt Flats progression requires captured Frontier");
+            throw new IllegalStateException("r:62");
         }
         if(!isCaptured(SectorPresets.windsweptIslands) || !isCaptured(SectorPresets.fungalPass)){
-            throw new IllegalStateException("Salt Flats sector capture prerequisites are incomplete");
+            throw new IllegalStateException("r:63");
         }
 
         stageAndSpend(source, Blocks.copperWall);
         stageAndSpend(source, Blocks.copperWallLarge);
+        produceItem(source, Items.titanium);
         stageAndSpend(source, Blocks.titaniumWall);
         stageAndSpend(source, Blocks.door);
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.saltFlats)){
-            throw new IllegalStateException("Salt Flats did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:64");
         }
         Core.settings.forceSave();
         markSaltProgressSmoke();
@@ -861,7 +907,7 @@ public final class BrowserCampaignResearch{
     public static void runTarProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.saltFlats.sector
         || !captured(SectorPresets.saltFlats)){
-            throw new IllegalStateException("Tar Fields progression requires captured Salt Flats");
+            throw new IllegalStateException("r:65");
         }
 
         stageAndSpend(source, Blocks.sporePress);
@@ -873,7 +919,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.tarFields)){
-            throw new IllegalStateException("Tar Fields did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:66");
         }
         Core.settings.forceSave();
         markTarProgressSmoke();
@@ -882,7 +928,7 @@ public final class BrowserCampaignResearch{
     public static void runImpactProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.tarFields.sector
         || !captured(SectorPresets.tarFields)){
-            throw new IllegalStateException("Impact 0078 progression requires captured Tar Fields");
+            throw new IllegalStateException("r:67");
         }
 
         stageAndSpend(source, Blocks.laserDrill);
@@ -902,7 +948,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.impact0078)){
-            throw new IllegalStateException("Impact 0078 did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:68");
         }
         Core.settings.forceSave();
         markImpactProgressSmoke();
@@ -910,11 +956,11 @@ public final class BrowserCampaignResearch{
 
     public static void verifyStainedReadyAfterImpact(Sector source){
         if(source == null || source != SectorPresets.impact0078.sector || !captured(SectorPresets.impact0078)){
-            throw new IllegalStateException("Stained Mountains smoke requires captured Impact 0078");
+            throw new IllegalStateException("r:69");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.stainedMountains)){
-            throw new IllegalStateException("Stained Mountains did not auto-unlock from stock prerequisites");
+            throw new IllegalStateException("r:70");
         }
         markStainedReadySmoke();
     }
@@ -922,10 +968,10 @@ public final class BrowserCampaignResearch{
     public static void runInfestedProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.stainedMountains.sector
         || !captured(SectorPresets.stainedMountains)){
-            throw new IllegalStateException("Infested Canyons progression requires captured Stained Mountains");
+            throw new IllegalStateException("r:71");
         }
         if(!isCaptured(SectorPresets.fungalPass) || !isCaptured(SectorPresets.frontier)){
-            throw new IllegalStateException("Infested Canyons also requires captured Fungal Pass and Frontier");
+            throw new IllegalStateException("r:72");
         }
 
         stageAndSpend(source, Blocks.navalFactory);
@@ -934,7 +980,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.infestedCanyons)){
-            throw new IllegalStateException("Infested Canyons did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:73");
         }
         Core.settings.forceSave();
         markInfestedProgressSmoke();
@@ -943,18 +989,17 @@ public final class BrowserCampaignResearch{
     public static void runNuclearProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.infestedCanyons.sector
         || !captured(SectorPresets.infestedCanyons)){
-            throw new IllegalStateException("Nuclear Complex progression requires captured Infested Canyons");
+            throw new IllegalStateException("r:74");
         }
 
         stageAndSpend(source, Blocks.thermalGenerator);
         stageAndSpend(source, Blocks.laserDrill);
         stageAndSpend(source, Blocks.plastaniumCompressor);
+        produceItem(source, Items.plastanium);
 
-        if(!Items.plastanium.unlocked()){
-            ItemSeq produced = new ItemSeq();
-            produced.add(Items.plastanium, 1);
-            source.addItems(produced);
-            Items.plastanium.unlock();
+        if(isCaptured(SectorPresets.impact0078)){
+            stageAndSpend(source, Blocks.phaseWeaver);
+            produceItem(source, Items.phaseFabric);
         }
 
         stageAndSpend(source, Blocks.salvo);
@@ -962,7 +1007,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.nuclearComplex)){
-            throw new IllegalStateException("Nuclear Complex did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:75");
         }
         Core.settings.forceSave();
         markNuclearProgressSmoke();
@@ -971,13 +1016,14 @@ public final class BrowserCampaignResearch{
     public static void runDesolateProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.nuclearComplex.sector
         || !captured(SectorPresets.nuclearComplex)){
-            throw new IllegalStateException("Desolate Rift progression requires captured Nuclear Complex");
+            throw new IllegalStateException("r:76");
         }
         if(!isCaptured(SectorPresets.impact0078)){
-            throw new IllegalStateException("Desolate Rift also requires captured Impact 0078");
+            throw new IllegalStateException("r:77");
         }
 
         stageAndSpend(source, Blocks.coreNucleus);
+        produceItem(source, Items.scrap);
         stageAndSpend(source, Blocks.pulverizer);
         stageAndSpend(source, Blocks.incinerator);
         stageAndSpend(source, Blocks.melter);
@@ -995,7 +1041,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.desolateRift)){
-            throw new IllegalStateException("Desolate Rift did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:78");
         }
         Core.settings.forceSave();
         markDesolateProgressSmoke();
@@ -1003,24 +1049,26 @@ public final class BrowserCampaignResearch{
 
     public static void verifyFacility32mReady(Sector source){
         if(source == null || source != SectorPresets.desolateRift.sector || !isCaptured(SectorPresets.desolateRift)){
-            throw new IllegalStateException("Facility 32M branch requires captured Desolate Rift");
+            throw new IllegalStateException("r:79");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.facility32m)){
-            throw new IllegalStateException("Facility 32M did not auto-unlock from stock prerequisites");
+            throw new IllegalStateException("r:80");
         }
         markFacilityReadySmoke();
     }
 
     public static void runPerilousProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.facility32m.sector || !isCaptured(SectorPresets.facility32m)){
-            throw new IllegalStateException("Perilous Harbor progression requires captured Facility 32M");
+            throw new IllegalStateException("r:81");
         }
+        stageAndSpend(source, Blocks.blastMixer);
+        produceItem(source, Items.blastCompound);
         stageAndSpend(source, Blocks.cultivator);
         stageAndSpend(source, UnitTypes.retusa);
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.perilousHarbor)){
-            throw new IllegalStateException("Perilous Harbor did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:82");
         }
         Core.settings.forceSave();
         markPerilousProgressSmoke();
@@ -1028,16 +1076,16 @@ public final class BrowserCampaignResearch{
 
     public static void runExtractionProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.perilousHarbor.sector || !isCaptured(SectorPresets.perilousHarbor)){
-            throw new IllegalStateException("Extraction Outpost progression requires captured Perilous Harbor");
+            throw new IllegalStateException("r:83");
         }
         if(!isCaptured(SectorPresets.facility32m) || !isCaptured(SectorPresets.windsweptIslands)){
-            throw new IllegalStateException("Extraction Outpost sector prerequisites are incomplete");
+            throw new IllegalStateException("r:84");
         }
         stageAndSpend(source, Blocks.multiplicativeReconstructor);
         stageAndSpend(source, UnitTypes.fortress);
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.extractionOutpost)){
-            throw new IllegalStateException("Extraction Outpost did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:85");
         }
         Core.settings.forceSave();
         markExtractionProgressSmoke();
@@ -1045,14 +1093,14 @@ public final class BrowserCampaignResearch{
 
     public static void runCoastlineProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.extractionOutpost.sector || !isCaptured(SectorPresets.extractionOutpost)){
-            throw new IllegalStateException("Coastline progression requires captured Extraction Outpost");
+            throw new IllegalStateException("r:86");
         }
         stageAndSpend(source, Blocks.itemBridge);
         stageAndSpend(source, Blocks.titaniumConveyor);
         stageAndSpend(source, Blocks.payloadConveyor);
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.coastline)){
-            throw new IllegalStateException("Coastline did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:87");
         }
         Core.settings.forceSave();
         markCoastlineProgressSmoke();
@@ -1060,12 +1108,14 @@ public final class BrowserCampaignResearch{
 
     public static void runNavalFortressProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.coastline.sector || !isCaptured(SectorPresets.coastline)){
-            throw new IllegalStateException("Naval Fortress progression requires captured Coastline");
+            throw new IllegalStateException("r:88");
         }
         if(!isCaptured(SectorPresets.extractionOutpost)){
-            throw new IllegalStateException("Naval Fortress also requires captured Extraction Outpost");
+            throw new IllegalStateException("r:89");
         }
 
+        stageAndSpend(source, Blocks.surgeSmelter);
+        produceItem(source, Items.surgeAlloy);
         stageAndSpend(source, Blocks.massDriver);
         stageAndSpend(source, UnitTypes.retusa);
         stageAndSpend(source, UnitTypes.oxynoe);
@@ -1075,7 +1125,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.navalFortress)){
-            throw new IllegalStateException("Naval Fortress did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:90");
         }
         Core.settings.forceSave();
         markNavalFortressProgressSmoke();
@@ -1083,29 +1133,29 @@ public final class BrowserCampaignResearch{
 
     public static void verifyOvergrowthReady(Sector source){
         if(source == null || source != SectorPresets.navalFortress.sector || !isCaptured(SectorPresets.navalFortress)){
-            throw new IllegalStateException("Overgrowth progression requires captured Naval Fortress milestone");
+            throw new IllegalStateException("r:91");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.overgrowth)){
-            throw new IllegalStateException("Overgrowth did not auto-unlock from stock prerequisites");
+            throw new IllegalStateException("r:92");
         }
         markOvergrowthReadySmoke();
     }
 
     public static void runMycelialProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.overgrowth.sector || !isCaptured(SectorPresets.overgrowth)){
-            throw new IllegalStateException("Mycelial Bastion progression requires captured Overgrowth");
+            throw new IllegalStateException("r:93");
         }
 
         stageAndSpend(source, UnitTypes.crawler);
         stageAndSpend(source, UnitTypes.atrax);
         stageAndSpend(source, UnitTypes.spiroct);
-        stageAndSpend(source, UnitTypes.arkyid);
         stageAndSpend(source, Blocks.exponentialReconstructor);
+        stageAndSpend(source, UnitTypes.arkyid);
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.mycelialBastion)){
-            throw new IllegalStateException("Mycelial Bastion did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:94");
         }
         Core.settings.forceSave();
         markMycelialProgressSmoke();
@@ -1113,10 +1163,10 @@ public final class BrowserCampaignResearch{
 
     public static void runLittoralProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.mycelialBastion.sector || !isCaptured(SectorPresets.mycelialBastion)){
-            throw new IllegalStateException("Littoral Shipyard progression requires captured Mycelial Bastion");
+            throw new IllegalStateException("r:95");
         }
         if(!isCaptured(SectorPresets.desolateRift) || !isCaptured(SectorPresets.navalFortress)){
-            throw new IllegalStateException("Littoral Shipyard sector prerequisites are incomplete");
+            throw new IllegalStateException("r:96");
         }
 
         stageAndSpend(source, UnitTypes.sei);
@@ -1124,7 +1174,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.littoralShipyard)){
-            throw new IllegalStateException("Littoral Shipyard did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:97");
         }
         Core.settings.forceSave();
         markLittoralProgressSmoke();
@@ -1132,11 +1182,11 @@ public final class BrowserCampaignResearch{
 
     public static void runTerminalProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.littoralShipyard.sector || !isCaptured(SectorPresets.littoralShipyard)){
-            throw new IllegalStateException("Planetary Terminal progression requires captured Littoral Shipyard");
+            throw new IllegalStateException("r:98");
         }
         if(!isCaptured(SectorPresets.desolateRift) || !isCaptured(SectorPresets.nuclearComplex)
         || !isCaptured(SectorPresets.extractionOutpost) || !isCaptured(SectorPresets.mycelialBastion)){
-            throw new IllegalStateException("Planetary Terminal sector prerequisites are incomplete");
+            throw new IllegalStateException("r:99");
         }
 
         stageAndSpend(source, Blocks.advancedLaunchPad);
@@ -1147,7 +1197,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.planetaryTerminal)){
-            throw new IllegalStateException("Planetary Launch Terminal did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:100");
         }
         Core.settings.forceSave();
         markTerminalProgressSmoke();
@@ -1155,7 +1205,7 @@ public final class BrowserCampaignResearch{
 
     public static void runTaintedProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.planetaryTerminal.sector || !isCaptured(SectorPresets.planetaryTerminal)){
-            throw new IllegalStateException("Tainted Woods progression requires captured Planetary Launch Terminal");
+            throw new IllegalStateException("r:101");
         }
 
         if(!Items.sporePod.unlocked()){
@@ -1167,7 +1217,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.taintedWoods)){
-            throw new IllegalStateException("Tainted Woods did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:102");
         }
         Core.settings.forceSave();
         markTaintedProgressSmoke();
@@ -1175,7 +1225,7 @@ public final class BrowserCampaignResearch{
 
     public static void runAtollsProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.taintedWoods.sector || !isCaptured(SectorPresets.taintedWoods)){
-            throw new IllegalStateException("Atolls progression requires captured Tainted Woods in optional smoke order");
+            throw new IllegalStateException("r:103");
         }
 
         stageAndSpend(source, UnitTypes.poly);
@@ -1183,7 +1233,7 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.atolls)){
-            throw new IllegalStateException("Atolls did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:104");
         }
         Core.settings.forceSave();
         markAtollsProgressSmoke();
@@ -1191,14 +1241,14 @@ public final class BrowserCampaignResearch{
 
     public static void runTestingGroundsProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.atolls.sector || !isCaptured(SectorPresets.atolls)){
-            throw new IllegalStateException("Testing Grounds progression requires captured Atolls in optional smoke order");
+            throw new IllegalStateException("r:105");
         }
 
         stageAndSpend(source, Blocks.waterExtractor);
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.testingGrounds)){
-            throw new IllegalStateException("Testing Grounds did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:106");
         }
         Core.settings.forceSave();
         markTestingGroundsProgressSmoke();
@@ -1206,18 +1256,18 @@ public final class BrowserCampaignResearch{
 
     public static void verifySunkenPierReady(Sector source){
         if(source == null || source != SectorPresets.testingGrounds.sector || !isCaptured(SectorPresets.testingGrounds)){
-            throw new IllegalStateException("Sunken Pier smoke order requires captured Testing Grounds");
+            throw new IllegalStateException("r:107");
         }
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.sunkenPier)){
-            throw new IllegalStateException("Sunken Pier did not auto-unlock from stock prerequisites");
+            throw new IllegalStateException("r:108");
         }
         markSunkenPierReadySmoke();
     }
 
     public static void runWeatheredProgressSmoke(Sector source){
         if(source == null || source != SectorPresets.sunkenPier.sector || !isCaptured(SectorPresets.sunkenPier)){
-            throw new IllegalStateException("Weathered Channels smoke order requires captured Sunken Pier");
+            throw new IllegalStateException("r:109");
         }
 
         stageAndSpend(source, Blocks.surgeSmelter);
@@ -1227,10 +1277,18 @@ public final class BrowserCampaignResearch{
 
         if(control != null) control.checkAutoUnlocks();
         if(!ready(SectorPresets.weatheredChannels)){
-            throw new IllegalStateException("Weathered Channels did not auto-unlock after stock prerequisites completed");
+            throw new IllegalStateException("r:110");
         }
         Core.settings.forceSave();
         markWeatheredProgressSmoke();
+    }
+
+    private static void produceItem(Sector source, Item item){
+        if(item == null || item.unlocked()) return;
+        ItemSeq produced = new ItemSeq();
+        produced.add(item, 1);
+        source.addItems(produced);
+        item.unlock();
     }
 
     private static void stageAndSpend(Sector source, UnlockableContent content){
@@ -1238,28 +1296,69 @@ public final class BrowserCampaignResearch{
         stageMissing(source, content);
         spend(content);
         if(!content.unlocked()){
-            throw new IllegalStateException("Stock TechNode research did not unlock " + content.name);
+            throw new IllegalStateException("r:u:" + content.name);
         }
     }
 
     private static void stageMissing(Sector source, UnlockableContent content){
         TechNode node = node(content);
-        ItemSeq staged = new ItemSeq();
+        Planet planet = researchPlanet(node);
+        if(planet == null) throw new IllegalStateException("r:no-planet");
+
         for(int i = 0; i < node.requirements.length; i++){
-            int missing = Math.max(0, node.requirements[i].amount - node.finishedRequirements[i].amount);
-            if(missing > 0) staged.add(node.requirements[i].item, missing);
+            Item item = node.requirements[i].item;
+
+            while(node.finishedRequirements[i].amount < node.requirements[i].amount){
+                // Spend the previous chunk first, freeing the same finite campaign
+                // storage before the next contribution is staged.
+                spend(content, true);
+                if(content.unlocked()) return;
+                if(node.finishedRequirements[i].amount >= node.requirements[i].amount) break;
+
+                int missing = node.requirements[i].amount - node.finishedRequirements[i].amount;
+                int staged = 0;
+                if(source != null && source.planet == planet && source.hasBase() && !source.isFrozen()){
+                    staged = stageIntoSector(source, item, missing);
+                    // Research costs can exceed one sector's storage capacity. Do not
+                    // walk every historical SectorInfo just to fill the remainder in one
+                    // pass: the next loop iteration spends this staged chunk, frees the
+                    // same storage, and can stage the next chunk in the authoritative
+                    // source sector. This keeps late Erekir research deterministic and
+                    // avoids touching sparse/minimal metadata from unrelated saves.
+                    if(staged > 0) continue;
+                }
+                for(Sector sector : planet.sectors){
+                    if(sector == source || !sector.hasBase() || sector.isFrozen()) continue;
+                    staged += stageIntoSector(sector, item, missing - staged);
+                    if(staged > 0) break;
+                }
+                if(staged <= 0) throw new IllegalStateException("r:capacity");
+            }
         }
-        source.addItems(staged);
+    }
+
+    private static int stageIntoSector(Sector sector, Item item, int requested){
+        if(sector == null || item == null || requested <= 0) return 0;
+        int before = sector.items().get(item);
+        ItemSeq staged = new ItemSeq();
+        staged.add(item, requested);
+        sector.addItems(staged);
+        int after = sector.items().get(item);
+        return Math.max(0, after - before);
     }
 
     public static void spend(UnlockableContent content){
+        spend(content, false);
+    }
+
+    private static void spend(UnlockableContent content, boolean activeSectorOnly){
         TechNode node = node(content);
         if(content.unlocked()) return;
         if(node.parent != null && !node.parent.content.unlocked()){
-            throw new IllegalStateException("Research parent is still locked: " + content.name);
+            throw new IllegalStateException("r:p:" + content.name);
         }
         if(!objectivesComplete(node)){
-            throw new IllegalStateException("Research objectives are incomplete: " + content.name);
+            throw new IllegalStateException("r:o:" + content.name);
         }
 
         boolean complete = true;
@@ -1269,10 +1368,10 @@ public final class BrowserCampaignResearch{
             ItemStack req = node.requirements[i];
             ItemStack done = node.finishedRequirements[i];
             int missing = Math.max(0, req.amount - done.amount);
-            int used = Math.min(missing, available(node, req.item));
+            int used = Math.min(missing, available(node, req.item, activeSectorOnly));
 
             if(used > 0){
-                removeFromResearchPlanet(node, req.item, used);
+                removeFromResearchPlanet(node, req.item, used, activeSectorOnly);
                 done.amount += used;
                 spent += used;
             }
@@ -1283,7 +1382,6 @@ public final class BrowserCampaignResearch{
         if(complete){
             unlock(node);
         }
-
         node.save();
         if(control != null) control.checkAutoUnlocks();
         Core.settings.forceSave();
@@ -1297,13 +1395,42 @@ public final class BrowserCampaignResearch{
 
     private static TechNode node(UnlockableContent content){
         if(content == null || content.techNode == null){
-            throw new IllegalArgumentException("Content has no stock tech node");
+            throw new IllegalArgumentException("r:111");
         }
         return content.techNode;
     }
 
     private static boolean objectivesComplete(TechNode node){
-        return !node.objectives.contains(objective -> !objective.complete());
+        if(node == null || node.objectives == null) return false;
+
+        // TeaVM hit a null dispatch in Seq.contains(predicate) on Malign's mixed
+        // SectorComplete + implicit Research objective list. Walk the compact Seq by
+        // index and evaluate the stock objective types directly instead.
+        for(int i = 0; i < node.objectives.size; i++){
+            var objective = node.objectives.get(i);
+            if(objective == null) return false;
+
+            if(objective instanceof Objectives.SectorComplete complete){
+                if(complete.preset == null || !captured(complete.preset)) return false;
+            }else if(objective instanceof Objectives.Research research){
+                // Web/Yandex is permanently single-player. Read the local persisted
+                // unlock flag directly so neither unlockedHost() nor unlocked() can
+                // enter their multiplayer state.rules.researched branch.
+                if(!locallyUnlocked(research.content)) return false;
+            }else if(objective instanceof Objectives.Produce produce){
+                if(!locallyUnlocked(produce.content)) return false;
+            }else if(objective instanceof Objectives.OnSector onSector){
+                if(onSector.preset == null || onSector.preset.sector == null || !onSector.preset.sector.hasBase()) return false;
+            }else if(!objective.complete()){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean locallyUnlocked(UnlockableContent content){
+        return content != null && (content.alwaysUnlocked
+            || Core.settings != null && Core.settings.getBool(content.name + "-unlocked", false));
     }
 
     private static boolean captured(SectorPreset preset){
@@ -1327,10 +1454,22 @@ public final class BrowserCampaignResearch{
     }
 
     private static int available(TechNode node, Item item){
-        int total = 0;
+        return available(node, item, false);
+    }
+
+    private static int available(TechNode node, Item item, boolean activeSectorOnly){
         Planet planet = researchPlanet(node);
         if(planet == null) return 0;
 
+        Sector active = state != null && state.isCampaign() ? state.rules.sector : null;
+        if(activeSectorOnly && active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
+            // CI stageMissing() deliberately performs a zero-resource spend before the
+            // first chunk is staged. Zero means "stage next", not "scan old saves".
+            return Math.max(0, active.items().get(item));
+        }
+
+        // Production research keeps the stock cross-sector inventory model.
+        int total = 0;
         for(Sector sector : planet.sectors){
             if(sector.hasBase() && !sector.isFrozen()){
                 total += Math.max(0, sector.items().get(item));
@@ -1339,28 +1478,41 @@ public final class BrowserCampaignResearch{
         return total;
     }
 
-    private static void removeFromResearchPlanet(TechNode node, Item item, int amount){
+    private static void removeFromResearchPlanet(TechNode node, Item item, int amount, boolean activeSectorOnly){
         Planet planet = researchPlanet(node);
         if(planet == null){
-            throw new IllegalStateException("Campaign research has no owning planet for " + node.content.name);
+            throw new IllegalStateException("r:np:" + node.content.name);
         }
 
         int remaining = amount;
         Sector active = state != null && state.isCampaign() ? state.rules.sector : null;
 
-        for(Sector sector : planet.sectors){
-            if(remaining <= 0) break;
-            if(sector == active || !sector.hasBase() || sector.isFrozen()) continue;
-
-            int stored = Math.max(0, sector.items().get(item));
-            if(stored <= 0) continue;
-
+        if(activeSectorOnly && active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
+            int stored = Math.max(0, active.items().get(item));
             int used = Math.min(stored, remaining);
-            sector.removeItem(item, used);
-            remaining -= used;
+            if(used > 0){
+                active.removeItem(item, used);
+                remaining -= used;
+            }
         }
 
-        if(remaining > 0 && active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
+        if(!activeSectorOnly){
+            // Preserve the production bridge's original ordering: consume non-active
+            // campaign bases first, then the currently played sector last.
+            for(Sector sector : planet.sectors){
+                if(remaining <= 0) break;
+                if(sector == active || !sector.hasBase() || sector.isFrozen()) continue;
+
+                int stored = Math.max(0, sector.items().get(item));
+                if(stored <= 0) continue;
+
+                int used = Math.min(stored, remaining);
+                sector.removeItem(item, used);
+                remaining -= used;
+            }
+        }
+
+        if(!activeSectorOnly && remaining > 0 && active != null && active.planet == planet && active.hasBase() && !active.isFrozen()){
             int stored = Math.max(0, active.items().get(item));
             int used = Math.min(stored, remaining);
             if(used > 0){
@@ -1371,8 +1523,8 @@ public final class BrowserCampaignResearch{
 
         if(remaining != 0){
             throw new IllegalStateException(
-                "Campaign research resource accounting changed while spending " + item.name +
-                " on " + planet.name
+                "r:a:" + item.name +
+                "@" + planet.name
             );
         }
     }
@@ -1662,6 +1814,9 @@ public final class BrowserCampaignResearch{
     }
 
     private static void markOriginProgressSmoke(){
+        setResearchDomAttribute("data-mindustry-erekir-carbide-crucible-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-phase-synthesizer-unlocked", "true");
+        setResearchDomAttribute("data-mindustry-erekir-phase-fabric-unlocked", "true");
         setResearchDomAttribute("data-mindustry-erekir-payload-mass-driver-unlocked", "true");
         setResearchDomAttribute("data-mindustry-erekir-constructor-unlocked", "true");
         setResearchDomAttribute("data-mindustry-erekir-atmospheric-concentrator-unlocked", "true");

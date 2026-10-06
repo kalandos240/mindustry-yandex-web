@@ -20,6 +20,72 @@ for path in (CONTROL, UI, MENU, PAUSED, PLAYER_LIST):
 control = CONTROL.read_text(encoding="utf-8")
 control_replacements = [
     (
+        '''    public void checkAutoUnlocks(){
+        if(net.client()) return;
+
+        for(TechNode node : TechTree.all){
+''',
+        '''    public void checkAutoUnlocks(){
+        // Web/Yandex is permanently local-authoritative. The desktop Net object is
+        // deliberately pruned/nullable, so there is no remote-client case to skip here.
+        for(TechNode node : TechTree.all){
+''',
+        "single-player auto-unlock net guard",
+    ),
+    (
+        '''        Events.on(UnlockEvent.class, e -> {
+            if(e.content.showUnlock()){
+                ui.hudfrag.showUnlock(e.content);
+            }
+
+            checkAutoUnlocks();
+
+            if(e.content instanceof SectorPreset){
+                for(TechNode node : TechTree.all){
+                    if(!node.content.unlocked() && node.objectives.contains(o -> o instanceof SectorComplete sec && sec.preset == e.content) && !node.objectives.contains(o -> !o.complete())){
+                        ui.hudfrag.showToast(new TextureRegionDrawable(node.content.uiIcon), iconLarge, bundle.get("available"));
+                    }
+                }
+            }
+        });
+''',
+        '''        Events.on(UnlockEvent.class, e -> {
+            // The compact Web campaign can unlock research before the stock HudFragment
+            // is constructed. Unlock persistence and auto-unlock chaining are gameplay
+            // state; desktop toast effects are optional and must not dereference null UI.
+            if(ui.hudfrag != null && e.content.showUnlock()){
+                ui.hudfrag.showUnlock(e.content);
+            }
+
+            checkAutoUnlocks();
+
+            if(ui.hudfrag != null && e.content instanceof SectorPreset){
+                for(TechNode node : TechTree.all){
+                    if(!node.content.unlocked() && node.objectives.contains(o -> o instanceof SectorComplete sec && sec.preset == e.content) && !node.objectives.contains(o -> !o.complete())){
+                        ui.hudfrag.showToast(new TextureRegionDrawable(node.content.uiIcon), iconLarge, bundle.get("available"));
+                    }
+                }
+            }
+        });
+''',
+        "lean campaign unlock HUD notifications",
+    ),
+    (
+        '''            if(!net.client() && e.sector.preset != null && e.sector.preset.isLastSector && e.initialCapture){
+                Time.run(60f * 2f, () -> {
+                    ui.campaignComplete.show(e.sector.planet);
+                });
+            }
+''',
+        '''            if(!net.client() && e.sector.preset != null && e.sector.preset.isLastSector && e.initialCapture){
+                // Full UI.init() is intentionally absent from the compact Web client,
+                // so CampaignCompleteDialog is not constructed. Sector capture state is
+                // already persisted above; skip only the desktop presentation dialog.
+            }
+''',
+        "lean campaign completion dialog",
+    ),
+    (
         '''        Events.on(PlayEvent.class, event -> {\n            player.team(netServer.assignTeam(player));\n            player.add();\n\n            state.set(State.playing);\n        });\n''',
         '''        Events.on(PlayEvent.class, event -> {\n            // Web/Yandex is intentionally single-player. There is no NetServer team\n            // allocator; local play uses the map/rules default team directly.\n            player.team(state.rules.defaultTeam);\n            player.add();\n\n            state.set(State.playing);\n        });\n''',
         "PlayEvent team assignment",
@@ -43,6 +109,66 @@ for old, new, label in control_replacements:
 if "renderer.takeMapScreenshot();" in control:
     raise SystemExit("Single-player Web Control still reaches whole-map screenshot encoder")
 CONTROL.write_text(control, encoding="utf-8")
+
+# Permanent Web single-player has no remote host authority. Keep TechTree objectives
+# (e.g. Research(coal)) on the same local unlock bit used by the rest of campaign UI.
+UNLOCKABLE = MINDUSTRY / "ctype" / "UnlockableContent.java"
+if not UNLOCKABLE.is_file():
+    raise SystemExit(f"Missing pinned Mindustry source: {UNLOCKABLE}")
+unlockable = UNLOCKABLE.read_text(encoding="utf-8")
+unlock_old = '''    public boolean unlockedHost(){
+        return net != null && net.client() ?
+            alwaysUnlocked || state.rules.researched.contains(this) :
+            unlocked || alwaysUnlocked;
+    }
+'''
+unlock_new = '''    public boolean unlockedHost(){
+        return unlocked || alwaysUnlocked;
+    }
+'''
+if unlock_old not in unlockable:
+    raise SystemExit("Single-player UnlockableContent host-unlock patch no longer matches pinned upstream")
+unlockable = unlockable.replace(unlock_old, unlock_new, 1)
+
+# Keep unlocked() on the same local authority as unlockedHost(). Leaving the stock
+# client fallback here can report content as researched through rules.researched
+# without setting the local unlock bit, then Research(...) immediately fails against
+# the local-only unlockedHost() result.
+local_old = '''    public boolean unlocked(){
+        return net != null && net.client() ?
+            alwaysUnlocked || unlocked || state.rules.researched.contains(this) :
+            unlocked || alwaysUnlocked;
+    }
+'''
+local_new = '''    public boolean unlocked(){
+        return unlocked || alwaysUnlocked;
+    }
+'''
+if local_old not in unlockable:
+    raise SystemExit("Single-player UnlockableContent local-unlock patch no longer matches pinned upstream")
+unlockable = unlockable.replace(local_old, local_new, 1)
+UNLOCKABLE.write_text(unlockable, encoding="utf-8")
+
+# Map objectives are local-authoritative in this build. Stock completion goes through
+# generated Call.completeObjective() for multiplayer replication; that RPC wrapper can
+# retain/dereference the pruned NetServer even though no remote clients exist.
+OBJECTIVES = MINDUSTRY / "game" / "MapObjectives.java"
+if not OBJECTIVES.is_file():
+    raise SystemExit(f"Missing pinned Mindustry source: {OBJECTIVES}")
+objectives = OBJECTIVES.read_text(encoding="utf-8")
+objectives_old = '''            if(obj.update() && !net.client()){
+                Call.completeObjective(all.indexOf(obj));
+            }
+'''
+objectives_new = '''            if(obj.update() && !net.client()){
+                // Web/Yandex has one local authority; apply the same objective body
+                // directly instead of traversing generated multiplayer RPC plumbing.
+                obj.done();
+            }
+'''
+if objectives_old not in objectives:
+    raise SystemExit("Single-player MapObjectives completion patch no longer matches pinned upstream")
+OBJECTIVES.write_text(objectives.replace(objectives_old, objectives_new, 1), encoding="utf-8")
 
 menu = MENU.read_text(encoding="utf-8")
 menu_replacements = [

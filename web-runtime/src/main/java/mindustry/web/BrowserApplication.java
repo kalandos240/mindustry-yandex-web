@@ -75,6 +75,11 @@ public final class BrowserApplication extends WebApplicationBase{
         return mobileBrowser;
     }
 
+    @Override
+    protected void framePhase(int phase){
+        if(Vars.logic != null) Vars.logic.webPhase = phase;
+    }
+
     private void onAnimationFrame(double timestamp){
         if(!isRunning()) return;
 
@@ -110,9 +115,36 @@ public final class BrowserApplication extends WebApplicationBase{
 
             phase = "application-frame";
             if(!platformPaused){
-                frame();
+                // Keep the concrete TeaVM scheduler split into explicit stages. Besides
+                // avoiding an opaque virtual frame hop, this makes browser-only failures
+                // attributable without retaining stack traces in the release bundle.
+                phase = "frame-globals";
+                if(Vars.logic != null) Vars.logic.webPhase = 94;
+                if(Core.settings == null){
+                    if(Vars.logic != null) Vars.logic.webPhase = 95;
+                    arc.util.Time.updateGlobal();
+                }else{
+                    if(Vars.logic != null) Vars.logic.webPhase = 96;
+                    Core.settings.autosave();
+                    if(Vars.logic != null) Vars.logic.webPhase = 97;
+                    arc.util.Time.updateGlobal();
+                }
+
+                phase = "frame-listeners";
+                listen(ApplicationListener::update);
+
+                phase = "frame-post";
+                if(Vars.logic != null) Vars.logic.webPhase = 102;
+                runPostedTasks();
+                if(Vars.logic != null) Vars.logic.webPhase = 103;
+
+                phase = "gameplay-sync";
+                if(Vars.logic != null) Vars.logic.webPhase = 100;
                 syncGameplayMarker();
+
                 if(awaitingPlatformResumeFrame){
+                    phase = "resume-frame";
+                    if(Vars.logic != null) Vars.logic.webPhase = 101;
                     awaitingPlatformResumeFrame = false;
                     int resumedSector = Vars.state != null && Vars.state.rules != null && Vars.state.rules.sector != null
                         ? Vars.state.rules.sector.id : -1;
@@ -136,24 +168,14 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     private static String describe(Throwable error){
-        StringBuilder out = new StringBuilder();
-        Throwable current = error;
-        int depth = 0;
-        // Gameplay overlays deliberately add narrow stage wrappers. Keep enough causes
-        // to expose the actual TeaVM/runtime failure instead of stopping at a coarse
-        // entity/AI boundary, while still bounding DOM/status-string growth.
-        while(current != null && depth++ < 8){
-            if(out.length() > 0) out.append(" <- ");
-            out.append(current.getClass().getName()).append(": ").append(String.valueOf(current.getMessage()));
-            StackTraceElement[] stack = current.getStackTrace();
-            int frames = Math.min(stack == null ? 0 : stack.length, 10);
-            for(int i = 0; i < frames; i++){
-                out.append(" @ ").append(stack[i].getClassName()).append('.').append(stack[i].getMethodName())
-                    .append(':').append(stack[i].getLineNumber());
-            }
-            current = current.getCause();
-        }
-        return out.toString();
+        // Basin is already localized to a world-processor LogicBlock. Keep only the
+        // primary message plus the lean Logic and LogicBlock subphase breadcrumbs; the
+        // temporary generic per-building name trace is intentionally gone from the
+        // production hot path and TeaVM graph.
+        String out = String.valueOf(error.getMessage())
+            + " [lp=" + (Vars.logic == null ? -1 : Vars.logic.webPhase) + "]";
+        if(Vars.logic != null) out += " [bp=" + Vars.logic.webBuildPhase + "]";
+        return out;
     }
 
     private void setPlatformPaused(boolean paused){

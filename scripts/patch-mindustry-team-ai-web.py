@@ -31,7 +31,8 @@ old_update = '''        if(!state.isEditor()){
             state.rules.objectives.update();
         }
 '''
-new_update = '''        if(!state.isEditor()){
+new_update = '''        webPhase = 5;
+        if(!state.isEditor()){
             updateWeather();
 
             // Stock per-team gameplay rules. Web/Yandex remains authoritative local

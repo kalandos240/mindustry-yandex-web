@@ -26,6 +26,24 @@ if json_text.count(json_old) != 1:
 jsonio.write_text(json_text.replace(json_old, json_new, 1), encoding="utf-8")
 print("Applied TeaVM-safe SpawnGroup Json serializer without reflection")
 
+# Some historical campaign maps contain SpawnGroup.unitScaling=+Infinity as the
+# semantic equivalent of "never scale". Arc JsonWriter probes Number.longValue()
+# before writing numeric JSON; TeaVM cannot convert Infinity to its BigInt-backed
+# long representation. Preserve SpawnGroup semantics by omitting only non-finite
+# scaling values, so SpawnGroup.read() restores the stock 'never' sentinel.
+spawn_group = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "game" / "SpawnGroup.java"
+if not spawn_group.is_file():
+    raise SystemExit(f"Missing pinned Mindustry SpawnGroup source: {spawn_group}")
+spawn_text = spawn_group.read_text(encoding="utf-8")
+spawn_old = '''        if(unitScaling != never) json.writeValue("scaling", unitScaling);
+'''
+spawn_new = '''        if(unitScaling != never && !Float.isNaN(unitScaling) && !Float.isInfinite(unitScaling)) json.writeValue("scaling", unitScaling);
+'''
+if spawn_text.count(spawn_old) != 1:
+    raise SystemExit("SpawnGroup Web finite-scaling patch no longer matches pinned upstream")
+spawn_group.write_text(spawn_text.replace(spawn_old, spawn_new, 1), encoding="utf-8")
+print("Normalized non-finite SpawnGroup unitScaling to stock never sentinel on Web JSON writes")
+
 path = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "game" / "MapMarkers.java"
 if not path.is_file():
     raise SystemExit(f"Missing pinned Mindustry MapMarkers source: {path}")
@@ -39,3 +57,23 @@ if text.count(old) != 1:
 
 path.write_text(text.replace(old, new, 1), encoding="utf-8")
 print("Applied TeaVM-safe MapMarkers IntMap reader without changing v13 wire format")
+
+
+# TeaVM 0.15's stock DeflaterOutputStream maps directly to JZlib and can throw
+# Z_BUF_ERROR (-5) while serializing larger logic configs. Route the two remaining
+# direct Mindustry compression sites through Arc's Web-safe bounded deflater.
+for relative in (
+    "world/blocks/logic/LogicBlock.java",
+    "game/Schematics.java",
+):
+    target = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / relative
+    if not target.is_file():
+        raise SystemExit(f"Missing pinned Mindustry compression source: {target}")
+    source = target.read_text(encoding="utf-8")
+    old = "new DeflaterOutputStream("
+    new = "new FastDeflaterOutputStream("
+    if source.count(old) != 1:
+        raise SystemExit(f"Web nested-deflater patch expected one direct DeflaterOutputStream in {relative}")
+    target.write_text(source.replace(old, new, 1), encoding="utf-8")
+
+print("Routed LogicBlock/Schematics compression through Web-safe FastDeflaterOutputStream")

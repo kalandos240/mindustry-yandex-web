@@ -118,20 +118,22 @@ public final class Bootstrap{
 
             @Override
             public void update(){
-                try{
-                    renderVanillaSpriteFrame();
+                if(Vars.logic != null) Vars.logic.webPhase = 98;
+                if(!frameVerified){
+                    try{
+                        renderVanillaSpriteFrame();
 
-                    if(!frameVerified){
                         int nonBlackPixels = countCenterNonBlackPixels(config.canvasId);
                         if(nonBlackPixels < 16){
                             throw new IllegalStateException("WebGL framebuffer did not contain the rendered vanilla sprite; sampled non-black pixels=" + nonBlackPixels);
                         }
                         frameVerified = true;
+                    }catch(Throwable error){
+                        BrowserCanvas.setStatus("error", "Mindustry Web sprite frame failed: " + describe(error));
+                        throw error;
                     }
-                }catch(Throwable error){
-                    BrowserCanvas.setStatus("error", "Mindustry Web sprite frame failed: " + describe(error));
-                    throw error;
                 }
+                if(Vars.logic != null) Vars.logic.webPhase = 99;
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);

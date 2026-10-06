@@ -206,6 +206,15 @@
 
             if(deferredCampaignManifest.length){
                 const startCampaignWarmup = () => {
+                    // Audio is startup-critical while the remaining campaign maps are not.
+                    // In production BrowserAudio becomes ready immediately; CI deliberately
+                    // decodes a real packaged OGG first. Do not let four background map
+                    // fetches compete with that validation on a constrained Chrome runner.
+                    const audioState = root.getAttribute('data-mindustry-audio');
+                    if(audioState !== 'ready' && audioState !== 'unsupported' && audioState !== 'error'){
+                        setTimeout(startCampaignWarmup, 100);
+                        return;
+                    }
                     root.setAttribute('data-mindustry-campaign-assets', 'loading');
                     warmCampaignMaps().catch(error => {
                         root.setAttribute('data-mindustry-campaign-assets', 'error');

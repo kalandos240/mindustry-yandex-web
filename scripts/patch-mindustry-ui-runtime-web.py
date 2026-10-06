@@ -72,6 +72,69 @@ overlay = replace_once(
 )
 overlay_path.write_text(overlay, encoding="utf-8")
 
+# Privileged campaign world processors can emit mlog notify/announce/toast messages
+# before the lean browser client has constructed full UI.init()/HudFragment. Stock
+# FlushMessageI assumes hudfrag exists and dereferences it synchronously for notify.
+# Preserve the visible message semantics: use HudFragment when present, otherwise fall
+# back to the Scene-backed announcement surface that is already available after loadSync().
+lexecutor_path = MINDUSTRY / "logic" / "LExecutor.java"
+lexecutor = read(lexecutor_path)
+lexecutor = replace_once(
+    lexecutor,
+    '''                type == MessageType.announce && ui.hasAnnouncement() ||
+                type == MessageType.notify && ui.hudfrag.hasToast() ||
+                type == MessageType.toast && ui.hasAnnouncement()
+''',
+    '''                type == MessageType.announce && ui.hasAnnouncement() ||
+                type == MessageType.notify && ui.hudfrag != null && ui.hudfrag.hasToast() ||
+                type == MessageType.toast && ui.hasAnnouncement()
+''',
+    "LExecutor notify HUD presence",
+)
+lexecutor = replace_once(
+    lexecutor,
+    '''                case notify -> ui.hudfrag.showToast(Icon.info, text);
+                case announce -> ui.announce(text, duration.numf());
+                case toast -> ui.showInfoToast(text, duration.numf());
+''',
+    '''                case notify -> {
+                    if(ui.hudfrag != null) ui.hudfrag.showToast(Icon.info, text);
+                    else ui.announce(text, duration.numf());
+                }
+                case announce -> ui.announce(text, duration.numf());
+                case toast -> ui.showInfoToast(text, duration.numf());
+''',
+    "LExecutor notify lean HUD fallback",
+)
+lexecutor_path.write_text(lexecutor, encoding="utf-8")
+
+# The fallback announcement must remain alive while the lean local HUD is absent.
+# Toast positioning also treats the optional stock "coreinfo" actor as absent instead
+# of dereferencing it. Full desktop UI behavior is unchanged once those actors exist.
+ui_path = MINDUSTRY / "core" / "UI.java"
+ui_text = read(ui_path)
+ui_text = replace_once(
+    ui_text,
+    '''        if(cinfo.visible && !state.isMenu()) table.marginTop(cinfo.getPrefHeight() / Scl.scl() / 2);
+''',
+    '''        if(cinfo != null && cinfo.visible && !state.isMenu()) table.marginTop(cinfo.getPrefHeight() / Scl.scl() / 2);
+''',
+    "UI toast optional coreinfo",
+)
+ui_text = replace_once(
+    ui_text,
+    '''            if(state.isMenu() || !ui.hudfrag.shown){
+                t.remove();
+            }
+''',
+    '''            if(state.isMenu() || ui.hudfrag != null && !ui.hudfrag.shown){
+                t.remove();
+            }
+''',
+    "UI announcement optional HUD",
+)
+ui_path.write_text(ui_text, encoding="utf-8")
+
 # Map preview generation is user-triggered editor work. The desktop implementation
 # submits it to mainExecutor and keeps a Future solely to wait during Apply. In the
 # browser there is one event loop, so execute the exact filter algorithm synchronously.

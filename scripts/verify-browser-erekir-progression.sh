@@ -135,6 +135,9 @@ run_progression(){
     --require 'data-mindustry-erekir-karst-ready="true"' \
     --require 'data-mindustry-erekir-karst-captured="true"' \
     --require 'data-mindustry-erekir-karst-capture-wave="10"' \
+    --require 'data-mindustry-erekir-carbide-crucible-unlocked="true"' \
+    --require 'data-mindustry-erekir-phase-synthesizer-unlocked="true"' \
+    --require 'data-mindustry-erekir-phase-fabric-unlocked="true"' \
     --require 'data-mindustry-erekir-payload-mass-driver-unlocked="true"' \
     --require 'data-mindustry-erekir-constructor-unlocked="true"' \
     --require 'data-mindustry-erekir-atmospheric-concentrator-unlocked="true"' \

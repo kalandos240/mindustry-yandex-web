@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry"
@@ -130,5 +131,78 @@ patch("io/SaveIO.java", [
      '            SaveMeta meta = ver.getMeta(stream);\n            meta.version = version; // Web: use the authoritative MSAV header version.\n            stream.close();\n            return meta;',
      'SaveIO SaveMeta header version'),
 ])
+
+# Final TeaVM-size pass. This workflow command runs after the complete browser
+# overlay chain, so all pinned source anchors have already been consumed. Keep
+# exception types and DOM telemetry, but compact campaign/local-map prose.
+def trim_web_runtime_diagnostics(path_rel, prefix):
+    path = ROOT / path_rel
+    if not path.is_file():
+        raise SystemExit(f"Missing Web runtime source for diagnostic trim: {path}")
+    text = path.read_text(encoding="utf-8")
+    pattern = re.compile(r'throw new (IllegalStateException|IllegalArgumentException)\(\s*"([^"]+)"')
+    index = 0
+
+    def repl(match):
+        nonlocal index
+        index += 1
+        return f'throw new {match.group(1)}("{prefix}{index}"'
+
+    text = pattern.sub(repl, text)
+    if index == 0:
+        raise SystemExit(f"Web runtime diagnostic trim found no exception strings: {path_rel}")
+    path.write_text(text, encoding="utf-8")
+    print(f"Trimmed {index} {prefix} Web diagnostic messages")
+
+trim_web_runtime_diagnostics(
+    "web-runtime/src/main/java/mindustry/web/BrowserCampaignRuntime.java", "c:"
+)
+trim_web_runtime_diagnostics(
+    "web-runtime/src/main/java/mindustry/web/BrowserLocalMapRuntime.java", "l:"
+)
+
+# Campaign runtime errors already have detailed state exposed through DOM telemetry.
+# Strip the generated c:N payloads from the staged TeaVM source entirely; keeping
+# dozens of tiny exception strings costs several KB in the minified JS at the very
+# tight complete-campaign budget.
+campaign_runtime_path = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignRuntime.java"
+campaign_runtime_text = campaign_runtime_path.read_text(encoding="utf-8")
+campaign_runtime_pattern = re.compile(
+    r'throw new (IllegalStateException|IllegalArgumentException)\(\s*"c:\d+"'
+    r'(?:\s*\+\s*[^;]+)?\s*\);',
+    re.S
+)
+campaign_runtime_text, campaign_runtime_stripped = campaign_runtime_pattern.subn(
+    lambda m: f'throw new {m.group(1)}();',
+    campaign_runtime_text
+)
+if campaign_runtime_stripped < 80:
+    raise SystemExit(
+        f"Web campaign runtime diagnostic strip expected 80+ c:* exceptions, found {campaign_runtime_stripped}"
+    )
+campaign_runtime_path.write_text(campaign_runtime_text, encoding="utf-8")
+print(f"Stripped {campaign_runtime_stripped} CI-only campaign runtime exception messages from TeaVM input")
+
+# BrowserCampaignResearch retains readable r:* codes in the repository, but those
+# exception messages are CI-only and become 100+ distinct JavaScript string literals.
+# Strip just the staged TeaVM copies after every research overlay has already matched.
+research_path = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignResearch.java"
+if not research_path.is_file():
+    raise SystemExit(f"Missing Web campaign research source for diagnostic trim: {research_path}")
+research_text = research_path.read_text(encoding="utf-8")
+research_pattern = re.compile(
+    r'throw new (IllegalStateException|IllegalArgumentException)\(\s*"r:[^"]*"'
+    r'(?:\s*\+\s*[^;\n]+)?\s*\);'
+)
+research_text, research_trimmed = research_pattern.subn(
+    lambda m: f'throw new {m.group(1)}();',
+    research_text
+)
+if research_trimmed < 100:
+    raise SystemExit(
+        f"Web campaign research diagnostic trim expected 100+ r:* exceptions, found {research_trimmed}"
+    )
+research_path.write_text(research_text, encoding="utf-8")
+print(f"Stripped {research_trimmed} CI-only campaign research exception messages from TeaVM input")
 
 print("Stripped upstream external URLs and applied browser-safe save serialization overlays")

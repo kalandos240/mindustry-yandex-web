@@ -21,6 +21,7 @@ import static mindustry.Vars.*;
 public final class BrowserPlayerMiningSmoke{
     private static final int maxSpawnFrames = 900;
     private static final int maxMineFrames = 900;
+    private static final int maxAimFrames = 120;
     private static final int maxApproachFrames = 1800;
     private static final int maxDepositFrames = 180;
 
@@ -32,10 +33,11 @@ public final class BrowserPlayerMiningSmoke{
     private static int spawnFrames;
     private static int mineFrames;
     private static int mineClickAttempts;
+    private static int aimFrames;
     private static int approachFrames;
     private static int depositFrames;
     private static int targetX = -1, targetY = -1;
-    private static int coreStartItems;
+     private static int coreStartItems;
     private static int minedStack;
     private static float targetScreenX, targetScreenY;
     private static float playerScreenX, playerScreenY;
@@ -58,12 +60,12 @@ public final class BrowserPlayerMiningSmoke{
         Unit unit = player.unit();
         if(unit == null || !unit.isAdded() || !unit.isValid()){
             if(++spawnFrames >= maxSpawnFrames){
-                throw new IllegalStateException("Player-mining smoke never received a real local unit");
+                throw new IllegalStateException("mining:no-player");
             }
             return;
         }
         if(!unit.canMine()){
-            throw new IllegalStateException("Local player unit cannot mine: " + unit.type.name);
+            throw new IllegalStateException("mining:cannot:" + unit.type.name);
         }
 
         if(stage == 0){
@@ -73,14 +75,14 @@ public final class BrowserPlayerMiningSmoke{
             // double-tap preference against a heavy TeaVM animation frame.
             Core.settings.put("doubletapmine", false);
             if(unit.stack.amount != 0){
-                throw new IllegalStateException("Player-mining smoke requires an initially empty local unit stack");
+                throw new IllegalStateException("mining:stack-not-empty");
             }
             core = unit.closestCore();
             if(core == null || core.items == null){
-                throw new IllegalStateException("Player-mining smoke requires a real local core item inventory");
+                throw new IllegalStateException("mining:no-core-items");
             }
             if(!findTarget(unit)){
-                throw new IllegalStateException("No real mineable tile exists within the mining smoke search radius");
+                throw new IllegalStateException("mining:no-target");
             }
 
             coreStartItems = core.items.get(targetItem);
@@ -91,7 +93,7 @@ public final class BrowserPlayerMiningSmoke{
 
         if(stage == 1){
             Tile target = world.tile(targetX, targetY);
-            if(target == null) throw new IllegalStateException("Mine target disappeared before approach");
+            if(target == null) throw new IllegalStateException("mining:target-lost-approach");
 
             // Approach to one tile so the ore projects near the free camera center.
             float safeRange = tilesize;
@@ -100,15 +102,54 @@ public final class BrowserPlayerMiningSmoke{
                 if(++approachFrames >= maxApproachFrames){
                     stopMovement();
                     throw new IllegalStateException(
-                        "DOM WASD could not move local player into mineRange: unit=" +
+                        "mining:approach unit=" +
                         unit.x + "," + unit.y + " target=" + target.worldx() + "," + target.worldy()
                     );
                 }
                 return;
             }
 
+            // Stop first, then give the normal camera-follow path a frame to settle.
+            // Projecting the ore in the same observer callback as the final movement key-up
+            // can leave the world point under the bottom-right build palette.
             stopMovement();
+            aimFrames = 0;
+            stage = 5;
+            return;
+        }
+
+        if(stage == 5){
+            Tile target = world.tile(targetX, targetY);
+            if(target == null) throw new IllegalStateException("mining:target-lost-aim");
+
             Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
+            if(sceneCovered(projected.x, projected.y)){
+                // The normal desktop HUD can legitimately cover one ore tile after
+                // camera-follow settles. Prefer another currently mineable ore that is
+                // already within range; otherwise choose a new world target and approach
+                // it again. Do not mutate mineTile or bypass DesktopInput.
+                int oldX = targetX, oldY = targetY;
+                 if(findVisibleInRangeTarget(unit, oldX, oldY)){
+                    aimFrames = 0;
+                    markTarget(targetX, targetY);
+                    return;
+                }
+
+                if(findTarget(unit, oldX, oldY)){
+                    coreStartItems = core.items.get(targetItem);
+                    approachFrames = 0;
+                    aimFrames = 0;
+                    stage = 1;
+                    markTarget(targetX, targetY);
+                    return;
+                }
+
+                if(++aimFrames >= maxAimFrames){
+                    throw new IllegalStateException("mining:ui-covered");
+                }
+                return;
+            }
+
             targetScreenX = projected.x;
             targetScreenY = projected.y;
             dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
@@ -117,6 +158,29 @@ public final class BrowserPlayerMiningSmoke{
         }
 
         if(stage == 2){
+            Tile target = world.tile(targetX, targetY);
+            if(target == null) throw new IllegalStateException("mining:target-lost-down");
+
+            // Camera follow can still advance between the pointermove and the next input
+            // update. Re-project until DOM input and the exact ore tile agree in one frame.
+            Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
+            if(sceneCovered(projected.x, projected.y)){
+                stage = 5;
+                if(++aimFrames >= maxAimFrames){
+                    throw new IllegalStateException("mining:ui-moved");
+                }
+                return;
+            }
+            if(Math.abs(projected.x - targetScreenX) > 2f || Math.abs(projected.y - targetScreenY) > 2f){
+                targetScreenX = projected.x;
+                targetScreenY = projected.y;
+                dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+                if(++aimFrames >= maxAimFrames){
+                    throw new IllegalStateException("mining:projection");
+                }
+                return;
+            }
+
             verifyWorldPointer(targetScreenX, targetScreenY, "mine target");
             dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
             pointerDown = true;
@@ -141,7 +205,7 @@ public final class BrowserPlayerMiningSmoke{
 
         if(stage == 6){
             Tile target = world.tile(targetX, targetY);
-            if(target == null) throw new IllegalStateException("Mine target disappeared");
+            if(target == null) throw new IllegalStateException("mining:target-lost");
             if(unit.mineTile != target && unit.stack.amount == 0 && core.items.get(targetItem) == coreStartItems){
                 mineFrames++;
 
@@ -151,19 +215,21 @@ public final class BrowserPlayerMiningSmoke{
                 // accepted the tile; never assign mineTile or grant items directly.
                 if(mineFrames % 12 == 0 && mineClickAttempts < 3){
                     Vec2 projected = Core.camera.project(new Vec2(target.worldx(), target.worldy()));
-                    targetScreenX = projected.x;
-                    targetScreenY = projected.y;
-                    dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
-                    dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
-                    dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
-                    mineClickAttempts++;
-                    markMineRetry(mineClickAttempts);
+                    if(!sceneCovered(projected.x, projected.y)){
+                        targetScreenX = projected.x;
+                        targetScreenY = projected.y;
+                        dispatchPointer("pointermove", targetScreenX, targetScreenY, -1, false);
+                        dispatchPointer("pointerdown", targetScreenX, targetScreenY, 0, true);
+                        dispatchPointer("pointerup", targetScreenX, targetScreenY, 0, false);
+                        mineClickAttempts++;
+                        markMineRetry(mineClickAttempts);
+                    }
                 }
 
                 if(mineFrames >= 60){
                     throw new IllegalStateException(
-                        "DOM ore click did not start stock unit mining after " +
-                        (mineClickAttempts + 1) + " click gestures"
+                        "mining:not-started:" +
+                        (mineClickAttempts + 1) + " clicks"
                     );
                 }
                 return;
@@ -186,8 +252,8 @@ public final class BrowserPlayerMiningSmoke{
             mineFrames++;
             if(mineFrames >= maxMineFrames){
                 throw new IllegalStateException(
-                    "Stock mining produced no local item: item=" + targetItem.name +
-                    ", stack=" + unit.stack.amount + ", coreDelta=" + (coreNow - coreStartItems)
+                    "mining:no-item i=" + targetItem.name +
+                    ", s=" + unit.stack.amount + ", d=" + (coreNow - coreStartItems)
                 );
             }
             return;
@@ -199,7 +265,7 @@ public final class BrowserPlayerMiningSmoke{
                 if(++approachFrames >= maxApproachFrames){
                     stopMovement();
                     throw new IllegalStateException(
-                        "DOM WASD could not return mined player to core itemTransferRange"
+                        "mining:return-core"
                     );
                 }
                 return;
@@ -229,7 +295,7 @@ public final class BrowserPlayerMiningSmoke{
             if(!control.input.isDroppingItem()){
                 if(++depositFrames >= maxDepositFrames){
                     releasePointer();
-                    throw new IllegalStateException("DOM player press did not enter stock droppingItem mode");
+                    throw new IllegalStateException("mining:no-drop-mode");
                 }
                 return;
             }
@@ -257,14 +323,18 @@ public final class BrowserPlayerMiningSmoke{
         depositFrames++;
         if(depositFrames >= maxDepositFrames){
             throw new IllegalStateException(
-                "Stock DOM player->core deposit did not transfer mined item: item=" + targetItem.name +
-                ", stack=" + unit.stack.amount + "/" + minedStack +
-                ", core=" + coreNow + "/" + coreStartItems
+                "mining:no-deposit i=" + targetItem.name +
+                ", s=" + unit.stack.amount + "/" + minedStack +
+                ", c=" + coreNow + "/" + coreStartItems
             );
         }
     }
 
     private static boolean findTarget(Unit unit){
+        return findTarget(unit, -1, -1);
+    }
+
+    private static boolean findTarget(Unit unit, int skipX, int skipY){
         if(Core.camera == null) return false;
 
         int ux = World.toTile(unit.x), uy = World.toTile(unit.y);
@@ -276,7 +346,7 @@ public final class BrowserPlayerMiningSmoke{
                 for(int dy = -r; dy <= r; dy++){
                     if(Math.abs(dx) != r && Math.abs(dy) != r) continue;
                     Tile tile = world.tile(ux + dx, uy + dy);
-                    if(tile == null) continue;
+                    if(tile == null || (tile.x == skipX && tile.y == skipY)) continue;
 
                     Item item = unit.getMineResult(tile);
                     if(item == null || !unit.acceptsItem(item)) continue;
@@ -286,7 +356,42 @@ public final class BrowserPlayerMiningSmoke{
                     targetX = tile.x;
                     targetY = tile.y;
                     targetItem = item;
+                    coreStartItems = core == null ? 0 : core.items.get(item);
                     Vec2 projected = Core.camera.project(new Vec2(tile.worldx(), tile.worldy()));
+                    targetScreenX = projected.x;
+                    targetScreenY = projected.y;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean findVisibleInRangeTarget(Unit unit, int skipX, int skipY){
+        int ux = World.toTile(unit.x), uy = World.toTile(unit.y);
+        int radius = Math.max(1, (int)Math.ceil(unit.type.mineRange / tilesize) + 1);
+        boolean doubleTap = Core.settings.getBool("doubletapmine");
+
+        for(int r = 0; r <= radius; r++){
+            for(int dx = -r; dx <= r; dx++){
+                for(int dy = -r; dy <= r; dy++){
+                    if(r > 0 && Math.abs(dx) != r && Math.abs(dy) != r) continue;
+                    Tile tile = world.tile(ux + dx, uy + dy);
+                    if(tile == null || (tile.x == skipX && tile.y == skipY)) continue;
+                    if(!unit.validMine(tile)) continue;
+
+                    Item item = unit.getMineResult(tile);
+                    if(item == null || !unit.acceptsItem(item)) continue;
+                    if(!doubleTap && tile.floor().playerUnmineable && tile.overlay().itemDrop == null) continue;
+                    if(!doubleTap && tile.overlay().playerUnmineable && tile.overlay().itemDrop != null) continue;
+
+                    Vec2 projected = Core.camera.project(new Vec2(tile.worldx(), tile.worldy()));
+                    if(sceneCovered(projected.x, projected.y)) continue;
+
+                    targetX = tile.x;
+                    targetY = tile.y;
+                    targetItem = item;
+                    coreStartItems = core.items.get(item);
                     targetScreenX = projected.x;
                     targetScreenY = projected.y;
                     return true;
@@ -318,14 +423,20 @@ public final class BrowserPlayerMiningSmoke{
         dispatchKey("keyup", key, key.equals("KeyD") ? "d" : key.equals("KeyA") ? "a" : key.equals("KeyW") ? "w" : "s");
     }
 
+    private static boolean sceneCovered(float x, float y){
+        if(Core.scene == null) return false;
+        Vec2 stagePoint = Core.scene.screenToStageCoordinates(new Vec2(x, y));
+        return Core.scene.hasMouse(stagePoint.x, stagePoint.y);
+    }
+
     private static void verifyWorldPointer(float x, float y, String label){
-        if(Core.scene.hasMouse(x, y)){
-            throw new IllegalStateException(label + " is covered by an Arc Scene actor");
+        if(sceneCovered(x, y)){
+            throw new IllegalStateException(label + " ui-covered");
         }
         if(Math.abs(Core.input.mouseX() - x) > 4f || Math.abs(Core.input.mouseY() - y) > 4f){
             throw new IllegalStateException(
-                "DOM pointermove did not reach " + label + ": input=" +
-                Core.input.mouseX() + "," + Core.input.mouseY() + " expected=" + x + "," + y
+                "pointer-miss:" + label + ":in=" +
+                Core.input.mouseX() + "," + Core.input.mouseY() + " exp=" + x + "," + y
             );
         }
     }

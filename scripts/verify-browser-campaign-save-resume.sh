@@ -139,6 +139,10 @@ run_campaign_cold_restart(){
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$resume_dom"
 
+  echo "Campaign cold-restart DOM metadata ($label):"
+  grep -oE 'data-mindustry-campaign-(checkpoint|resume)-(wave|tick-ms|bytes)="[^"]*"' "$save_dom" "$resume_dom" || true
+  grep -oE 'data-mindustry-campaign-(frames|update-id)="[^"]*"' "$resume_dom" || true
+
   grep -Eq 'data-mindustry-campaign-frames="([3-9]|[1-9][0-9]+)"' "$resume_dom"
   grep -Eq 'data-mindustry-campaign-update-id="[1-9][0-9]*"' "$resume_dom"
   grep -Eq 'data-mindustry-campaign-resume-wave="[0-9]+"' "$resume_dom"
@@ -150,9 +154,19 @@ run_campaign_cold_restart(){
   resume_tick="$(attr "$resume_dom" data-mindustry-campaign-resume-tick-ms)"
   resume_bytes="$(attr "$resume_dom" data-mindustry-campaign-resume-bytes)"
 
-  test "$resume_wave" = "$saved_wave"
-  test "$resume_tick" = "$saved_tick"
-  test "$resume_bytes" = "$saved_bytes"
+  echo "Campaign cold-restart compare ($label): saved wave=$saved_wave tickMs=$saved_tick bytes=$saved_bytes; resumed wave=$resume_wave tickMs=$resume_tick bytes=$resume_bytes"
+  if [ "$resume_wave" != "$saved_wave" ]; then
+    echo "Campaign cold-restart wave mismatch ($label): saved=$saved_wave resumed=$resume_wave" >&2
+    exit 1
+  fi
+  if [ "$resume_tick" != "$saved_tick" ]; then
+    echo "Campaign cold-restart tick mismatch ($label): saved=$saved_tick resumed=$resume_tick" >&2
+    exit 1
+  fi
+  if [ "$resume_bytes" != "$saved_bytes" ]; then
+    echo "Campaign cold-restart byte-length mismatch ($label): saved=$saved_bytes resumed=$resume_bytes" >&2
+    exit 1
+  fi
 
   if grep -q 'data-mindustry-campaign-generator=' "$resume_dom"; then
     echo "Campaign resume ($label) unexpectedly regenerated Ground Zero instead of loading the persisted sector save." >&2

@@ -1,7 +1,10 @@
 package mindustry.web;
 
 import arc.*;
+import arc.math.geom.*;
+import mindustry.content.*;
 import mindustry.gen.*;
+import mindustry.world.*;
 import org.teavm.jso.JSBody;
 
 import static mindustry.Vars.*;
@@ -30,6 +33,7 @@ public final class BrowserPlayerCombatSmoke{
     private static int unitId = -1;
     private static int startOwnedBullets;
     private static float startAimX, startAimY;
+    private static float targetNx = 0.5f, targetNy = 0.5f;
 
     private BrowserPlayerCombatSmoke(){}
 
@@ -47,19 +51,19 @@ public final class BrowserPlayerCombatSmoke{
             spawnFrames++;
             markWaiting(spawnFrames);
             if(spawnFrames >= maxSpawnFrames){
-                throw new IllegalStateException("Player-combat smoke never received a real local player unit");
+                throw new IllegalStateException("combat:no-player");
             }
             return;
         }
 
         if(unitId != -1 && (unit.id != unitId || player.unit() != unit)){
             releasePointer();
-            throw new IllegalStateException("Player-combat smoke changed controlled unit during pointer test");
+            throw new IllegalStateException("combat:unit-changed");
         }
 
         if(stage == 0){
             if(!unit.hasWeapons() || unit.mounts == null || unit.mounts.length == 0){
-                throw new IllegalStateException("Local player unit has no weapon mounts for pointer firing smoke: " + unit.type.name);
+                throw new IllegalStateException("combat:no-weapons:" + unit.type.name);
             }
 
             unitId = unit.id;
@@ -67,7 +71,8 @@ public final class BrowserPlayerCombatSmoke{
             startAimY = unit.aimY();
             startOwnedBullets = ownedBullets(unit);
 
-            dispatchPointer("pointermove", 0.78f, 0.42f, -1);
+            chooseSafeTarget(unit);
+            dispatchPointer("pointermove", targetNx, targetNy, -1);
             stage = 1;
             markAiming(unitId, unit.type.name, startAimX, startAimY, startOwnedBullets);
             return;
@@ -81,13 +86,16 @@ public final class BrowserPlayerCombatSmoke{
             float ay = unit.aimY();
             markAimProgress(aimFrames, mx, my, ax, ay);
 
-            boolean pointerReachedInput = mx > Core.graphics.getWidth() * 0.60f;
+            float expectedMouseX = Core.graphics.getWidth() * targetNx;
+            float expectedMouseY = Core.graphics.getHeight() * (1f - targetNy);
+            boolean pointerReachedInput = Math.abs(mx - expectedMouseX) <= 2f &&
+                Math.abs(my - expectedMouseY) <= 2f;
             boolean validAim = !Float.isNaN(ax) && !Float.isInfinite(ax) &&
                 !Float.isNaN(ay) && !Float.isInfinite(ay) &&
                 (Math.abs(ax - unit.x) > 1f || Math.abs(ay - unit.y) > 1f);
 
             if(pointerReachedInput && validAim){
-                dispatchPointer("pointerdown", 0.78f, 0.42f, 0);
+                dispatchPointer("pointerdown", targetNx, targetNy, 0);
                 pointerDown = true;
                 stage = 2;
                 markPointerDown(mx, my, ax, ay);
@@ -96,7 +104,7 @@ public final class BrowserPlayerCombatSmoke{
 
             if(aimFrames >= maxAimFrames){
                 throw new IllegalStateException(
-                    "DOM pointermove did not reach stock player aiming: mouse=" + mx + "," + my +
+                    "combat:aim mouse=" + mx + "," + my +
                     " aim=" + ax + "," + ay + " unit=" + unit.x + "," + unit.y
                 );
             }
@@ -124,11 +132,69 @@ public final class BrowserPlayerCombatSmoke{
         if(fireFrames >= maxFireFrames){
             releasePointer();
             throw new IllegalStateException(
-                "DOM mouse-left reached combat smoke but no local-unit Bullet was created: playerShooting=" +
-                player.shooting + ", mountShooting=" + mountShooting + ", ownedBullets=" + owned +
-                ", baseline=" + startOwnedBullets
+                "combat:no-bullet ps=" +
+                player.shooting + ", ms=" + mountShooting + ", ob=" + owned +
+                ", base=" + startOwnedBullets
             );
         }
+    }
+
+    /**
+     * Choose a visible gameplay point that stock DesktopInput cannot reinterpret as a
+     * HUD click, building tap or mining action. Fixed screen coordinates are brittle:
+     * Maze ores/buildings and Web HUD geometry can legitimately consume mouse-left.
+     */
+    private static void chooseSafeTarget(Unit unit){
+        int width = Core.graphics.getWidth();
+        int height = Core.graphics.getHeight();
+
+        // Search the visible gameplay viewport rather than relying on one map-specific
+        // coordinate. Stock desktop "tap player" range is 11 world units, so 18 leaves
+        // a safety margin without incorrectly rejecting an entire zoomed-in corridor.
+        int uiRejected = 0, blockedRejected = 0, mineRejected = 0, nearRejected = 0;
+        for(int yi = 2; yi <= 8; yi++){
+            float ny = yi / 10f;
+            for(int xi = 2; xi <= 8; xi++){
+                float nx = xi / 10f;
+                float screenX = width * nx;
+                float screenY = height * (1f - ny);
+
+                if(Core.scene != null){
+                    Vec2 stagePoint = Core.scene.screenToStageCoordinates(new Vec2(screenX, screenY));
+                    if(Core.scene.hasMouse(stagePoint.x, stagePoint.y)){
+                        uiRejected++;
+                        continue;
+                    }
+                }
+
+                Vec2 worldPoint = Core.camera.unproject(screenX, screenY);
+                Tile tile = world.tileWorld(worldPoint.x, worldPoint.y);
+                if(tile == null || tile.build != null || tile.block() != Blocks.air){
+                    blockedRejected++;
+                    continue;
+                }
+                if(tile.drop() != null){
+                    mineRejected++;
+                    continue;
+                }
+
+                float tx = tile.worldx(), ty = tile.worldy();
+                float distance = unit.dst(tx, ty);
+                if(distance < 18f){
+                    nearRejected++;
+                    continue;
+                }
+
+                targetNx = nx;
+                targetNy = ny;
+                return;
+            }
+        }
+
+        throw new IllegalStateException(
+            "combat:no-target ui=" + uiRejected +
+            " b=" + blockedRejected + " m=" + mineRejected + " n=" + nearRejected
+        );
     }
 
     private static int ownedBullets(Unit unit){
@@ -146,7 +212,7 @@ public final class BrowserPlayerCombatSmoke{
 
     private static void releasePointer(){
         if(!pointerDown) return;
-        dispatchPointer("pointerup", 0.78f, 0.42f, 0);
+        dispatchPointer("pointerup", targetNx, targetNy, 0);
         pointerDown = false;
         markPointerState("up");
     }

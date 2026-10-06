@@ -49,7 +49,14 @@ for old, new, label in replacements:
 marker = '''    @Override
     public void update(){
 '''
-web_methods = '''    /** Web transition path: exact stock Logic.update semantics while state is menu. */
+web_methods = '''    /** Lightweight CI/runtime breadcrumb for the lean Web playing loop. */
+    public int webPhase;
+    /** Subphase inside a LogicBlock update when diagnosing privileged map processors. */
+    public int webBuildPhase;
+    /** CI-only one-shot campaign predicate; production never arms this. */
+    public boolean webCampaignAttackVictory;
+
+    /** Web transition path: exact stock Logic.update semantics while state is menu. */
     public void updateWebMenu(){
         if(!state.isMenu()){
             throw new IllegalStateException("updateWebMenu may only run in menu state");
@@ -132,6 +139,7 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
             }
         }
 
+        webPhase = 1;
         PerfCounter.frame.end();
         PerfCounter.frame.begin();
 
@@ -147,11 +155,13 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
         state.updateId ++;
         // updateTeamStats already walks Groups.unit; the Web Teams patch folds the exact
         // top-level wave-team/isEnemy count into that mandatory pass.
+        webPhase = 2;
         state.teams.updateTeamStats();
         state.enemies = state.teams.webWaveEnemies;
         // Web never installs the desktop/network MapPreviewLoader reflection callbacks;
         // do not retain or poll that no-op preview bridge in the gameplay hot path.
 
+        webPhase = 4;
         Time.update();
         logicVars.update();
 
@@ -163,8 +173,10 @@ web_methods = '''    /** Web transition path: exact stock Logic.update semantics
         state.envAttrs.clear();
         state.envAttrs.add(state.rules.attributes);
 
+        webPhase = 6;
         updateEntities();
 
+        webPhase = 7;
         Events.fire(Trigger.afterGameUpdate);
 
         PerfCounter.stateUpdate.end(PerfCounter.entityUpdate.latestValueNs());
@@ -177,7 +189,148 @@ if marker not in text:
     raise SystemExit("Logic Web transition-path insertion no longer matches pinned upstream")
 text = text.replace(marker, web_methods, 1)
 
+# Refine the lean Web entity-update failure boundary without retaining stack traces.
+# Values 61..68 identify the last entered stock updateEntities slice.
+old_entities = '''    protected void updateEntities(){
+        PerfCounter.entityUpdate.begin();
+
+        PerfCounter.entityMisc.begin();
+        Groups.updatePooling();
+        Groups.bullet.updatePhysics();
+        Groups.unit.updatePhysics();
+        Groups.all.update();
+        PerfCounter.entityMisc.end();
+
+        PerfCounter.unitUpdate.begin();
+        Groups.unit.update();
+        PerfCounter.unitUpdate.end();
+
+        PerfCounter.powerUpdate.begin();
+        if(!state.isEditor()) Groups.powerGraph.update();
+        PerfCounter.powerUpdate.end();
+
+        PerfCounter.buildingUpdate.begin();
+        if(!state.isEditor()) Groups.build.update();
+        PerfCounter.buildingUpdate.end();
+
+        PerfCounter.bulletUpdate.begin();
+        Groups.bullet.update();
+
+        Groups.bullet.collide();
+        PerfCounter.bulletUpdate.end();
+
+        PerfCounter.entityUpdate.end();
+    }
+'''
+new_entities = '''    protected void updateEntities(){
+        PerfCounter.entityUpdate.begin();
+
+        PerfCounter.entityMisc.begin();
+        webPhase = 61;
+        Groups.updatePooling();
+        webPhase = 62;
+        Groups.bullet.updatePhysics();
+        webPhase = 63;
+        Groups.unit.updatePhysics();
+        webPhase = 64;
+        Groups.all.update();
+        PerfCounter.entityMisc.end();
+
+        webPhase = 65;
+        PerfCounter.unitUpdate.begin();
+        Groups.unit.update();
+        PerfCounter.unitUpdate.end();
+
+        webPhase = 66;
+        PerfCounter.powerUpdate.begin();
+        if(!state.isEditor()) Groups.powerGraph.update();
+        PerfCounter.powerUpdate.end();
+
+        webPhase = 67;
+        PerfCounter.buildingUpdate.begin();
+        if(!state.isEditor()) Groups.build.update();
+        PerfCounter.buildingUpdate.end();
+
+        webPhase = 68;
+        PerfCounter.bulletUpdate.begin();
+        Groups.bullet.update();
+
+        Groups.bullet.collide();
+        PerfCounter.bulletUpdate.end();
+
+        PerfCounter.entityUpdate.end();
+    }
+'''
+if text.count(old_entities) != 1:
+    raise SystemExit("Logic Web entity subphase trace anchor no longer matches pinned upstream")
+text = text.replace(old_entities, new_entities, 1)
+
 PATH.write_text(text, encoding="utf-8")
+
+LOGIC_BLOCK = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "world" / "blocks" / "logic" / "LogicBlock.java"
+logic_block = LOGIC_BLOCK.read_text(encoding="utf-8")
+logic_block_replacements = [
+    (
+        '''        public void updateTile(){
+            checkReadCode();
+
+            executor.team = team;
+''',
+        '''        public void updateTile(){
+            if(logic != null) logic.webBuildPhase = 1;
+            checkReadCode();
+
+            if(logic != null) logic.webBuildPhase = 2;
+            executor.team = team;
+''',
+        "logic-build read/team",
+    ),
+    (
+        '''            //check for previously invalid links to add after configuration
+            boolean changed = false, updates = true;
+''',
+        '''            //check for previously invalid links to add after configuration
+            if(logic != null) logic.webBuildPhase = 3;
+            boolean changed = false, updates = true;
+''',
+        "logic-build links",
+    ),
+    (
+        '''            if(changed){
+                updateLinks();
+            }
+
+            if(!privileged){
+''',
+        '''            if(changed){
+                if(logic != null) logic.webBuildPhase = 4;
+                updateLinks();
+            }
+
+            if(logic != null) logic.webBuildPhase = 5;
+            if(!privileged){
+''',
+        "logic-build link refresh",
+    ),
+    (
+        '''                while(accumulator >= 1f){
+                    executor.runOnce();
+''',
+        '''                while(accumulator >= 1f){
+                    // Encode the exact mlog instruction about to execute without retaining
+                    // instruction class names or another diagnostic field in TeaVM output.
+                    if(logic != null) logic.webBuildPhase = 6000 + (int)executor.counter.numval;
+                    executor.runOnce();
+                    if(logic != null) logic.webBuildPhase = 7;
+''',
+        "logic-build executor",
+    ),
+]
+for old, new, label in logic_block_replacements:
+    if logic_block.count(old) != 1:
+        raise SystemExit(f"LogicBlock Web subphase trace anchor no longer matches pinned upstream ({label})")
+    logic_block = logic_block.replace(old, new, 1)
+LOGIC_BLOCK.write_text(logic_block, encoding="utf-8")
 
 # Stock Logic scans Groups.unit once for state.enemies immediately before Teams scans
 # the same group again for per-team caches. Web folds the exact top-level wave-team
