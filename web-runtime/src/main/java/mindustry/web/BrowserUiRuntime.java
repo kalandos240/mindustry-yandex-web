@@ -31,7 +31,8 @@ public final class BrowserUiRuntime{
     }
 
     private static boolean initialized;
-    private static TextButton localContinueButton, localModeButton;
+    private static TextButton localContinueButton;
+    private static TextButton localModeButton;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
