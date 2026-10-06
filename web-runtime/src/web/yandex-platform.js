@@ -168,8 +168,13 @@
         const status = fullscreenStatus();
         mark('data-yandex-fullscreen-state', status);
         if(state.fullscreenButton){
+            const ru = state.locale === 'ru';
+            const label = status === 'on'
+                ? (ru ? 'Выйти из полноэкранного режима' : 'Exit fullscreen')
+                : (ru ? 'Полный экран' : 'Fullscreen');
             state.fullscreenButton.setAttribute('aria-pressed', status === 'on' ? 'true' : 'false');
-            state.fullscreenButton.title = status === 'on' ? 'Exit fullscreen' : 'Fullscreen';
+            state.fullscreenButton.setAttribute('aria-label', label);
+            state.fullscreenButton.title = label;
         }
         return status;
     }
