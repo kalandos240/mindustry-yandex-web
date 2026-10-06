@@ -1294,7 +1294,7 @@ if text.count(old_pane) != 1:
     raise SystemExit("Campaign UI map-pane anchor no longer matches")
 text = text.replace(old_pane, new_pane, 1)
 
-old_hud = '''        controls.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
+old_hud = '''        controls.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
         controls.button(Core.bundle.get("pause", "Pause"), BrowserLocalMapRuntime::pause)
@@ -1307,17 +1307,12 @@ new_hud = '''        boolean[] campaignBackUiSmoke = {false};
             && BrowserCampaignRuntime.active() && campaignCoreReady()){
                 campaignBackUiSmoke[0] = true;
                 markCampaignUiBackSmoke();
-                BrowserCampaignRuntime.returnToMenu();
+                returnToMenuWithAd();
             }
         });
 
-        controls.button(Core.bundle.get("back", "Back"), () -> {
-            if(BrowserCampaignRuntime.active()){
-                BrowserCampaignRuntime.returnToMenu();
-            }else{
-                BrowserLocalMapRuntime.returnToMenu();
-            }
-        }).size(mobile ? 148f : 116f, mobile ? 56f : 44f).pad(8f);
+        controls.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
+            .size(mobile ? 148f : 116f, mobile ? 56f : 44f).pad(8f);
         controls.button(Core.bundle.get("pause", "Pause"), BrowserLocalMapRuntime::pause)
             .size(mobile ? 148f : 116f, mobile ? 56f : 44f)
             .disabled(button -> BrowserCampaignRuntime.active())
@@ -1327,17 +1322,12 @@ if text.count(old_hud) != 1:
     raise SystemExit("Campaign UI HUD anchor no longer matches post-pause UI")
 text = text.replace(old_hud, new_hud, 1)
 
-old_pause_back = '''        overlay.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
+old_pause_back = '''        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
             .padTop(8f);
 '''
-new_pause_back = '''        overlay.button(Core.bundle.get("back", "Back"), () -> {
-            if(BrowserCampaignRuntime.active()){
-                BrowserCampaignRuntime.returnToMenu();
-            }else{
-                BrowserLocalMapRuntime.returnToMenu();
-            }
-        }).size(mobile ? 196f : 156f, mobile ? 62f : 48f).padTop(8f);
+new_pause_back = '''        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
+            .size(mobile ? 196f : 156f, mobile ? 62f : 48f).padTop(8f);
 '''
 if text.count(old_pause_back) != 1:
     raise SystemExit("Campaign UI pause-overlay Back anchor no longer matches post-save UI")

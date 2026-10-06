@@ -24,6 +24,9 @@ public final class BrowserYandex{
     @JSBody(script = "return !!(globalThis.__mindustryYandex && globalThis.__mindustryYandex.gameplayStop && globalThis.__mindustryYandex.gameplayStop());")
     public static native boolean gameplayStop();
 
+    @JSBody(script = "if(globalThis.__mindustryYandex && globalThis.__mindustryYandex.showMenuFullscreenAdv) globalThis.__mindustryYandex.showMenuFullscreenAdv();")
+    public static native void showMenuFullscreenAdv();
+
     @JSBody(params = {"state"}, script = """
         document.documentElement.setAttribute('data-mindustry-platform-pause', state);
         if(state === 'paused'){

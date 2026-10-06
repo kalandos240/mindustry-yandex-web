@@ -32,6 +32,7 @@ cat > "$SDK_STUB" <<'JS'
 
     const params = new URLSearchParams(location.search);
     const adSmoke = params.get('mindustryYandexAdSmoke') === '1';
+    const menuAdSmoke = params.get('mindustryYandexMenuAdSmoke') === '1';
     const testDevice = params.get('mindustryYandexTestDevice') === 'mobile' ? 'mobile' : 'desktop';
 
     function count(name){
@@ -45,7 +46,7 @@ cat > "$SDK_STUB" <<'JS'
     }
 
     function schedulePauseCycle(){
-        if(adSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
+        if(adSmoke || menuAdSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
@@ -106,6 +107,12 @@ cat > "$SDK_STUB" <<'JS'
                 adv: {
                     showFullscreenAdv({callbacks} = {}){
                         adTriggered = true;
+                        if(menuAdSmoke){
+                            root.setAttribute('data-yandex-test-menu-ad-call', 'yes');
+                            const platform = globalThis.__mindustryYandex;
+                            root.setAttribute('data-yandex-test-menu-ad-gameplay-before',
+                                platform && platform.gameplayActive ? 'playing' : 'stopped');
+                        }
                         root.setAttribute('data-yandex-test-ad-open', 'yes');
                         if(callbacks.onOpen) callbacks.onOpen();
 
@@ -281,4 +288,55 @@ run_ad_lifecycle(){
 run_ad_lifecycle desktop 9266
 run_ad_lifecycle mobile 9267
 
-echo 'Yandex lifecycle matrix: desktop + mobile fullscreen-ad pause/resume race PASS'
+run_menu_ad_transition(){
+  local device="$1"
+  local cdp="$2"
+  local profile="/tmp/mindustry-yandex-menu-ad-${device}-profile"
+  local dom="/tmp/mindustry-yandex-menu-ad-${device}.html"
+  local mobile_args=()
+  if [ "$device" = "mobile" ]; then mobile_args+=(--emulate-mobile); fi
+  rm -rf "$profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    "${mobile_args[@]}" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignUiBackSmoke=1&mindustryYandexMenuAdSmoke=1&mindustryYandexTestDevice=$device" \
+    --profile "$profile" \
+    --port "$cdp" \
+    --timeout 90 \
+    --require 'data-yandex-sdk="ready"' \
+    --require "data-yandex-device-type=\"$device\"" \
+    --require 'data-mindustry-campaign-ui-back-smoke="triggered"' \
+    --require 'data-mindustry-campaign-back-autosave="ready"' \
+    --require 'data-mindustry-campaign-return="menu"' \
+    --require 'data-mindustry-campaign-state="menu"' \
+    --require 'data-yandex-test-menu-ad-call="yes"' \
+    --require 'data-yandex-test-menu-ad-gameplay-before="stopped"' \
+    --require 'data-yandex-menu-ad-storage="ready"' \
+    --require 'data-yandex-menu-ad-state="closed-shown"' \
+    --require 'data-yandex-test-ad-pause-sent="yes"' \
+    --require 'data-yandex-test-ad-close="yes"' \
+    --require 'data-yandex-test-ad-resume-sent="yes"' \
+    --require 'data-mindustry-platform-pause-observed="yes"' \
+    --require 'data-mindustry-platform-resume-observed="yes"' \
+    --require 'data-mindustry-platform-resume-frame="ready"' \
+    --require 'data-mindustry-platform-resume-frame-state="not-playing"' \
+    --require 'data-mindustry-storage-lifecycle-flush="yandex-pause-ready"' \
+    --require 'data-mindustry-input-reset="platform-pause"' \
+    --require 'data-mindustry-audio-platform="running"' \
+    --require 'data-yandex-game-state="ready"' \
+    --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
+
+  if grep -q 'data-yandex-test-ad-gameplay-restarted="yes"' "$dom"; then
+    echo "Menu interstitial incorrectly restarted GameplayAPI on $device." >&2
+    grep -o '<html[^>]*>' "$dom" >&2 || true
+    exit 1
+  fi
+  grep -q 'data-yandex-test-gameplay-start-count="1"' "$dom"
+  grep -q 'data-yandex-test-gameplay-stop-count="1"' "$dom"
+  echo "Yandex menu interstitial ($device): campaign autosave -> durable storage -> menu-only ad -> no gameplay restart PASS"
+}
+
+run_menu_ad_transition desktop 9268
+run_menu_ad_transition mobile 9269
+
+echo 'Yandex lifecycle matrix: desktop + mobile gameplay ad race + menu-only interstitial transition PASS'

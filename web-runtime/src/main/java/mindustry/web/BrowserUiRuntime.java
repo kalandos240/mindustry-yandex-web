@@ -154,13 +154,22 @@ public final class BrowserUiRuntime{
         // Scene updates while a sector is running.
         controls.visible(() -> BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active());
         controls.top().left();
-        controls.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
+        controls.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
         controls.button(Core.bundle.get("pause", "Pause"), BrowserLocalMapRuntime::pause)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
         ui.hudGroup.addChild(controls);
+    }
+
+    private static void returnToMenuWithAd(){
+        if(BrowserCampaignRuntime.active()){
+            BrowserCampaignRuntime.returnToMenu();
+        }else{
+            BrowserLocalMapRuntime.returnToMenu();
+        }
+        BrowserYandex.showMenuFullscreenAdv();
     }
 
     private static void buildLocalPauseOverlay(){
@@ -177,7 +186,7 @@ public final class BrowserUiRuntime{
             .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
             .padTop(8f);
         overlay.row();
-        overlay.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
+        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
             .padTop(8f);
         ui.hudGroup.addChild(overlay);
@@ -191,7 +200,7 @@ public final class BrowserUiRuntime{
         overlay.visible(() -> BrowserLocalMapRuntime.active() && state.isGame() && state.gameOver);
         overlay.add(Core.bundle.get("gameover", "Game Over")).padBottom(12f);
         overlay.row();
-        overlay.button(Core.bundle.get("back", "Back"), BrowserLocalMapRuntime::returnToMenu)
+        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 180f : 156f, mobile ? 58f : 48f);
         ui.hudGroup.addChild(overlay);
         markGameOverUiReady();

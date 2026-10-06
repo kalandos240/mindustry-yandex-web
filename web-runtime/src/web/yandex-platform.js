@@ -256,6 +256,41 @@
         return true;
     }
 
+    async function showMenuFullscreenAdv(){
+        if(!state.ysdk || !state.ysdk.adv || typeof state.ysdk.adv.showFullscreenAdv !== 'function'){
+            mark('data-yandex-menu-ad-state', 'unavailable');
+            return false;
+        }
+
+        // This path is called only after the user's explicit Back action has already
+        // saved/reset the Mindustry world. Keep GameplayAPI stopped for the menu instead
+        // of restoring the pre-ad gameplay state when game_api_resume arrives.
+        if(state.gameplayActive) gameplayStop();
+
+        const storage = globalThis.__mindustryStorage;
+        if(storage && typeof storage.lifecycleFlush === 'function'){
+            mark('data-yandex-menu-ad-storage', 'pending');
+            const durable = await storage.lifecycleFlush('before-menu-ad');
+            mark('data-yandex-menu-ad-storage', durable ? 'ready' : 'error');
+            if(!durable) return false;
+        }
+
+        // The durability barrier is asynchronous. If the player already started another
+        // sector/map while it was completing, this is no longer a menu transition and
+        // the interstitial must not interrupt the newly resumed gameplay.
+        if(state.gameplayActive){
+            mark('data-yandex-menu-ad-state', 'cancelled-gameplay-resumed');
+            return false;
+        }
+
+        mark('data-yandex-menu-ad-state', 'requested');
+        return showFullscreenAdv({
+            onOpen: () => mark('data-yandex-menu-ad-state', 'open'),
+            onClose: wasShown => mark('data-yandex-menu-ad-state', wasShown ? 'closed-shown' : 'closed-not-shown'),
+            onError: () => mark('data-yandex-menu-ad-state', 'error')
+        });
+    }
+
     async function getPlayer(){
         if(!state.ysdk || typeof state.ysdk.getPlayer !== 'function') return null;
         if(!state.playerPromise) state.playerPromise = state.ysdk.getPlayer();
@@ -268,6 +303,7 @@
         gameplayStart,
         gameplayStop,
         showFullscreenAdv,
+        showMenuFullscreenAdv,
         getPlayer
     });
 })();
