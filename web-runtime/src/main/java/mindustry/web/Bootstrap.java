@@ -118,7 +118,6 @@ public final class Bootstrap{
 
             @Override
             public void update(){
-                if(Vars.logic != null) Vars.logic.webPhase = 98;
                 if(!frameVerified){
                     try{
                         renderVanillaSpriteFrame();
@@ -133,7 +132,6 @@ public final class Bootstrap{
                         throw error;
                     }
                 }
-                if(Vars.logic != null) Vars.logic.webPhase = 99;
 
                 if(++frames == 3){
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
