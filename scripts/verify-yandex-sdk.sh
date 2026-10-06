@@ -32,6 +32,7 @@ cat > "$SDK_STUB" <<'JS'
 
     const params = new URLSearchParams(location.search);
     const adSmoke = params.get('mindustryYandexAdSmoke') === '1';
+    const transitionAdSmoke = params.get('mindustryYandexTransitionAdSmoke') === '1';
     const testDevice = params.get('mindustryYandexTestDevice') === 'mobile' ? 'mobile' : 'desktop';
 
     function count(name){
@@ -45,7 +46,7 @@ cat > "$SDK_STUB" <<'JS'
     }
 
     function schedulePauseCycle(){
-        if(adSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
+        if(adSmoke || transitionAdSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
@@ -281,4 +282,42 @@ run_ad_lifecycle(){
 run_ad_lifecycle desktop 9266
 run_ad_lifecycle mobile 9267
 
-echo 'Yandex lifecycle matrix: desktop + mobile fullscreen-ad pause/resume race PASS'
+run_transition_ad(){
+  local profile="/tmp/mindustry-yandex-transition-ad-profile"
+  local dom="/tmp/mindustry-yandex-transition-ad.html"
+  rm -rf "$profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryMapSmoke=maze&mindustryAutoSaveExitSmoke=1&mindustryYandexTransitionAdSmoke=1" \
+    --profile "$profile" \
+    --port 9268 \
+    --timeout 90 \
+    --require 'data-yandex-sdk="ready"' \
+    --require 'data-mindustry-local-autosave="ready"' \
+    --require 'data-mindustry-local-map-state="menu"' \
+    --require 'data-mindustry-local-map-returned-from="maze"' \
+    --require 'data-yandex-ad-placement="return-to-menu"' \
+    --require 'data-yandex-test-ad-open="yes"' \
+    --require 'data-yandex-test-ad-close="yes"' \
+    --require 'data-yandex-test-ad-resume-sent="yes"' \
+    --require 'data-yandex-ad-state="closed"' \
+    --require 'data-yandex-game-state="ready"' \
+    --require 'data-mindustry-platform-pause="running"' \
+    --require 'data-mindustry-input-reset="platform-pause"' \
+    --require 'data-mindustry-storage-lifecycle-flush="yandex-pause-ready"' \
+    --require 'data-mindustry-audio-platform="running"' \
+    --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
+
+  grep -q 'data-yandex-test-gameplay-start-count="1"' "$dom"
+  grep -q 'data-yandex-test-gameplay-stop-count="1"' "$dom"
+  if grep -q 'data-yandex-test-ad-gameplay-restarted="yes"' "$dom"; then
+    echo 'Return-to-menu interstitial incorrectly restarted GameplayAPI after the ad.' >&2
+    grep -o '<html[^>]*>' "$dom" >&2 || true
+    exit 1
+  fi
+  echo 'Yandex return-to-menu interstitial: autosave -> GameplayAPI stop -> fullscreen ad -> pause/flush -> resume stays menu PASS'
+}
+
+run_transition_ad
+
+echo 'Yandex lifecycle matrix: desktop + mobile fullscreen-ad pause/resume race + return-to-menu interstitial PASS'
