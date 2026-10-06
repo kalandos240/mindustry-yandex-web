@@ -326,16 +326,18 @@ jobs:
           grep -q 'framebuffer-readback@WebGL' /tmp/mindustry-web-dom.html
           grep -q 'settings@localStorage' /tmp/mindustry-web-dom.html
 
-          # Deterministically force the touch-first path. This verifies BrowserApplication
-          # mobile detection, Vars.mobile, stock MobileInput and the same gameplay/audio
-          # substrate without pretending ApplicationType.web is Android or iOS.
+          # Exercise the production touch-first path. Apply device/touch/coarse
+          # characteristics through CDP before index.html executes so BrowserApplication
+          # detects mobile exactly as it does on a phone, without the legacy query override.
           python3 "$GITHUB_WORKSPACE/scripts/chrome-wait-dom.py" \
-            --url 'http://127.0.0.1:8080/index.html?mindustryMobile=1' \
+            --emulate-mobile \
+            --url 'http://127.0.0.1:8080/index.html?lang=ru' \
             --profile /tmp/mindustry-web-mobile-profile \
             --port 9225 \
             --timeout 45 \
             --require 'data-mindustry-web="ready"' \
             --require 'data-mindustry-audio="ready"' \
+            --require 'data-mindustry-device-source="browser-fallback"' \
             --require 'data-mindustry-input-mode="mobile"' \
             --require 'data-mindustry-device-mode="mobile"' \
             --require 'data-mindustry-stock-input="mobile"' \
