@@ -1284,14 +1284,18 @@ public final class BrowserCampaignRuntime{
         ui.update();
         diagPhase("ui-ready");
 
-        // A HUD action can checkpoint/reset the campaign during Scene.act(). Once Back
-        // has returned to the menu, do not validate the old playing-state update clock.
+        // HUD actions run during Scene.act(). Back may reset to menu, while Pause may
+        // transition this just-completed playing tick into the paused state.
         if(!active || current == null || state.isMenu()) return;
-        if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != current){
+        if(!state.isCampaign() || state.rules.sector != current){
             throw new IllegalStateException("c:ui-state");
         }
         if(state.updateId != beforeUpdate + 1L){
             throw new IllegalStateException("c:clock");
+        }
+        if(state.isPaused()) return;
+        if(!state.isPlaying()){
+            throw new IllegalStateException("c:ui-state");
         }
 
         frames++;
