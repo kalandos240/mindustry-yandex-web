@@ -46,6 +46,7 @@ public final class BrowserLocalMapRuntime{
     private static boolean gameOverFreeze;
     private static boolean gameOverSmokeArmed;
     private static boolean pauseSmokeArmed;
+    private static boolean pausedTelemetry;
     private static long pauseUpdateId;
     private static int pausedFrames;
     private static boolean saveSmokeArmed;
@@ -552,26 +553,28 @@ public final class BrowserLocalMapRuntime{
     }
 
     public static void pause(){
-        if(!active || current == null || !state.isPlaying() || state.gameOver || state.rules.pauseDisabled) return;
+        if((!active && !BrowserCampaignRuntime.active()) || !state.isPlaying()
+        || state.gameOver || state.rules.pauseDisabled) return;
         pauseUpdateId = state.updateId;
         pausedFrames = 0;
+        pausedTelemetry = smokeTelemetryRequested();
         state.set(mindustry.core.GameState.State.paused);
         markPaused(pauseUpdateId);
     }
 
     public static void resume(){
-        if(!active || current == null || !state.isPaused() || state.gameOver) return;
+        if((!active && !BrowserCampaignRuntime.active()) || !state.isPaused() || state.gameOver) return;
         long frozenUpdateId = state.updateId;
         if(pauseUpdateId != 0L && frozenUpdateId != pauseUpdateId){
-            throw new IllegalStateException("Browser local pause advanced the gameplay update clock");
+            throw new IllegalStateException("Browser pause advanced the gameplay update clock");
         }
         state.set(mindustry.core.GameState.State.playing);
         markResumed(frozenUpdateId);
     }
 
     public static void updatePausedFrame(){
-        if(!active || current == null || !state.isPaused() || state.gameOver){
-            throw new IllegalStateException("Browser paused frame requires an active paused local session");
+        if((!active && !BrowserCampaignRuntime.active()) || !state.isPaused() || state.gameOver){
+            throw new IllegalStateException("Browser paused frame requires an active single-player session");
         }
 
         long beforeUpdateId = state.updateId;
@@ -581,24 +584,21 @@ public final class BrowserLocalMapRuntime{
         ui.update();
         diagPhase("pause-ui-ready");
 
-        if(!active || state.isMenu()) return;
+        if((!active && !BrowserCampaignRuntime.active()) || state.isMenu()) return;
         if(state.isPlaying()){
             if(state.updateId != beforeUpdateId){
                 throw new IllegalStateException("Browser resume changed updateId inside the paused frame");
             }
             return;
         }
-        if(!state.isPaused()){
-            throw new IllegalStateException("Browser paused local session entered an unexpected state");
-        }
-        if(state.updateId != beforeUpdateId || state.updateId != pauseUpdateId){
+        if(!state.isPaused() || state.updateId != beforeUpdateId || state.updateId != pauseUpdateId){
             throw new IllegalStateException("Browser paused frame advanced the gameplay update clock");
         }
 
         pausedFrames++;
-        if(telemetry) markPauseFrame(pausedFrames, state.updateId);
+        if(pausedTelemetry) markPauseFrame(pausedFrames, state.updateId);
 
-        if(pauseSmokeArmed && pauseSmoke && saveSmoke
+        if(active && pauseSmokeArmed && pauseSmoke && saveSmoke
         && !saveSmokeArmed && pausedFrames == 1){
             saveSmokeArmed = true;
             saveLocalSession();
@@ -606,7 +606,7 @@ public final class BrowserLocalMapRuntime{
             markPauseSaved(state.updateId);
         }
 
-        if(pauseSmokeArmed && pauseSmoke && pausedFrames >= 2){
+        if(pauseSmokeRequested() && pausedFrames >= 2){
             markPauseClockFrozen(state.updateId);
             resume();
         }
@@ -814,7 +814,7 @@ public final class BrowserLocalMapRuntime{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryContinueSmoke') === '1';")
     private static native boolean continueSmokeRequested();
 
-    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPauseSmoke') === '1';")
+    @JSBody(script = "var q=new URLSearchParams(location.search); return q.get('mindustryPauseSmoke')==='1'||q.get('mindustryCampaignPauseSmoke')==='1';")
     private static native boolean pauseSmokeRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryGameOverSmoke') === '1';")
