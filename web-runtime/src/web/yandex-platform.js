@@ -67,6 +67,12 @@
         if(storage && typeof storage.lifecycleFlush === 'function'){
             storage.lifecycleFlush('yandex-pause');
         }
+        const cloud = globalThis.__mindustryCloud;
+        if(cloud && typeof cloud.flush === 'function'){
+            cloud.flush('yandex-pause').catch(error => {
+                console.warn('Mindustry cloud flush on Yandex pause failed:', error);
+            });
+        }
 
         dispatch('mindustry:yandex-pause');
     }
