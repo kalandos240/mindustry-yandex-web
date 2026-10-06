@@ -18,6 +18,7 @@
     <script src="browser-storage.js"></script>
     <script src="browser-audio.js"></script>
     <script src="yandex-platform.js"></script>
+    <script src="browser-cloud.js"></script>
     <script>
         (async () => {
             const root = document.documentElement;
@@ -29,6 +30,7 @@
                 globalThis.__mindustryYandex.init(),
                 globalThis.__mindustryStorage.init()
             ]);
+            await globalThis.__mindustryCloud.hydrate();
 
             const blocked = [];
             globalThis.__mindustryExternalRequests = blocked;
