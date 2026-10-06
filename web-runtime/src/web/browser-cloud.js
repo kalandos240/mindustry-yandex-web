@@ -185,6 +185,7 @@
                 uploadedRevision = revision;
                 lastUploadAt = Date.now();
                 mark('data-yandex-cloud-state', 'synced');
+                mark('data-yandex-cloud-uploaded', 'yes');
                 mark('data-yandex-cloud-updated-at', revision);
                 if(dirtyRevision > uploadedRevision) scheduleUpload();
                 return true;
@@ -225,6 +226,7 @@
         dirtyRevision = revision;
         uploadedRevision = revision;
         mark('data-yandex-cloud-state', 'restored');
+        mark('data-yandex-cloud-restored', 'yes');
         mark('data-yandex-cloud-files', imported);
         mark('data-yandex-cloud-updated-at', revision);
     }
