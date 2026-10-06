@@ -1307,7 +1307,7 @@ new_hud = '''        boolean[] campaignBackUiSmoke = {false};
             && BrowserCampaignRuntime.active() && campaignCoreReady()){
                 campaignBackUiSmoke[0] = true;
                 markCampaignUiBackSmoke();
-                BrowserCampaignRuntime.returnToMenu();
+                returnToMenuWithAd();
             }
         });
 
