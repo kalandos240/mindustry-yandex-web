@@ -275,6 +275,14 @@
             if(!durable) return false;
         }
 
+        // The durability barrier is asynchronous. If the player already started another
+        // sector/map while it was completing, this is no longer a menu transition and
+        // the interstitial must not interrupt the newly resumed gameplay.
+        if(state.gameplayActive){
+            mark('data-yandex-menu-ad-state', 'cancelled-gameplay-resumed');
+            return false;
+        }
+
         mark('data-yandex-menu-ad-state', 'requested');
         return showFullscreenAdv({
             onOpen: () => mark('data-yandex-menu-ad-state', 'open'),
