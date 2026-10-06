@@ -320,6 +320,8 @@ run_cloud_roundtrip(){
     --require 'data-mindustry-local-save-state="saved"' \
     --require 'data-mindustry-local-save-slot="available"' \
     --require 'data-mindustry-local-save-flush="ready"' \
+    --require 'data-mindustry-local-autosave="ready"' \
+    --require 'data-mindustry-local-map-state="menu"' \
     --require 'data-yandex-cloud-uploaded="yes"' \
     --require 'data-yandex-cloud-state="synced"' \
     --require 'data-yandex-test-cloud-flush="true"' \
@@ -340,13 +342,22 @@ run_cloud_roundtrip(){
     --require 'data-mindustry-storage-cloud-imported-files="1"' \
     --require 'data-mindustry-local-save-slot="available"' \
     --require 'data-mindustry-local-continue-smoke="requested"' \
+    --require 'data-mindustry-local-continue="ready"' \
+    --require 'data-mindustry-local-continue-slug="maze"' \
     --require 'data-mindustry-local-save-load="ready"' \
-    --require 'data-mindustry-local-map-state="playing"' \
+    --require 'data-mindustry-local-autosave="ready"' \
+    --require 'data-mindustry-local-map-state="menu"' \
     --require 'data-mindustry-network="yandex-sdk-only"' > "$restore_dom"
 
   grep -Eq 'data-yandex-test-cloud-get-count="[1-9][0-9]*"' "$restore_dom"
   grep -Eq 'data-mindustry-local-save-load-wave="[1-9][0-9]*"' "$restore_dom"
-  echo 'Yandex cloud save: real local survival MSAV -> Player.setData -> clean Chrome profile Player.getData -> pre-TeaVM restore -> Continue PASS'
+
+  local cloud_wave restored_wave
+  cloud_wave="$(grep -o 'data-mindustry-local-autosave-wave="[0-9]*"' "$save_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\\1/')"
+  restored_wave="$(grep -o 'data-mindustry-local-save-load-wave="[0-9]*"' "$restore_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\\1/')"
+  test -n "$cloud_wave"
+  test "$restored_wave" = "$cloud_wave"
+  echo "Yandex cloud save: real local survival MSAV wave=$cloud_wave -> Player.setData -> clean Chrome profile Player.getData -> pre-TeaVM restore -> Continue wave=$restored_wave PASS"
 }
 
 run_cloud_roundtrip
