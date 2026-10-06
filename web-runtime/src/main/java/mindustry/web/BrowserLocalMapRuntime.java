@@ -641,7 +641,7 @@ public final class BrowserLocalMapRuntime{
         diagPhase("gameover-ui-ready");
     }
 
-    /** Return to the stable local map selector without touching any remote service. */
+    /** Save/reset locally, then request a Yandex interstitial at this logical pause. */
     public static void returnToMenu(){
         if(!active) return;
         String previous = current == null ? "unknown" : slug(current);
@@ -673,6 +673,7 @@ public final class BrowserLocalMapRuntime{
         periodicSaveSmokeDone = false;
         logic.reset();
         markReturned(previous);
+        BrowserYandex.showTransitionAdv();
     }
 
     /** Test-only URL hook; production without the query remains entirely user-controlled. */
