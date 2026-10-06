@@ -44,6 +44,16 @@ def main() -> int:
             self.end_headers()
             self.wfile.write(payload)
 
+        def do_DELETE(self) -> None:
+            if urlparse(self.path).path != "/__cloud":
+                self.send_error(404)
+                return
+            with state.lock:
+                state.data = {}
+            self.send_response(204)
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+
         def do_POST(self) -> None:
             if urlparse(self.path).path != "/__cloud":
                 self.send_error(404)
