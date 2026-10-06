@@ -26,7 +26,7 @@ import static mindustry.Vars.*;
 public final class BrowserUiRuntime{
     @JSFunctor
     private interface SettingsAction extends JSObject{
-        void run(int action);
+        void run(int setting, int value);
     }
 
     private static boolean initialized;
@@ -124,23 +124,19 @@ public final class BrowserUiRuntime{
         ui.menuGroup.addChild(root);
     }
 
-    private static void applySettingAction(int action){
-        switch(action){
-            case 1 -> Core.settings.put("sfxvol", nextVolume(Core.settings.getInt("sfxvol", 100)));
-            case 2 -> Core.settings.put("musicvol", nextVolume(Core.settings.getInt("musicvol", 100)));
-            case 3 -> Core.settings.put("effects", !Core.settings.getBool("effects", true));
+    private static void applySettingAction(int setting, int value){
+        switch(setting){
+            case 1 -> Core.settings.put("sfxvol", value);
+            case 2 -> Core.settings.put("musicvol", value);
+            case 3 -> Core.settings.put("effects", value != 0);
             case 4 -> {
-                boolean quality = qualityVisuals();
-                Core.settings.put("animatedwater", !quality);
-                Core.settings.put("animatedshields", !quality);
-                Core.settings.put("drawlight", !quality);
+                boolean enabled = value != 0;
+                Core.settings.put("animatedwater", enabled);
+                Core.settings.put("animatedshields", enabled);
+                Core.settings.put("drawlight", enabled);
             }
         }
         Core.settings.forceSave();
-    }
-
-    private static int nextVolume(int value){
-        return value >= 100 ? 0 : Math.min(100, ((Math.max(0, value) / 25) + 1) * 25);
     }
 
     private static boolean qualityVisuals(){
