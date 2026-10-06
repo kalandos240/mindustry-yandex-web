@@ -29,6 +29,9 @@
                 globalThis.__mindustryYandex.init(),
                 globalThis.__mindustryStorage.init()
             ]);
+            // Restore a cloud checkpoint only before TeaVM starts, so Arc sees one
+            // coherent synchronous settings/files snapshot from its first frame.
+            await globalThis.__mindustryYandex.restoreCloudCheckpoint();
 
             const blocked = [];
             globalThis.__mindustryExternalRequests = blocked;
@@ -269,11 +272,19 @@
 
                 let sfxState = sfxInitial, musicState = musicInitial;
                 let effectsState = effectsInitial, qualityState = qualityInitial;
+                root.setAttribute('data-mindustry-settings-sfx-value', String(sfxState));
+                root.setAttribute('data-mindustry-settings-music-value', String(musicState));
+                root.setAttribute('data-mindustry-settings-effects-value', effectsState ? 'on' : 'off');
+                root.setAttribute('data-mindustry-settings-graphics-value', qualityState ? 'quality' : 'performance');
                 const renderSettings = () => {
                     sfx.textContent = word.sfx + ' — ' + sfxState + '%';
                     music.textContent = word.music + ' — ' + musicState + '%';
                     effects.textContent = word.effects + ' — ' + (effectsState ? word.on : word.off);
                     graphics.textContent = word.graphics + ' — ' + (qualityState ? word.quality : word.performance);
+                    root.setAttribute('data-mindustry-settings-sfx-value', String(sfxState));
+                    root.setAttribute('data-mindustry-settings-music-value', String(musicState));
+                    root.setAttribute('data-mindustry-settings-effects-value', effectsState ? 'on' : 'off');
+                    root.setAttribute('data-mindustry-settings-graphics-value', qualityState ? 'quality' : 'performance');
                 };
                 const nextVolume = value => value >= 100 ? 0 : Math.min(100, (Math.floor(Math.max(0, value) / 25) + 1) * 25);
                 sfx.onclick = () => { sfxState = nextVolume(sfxState); action(1, sfxState); renderSettings(); };
