@@ -2016,7 +2016,7 @@ public final class BrowserCampaignRuntime{
         setRuntimeDomAttribute("data-mindustry-campaign-save-flush", "pending");
     }
 
-    @JSBody(script = "globalThis.__mindustryStorage.flush().then(function(){document.documentElement.setAttribute('data-mindustry-campaign-save-flush','ready');}).catch(function(e){document.documentElement.setAttribute('data-mindustry-campaign-save-flush','error');});")
+    @JSBody(script = "globalThis.__mindustryStorage.flush().then(function(){document.documentElement.setAttribute('data-mindustry-campaign-save-flush','ready'); var c=globalThis.__mindustryCloud; if(c&&c.flush)c.flush('campaign-save').catch(function(){});}).catch(function(e){document.documentElement.setAttribute('data-mindustry-campaign-save-flush','error');});")
     private static native void flushCampaignStorage();
 
     private static void markResumed(int sectorId, String planet, String preset, int width, int height, long bytes, int wave, long tickMillis){
