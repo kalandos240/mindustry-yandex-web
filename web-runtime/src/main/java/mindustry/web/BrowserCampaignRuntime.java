@@ -382,9 +382,6 @@ public final class BrowserCampaignRuntime{
         pauseUpdateId = 0L;
         pausedFrames = 0;
         pauseSmokeArmed = false;
-        pauseUpdateId = 0L;
-        pausedFrames = 0;
-        pauseSmokeArmed = false;
 
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
@@ -569,6 +566,9 @@ public final class BrowserCampaignRuntime{
         crossroadsObjectivesStaged = false;
         originObjectivesStaged = false;
         coreReadyMarked = false;
+        pauseUpdateId = 0L;
+        pausedFrames = 0;
+        pauseSmokeArmed = false;
         markResumed(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             expectedBytes, state.wave, loadedTickMillis);
     }
@@ -677,6 +677,7 @@ public final class BrowserCampaignRuntime{
         current = null;
         frames = 0;
         saveSmoke = false;
+        pauseSmoke = false;
         captureSmoke = false;
         progressSmoke = false;
         saveSmokeArmed = false;
