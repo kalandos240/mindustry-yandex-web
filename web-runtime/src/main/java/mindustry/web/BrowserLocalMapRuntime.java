@@ -37,6 +37,7 @@ public final class BrowserLocalMapRuntime{
     };
 
     private static final Seq<Map> catalog = new Seq<>();
+    private static Gamemode selectedMode = Gamemode.survival;
     private static boolean initialized;
     private static boolean active;
     private static boolean testStartChecked;
@@ -83,6 +84,8 @@ public final class BrowserLocalMapRuntime{
         // stock load(): custom/workshop/mod sources are absent. Production menu startup
         // validates paths only; metadata is decoded lazily when a map is selected.
         if(maps == null) maps = new Maps();
+        selectedMode = Core.settings.getBool("localsandbox", false) ? Gamemode.sandbox : Gamemode.survival;
+        markMode(selectedMode.name());
         if(!maps.all().isEmpty()){
             throw new IllegalStateException("Browser local map catalog must start from an empty Maps registry");
         }
@@ -133,6 +136,19 @@ public final class BrowserLocalMapRuntime{
         return current;
     }
 
+    public static Gamemode selectedMode(){
+        return selectedMode;
+    }
+
+    public static void toggleMode(){
+        if(active) return;
+        selectedMode = selectedMode == Gamemode.sandbox ? Gamemode.survival : Gamemode.sandbox;
+        Core.settings.put("localsandbox", selectedMode == Gamemode.sandbox);
+        Core.settings.forceSave();
+        markMode(selectedMode.name());
+        BrowserUiRuntime.syncLocalModeUi();
+    }
+
     public static void start(String slug){
         Map map = bySlug(slug);
         if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
@@ -160,8 +176,12 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        Rules rules = map.applyRules(Gamemode.survival);
+        if(!selectedMode.valid(map)){
+            throw new IllegalStateException("Selected browser custom-game mode is not valid for map: " + selectedMode.name());
+        }
+        Rules rules = map.applyRules(selectedMode);
         stageCoreRules(rules);
+        markMode(selectedMode.name());
 
         // World.loadMap() intentionally converts any SaveIO failure into the single
         // invalidMap flag for desktop UI. That is too opaque for the browser port: a
@@ -510,6 +530,11 @@ public final class BrowserLocalMapRuntime{
         }
 
         stageCoreRules(state.rules);
+        selectedMode = state.rules.infiniteResources && state.rules.allowEditRules
+            ? Gamemode.sandbox : Gamemode.survival;
+        Core.settings.put("localsandbox", selectedMode == Gamemode.sandbox);
+        markMode(selectedMode.name());
+        BrowserUiRuntime.syncLocalModeUi();
         state.map = builtin;
         state.rules.sector = null;
         state.rules.editor = false;
@@ -831,6 +856,9 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-map-catalog', 'ready'); document.documentElement.setAttribute('data-mindustry-map-count', String(count)); document.documentElement.setAttribute('data-mindustry-map-source', 'pinned-builtin-local-only');")
     private static native void markCatalogReady(int count);
+
+    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-local-mode', mode);")
+    private static native void markMode(String mode);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-map-catalog-policy','lazy-msav-metadata'); document.documentElement.setAttribute('data-mindustry-map-metadata-loaded','0');")
     private static native void markCatalogPolicy();
