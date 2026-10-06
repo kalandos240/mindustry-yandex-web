@@ -276,10 +276,10 @@
                     graphics.textContent = word.graphics + ' — ' + (qualityState ? word.quality : word.performance);
                 };
                 const nextVolume = value => value >= 100 ? 0 : Math.min(100, (Math.floor(Math.max(0, value) / 25) + 1) * 25);
-                sfx.onclick = () => { sfxState = nextVolume(sfxState); action(1); renderSettings(); };
-                music.onclick = () => { musicState = nextVolume(musicState); action(2); renderSettings(); };
-                effects.onclick = () => { effectsState = !effectsState; action(3); renderSettings(); };
-                graphics.onclick = () => { qualityState = !qualityState; action(4); renderSettings(); };
+                sfx.onclick = () => { sfxState = nextVolume(sfxState); action(1, sfxState); renderSettings(); };
+                music.onclick = () => { musicState = nextVolume(musicState); action(2, musicState); renderSettings(); };
+                effects.onclick = () => { effectsState = !effectsState; action(3, effectsState ? 1 : 0); renderSettings(); };
+                graphics.onclick = () => { qualityState = !qualityState; action(4, qualityState ? 1 : 0); renderSettings(); };
 
                 const syncMenu = () => {
                     const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
