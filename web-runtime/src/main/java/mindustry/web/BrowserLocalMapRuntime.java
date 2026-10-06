@@ -176,9 +176,6 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        if(!selectedMode.valid(map)){
-            throw new IllegalStateException("Selected browser custom-game mode is not valid for map: " + selectedMode.name());
-        }
         Rules rules = map.applyRules(selectedMode);
         stageCoreRules(rules);
         markMode(selectedMode.name());
