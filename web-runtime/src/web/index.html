@@ -228,7 +228,7 @@
                 }
             }
 
-            globalThis.__mindustryInstallSettings = action => {
+            globalThis.__mindustryInstallSettings = (action, sfxInitial, musicInitial, effectsInitial, qualityInitial) => {
                 if(globalThis.__mindustrySettingsInstalled) return;
                 globalThis.__mindustrySettingsInstalled = true;
 
@@ -267,17 +267,19 @@
                 document.body.appendChild(launch);
                 document.body.appendChild(panel);
 
-                const refresh = code => {
-                    const values = String(action(code)).split(',');
-                    sfx.textContent = word.sfx + ' — ' + values[0] + '%';
-                    music.textContent = word.music + ' — ' + values[1] + '%';
-                    effects.textContent = word.effects + ' — ' + (values[2] === '1' ? word.on : word.off);
-                    graphics.textContent = word.graphics + ' — ' + (values[3] === '1' ? word.quality : word.performance);
+                let sfxState = sfxInitial, musicState = musicInitial;
+                let effectsState = effectsInitial, qualityState = qualityInitial;
+                const renderSettings = () => {
+                    sfx.textContent = word.sfx + ' — ' + sfxState + '%';
+                    music.textContent = word.music + ' — ' + musicState + '%';
+                    effects.textContent = word.effects + ' — ' + (effectsState ? word.on : word.off);
+                    graphics.textContent = word.graphics + ' — ' + (qualityState ? word.quality : word.performance);
                 };
-                sfx.onclick = () => refresh(1);
-                music.onclick = () => refresh(2);
-                effects.onclick = () => refresh(3);
-                graphics.onclick = () => refresh(4);
+                const nextVolume = value => value >= 100 ? 0 : Math.min(100, (Math.floor(Math.max(0, value) / 25) + 1) * 25);
+                sfx.onclick = () => { sfxState = nextVolume(sfxState); action(1); renderSettings(); };
+                music.onclick = () => { musicState = nextVolume(musicState); action(2); renderSettings(); };
+                effects.onclick = () => { effectsState = !effectsState; action(3); renderSettings(); };
+                graphics.onclick = () => { qualityState = !qualityState; action(4); renderSettings(); };
 
                 const syncMenu = () => {
                     const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
@@ -290,7 +292,7 @@
                 };
 
                 launch.onclick = () => {
-                    refresh(0);
+                    renderSettings();
                     panel.style.display = 'flex';
                     launch.style.display = 'none';
                     root.setAttribute('data-mindustry-settings-panel','open');
