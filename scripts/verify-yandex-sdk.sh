@@ -234,9 +234,14 @@ cat > "$SDK_STUB" <<'JS'
                                     root.setAttribute('data-yandex-test-cloud-local-file', raw.length >= 128 ? 'yes' : 'invalid');
                                     root.setAttribute('data-yandex-test-cloud-local-bytes', String(raw.length));
                                 }
+                                const snapshotBytes = new TextEncoder().encode(
+                                    JSON.stringify({mindustryWebCheckpointV1: snapshot})
+                                );
+                                let snapshotBinary = '';
+                                for(const byte of snapshotBytes) snapshotBinary += String.fromCharCode(byte);
                                 root.setAttribute(
                                     'data-yandex-test-cloud-snapshot-b64',
-                                    btoa(JSON.stringify({mindustryWebCheckpointV1: snapshot}))
+                                    btoa(snapshotBinary)
                                 );
                             }
                         },
