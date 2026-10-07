@@ -67,6 +67,14 @@ old_methods = '''    private static void startEnemyPathSmoke(){
 new_methods = '''    private static void startAttackSmoke(){
         if(!attackSmokeRequested()) return;
 
+        if(attackPresetSmokeRequested()){
+            attackSmokeCore = state.rules.waveTeam.core();
+            if(attackSmokeCore == null) throw new IllegalStateException("Real Attack smoke loaded no wave-team core");
+            attackSmokeDestroyed = false;
+            markAttackSmokeArmed(attackSmokeCore.id, attackSmokeCore.team.name);
+            return;
+        }
+
         state.rules.attackMode = true;
         state.rules.waves = false;
         state.rules.waveTimer = false;
@@ -133,10 +141,17 @@ new_methods = '''    private static void startAttackSmoke(){
         // production frames before destroying it through Building.damage -> Tile.buildDestroyed.
         if(frames < 3) return;
 
-        mindustry.gen.Building core = attackSmokeCore;
-        core.damage(core.health + 1f);
-        if(core.isValid() || !state.rules.waveTeam.cores().isEmpty()){
-            throw new IllegalStateException("Local-authoritative enemy core destruction did not update team core state");
+        if(attackPresetSmokeRequested()){
+            while(!state.rules.waveTeam.cores().isEmpty()){
+                mindustry.gen.Building core = state.rules.waveTeam.core();
+                core.damage(core.health + 1f);
+            }
+        }else{
+            mindustry.gen.Building core = attackSmokeCore;
+            core.damage(core.health + 1f);
+            if(core.isValid() || !state.rules.waveTeam.cores().isEmpty()){
+                throw new IllegalStateException("Local-authoritative enemy core destruction did not update team core state");
+            }
         }
         attackSmokeDestroyed = true;
         attackSmokeCore = null;
