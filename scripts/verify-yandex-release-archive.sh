@@ -211,29 +211,34 @@ grep -q 'data-mindustry-campaign-map-path="maps/erekir/onset.msav"' /tmp/mindust
 grep -Eq 'data-mindustry-campaign-frames="([3-9]|[1-9][0-9]+)"' /tmp/mindustry-release-archive-erekir.html
 
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1&mindustryGameOverSmoke=1" \
   --profile /tmp/mindustry-release-archive-attack \
   --port 9288 \
   --timeout 90 \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-local-map-mode="attack"' \
   --require 'data-mindustry-local-map-state="playing"' \
-  --require 'data-mindustry-local-map-loop="live"' \
+  --require 'data-mindustry-local-map-gameover-smoke="armed"' \
+  --require 'data-mindustry-local-map-gameover="ready"' \
+  --require 'data-mindustry-local-map-gameover-winner="sharded"' \
+  --require 'data-mindustry-local-map-loop="game-over"' \
   --require 'data-mindustry-input-mode="desktop"' \
   --require 'data-mindustry-network="local-only"' \
   --require 'data-mindustry-network-mode="singleplayer-only"' > /tmp/mindustry-release-archive-attack.html
 
 attack_map="$(grep -o 'data-mindustry-local-map-slug="[^"]*"' /tmp/mindustry-release-archive-attack.html | head -1 | cut -d'"' -f2)"
 attack_frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' /tmp/mindustry-release-archive-attack.html | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+attack_winner="$(grep -o 'data-mindustry-local-map-gameover-winner="[^"]*"' /tmp/mindustry-release-archive-attack.html | head -1 | cut -d'"' -f2)"
 case "$attack_map" in
   veins|glacier|passage) ;;
   *) echo "Unexpected packaged Attack map: $attack_map" >&2; exit 1 ;;
 esac
 test "$attack_frames" -ge 3
+test "$attack_winner" = "sharded"
 
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --emulate-mobile \
-  --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryAttackPresetSmoke=1" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryAttackPresetSmoke=1&mindustryGameOverSmoke=1" \
   --profile /tmp/mindustry-release-archive-attack-mobile \
   --port 9289 \
   --timeout 90 \
@@ -241,7 +246,10 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-smoke-mode="production"' \
   --require 'data-mindustry-local-map-mode="attack"' \
   --require 'data-mindustry-local-map-state="playing"' \
-  --require 'data-mindustry-local-map-loop="live"' \
+  --require 'data-mindustry-local-map-gameover-smoke="armed"' \
+  --require 'data-mindustry-local-map-gameover="ready"' \
+  --require 'data-mindustry-local-map-gameover-winner="sharded"' \
+  --require 'data-mindustry-local-map-loop="game-over"' \
   --require 'data-mindustry-input-mode="mobile"' \
   --require 'data-mindustry-stock-input="mobile"' \
   --require 'data-mindustry-network="local-only"' \
@@ -249,12 +257,14 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
 
 attack_mobile_map="$(grep -o 'data-mindustry-local-map-slug="[^"]*"' /tmp/mindustry-release-archive-attack-mobile.html | head -1 | cut -d'"' -f2)"
 attack_mobile_frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' /tmp/mindustry-release-archive-attack-mobile.html | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+attack_mobile_winner="$(grep -o 'data-mindustry-local-map-gameover-winner="[^"]*"' /tmp/mindustry-release-archive-attack-mobile.html | head -1 | cut -d'"' -f2)"
 case "$attack_mobile_map" in
   veins|glacier|passage) ;;
   *) echo "Unexpected packaged mobile Attack map: $attack_mobile_map" >&2; exit 1 ;;
 esac
 test "$attack_mobile_map" = "$attack_map"
 test "$attack_mobile_frames" -ge 3
+test "$attack_mobile_winner" = "sharded"
 
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --emulate-mobile \
@@ -371,4 +381,4 @@ test "$attack_desktop_resume_frames" -ge 3
 
 bash "$ROOT_DIR/scripts/verify-yandex-release-cloud.sh" "$EXTRACT" "$PORT"
 
-echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack desktop/mobile map=$attack_map frames=$attack_frames/$attack_mobile_frames + cold Continue mobile=$attack_resume_map/$attack_resume_frames desktop=$attack_desktop_resume_map/$attack_desktop_resume_frames + desktop-to-mobile Yandex cloud round-trip PASS"
+echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack victory desktop/mobile map=$attack_map winner=$attack_winner/$attack_mobile_winner frames=$attack_frames/$attack_mobile_frames + cold Continue mobile=$attack_resume_map/$attack_resume_frames desktop=$attack_desktop_resume_map/$attack_desktop_resume_frames + desktop-to-mobile Yandex cloud round-trip PASS"
