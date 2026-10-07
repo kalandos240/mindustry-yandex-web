@@ -115,8 +115,10 @@ public final class BrowserUiRuntime{
         mapButtons.defaults().growX().height(mobile ? 52f : 46f).pad(2f);
         for(String slug : BrowserLocalMapRuntime.slugs()){
             mapButtons.button(BrowserLocalMapRuntime.displayName(slug), () -> BrowserLocalMapRuntime.start(slug));
-            mapButtons.button(Core.bundle.get("mode.attack.name", "Attack"), () -> BrowserLocalMapRuntime.startAttack(slug))
-                .width(mobile ? 112f : 96f);
+            if(BrowserLocalMapRuntime.supportsAttack(slug)){
+                mapButtons.button(Core.bundle.get("mode.attack.name", "Attack"), () -> BrowserLocalMapRuntime.startAttack(slug))
+                    .width(mobile ? 112f : 96f);
+            }
             mapButtons.row();
         }
 
