@@ -61,6 +61,8 @@ public final class BrowserLocalMapRuntime{
     private static boolean gameOverSmoke;
     private static boolean autoSaveExitSmoke;
     private static boolean periodicSaveSmoke;
+    private static boolean attackPresetSmoke;
+    private static boolean attackPresetSmokeArmed;
     private static boolean perfReady;
     private static int perfUnits;
     private static int perfEffects;
@@ -152,6 +154,7 @@ public final class BrowserLocalMapRuntime{
     }
 
     private static Gamemode savedMode(Rules rules){
+        if(rules != null && rules.attackMode) return Gamemode.attack;
         if(rules != null && rules.infiniteResources && rules.waves && !rules.waveTimer){
             return Gamemode.sandbox;
         }
@@ -159,6 +162,7 @@ public final class BrowserLocalMapRuntime{
     }
 
     private static void persistSelectedMode(Gamemode mode){
+        // Attack is chosen per-map, not as the global Survival/Sandbox preference.
         Core.settings.put("localgamemode", mode == Gamemode.sandbox ? 1 : 0);
         Core.settings.forceSave();
         BrowserUiRuntime.syncLocalModeUi();
@@ -167,11 +171,25 @@ public final class BrowserLocalMapRuntime{
     public static void start(String slug){
         Map map = bySlug(slug);
         if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
-        start(map);
+        start(map, selectedMode());
+    }
+
+    public static void startAttack(String slug){
+        Map map = bySlug(slug);
+        if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
+        if(!Gamemode.attack.valid(map)){
+            markAttackUnavailable(slug, map.plainName());
+            return;
+        }
+        start(map, Gamemode.attack);
     }
 
     /** Start the selected packaged map through the stock local world/play lifecycle. */
     public static void start(Map map){
+        start(map, selectedMode());
+    }
+
+    private static void start(Map map, Gamemode mode){
         if(!initialized) throw new IllegalStateException("Browser local map catalog is not initialized");
         if(active) throw new IllegalStateException("A browser local map session is already active");
         if(map == null || !catalog.contains(map, true)){
@@ -191,7 +209,11 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        Gamemode mode = selectedMode();
+        if(mode == Gamemode.attack && !Gamemode.attack.valid(map)){
+            markAttackUnavailable(slug, map.plainName());
+            return;
+        }
+
         // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
         // reads Map.spawns, which is still zero before the MSAV body is loaded here.
         // The packaged-map world load below is the authoritative validation boundary.
@@ -199,6 +221,9 @@ public final class BrowserLocalMapRuntime{
         stageCoreRules(rules);
         if(mode == Gamemode.sandbox && (!rules.infiniteResources || !rules.waves || rules.waveTimer)){
             throw new IllegalStateException("Stock Sandbox rules were not applied on Web");
+        }
+        if(mode == Gamemode.attack && !rules.attackMode){
+            throw new IllegalStateException("Stock Attack rules were not applied on Web");
         }
 
         // World.loadMap() intentionally converts any SaveIO failure into the single
@@ -256,6 +281,7 @@ public final class BrowserLocalMapRuntime{
         saveSmokeArmed = false;
         periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
+        attackPresetSmokeArmed = false;
         active = true;
 
         try{
@@ -437,6 +463,7 @@ public final class BrowserLocalMapRuntime{
         }
 
         frames++;
+        updateAttackPresetSmoke();
         if(telemetry){
             markFrame(frames, state.updateId, player.unit() == null ? "spawning" : player.unit().type.name,
                 state.wave, state.enemies, state.wavetime);
@@ -720,6 +747,7 @@ public final class BrowserLocalMapRuntime{
         saveSmokeArmed = false;
         periodicSaveTick = 0.0;
         periodicSaveSmokeDone = false;
+        attackPresetSmokeArmed = false;
         logic.reset();
         markReturned(previous);
     }
@@ -736,6 +764,18 @@ public final class BrowserLocalMapRuntime{
             markContinueSmokeRequested();
             continueSaved();
             return;
+        }
+
+        if(attackPresetSmokeRequested()){
+            for(String slug : builtinSlugs){
+                Map map = bySlug(slug);
+                if(map != null && Gamemode.attack.valid(map)){
+                    markAttackPresetRequested(slug, map.plainName());
+                    start(map, Gamemode.attack);
+                    return;
+                }
+            }
+            throw new IllegalStateException("No pinned built-in map is valid for local Attack mode");
         }
 
         String requested = requestedTestMap();
@@ -807,6 +847,7 @@ public final class BrowserLocalMapRuntime{
         gameOverSmoke = gameOverSmokeRequested();
         autoSaveExitSmoke = autoSaveExitSmokeRequested();
         periodicSaveSmoke = periodicSaveSmokeRequested();
+        attackPresetSmoke = attackPresetSmokeRequested();
     }
 
     private static void diagPhase(String phase){
