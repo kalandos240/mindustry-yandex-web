@@ -279,6 +279,9 @@ jobs:
           if-no-files-found: warn
 
       - name: Execute integrated desktop and mobile runtime in headless Chrome
+        # Cold browser audio decode occasionally exceeds 45s on shared runners even when
+        # the same commit passes the full release matrix. Keep every readiness marker,
+        # but allow bounded startup variance before declaring the runtime unhealthy.
         run: |
           command -v google-chrome
           rm -rf /tmp/mindustry-web-main-profile /tmp/mindustry-web-mobile-profile
@@ -295,7 +298,7 @@ jobs:
             --url http://127.0.0.1:8080/index.html \
             --profile /tmp/mindustry-web-main-profile \
             --port 9224 \
-            --timeout 45 \
+            --timeout 75 \
             --require 'data-mindustry-web="ready"' \
             --require 'data-mindustry-storage="ready"' \
             --require 'data-mindustry-audio="ready"' \
@@ -352,7 +355,7 @@ jobs:
             --url 'http://127.0.0.1:8080/index.html?lang=ru' \
             --profile /tmp/mindustry-web-mobile-profile \
             --port 9225 \
-            --timeout 45 \
+            --timeout 75 \
             --require 'data-mindustry-web="ready"' \
             --require 'data-mindustry-audio="ready"' \
             --require 'data-mindustry-device-source="browser-fallback"' \
