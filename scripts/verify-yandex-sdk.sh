@@ -34,6 +34,7 @@ cat > "$SDK_STUB" <<'JS'
     const adSmoke = params.get('mindustryYandexAdSmoke') === '1';
     const menuAdSmoke = params.get('mindustryYandexMenuAdSmoke') === '1';
     const cloudBootSmoke = params.get('mindustryYandexCloudBootSmoke') === '1';
+    const fullscreenSmoke = params.get('mindustryYandexFullscreenSmoke') === '1';
     const testDevice = params.get('mindustryYandexTestDevice') === 'mobile' ? 'mobile' : 'desktop';
     const playerData = Object.create(null);
     if(cloudBootSmoke){
@@ -56,7 +57,7 @@ cat > "$SDK_STUB" <<'JS'
     }
 
     function schedulePauseCycle(){
-        if(adSmoke || menuAdSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
+        if(adSmoke || menuAdSmoke || fullscreenSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
@@ -65,6 +66,23 @@ cat > "$SDK_STUB" <<'JS'
                 root.setAttribute('data-yandex-test-resume-sent', 'yes');
                 listeners.game_api_resume();
             }, 100);
+        });
+    }
+
+    function scheduleFullscreenCycle(){
+        if(!fullscreenSmoke) return;
+        afterFrames(2, () => {
+            const button = document.getElementById('mindustry-fullscreen-toggle');
+            if(!button){
+                root.setAttribute('data-yandex-test-fullscreen-error', 'button-missing');
+                return;
+            }
+            root.setAttribute('data-yandex-test-fullscreen-click', 'request');
+            button.click();
+            setTimeout(() => {
+                root.setAttribute('data-yandex-test-fullscreen-click', 'exit');
+                button.click();
+            }, 50);
         });
     }
 
@@ -101,6 +119,7 @@ cat > "$SDK_STUB" <<'JS'
                                 root.setAttribute('data-yandex-test-ready-too-early', 'yes');
                             }
                             schedulePauseCycle();
+                            scheduleFullscreenCycle();
                         }
                     },
                     GameplayAPI: {
@@ -112,6 +131,21 @@ cat > "$SDK_STUB" <<'JS'
                             scheduleAdCycle();
                         },
                         stop(){ count('data-yandex-test-gameplay-stop-count'); }
+                    }
+                },
+                screen: {
+                    fullscreen: {
+                        STATUS_ON: 'on',
+                        STATUS_OFF: 'off',
+                        status: 'off',
+                        async request(){
+                            this.status = 'on';
+                            count('data-yandex-test-fullscreen-request-count');
+                        },
+                        async exit(){
+                            this.status = 'off';
+                            count('data-yandex-test-fullscreen-exit-count');
+                        }
                     }
                 },
                 adv: {
@@ -401,4 +435,29 @@ run_menu_ad_transition(){
 run_menu_ad_transition desktop 9268
 run_menu_ad_transition mobile 9269
 
-echo 'Yandex lifecycle matrix: desktop + mobile gameplay ad race + menu-only interstitial transition PASS'
+run_fullscreen_control(){
+  local profile="/tmp/mindustry-yandex-fullscreen-profile"
+  local dom="/tmp/mindustry-yandex-fullscreen.html"
+  rm -rf "$profile"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexFullscreenSmoke=1" \
+    --profile "$profile" \
+    --port 9270 \
+    --timeout 45 \
+    --require 'data-yandex-sdk="ready"' \
+    --require 'data-yandex-fullscreen-control="ready"' \
+    --require 'data-yandex-test-fullscreen-click="exit"' \
+    --require 'data-yandex-test-fullscreen-request-count="1"' \
+    --require 'data-yandex-test-fullscreen-exit-count="1"' \
+    --require 'data-yandex-fullscreen-state="off"' \
+    --require 'data-yandex-fullscreen-action="exit-ready"' \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
+
+  echo 'Yandex fullscreen control: user-click request -> SDK fullscreen on -> user-click exit -> SDK fullscreen off PASS'
+}
+
+run_fullscreen_control
+
+echo 'Yandex lifecycle matrix: desktop + mobile gameplay ad race + menu-only interstitial transition + fullscreen control PASS'
