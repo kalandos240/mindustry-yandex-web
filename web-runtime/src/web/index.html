@@ -352,6 +352,11 @@
                     action(5, mode);
                     render();
                 };
+                globalThis.__mindustrySetLocalMode = next => {
+                    mode = next === 1 ? 1 : 0;
+                    render();
+                    sync();
+                };
                 new MutationObserver(sync).observe(root, {
                     attributes:true,
                     attributeFilter:['data-mindustry-gameplay-loop', 'data-mindustry-settings-panel']
