@@ -73,6 +73,10 @@ if missing:
 if len(names) != len(set(names)):
     fail("duplicate archive paths detected")
 
+default_maps = [
+    name for name in names
+    if name.startswith("assets/maps/default/") and name.endswith(".msav")
+]
 serpulo_campaign = [
     name for name in names
     if name.startswith("assets/maps/serpulo/") and name.endswith(".msav")
@@ -81,11 +85,27 @@ erekir_campaign = [
     name for name in names
     if name.startswith("assets/maps/erekir/") and name.endswith(".msav")
 ]
+if len(default_maps) != 19:
+    fail(f"expected 19 pinned default maps, found {len(default_maps)}")
+attack_maps = {
+    "assets/maps/default/veins.msav",
+    "assets/maps/default/glacier.msav",
+    "assets/maps/default/passage.msav",
+}
+missing_attack = sorted(attack_maps - set(default_maps))
+if missing_attack:
+    fail("pinned Attack maps missing: " + ", ".join(missing_attack))
 if len(serpulo_campaign) != 29:
     fail(f"expected 29 Serpulo campaign maps, found {len(serpulo_campaign)}")
 if len(erekir_campaign) != 17:
     fail(f"expected 17 Erekir campaign maps, found {len(erekir_campaign)}")
 
+default_map_names = set(default_maps)
+default_map_bytes = sum(
+    path.stat().st_size
+    for path, name in zip(files, names)
+    if name in default_map_names
+)
 campaign_map_names = set(serpulo_campaign + erekir_campaign)
 campaign_map_bytes = sum(
     path.stat().st_size
@@ -141,6 +161,9 @@ report = [
     f"Release ZIP: {ZIP}",
     f"SHA-256: {digest}",
     f"Files: {len(names)}",
+    f"Default maps: {len(default_maps)}",
+    "Pinned Attack maps: veins, glacier, passage",
+    f"Default map bytes: {default_map_bytes}",
     f"Serpulo campaign maps: {len(serpulo_campaign)}",
     f"Erekir campaign maps: {len(erekir_campaign)}",
     f"Campaign map bytes: {campaign_map_bytes}",
