@@ -18,7 +18,8 @@
         initPromise: null,
         playerPromise: null,
         cloudSyncPromise: null,
-        cloudLastPayload: ''
+        cloudLastPayload: '',
+        fullscreenButton: null
     };
 
     const cloudKey = 'mindustryWebCheckpointV1';
@@ -136,6 +137,7 @@
                 mark('data-yandex-device-type', state.deviceType || 'unknown');
                 mark('data-yandex-device-source', state.deviceSource);
                 mark('data-yandex-game-state', 'ready');
+                installFullscreenControl();
                 return state;
             }catch(error){
                 // Local development/CI may run outside Yandex where /sdk.js does not exist.
@@ -156,6 +158,83 @@
         })();
 
         return state.initPromise;
+    }
+
+    function fullscreenApi(){
+        return state.ysdk && state.ysdk.screen && state.ysdk.screen.fullscreen
+            ? state.ysdk.screen.fullscreen : null;
+    }
+
+    function fullscreenStatus(){
+        const api = fullscreenApi();
+        if(api && typeof api.status === 'string'){
+            return api.status === (api.STATUS_ON || 'on') || api.status === 'on' ? 'on' : 'off';
+        }
+        return document.fullscreenElement ? 'on' : 'off';
+    }
+
+    function syncFullscreenState(){
+        const status = fullscreenStatus();
+        mark('data-yandex-fullscreen-state', status);
+        if(state.fullscreenButton){
+            const ru = state.locale === 'ru';
+            const label = status === 'on'
+                ? (ru ? 'Выйти из полноэкранного режима' : 'Exit fullscreen')
+                : (ru ? 'Полный экран' : 'Fullscreen');
+            state.fullscreenButton.setAttribute('aria-pressed', status === 'on' ? 'true' : 'false');
+            state.fullscreenButton.setAttribute('aria-label', label);
+            state.fullscreenButton.title = label;
+        }
+        return status;
+    }
+
+    async function toggleFullscreen(){
+        const api = fullscreenApi();
+        const active = fullscreenStatus() === 'on';
+        const action = active ? 'exit' : 'request';
+        mark('data-yandex-fullscreen-action', action + '-pending');
+        try{
+            if(api && typeof api[action] === 'function'){
+                await api[action]();
+            }else if(active && typeof document.exitFullscreen === 'function'){
+                await document.exitFullscreen();
+            }else if(!active && document.documentElement && typeof document.documentElement.requestFullscreen === 'function'){
+                await document.documentElement.requestFullscreen();
+            }else{
+                mark('data-yandex-fullscreen-action', 'unsupported');
+                return false;
+            }
+            syncFullscreenState();
+            mark('data-yandex-fullscreen-action', action + '-ready');
+            return true;
+        }catch(error){
+            mark('data-yandex-fullscreen-action', action + '-error');
+            console.info('Fullscreen request failed:', error && error.message ? error.message : error);
+            return false;
+        }
+    }
+
+    function installFullscreenControl(){
+        if(state.fullscreenButton) return;
+        const api = fullscreenApi();
+        const browserApi = document.documentElement && typeof document.documentElement.requestFullscreen === 'function';
+        if(!api && !browserApi){
+            mark('data-yandex-fullscreen-control', 'unsupported');
+            return;
+        }
+
+        const button = document.createElement('button');
+        button.id = 'mindustry-fullscreen-toggle';
+        button.type = 'button';
+        button.textContent = '⛶';
+        button.setAttribute('aria-label', 'Fullscreen');
+        button.style.cssText = 'position:fixed;right:148px;top:12px;z-index:49;width:48px;height:44px;font:24px sans-serif;';
+        button.onclick = () => { void toggleFullscreen(); };
+        document.body.appendChild(button);
+        state.fullscreenButton = button;
+        mark('data-yandex-fullscreen-control', 'ready');
+        syncFullscreenState();
+        document.addEventListener('fullscreenchange', syncFullscreenState, {passive:true});
     }
 
     function loadingReady(){
@@ -529,6 +608,7 @@
         loadingReady,
         gameplayStart,
         gameplayStop,
+        toggleFullscreen,
         showFullscreenAdv,
         showMenuFullscreenAdv,
         getPlayer,
