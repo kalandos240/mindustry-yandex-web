@@ -146,6 +146,11 @@ public final class BrowserLocalMapRuntime{
         return selectedMode() == Gamemode.sandbox ? 1 : 0;
     }
 
+    /** Pinned v159.7 built-ins whose stock map cache contains multiple teams. */
+    public static boolean supportsAttack(String slug){
+        return "veins".equals(slug) || "glacier".equals(slug) || "passage".equals(slug);
+    }
+
     private static Gamemode selectedMode(){
         if(Core.settings == null) return Gamemode.survival;
         return Core.settings.getInt("localgamemode", 0) == 1 ? Gamemode.sandbox : Gamemode.survival;
@@ -173,9 +178,9 @@ public final class BrowserLocalMapRuntime{
     }
 
     public static void startAttack(String slug){
+        if(!supportsAttack(slug)) return;
         Map map = bySlug(slug);
         if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
-        if(map.teams.size <= 1) return;
         start(map, Gamemode.attack);
     }
 
@@ -204,7 +209,7 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        if(mode == Gamemode.attack && map.teams.size <= 1) return;
+        if(mode == Gamemode.attack && !supportsAttack(slug)) return;
 
         // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
         // reads Map.spawns, which is still zero before the MSAV body is loaded here.
@@ -760,8 +765,9 @@ public final class BrowserLocalMapRuntime{
 
         if(attackPresetSmokeRequested()){
             for(String slug : builtinSlugs){
+                if(!supportsAttack(slug)) continue;
                 Map map = bySlug(slug);
-                if(map != null && map.teams.size > 1){
+                if(map != null){
                     start(map, Gamemode.attack);
                     return;
                 }
