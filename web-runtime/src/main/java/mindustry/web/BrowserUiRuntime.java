@@ -244,6 +244,11 @@ public final class BrowserUiRuntime{
         markLocalSaveUiReady(available ? "available" : "empty");
     }
 
+    public static void syncLocalModeUi(){
+        if(!initialized) return;
+        setLocalModeUi(BrowserLocalMapRuntime.customModeCode());
+    }
+
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
     private static native void markReady();
 
@@ -252,6 +257,9 @@ public final class BrowserUiRuntime{
 
     @JSBody(params = {"action", "mode"}, script = "globalThis.__mindustryInstallLocalMode(action,mode);")
     private static native void installLocalModeUi(SettingsAction action, int mode);
+
+    @JSBody(params = {"mode"}, script = "if(globalThis.__mindustrySetLocalMode){ globalThis.__mindustrySetLocalMode(mode); }")
+    private static native void setLocalModeUi(int mode);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-menu', 'builtin-selector'); document.documentElement.setAttribute('data-mindustry-local-map-back', 'ready');")
     private static native void markLocalMapUiReady();
