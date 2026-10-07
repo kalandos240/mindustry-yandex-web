@@ -149,6 +149,7 @@ grep -Fq 'hideBannerAdv' "$PLATFORM" || fail "Yandex sticky-banner hide integrat
 grep -Fq "syncStickyBanner(false, 'gameplay-start')" "$PLATFORM" || fail "sticky banner must hide when gameplay starts"
 grep -Fq "syncStickyBanner(true, 'gameplay-stop')" "$PLATFORM" || fail "sticky banner must return only after gameplay stops"
 grep -Fq "data-yandex-menu-ad-delay-ms" "$PLATFORM" || fail "menu interstitial delay telemetry missing"
+grep -Fq "beginMenuFullscreenAdv" "$PLATFORM" || fail "menu interstitial intent timestamp hook missing"
 grep -Fq "void syncCloudCheckpoint('menu-transition', true);" "$PLATFORM" || fail "menu interstitial cloud sync must remain non-blocking"
 grep -Fq 'getPlayer' "$PLATFORM" || fail "Yandex Player bridge missing"
 
