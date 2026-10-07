@@ -58,6 +58,17 @@ with zipfile.ZipFile(archive_path, "r") as archive:
         "peaks", "ravine", "caldera-erekir", "stronghold", "crevice", "siege",
         "crossroads", "karst", "origin",
     }
+    actual_default = {
+        PurePosixPath(name).stem
+        for name in names
+        if name.startswith("assets/maps/default/") and name.endswith(".msav")
+    }
+    attack_default = {"veins", "glacier", "passage"}
+    if len(actual_default) != 19:
+        raise SystemExit(f"default-map archive set must contain 19 MSAV files; got {len(actual_default)}")
+    if not attack_default.issubset(actual_default):
+        raise SystemExit(f"Attack maps missing from release ZIP: {sorted(attack_default - actual_default)}")
+
     actual_serpulo = {
         PurePosixPath(name).stem
         for name in names
@@ -99,6 +110,9 @@ test -s "$EXTRACT/licenses/SOURCE-NOTICE.txt"
 test -s "$EXTRACT/licenses/upstream.lock"
 test -s "$EXTRACT/assets/maps/serpulo/groundZero.msav"
 test -s "$EXTRACT/assets/maps/erekir/origin.msav"
+test -s "$EXTRACT/assets/maps/default/veins.msav"
+test -s "$EXTRACT/assets/maps/default/glacier.msav"
+test -s "$EXTRACT/assets/maps/default/passage.msav"
 
 cleanup(){
   if [ -n "${server_pid:-}" ]; then kill "$server_pid" 2>/dev/null || true; fi
@@ -155,9 +169,9 @@ grep -Eq 'data-mindustry-assets-preload-ms="[1-9][0-9]*"' /tmp/mindustry-release
 grep -Eq 'data-mindustry-assets-eager-bytes="[1-9][0-9]*"' /tmp/mindustry-release-archive-mobile.html
 grep -Eq 'data-mindustry-assets-preload-ms="[1-9][0-9]*"' /tmp/mindustry-release-archive-mobile.html
 
-# Prove that campaign assets remain loadable after ZIP packaging/extraction, not merely
-# present by filename. Cover both planets and both desktop/mobile input paths.
-rm -rf /tmp/mindustry-release-archive-serpulo /tmp/mindustry-release-archive-erekir
+# Prove that campaign and local Attack assets remain loadable after ZIP
+# packaging/extraction, not merely present by filename.
+rm -rf /tmp/mindustry-release-archive-serpulo /tmp/mindustry-release-archive-erekir /tmp/mindustry-release-archive-attack
 
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1" \
@@ -196,4 +210,25 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
 grep -q 'data-mindustry-campaign-map-path="maps/erekir/onset.msav"' /tmp/mindustry-release-archive-erekir.html
 grep -Eq 'data-mindustry-campaign-frames="([3-9]|[1-9][0-9]+)"' /tmp/mindustry-release-archive-erekir.html
 
-echo 'Yandex release ZIP smoke: SHA-256 + exact 29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir sector loads PASS'
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1" \
+  --profile /tmp/mindustry-release-archive-attack \
+  --port 9288 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-local-map-mode="attack"' \
+  --require 'data-mindustry-local-map-state="playing"' \
+  --require 'data-mindustry-local-map-loop="live"' \
+  --require 'data-mindustry-input-mode="desktop"' \
+  --require 'data-mindustry-network="local-only"' \
+  --require 'data-mindustry-network-mode="singleplayer-only"' > /tmp/mindustry-release-archive-attack.html
+
+attack_map="$(grep -o 'data-mindustry-local-map-slug="[^"]*"' /tmp/mindustry-release-archive-attack.html | head -1 | cut -d'"' -f2)"
+attack_frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' /tmp/mindustry-release-archive-attack.html | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+case "$attack_map" in
+  veins|glacier|passage) ;;
+  *) echo "Unexpected packaged Attack map: $attack_map" >&2; exit 1 ;;
+esac
+test "$attack_frames" -ge 3
+
+echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack map=$attack_map frames=$attack_frames PASS"
