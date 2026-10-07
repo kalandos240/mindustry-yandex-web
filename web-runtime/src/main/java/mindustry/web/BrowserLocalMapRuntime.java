@@ -61,8 +61,6 @@ public final class BrowserLocalMapRuntime{
     private static boolean gameOverSmoke;
     private static boolean autoSaveExitSmoke;
     private static boolean periodicSaveSmoke;
-    private static boolean attackPresetSmoke;
-    private static boolean attackPresetSmokeArmed;
     private static boolean perfReady;
     private static int perfUnits;
     private static int perfEffects;
@@ -177,7 +175,7 @@ public final class BrowserLocalMapRuntime{
     public static void startAttack(String slug){
         Map map = bySlug(slug);
         if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
-        if(!Gamemode.attack.valid(map)) return;
+        if(!map.teams.size > 1) return;
         start(map, Gamemode.attack);
     }
 
@@ -206,7 +204,7 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        if(mode == Gamemode.attack && !Gamemode.attack.valid(map)) return;
+        if(mode == Gamemode.attack && !map.teams.size > 1) return;
 
         // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
         // reads Map.spawns, which is still zero before the MSAV body is loaded here.
@@ -275,7 +273,6 @@ public final class BrowserLocalMapRuntime{
         saveSmokeArmed = false;
         periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
-        attackPresetSmokeArmed = false;
         active = true;
 
         try{
@@ -312,29 +309,7 @@ public final class BrowserLocalMapRuntime{
         Core.camera.position.set(state.rules.defaultTeam.core());
         markStarted(slug, map.plainName(), mode.name(), state.rules.infiniteResources,
             state.rules.waveTimer, world.width(), world.height());
-        if(attackPresetSmoke && mode != Gamemode.attack){
-            throw new IllegalStateException("Attack preset smoke did not enter Attack mode");
-        }
         if(perfSmoke) stagePerfLoad();
-    }
-
-    private static void updateAttackPresetSmoke(){
-        if(!attackPresetSmoke || attackPresetSmokeArmed || !state.rules.attackMode || frames < 3) return;
-
-        Seq<mindustry.gen.Building> targets = new Seq<>();
-        for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
-            if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
-                targets.addAll(data.cores);
-            }
-        }
-        if(targets.isEmpty()){
-            throw new IllegalStateException("Attack preset smoke found no enemy cores to destroy");
-        }
-
-        for(mindustry.gen.Building core : targets){
-            if(core != null && core.isValid()) core.damage(core.health + 1f);
-        }
-        attackPresetSmokeArmed = true;
     }
 
     private static void stagePerfLoad(){
@@ -480,7 +455,6 @@ public final class BrowserLocalMapRuntime{
         }
 
         frames++;
-        updateAttackPresetSmoke();
         if(telemetry){
             markFrame(frames, state.updateId, player.unit() == null ? "spawning" : player.unit().type.name,
                 state.wave, state.enemies, state.wavetime);
@@ -641,7 +615,6 @@ public final class BrowserLocalMapRuntime{
         saveSmokeArmed = false;
         periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
-        attackPresetSmokeArmed = false;
 
         state.set(mindustry.core.GameState.State.playing);
         markContinued(slug(builtin), meta.wave, meta.version, restoredMode.name(),
@@ -768,7 +741,6 @@ public final class BrowserLocalMapRuntime{
         saveSmokeArmed = false;
         periodicSaveTick = 0.0;
         periodicSaveSmokeDone = false;
-        attackPresetSmokeArmed = false;
         logic.reset();
         markReturned(previous);
     }
@@ -790,7 +762,7 @@ public final class BrowserLocalMapRuntime{
         if(attackPresetSmokeRequested()){
             for(String slug : builtinSlugs){
                 Map map = bySlug(slug);
-                if(map != null && Gamemode.attack.valid(map)){
+                if(map != null && map.teams.size > 1){
                     start(map, Gamemode.attack);
                     return;
                 }
@@ -867,7 +839,6 @@ public final class BrowserLocalMapRuntime{
         gameOverSmoke = gameOverSmokeRequested();
         autoSaveExitSmoke = autoSaveExitSmokeRequested();
         periodicSaveSmoke = periodicSaveSmokeRequested();
-        attackPresetSmoke = attackPresetSmokeRequested();
     }
 
     private static void diagPhase(String phase){
