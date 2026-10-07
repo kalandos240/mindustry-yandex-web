@@ -30,6 +30,7 @@ cat > "$SDK_STUB" <<'JS'
     let pauseScheduled = false;
     let adScheduled = false;
     let adTriggered = false;
+    let bannerShowing = false;
 
     const params = new URLSearchParams(location.search);
     const adSmoke = params.get('mindustryYandexAdSmoke') === '1';
@@ -153,6 +154,26 @@ cat > "$SDK_STUB" <<'JS'
                     }
                 },
                 adv: {
+                    async getBannerAdvStatus(){
+                        count('data-yandex-test-banner-status-count');
+                        return {stickyAdvIsShowing: bannerShowing};
+                    },
+                    async showBannerAdv(){
+                        bannerShowing = true;
+                        count('data-yandex-test-banner-show-count');
+                        root.setAttribute('data-yandex-test-banner-visible', 'yes');
+                        const platform = globalThis.__mindustryYandex;
+                        if(platform && platform.gameplayActive){
+                            root.setAttribute('data-yandex-test-banner-gameplay-violation', 'yes');
+                        }
+                        return {stickyAdvIsShowing: true};
+                    },
+                    async hideBannerAdv(){
+                        bannerShowing = false;
+                        count('data-yandex-test-banner-hide-count');
+                        root.setAttribute('data-yandex-test-banner-visible', 'no');
+                        return {stickyAdvIsShowing: false};
+                    },
                     showFullscreenAdv({callbacks} = {}){
                         adTriggered = true;
                         if(menuAdSmoke){
@@ -314,6 +335,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-playing-module-order="logic-control-renderer-ui"' \
   --require 'data-mindustry-playing-state="restored-menu"' \
   --require 'data-mindustry-ui-sync="ready"' \
+  --require 'data-yandex-banner-state="shown"' \
+  --require 'data-yandex-test-banner-visible="yes"' \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-network="yandex-sdk-only"' > "$DOM"
 
@@ -326,7 +349,13 @@ fi
 grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$DOM"
-echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + input reset + BrowserAudio + gameplay transport PASS'
+grep -Eq 'data-yandex-test-banner-show-count="[1-9][0-9]*"' "$DOM"
+grep -Eq 'data-yandex-test-banner-hide-count="[1-9][0-9]*"' "$DOM"
+if grep -q 'data-yandex-test-banner-gameplay-violation="yes"' "$DOM"; then
+  echo 'Sticky banner was shown while GameplayAPI was active.' >&2
+  exit 1
+fi
+echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + input reset + BrowserAudio + gameplay transport + menu-only sticky banner PASS'
 
 CLOUD_PROFILE="/tmp/mindustry-yandex-cloud-boot-profile"
 CLOUD_DOM="/tmp/mindustry-yandex-cloud-boot-dom.html"
@@ -484,6 +513,8 @@ run_ad_lifecycle(){
     --require 'data-mindustry-audio-resume-observed="yes"' \
     --require 'data-mindustry-audio-platform="running"' \
     --require 'data-yandex-game-state="playing"' \
+    --require 'data-yandex-banner-state="hidden"' \
+    --require 'data-yandex-test-banner-visible="no"' \
     --require 'data-mindustry-canvas-viewport-match="true"' \
     --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
 
@@ -539,6 +570,8 @@ run_menu_ad_transition(){
     --require 'data-mindustry-input-reset="platform-pause"' \
     --require 'data-mindustry-audio-platform="running"' \
     --require 'data-yandex-game-state="ready"' \
+    --require 'data-yandex-banner-state="shown"' \
+    --require 'data-yandex-test-banner-visible="yes"' \
     --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
 
   if grep -q 'data-yandex-test-ad-gameplay-restarted="yes"' "$dom"; then
