@@ -131,10 +131,16 @@ public final class BrowserGameplayRuntime{
         }
 
         if(state.isPaused()){
-            if(smokeMode || !BrowserLocalMapRuntime.active()){
-                throw new IllegalStateException("Web entered paused state outside a production local-map session");
+            if(smokeMode){
+                throw new IllegalStateException("CI Web entered paused state outside the production pause smokes");
             }
-            BrowserLocalMapRuntime.updatePausedFrame();
+            if(BrowserCampaignRuntime.active()){
+                BrowserCampaignRuntime.updatePausedFrame();
+            }else if(BrowserLocalMapRuntime.active()){
+                BrowserLocalMapRuntime.updatePausedFrame();
+            }else{
+                throw new IllegalStateException("Web entered paused state outside a production local-map or campaign session");
+            }
             return;
         }
 
