@@ -31,13 +31,6 @@ old_start = '''        fogPersistSeedDone = false;
 
         try{
 '''
-attack_start = '''        fogPersistSeedDone = false;
-        fogPersistRestoreDone = false;
-        attackPresetSmokeArmed = false;
-        active = true;
-
-        try{
-'''
 new_start = '''        fogPersistSeedDone = false;
         fogPersistRestoreDone = false;
         weatherPersistSeedDone = false;
@@ -46,21 +39,9 @@ new_start = '''        fogPersistSeedDone = false;
 
         try{
 '''
-new_attack_start = '''        fogPersistSeedDone = false;
-        fogPersistRestoreDone = false;
-        weatherPersistSeedDone = false;
-        weatherPersistRestoreDone = false;
-        attackPresetSmokeArmed = false;
-        active = true;
-
-        try{
-'''
-if text.count(old_start) == 1:
-    text = text.replace(old_start, new_start, 1)
-elif text.count(attack_start) == 1:
-    text = text.replace(attack_start, new_attack_start, 1)
-else:
+if text.count(old_start) != 1:
     raise SystemExit("Weather persistence new-session reset anchor no longer matches")
+text = text.replace(old_start, new_start, 1)
 
 old_cache = '''        fogPersistRestoreSmoke = fogPersistRestoreRequested();
         weatherSmoke = weatherSmokeRequested();
@@ -246,12 +227,6 @@ old_continue_reset = '''        fogPersistSeedDone = false;
 
         state.set(mindustry.core.GameState.State.playing);
 '''
-attack_continue_reset = '''        fogPersistSeedDone = false;
-        fogPersistRestoreDone = false;
-        attackPresetSmokeArmed = false;
-
-        state.set(mindustry.core.GameState.State.playing);
-'''
 new_continue_reset = '''        fogPersistSeedDone = false;
         fogPersistRestoreDone = false;
         weatherPersistSeedDone = false;
@@ -259,28 +234,12 @@ new_continue_reset = '''        fogPersistSeedDone = false;
 
         state.set(mindustry.core.GameState.State.playing);
 '''
-new_attack_continue_reset = '''        fogPersistSeedDone = false;
-        fogPersistRestoreDone = false;
-        weatherPersistSeedDone = false;
-        weatherPersistRestoreDone = false;
-        attackPresetSmokeArmed = false;
-
-        state.set(mindustry.core.GameState.State.playing);
-'''
-if text.count(old_continue_reset) == 1:
-    text = text.replace(old_continue_reset, new_continue_reset, 1)
-elif text.count(attack_continue_reset) == 1:
-    text = text.replace(attack_continue_reset, new_attack_continue_reset, 1)
-else:
+if text.count(old_continue_reset) != 1:
     raise SystemExit("Weather persistence Continue reset anchor no longer matches fog-persistence runtime")
+text = text.replace(old_continue_reset, new_continue_reset, 1)
 
 old_return_reset = '''        fogPersistSeedDone = false;
         fogPersistRestoreDone = false;
-        logic.reset();
-'''
-attack_return_reset = '''        fogPersistSeedDone = false;
-        fogPersistRestoreDone = false;
-        attackPresetSmokeArmed = false;
         logic.reset();
 '''
 new_return_reset = '''        fogPersistSeedDone = false;
@@ -289,19 +248,9 @@ new_return_reset = '''        fogPersistSeedDone = false;
         weatherPersistRestoreDone = false;
         logic.reset();
 '''
-new_attack_return_reset = '''        fogPersistSeedDone = false;
-        fogPersistRestoreDone = false;
-        weatherPersistSeedDone = false;
-        weatherPersistRestoreDone = false;
-        attackPresetSmokeArmed = false;
-        logic.reset();
-'''
-if text.count(old_return_reset) == 1:
-    text = text.replace(old_return_reset, new_return_reset, 1)
-elif text.count(attack_return_reset) == 1:
-    text = text.replace(attack_return_reset, new_attack_return_reset, 1)
-else:
+if text.count(old_return_reset) != 1:
     raise SystemExit("Weather persistence return reset anchor no longer matches fog-persistence runtime")
+text = text.replace(old_return_reset, new_return_reset, 1)
 
 old_query = '''    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryWeatherSmoke') === '1';")
     private static native boolean weatherSmokeRequested();
