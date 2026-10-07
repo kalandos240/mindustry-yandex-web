@@ -563,6 +563,7 @@ run_menu_ad_transition(){
     --require 'data-mindustry-campaign-back-autosave="ready"' \
     --require 'data-mindustry-campaign-return="menu"' \
     --require 'data-mindustry-campaign-state="menu"' \
+    --require 'data-yandex-menu-ad-intent="ready"' \
     --require 'data-yandex-test-menu-ad-call="yes"' \
     --require 'data-yandex-test-menu-ad-gameplay-before="stopped"' \
     --require 'data-yandex-menu-ad-storage="ready"' \
