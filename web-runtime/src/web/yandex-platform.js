@@ -23,6 +23,8 @@
         bannerWanted: false,
         bannerShowing: false,
         bannerRequest: 0,
+        bannerReason: '',
+        bannerSyncPromise: Promise.resolve(true),
         menuAdRequestedAt: 0
     };
 
@@ -252,44 +254,49 @@
         return true;
     }
 
-    async function syncStickyBanner(wanted, reason){
+    function syncStickyBanner(wanted, reason){
         state.bannerWanted = !!wanted;
+        state.bannerReason = reason || '';
         const request = ++state.bannerRequest;
-        const adv = state.ysdk && state.ysdk.adv;
-        const method = state.bannerWanted ? 'showBannerAdv' : 'hideBannerAdv';
 
-        if(!adv || typeof adv[method] !== 'function'){
-            mark('data-yandex-banner-state', 'unavailable');
-            mark('data-yandex-banner-reason', reason || 'unsupported');
-            return false;
-        }
+        // Serialize banner side effects. A previous implementation tried to repair stale
+        // async results recursively; rapid show -> hide transitions could make two
+        // resolved promises continuously invalidate each other and starve the browser
+        // microtask queue. Each queued operation now waits for the prior SDK call and
+        // applies the latest desired state at execution time.
+        state.bannerSyncPromise = state.bannerSyncPromise.catch(() => false).then(async () => {
+            const target = state.bannerWanted;
+            const adv = state.ysdk && state.ysdk.adv;
+            const method = target ? 'showBannerAdv' : 'hideBannerAdv';
 
-        mark('data-yandex-banner-state', state.bannerWanted ? 'show-pending' : 'hide-pending');
-        try{
-            const result = await Promise.resolve(adv[method]());
-            if(request !== state.bannerRequest){
-                // The SDK call itself may have completed out of order, so ignoring only
-                // this response is not enough: re-assert the newest desired side effect.
-                void syncStickyBanner(state.bannerWanted, 'stale-correction');
+            if(!adv || typeof adv[method] !== 'function'){
+                mark('data-yandex-banner-state', 'unavailable');
+                mark('data-yandex-banner-reason', state.bannerReason || 'unsupported');
                 return false;
             }
 
-            state.bannerShowing = !!(result && result.stickyAdvIsShowing);
-            if(state.bannerWanted){
-                mark('data-yandex-banner-state', state.bannerShowing ? 'shown' : 'not-shown');
-            }else{
-                mark('data-yandex-banner-state', state.bannerShowing ? 'still-shown' : 'hidden');
-            }
-            const detail = result && result.reason ? String(result.reason) : (reason || '');
-            if(detail) mark('data-yandex-banner-reason', detail);
-            return state.bannerShowing === state.bannerWanted;
-        }catch(error){
-            if(request === state.bannerRequest){
+            mark('data-yandex-banner-state', target ? 'show-pending' : 'hide-pending');
+            try{
+                const result = await Promise.resolve(adv[method]());
+                state.bannerShowing = !!(result && result.stickyAdvIsShowing);
+
+                if(target){
+                    mark('data-yandex-banner-state', state.bannerShowing ? 'shown' : 'not-shown');
+                }else{
+                    mark('data-yandex-banner-state', state.bannerShowing ? 'still-shown' : 'hidden');
+                }
+
+                const detail = result && result.reason ? String(result.reason) : state.bannerReason;
+                if(detail) mark('data-yandex-banner-reason', detail);
+                mark('data-yandex-banner-request', String(request));
+                return state.bannerShowing === target;
+            }catch(error){
                 mark('data-yandex-banner-state', 'error');
                 mark('data-yandex-banner-reason', String(error && error.message ? error.message : error));
+                return false;
             }
-            return false;
-        }
+        });
+        return state.bannerSyncPromise;
     }
 
     function gameplayStart(){
