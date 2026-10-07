@@ -28,6 +28,12 @@ cat > "$SDK_STUB" <<'JS'
     const seedFile = params.get('mindustryYandexCloudSeedFile') || '';
     const playerData = Object.create(null);
     let seedLoaded = false;
+    let bannerShowing = false;
+
+    function count(name){
+        const value = Number(root.getAttribute(name) || '0') + 1;
+        root.setAttribute(name, String(value));
+    }
 
     async function loadSeed(){
         if(!seedFile || seedLoaded) return;
@@ -64,7 +70,33 @@ cat > "$SDK_STUB" <<'JS'
                 on(){},
                 features: {
                     LoadingAPI: {ready(){}},
-                    GameplayAPI: {start(){}, stop(){}}
+                    GameplayAPI: {
+                        start(){
+                            count('data-yandex-test-gameplay-start-count');
+                            root.setAttribute('data-yandex-test-gameplay-active', 'yes');
+                        },
+                        stop(){
+                            count('data-yandex-test-gameplay-stop-count');
+                            root.setAttribute('data-yandex-test-gameplay-active', 'no');
+                        }
+                    }
+                },
+                adv: {
+                    async showBannerAdv(){
+                        bannerShowing = true;
+                        count('data-yandex-test-banner-show-count');
+                        root.setAttribute('data-yandex-test-banner-visible', 'yes');
+                        return {stickyAdvIsShowing: true};
+                    },
+                    async hideBannerAdv(){
+                        bannerShowing = false;
+                        count('data-yandex-test-banner-hide-count');
+                        root.setAttribute('data-yandex-test-banner-visible', 'no');
+                        return {stickyAdvIsShowing: false};
+                    },
+                    async getBannerAdvStatus(){
+                        return {stickyAdvIsShowing: bannerShowing};
+                    }
                 },
                 async getPlayer(){
                     await loadSeed();
@@ -111,6 +143,9 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-stock-input="desktop"' \
   --require 'data-mindustry-local-map-mode="attack"' \
   --require 'data-mindustry-local-map-state="menu"' \
+  --require 'data-yandex-game-state="ready"' \
+  --require 'data-yandex-banner-state="shown"' \
+  --require 'data-yandex-test-banner-visible="yes"' \
   --require 'data-mindustry-local-autosave="ready"' \
   --require 'data-mindustry-local-save-slot="available"' \
   --require 'data-mindustry-local-save-flush="ready"' \
@@ -180,6 +215,10 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-local-map-gameover-winner="sharded"' \
   --require 'data-mindustry-local-gameover-ui="ready"' \
   --require 'data-mindustry-local-map-loop="game-over"' \
+  --require 'data-yandex-game-state="ready"' \
+  --require 'data-yandex-test-gameplay-active="no"' \
+  --require 'data-yandex-banner-state="shown"' \
+  --require 'data-yandex-test-banner-visible="yes"' \
   --require 'data-mindustry-network="yandex-sdk-only"' > "$second_dom"
 
 restored_files="$(grep -o 'data-yandex-cloud-restored-files="[0-9]*"' "$second_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
@@ -191,5 +230,8 @@ test "$restored_files" -ge 1
 test "$restored_map" = "$source_map"
 test "$frames" -ge 3
 test "$winner" = "sharded"
+grep -Eq 'data-yandex-test-gameplay-stop-count="[1-9][0-9]*"' "$second_dom"
+grep -Eq 'data-yandex-test-banner-show-count="[1-9][0-9]*"' "$second_dom"
+grep -Eq 'data-yandex-test-banner-hide-count="[1-9][0-9]*"' "$second_dom"
 
-echo "Yandex release ZIP Attack cloud: desktop $source_map SaveIO -> Player.setData ($cloud_bytes bytes) -> clean mobile Player.getData -> Continue -> stock victory winner=$winner frames=$frames PASS"
+echo "Yandex release ZIP Attack cloud: desktop $source_map SaveIO -> Player.setData ($cloud_bytes bytes) -> clean mobile Player.getData -> Continue -> stock victory winner=$winner -> GameplayAPI.stop + menu/GameOver banner shown frames=$frames PASS"
