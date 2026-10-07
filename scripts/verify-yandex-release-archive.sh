@@ -369,4 +369,6 @@ test "$attack_desktop_resume_world" = "$attack_desktop_saved_world"
 test "$attack_desktop_resume_wave" = "$attack_desktop_saved_wave"
 test "$attack_desktop_resume_frames" -ge 3
 
-echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack desktop/mobile map=$attack_map frames=$attack_frames/$attack_mobile_frames + cold Continue mobile=$attack_resume_map/$attack_resume_frames desktop=$attack_desktop_resume_map/$attack_desktop_resume_frames PASS"
+bash "$ROOT_DIR/scripts/verify-yandex-release-cloud.sh" "$EXTRACT" "$PORT"
+
+echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack desktop/mobile map=$attack_map frames=$attack_frames/$attack_mobile_frames + cold Continue mobile=$attack_resume_map/$attack_resume_frames desktop=$attack_desktop_resume_map/$attack_desktop_resume_frames + desktop-to-mobile Yandex cloud round-trip PASS"
