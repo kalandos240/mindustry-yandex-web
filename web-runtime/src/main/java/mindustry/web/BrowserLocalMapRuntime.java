@@ -61,8 +61,6 @@ public final class BrowserLocalMapRuntime{
     private static boolean gameOverSmoke;
     private static boolean autoSaveExitSmoke;
     private static boolean periodicSaveSmoke;
-    private static boolean attackPresetSmoke;
-    private static boolean attackPresetSmokeArmed;
     private static boolean perfReady;
     private static int perfUnits;
     private static int perfEffects;
@@ -177,10 +175,7 @@ public final class BrowserLocalMapRuntime{
     public static void startAttack(String slug){
         Map map = bySlug(slug);
         if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
-        if(!Gamemode.attack.valid(map)){
-            markAttackUnavailable(slug, map.plainName());
-            return;
-        }
+        if(!map.teams.size > 1) return;
         start(map, Gamemode.attack);
     }
 
@@ -209,10 +204,7 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        if(mode == Gamemode.attack && !Gamemode.attack.valid(map)){
-            markAttackUnavailable(slug, map.plainName());
-            return;
-        }
+        if(mode == Gamemode.attack && !map.teams.size > 1) return;
 
         // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
         // reads Map.spawns, which is still zero before the MSAV body is loaded here.
@@ -281,7 +273,6 @@ public final class BrowserLocalMapRuntime{
         saveSmokeArmed = false;
         periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
-        attackPresetSmokeArmed = false;
         active = true;
 
         try{
@@ -318,51 +309,7 @@ public final class BrowserLocalMapRuntime{
         Core.camera.position.set(state.rules.defaultTeam.core());
         markStarted(slug, map.plainName(), mode.name(), state.rules.infiniteResources,
             state.rules.waveTimer, world.width(), world.height());
-        if(attackPresetSmoke){
-            int enemyCores = enemyAttackCoreCount();
-            if(mode != Gamemode.attack || enemyCores <= 0){
-                throw new IllegalStateException("Attack preset smoke requires a real multi-team Attack map");
-            }
-            markAttackPresetStarted(slug, state.rules.defaultTeam.name, enemyCores);
-        }
         if(perfSmoke) stagePerfLoad();
-    }
-
-    private static int enemyAttackCoreCount(){
-        int count = 0;
-        for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
-            if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
-                count += data.cores.size;
-            }
-        }
-        return count;
-    }
-
-    private static void updateAttackPresetSmoke(){
-        if(!attackPresetSmoke || attackPresetSmokeArmed || !state.rules.attackMode || frames < 3) return;
-
-        Seq<mindustry.gen.Building> targets = new Seq<>();
-        for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
-            if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
-                targets.addAll(data.cores);
-            }
-        }
-        if(targets.isEmpty()){
-            throw new IllegalStateException("Attack preset smoke found no enemy cores to destroy");
-        }
-
-        int removed = targets.size;
-        for(mindustry.gen.Building core : targets){
-            if(core != null && core.isValid()){
-                core.damage(core.health + 1f);
-            }
-        }
-        if(enemyAttackCoreCount() != 0){
-            throw new IllegalStateException("Attack preset smoke left enemy cores alive after Building.damage");
-        }
-
-        attackPresetSmokeArmed = true;
-        markAttackPresetDestroyed(removed);
     }
 
     private static void stagePerfLoad(){
@@ -471,9 +418,6 @@ public final class BrowserLocalMapRuntime{
             gameOverFreeze = true;
             String winner = state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name;
             markGameOver(winner, state.wave);
-            if(attackPresetSmoke && attackPresetSmokeArmed && state.rules.attackMode){
-                markAttackPresetWon(winner);
-            }
             diagPhase("logic-gameover");
             updateGameOverFrame();
             return;
@@ -562,12 +506,6 @@ public final class BrowserLocalMapRuntime{
                 maybePeriodicSave();
             }
         }
-
-        // Keep CI-only Attack victory staging after the normal Save/Back path. This
-        // allows the same real Attack session to be checkpointed before enemy cores
-        // are destroyed, then resumed in a completely new browser process.
-        updateAttackPresetSmoke();
-
         if(perfSmoke && !perfReady && frames >= perfTargetFrames){
             if(perfEffects != perfTargetEffects){
                 throw new IllegalStateException("Browser perf effect workload count mismatch: " + perfEffects);
@@ -677,16 +615,8 @@ public final class BrowserLocalMapRuntime{
         saveSmokeArmed = false;
         periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
-        attackPresetSmokeArmed = false;
 
         state.set(mindustry.core.GameState.State.playing);
-        if(attackPresetSmoke && restoredMode == Gamemode.attack){
-            int enemyCores = enemyAttackCoreCount();
-            if(enemyCores <= 0){
-                throw new IllegalStateException("Cold Attack Continue restored no enemy cores");
-            }
-            markAttackPresetResumed(slug(builtin), state.rules.defaultTeam.name, enemyCores);
-        }
         markContinued(slug(builtin), meta.wave, meta.version, restoredMode.name(),
             state.rules.infiniteResources, state.rules.waveTimer, world.width(), world.height());
     }
@@ -811,7 +741,6 @@ public final class BrowserLocalMapRuntime{
         saveSmokeArmed = false;
         periodicSaveTick = 0.0;
         periodicSaveSmokeDone = false;
-        attackPresetSmokeArmed = false;
         logic.reset();
         markReturned(previous);
     }
@@ -833,8 +762,7 @@ public final class BrowserLocalMapRuntime{
         if(attackPresetSmokeRequested()){
             for(String slug : builtinSlugs){
                 Map map = bySlug(slug);
-                if(map != null && Gamemode.attack.valid(map)){
-                    markAttackPresetRequested(slug, map.plainName());
+                if(map != null && map.teams.size > 1){
                     start(map, Gamemode.attack);
                     return;
                 }
@@ -911,7 +839,6 @@ public final class BrowserLocalMapRuntime{
         gameOverSmoke = gameOverSmokeRequested();
         autoSaveExitSmoke = autoSaveExitSmokeRequested();
         periodicSaveSmoke = periodicSaveSmokeRequested();
-        attackPresetSmoke = attackPresetSmokeRequested();
     }
 
     private static void diagPhase(String phase){
@@ -991,24 +918,6 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-local-mode-restore', mode);")
     private static native void markModeRestored(String mode);
-
-    @JSBody(params = {"slug", "name"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-unavailable',slug); r.setAttribute('data-mindustry-local-attack-unavailable-name',name);")
-    private static native void markAttackUnavailable(String slug, String name);
-
-    @JSBody(params = {"slug", "name"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-smoke','requested'); r.setAttribute('data-mindustry-local-attack-map',slug); r.setAttribute('data-mindustry-local-attack-map-name',name);")
-    private static native void markAttackPresetRequested(String slug, String name);
-
-    @JSBody(params = {"slug", "team", "cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-smoke','started'); r.setAttribute('data-mindustry-local-attack-map',slug); r.setAttribute('data-mindustry-local-attack-default-team',team); r.setAttribute('data-mindustry-local-attack-enemy-cores',String(cores));")
-    private static native void markAttackPresetStarted(String slug, String team, int cores);
-
-    @JSBody(params = {"cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-win-smoke','armed'); r.setAttribute('data-mindustry-local-attack-removed-cores',String(cores));")
-    private static native void markAttackPresetDestroyed(int cores);
-
-    @JSBody(params = {"slug", "team", "cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-resume','ready'); r.setAttribute('data-mindustry-local-attack-resume-map',slug); r.setAttribute('data-mindustry-local-attack-resume-default-team',team); r.setAttribute('data-mindustry-local-attack-resume-enemy-cores',String(cores));")
-    private static native void markAttackPresetResumed(String slug, String team, int cores);
-
-    @JSBody(params = {"winner"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-gameover','won'); r.setAttribute('data-mindustry-local-attack-winner',winner); r.setAttribute('data-mindustry-local-attack-smoke','complete');")
-    private static native void markAttackPresetWon(String winner);
 
     @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-map-catalog', 'ready'); document.documentElement.setAttribute('data-mindustry-map-count', String(count)); document.documentElement.setAttribute('data-mindustry-map-source', 'pinned-builtin-local-only');")
     private static native void markCatalogReady(int count);
