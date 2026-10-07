@@ -17,7 +17,7 @@ if all(marker in text for marker in (
     "private static native boolean continueSmokeRequested();",
     "private static native void markContinued(",
 )) and "BrowserLocalMapRuntime::continueSaved" in ui_now \
-and "BrowserLocalMapRuntime::saveLocalSession" in ui_now:
+and ("BrowserLocalMapRuntime::saveLocalSession" in ui_now or "BrowserUiRuntime::saveActiveSession" in ui_now):
     print("Local Save Game + Continue milestone already present in committed Web overlay")
     raise SystemExit(0)
 
