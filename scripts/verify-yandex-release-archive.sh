@@ -279,6 +279,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-local-map-state="playing"' \
   --require 'data-mindustry-local-map-gameover-smoke="armed"' \
   --require 'data-mindustry-local-map-gameover="ready"' \
+  --require 'data-mindustry-local-gameover-ui="ready"' \
   --require 'data-mindustry-local-map-loop="game-over"' \
   --require 'data-mindustry-input-mode="mobile"' \
   --require 'data-mindustry-stock-input="mobile"' \
