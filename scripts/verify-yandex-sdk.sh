@@ -166,6 +166,9 @@ cat > "$SDK_STUB" <<'JS'
                         if(platform && platform.gameplayActive){
                             root.setAttribute('data-yandex-test-banner-gameplay-violation', 'yes');
                         }
+                        if(platform && platform.adInFlight){
+                            root.setAttribute('data-yandex-test-banner-fullscreen-violation', 'yes');
+                        }
                         return {stickyAdvIsShowing: true};
                     },
                     async hideBannerAdv(){
@@ -529,7 +532,11 @@ run_ad_lifecycle(){
   grep -Eq 'data-yandex-test-gameplay-start-count="([2-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-yandex-test-gameplay-stop-count="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-platform-resume-frame-index="[1-9][0-9]*"' "$dom"
-  echo "Yandex fullscreen ad lifecycle ($device): held input -> pause/audio stop -> close-before-resume race -> input reset -> viewport-aligned real Ground Zero frame after gameplay/audio resume PASS"
+  if grep -q 'data-yandex-test-banner-fullscreen-violation="yes"' "$dom"; then
+    echo "Sticky banner overlapped fullscreen ad on $device." >&2
+    exit 1
+  fi
+  echo "Yandex fullscreen ad lifecycle ($device): held input -> pause/audio stop -> sticky hidden -> close-before-resume race -> input reset -> viewport-aligned real Ground Zero frame after gameplay/audio resume PASS"
 }
 
 run_ad_lifecycle desktop 9266
@@ -584,6 +591,10 @@ run_menu_ad_transition(){
   if grep -q 'data-yandex-test-ad-gameplay-restarted="yes"' "$dom"; then
     echo "Menu interstitial incorrectly restarted GameplayAPI on $device." >&2
     grep -o '<html[^>]*>' "$dom" >&2 || true
+    exit 1
+  fi
+  if grep -q 'data-yandex-test-banner-fullscreen-violation="yes"' "$dom"; then
+    echo "Sticky banner overlapped menu fullscreen ad on $device." >&2
     exit 1
   fi
   grep -q 'data-yandex-test-gameplay-start-count="1"' "$dom"
