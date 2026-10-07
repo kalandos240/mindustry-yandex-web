@@ -36,6 +36,7 @@ cat > "$SDK_STUB" <<'JS'
     const menuAdSmoke = params.get('mindustryYandexMenuAdSmoke') === '1';
     const fullscreenSmoke = params.get('mindustryYandexFullscreenSmoke') === '1';
     const cloudBootSmoke = params.get('mindustryYandexCloudBootSmoke') === '1';
+    const attackCloudSmoke = params.get('mindustryYandexAttackCloudSmoke') === '1';
     const cloudSeedFile = params.get('mindustryYandexCloudSeedFile') || '';
     const testDevice = params.get('mindustryYandexTestDevice') === 'mobile' ? 'mobile' : 'desktop';
     const playerData = Object.create(null);
@@ -60,7 +61,7 @@ cat > "$SDK_STUB" <<'JS'
     }
 
     function schedulePauseCycle(){
-        if(adSmoke || menuAdSmoke || fullscreenSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
+        if(adSmoke || menuAdSmoke || fullscreenSmoke || attackCloudSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
@@ -349,7 +350,7 @@ run_attack_cloud_roundtrip(){
   rm -f "$ATTACK_CLOUD_SEED"
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1&mindustrySaveSmoke=1&mindustryAutoSaveExitSmoke=1&mindustryYandexTestDevice=desktop" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1&mindustrySaveSmoke=1&mindustryAutoSaveExitSmoke=1&mindustryYandexAttackCloudSmoke=1&mindustryYandexTestDevice=desktop" \
     --profile "$first_profile" \
     --port 9271 \
     --timeout 90 \
@@ -397,7 +398,7 @@ PY
   test -s "$ATTACK_CLOUD_SEED"
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudSeedFile=attack-cloud-seed.json&mindustryContinueSmoke=1&mindustryYandexTestDevice=desktop" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudSeedFile=attack-cloud-seed.json&mindustryContinueSmoke=1&mindustryYandexAttackCloudSmoke=1&mindustryYandexTestDevice=desktop" \
     --profile "$second_profile" \
     --port 9272 \
     --timeout 90 \
