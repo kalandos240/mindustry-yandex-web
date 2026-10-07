@@ -171,7 +171,7 @@ grep -Eq 'data-mindustry-assets-preload-ms="[1-9][0-9]*"' /tmp/mindustry-release
 
 # Prove that campaign and local Attack assets remain loadable after ZIP
 # packaging/extraction, not merely present by filename.
-rm -rf /tmp/mindustry-release-archive-serpulo /tmp/mindustry-release-archive-erekir /tmp/mindustry-release-archive-attack
+rm -rf /tmp/mindustry-release-archive-serpulo /tmp/mindustry-release-archive-erekir /tmp/mindustry-release-archive-attack /tmp/mindustry-release-archive-attack-mobile
 
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1" \
@@ -231,4 +231,29 @@ case "$attack_map" in
 esac
 test "$attack_frames" -ge 3
 
-echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack map=$attack_map frames=$attack_frames PASS"
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --emulate-mobile \
+  --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryAttackPresetSmoke=1" \
+  --profile /tmp/mindustry-release-archive-attack-mobile \
+  --port 9289 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-smoke-mode="production"' \
+  --require 'data-mindustry-local-map-mode="attack"' \
+  --require 'data-mindustry-local-map-state="playing"' \
+  --require 'data-mindustry-local-map-loop="live"' \
+  --require 'data-mindustry-input-mode="mobile"' \
+  --require 'data-mindustry-stock-input="mobile"' \
+  --require 'data-mindustry-network="local-only"' \
+  --require 'data-mindustry-network-mode="singleplayer-only"' > /tmp/mindustry-release-archive-attack-mobile.html
+
+attack_mobile_map="$(grep -o 'data-mindustry-local-map-slug="[^"]*"' /tmp/mindustry-release-archive-attack-mobile.html | head -1 | cut -d'"' -f2)"
+attack_mobile_frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' /tmp/mindustry-release-archive-attack-mobile.html | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+case "$attack_mobile_map" in
+  veins|glacier|passage) ;;
+  *) echo "Unexpected packaged mobile Attack map: $attack_mobile_map" >&2; exit 1 ;;
+esac
+test "$attack_mobile_map" = "$attack_map"
+test "$attack_mobile_frames" -ge 3
+
+echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack desktop/mobile map=$attack_map frames=$attack_frames/$attack_mobile_frames PASS"
