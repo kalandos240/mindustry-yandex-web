@@ -141,7 +141,6 @@
                 mark('data-yandex-device-source', state.deviceSource);
                 mark('data-yandex-game-state', 'ready');
                 installFullscreenControl();
-                void syncStickyBanner(true, 'sdk-ready');
                 return state;
             }catch(error){
                 // Local development/CI may run outside Yandex where /sdk.js does not exist.
@@ -248,6 +247,7 @@
         api.ready();
         state.loadingReadySent = true;
         mark('data-yandex-loading-ready', 'sent');
+        void syncStickyBanner(true, 'game-ready');
         return true;
     }
 
