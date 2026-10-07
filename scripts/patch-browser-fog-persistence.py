@@ -213,6 +213,12 @@ old_continue_reset = '''        periodicSaveTick = state.tick;
 
         state.set(mindustry.core.GameState.State.playing);
 '''
+attack_continue_reset = '''        periodicSaveTick = state.tick;
+        periodicSaveSmokeDone = false;
+        attackPresetSmokeArmed = false;
+
+        state.set(mindustry.core.GameState.State.playing);
+'''
 new_continue_reset = '''        periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
         fogPersistSeedDone = false;
@@ -220,9 +226,20 @@ new_continue_reset = '''        periodicSaveTick = state.tick;
 
         state.set(mindustry.core.GameState.State.playing);
 '''
-if text.count(old_continue_reset) != 1:
+new_attack_continue_reset = '''        periodicSaveTick = state.tick;
+        periodicSaveSmokeDone = false;
+        fogPersistSeedDone = false;
+        fogPersistRestoreDone = false;
+        attackPresetSmokeArmed = false;
+
+        state.set(mindustry.core.GameState.State.playing);
+'''
+if text.count(old_continue_reset) == 1:
+    text = text.replace(old_continue_reset, new_continue_reset, 1)
+elif text.count(attack_continue_reset) == 1:
+    text = text.replace(attack_continue_reset, new_attack_continue_reset, 1)
+else:
     raise SystemExit("Fog persistence Continue reset anchor no longer matches periodic runtime")
-text = text.replace(old_continue_reset, new_continue_reset, 1)
 
 old_return_reset = '''        periodicSaveTick = 0.0;
         periodicSaveSmokeDone = false;
