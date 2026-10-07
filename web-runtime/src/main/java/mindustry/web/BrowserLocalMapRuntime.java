@@ -487,10 +487,18 @@ public final class BrowserLocalMapRuntime{
                 }
 
                 if(gameOverSmoke && !gameOverSmokeArmed){
-                    if(!state.rules.canGameOver || state.rules.defaultTeam.cores().isEmpty()){
+                    if(!state.rules.canGameOver || state.rules.defaultTeam.cores().isEmpty()
+                    || (state.rules.attackMode && state.rules.waveTeam.cores().isEmpty())){
                         throw new IllegalStateException("Game-over smoke requires canGameOver and an existing default-team core");
                     }
-                    state.rules.defaultTeam.cores().clear();
+                    if(state.rules.attackMode){
+                        var enemyCores = state.rules.waveTeam.cores();
+                        for(int i = enemyCores.size - 1; i >= 0; i--){
+                            enemyCores.get(i).damage(Float.MAX_VALUE);
+                        }
+                    }else{
+                        state.rules.defaultTeam.cores().clear();
+                    }
                     gameOverSmokeArmed = true;
                     markGameOverSmokeArmed();
                 }
