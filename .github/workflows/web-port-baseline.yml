@@ -400,6 +400,9 @@ jobs:
       - name: Verify local pause save continue and autosave
         run: bash scripts/verify-browser-local-save.sh
 
+      - name: Verify campaign pause save and resume
+        run: bash scripts/verify-browser-campaign-pause.sh
+
       # verify-browser-persistence already chains campaign cold save/resume, and
       # verify-browser-locales already chains the Yandex SDK desktop/mobile lifecycle.
 
