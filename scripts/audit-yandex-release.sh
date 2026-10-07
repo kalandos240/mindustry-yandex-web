@@ -59,6 +59,9 @@ done
 # the archive before the next user-controlled map-selection/start milestone is enabled.
 [ -s "$WEB_DIR/assets/maps/default/maze.msav" ] || fail "builtin local map maze.msav missing"
 [ -s "$WEB_DIR/assets/maps/default/archipelago.msav" ] || fail "builtin local map archipelago.msav missing"
+for slug in veins glacier passage; do
+  [ -s "$WEB_DIR/assets/maps/default/$slug.msav" ] || fail "pinned Attack map missing: $slug.msav"
+done
 [ -s "$WEB_DIR/assets/maps/serpulo/groundZero.msav" ] || fail "Ground Zero campaign map missing"
 [ -s "$WEB_DIR/assets/maps/serpulo/frozenForest.msav" ] || fail "Frozen Forest campaign map missing"
 [ -s "$WEB_DIR/assets/maps/serpulo/crateredBattleground.msav" ] || fail "Cratered Battleground campaign map missing"
@@ -68,6 +71,9 @@ for preset in biomassFacility fungalPass frontier saltFlats tarFields impact0078
   [ -s "$WEB_DIR/assets/maps/serpulo/$preset.msav" ] || fail "Campaign branch map missing: $preset.msav"
 done
 grep -Fq 'maps/default/maze.msav' "$MANIFEST" || fail "builtin local map missing from asset manifest"
+for slug in veins glacier passage; do
+  grep -Fq "maps/default/$slug.msav" "$MANIFEST" || fail "pinned Attack map missing from asset manifest: $slug.msav"
+done
 grep -Fq 'maps/serpulo/groundZero.msav' "$MANIFEST" || fail "Ground Zero missing from asset manifest"
 grep -Fq 'maps/serpulo/frozenForest.msav' "$MANIFEST" || fail "Frozen Forest missing from asset manifest"
 grep -Fq 'maps/serpulo/crateredBattleground.msav' "$MANIFEST" || fail "Cratered Battleground missing from asset manifest"
@@ -77,8 +83,8 @@ for preset in biomassFacility fungalPass frontier saltFlats tarFields impact0078
   grep -Fq "maps/serpulo/$preset.msav" "$MANIFEST" || fail "Campaign branch map missing from asset manifest: $preset.msav"
 done
 map_count="$(find "$WEB_DIR/assets/maps/default" -maxdepth 1 -type f -name '*.msav' | wc -l)"
-[ "$map_count" -gt 1 ] || fail "builtin local map set is unexpectedly incomplete"
-echo "Builtin local maps staged: $map_count"
+[ "$map_count" -eq 19 ] || fail "pinned v159.7 default map package must contain 19 MSAV files (18 catalog + hidden canyon); found $map_count"
+echo "Builtin local maps staged: $map_count (18 catalog + hidden canyon); Attack maps veins/glacier/passage present"
 
 # Campaign milestone assets: all stock Serpulo TechTree presets reached by the current
 # complete browser campaign implementation must stay in the same-origin release.
