@@ -397,22 +397,34 @@
 
     async function showMenuFullscreenAdv(){
         // This path is called only after the user's explicit Back action has already
-        // saved/reset the Mindustry world. Keep GameplayAPI stopped for the menu instead
-        // of restoring the pre-ad gameplay state when game_api_resume arrives.
+        // saved/reset the Mindustry world. Yandex moderation measures the time from that
+        // user action to the interstitial request, so never put a network cloud round-trip
+        // on this critical path.
+        const requestedAt = performance.now();
         if(state.gameplayActive) gameplayStop();
 
         const storage = globalThis.__mindustryStorage;
         if(storage && typeof storage.lifecycleFlush === 'function'){
             mark('data-yandex-menu-ad-storage', 'pending');
-            const durable = await storage.lifecycleFlush('before-menu-ad');
+            let durable = false;
+            try{
+                durable = await withTimeout(
+                    storage.lifecycleFlush('before-menu-ad'),
+                    1200,
+                    'Pre-ad storage flush'
+                );
+            }catch(error){
+                mark('data-yandex-menu-ad-storage', 'timeout');
+                mark('data-yandex-menu-ad-state', 'skipped-storage-timeout');
+                return false;
+            }
             mark('data-yandex-menu-ad-storage', durable ? 'ready' : 'error');
             if(!durable) return false;
         }
 
-        await syncCloudCheckpoint('menu-transition', true);
-
         if(!state.ysdk || !state.ysdk.adv || typeof state.ysdk.adv.showFullscreenAdv !== 'function'){
             mark('data-yandex-menu-ad-state', 'unavailable');
+            void syncCloudCheckpoint('menu-transition', true);
             return false;
         }
 
@@ -424,12 +436,18 @@
             return false;
         }
 
+        mark('data-yandex-menu-ad-delay-ms', String(Math.round(performance.now() - requestedAt)));
         mark('data-yandex-menu-ad-state', 'requested');
-        return showFullscreenAdv({
+        const requested = showFullscreenAdv({
             onOpen: () => mark('data-yandex-menu-ad-state', 'open'),
             onClose: wasShown => mark('data-yandex-menu-ad-state', wasShown ? 'closed-shown' : 'closed-not-shown'),
             onError: () => mark('data-yandex-menu-ad-state', 'error')
         });
+
+        // Cloud persistence still runs for this transition, but it must not delay the ad.
+        // game_api_pause will coalesce with this call through cloudSyncPromise.
+        void syncCloudCheckpoint('menu-transition', true);
+        return requested;
     }
 
     async function getPlayer(){
