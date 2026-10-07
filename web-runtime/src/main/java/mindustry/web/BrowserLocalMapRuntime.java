@@ -177,10 +177,7 @@ public final class BrowserLocalMapRuntime{
     public static void startAttack(String slug){
         Map map = bySlug(slug);
         if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
-        if(!Gamemode.attack.valid(map)){
-            markAttackUnavailable(slug, map.plainName());
-            return;
-        }
+        if(!Gamemode.attack.valid(map)) return;
         start(map, Gamemode.attack);
     }
 
@@ -209,10 +206,7 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        if(mode == Gamemode.attack && !Gamemode.attack.valid(map)){
-            markAttackUnavailable(slug, map.plainName());
-            return;
-        }
+        if(mode == Gamemode.attack && !Gamemode.attack.valid(map)) return;
 
         // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
         // reads Map.spawns, which is still zero before the MSAV body is loaded here.
@@ -318,24 +312,10 @@ public final class BrowserLocalMapRuntime{
         Core.camera.position.set(state.rules.defaultTeam.core());
         markStarted(slug, map.plainName(), mode.name(), state.rules.infiniteResources,
             state.rules.waveTimer, world.width(), world.height());
-        if(attackPresetSmoke){
-            int enemyCores = enemyAttackCoreCount();
-            if(mode != Gamemode.attack || enemyCores <= 0){
-                throw new IllegalStateException("Attack preset smoke requires a real multi-team Attack map");
-            }
-            markAttackPresetStarted(slug, state.rules.defaultTeam.name, enemyCores);
+        if(attackPresetSmoke && mode != Gamemode.attack){
+            throw new IllegalStateException("Attack preset smoke did not enter Attack mode");
         }
         if(perfSmoke) stagePerfLoad();
-    }
-
-    private static int enemyAttackCoreCount(){
-        int count = 0;
-        for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
-            if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
-                count += data.cores.size;
-            }
-        }
-        return count;
     }
 
     private static void updateAttackPresetSmoke(){
@@ -351,18 +331,10 @@ public final class BrowserLocalMapRuntime{
             throw new IllegalStateException("Attack preset smoke found no enemy cores to destroy");
         }
 
-        int removed = targets.size;
         for(mindustry.gen.Building core : targets){
-            if(core != null && core.isValid()){
-                core.damage(core.health + 1f);
-            }
+            if(core != null && core.isValid()) core.damage(core.health + 1f);
         }
-        if(enemyAttackCoreCount() != 0){
-            throw new IllegalStateException("Attack preset smoke left enemy cores alive after Building.damage");
-        }
-
         attackPresetSmokeArmed = true;
-        markAttackPresetDestroyed(removed);
     }
 
     private static void stagePerfLoad(){
@@ -471,9 +443,6 @@ public final class BrowserLocalMapRuntime{
             gameOverFreeze = true;
             String winner = state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name;
             markGameOver(winner, state.wave);
-            if(attackPresetSmoke && attackPresetSmokeArmed && state.rules.attackMode){
-                markAttackPresetWon(winner);
-            }
             diagPhase("logic-gameover");
             updateGameOverFrame();
             return;
@@ -822,7 +791,6 @@ public final class BrowserLocalMapRuntime{
             for(String slug : builtinSlugs){
                 Map map = bySlug(slug);
                 if(map != null && Gamemode.attack.valid(map)){
-                    markAttackPresetRequested(slug, map.plainName());
                     start(map, Gamemode.attack);
                     return;
                 }
@@ -979,21 +947,6 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-local-mode-restore', mode);")
     private static native void markModeRestored(String mode);
-
-    @JSBody(params = {"slug", "name"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-unavailable',slug); r.setAttribute('data-mindustry-local-attack-unavailable-name',name);")
-    private static native void markAttackUnavailable(String slug, String name);
-
-    @JSBody(params = {"slug", "name"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-smoke','requested'); r.setAttribute('data-mindustry-local-attack-map',slug); r.setAttribute('data-mindustry-local-attack-map-name',name);")
-    private static native void markAttackPresetRequested(String slug, String name);
-
-    @JSBody(params = {"slug", "team", "cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-smoke','started'); r.setAttribute('data-mindustry-local-attack-map',slug); r.setAttribute('data-mindustry-local-attack-default-team',team); r.setAttribute('data-mindustry-local-attack-enemy-cores',String(cores));")
-    private static native void markAttackPresetStarted(String slug, String team, int cores);
-
-    @JSBody(params = {"cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-win-smoke','armed'); r.setAttribute('data-mindustry-local-attack-removed-cores',String(cores));")
-    private static native void markAttackPresetDestroyed(int cores);
-
-    @JSBody(params = {"winner"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-gameover','won'); r.setAttribute('data-mindustry-local-attack-winner',winner); r.setAttribute('data-mindustry-local-attack-smoke','complete');")
-    private static native void markAttackPresetWon(String winner);
 
     @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-map-catalog', 'ready'); document.documentElement.setAttribute('data-mindustry-map-count', String(count)); document.documentElement.setAttribute('data-mindustry-map-source', 'pinned-builtin-local-only');")
     private static native void markCatalogReady(int count);
