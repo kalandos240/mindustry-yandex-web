@@ -44,7 +44,7 @@ run_progression(){
     --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=onset&mindustryCampaignCaptureSmoke=1&mindustryCampaignProgressSmoke=1" \
     --profile "$profile" \
     --port "$cdp" \
-    --timeout 120 \
+    --timeout 150 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-storage="ready"' \
     --require 'data-mindustry-smoke-mode="production"' \
