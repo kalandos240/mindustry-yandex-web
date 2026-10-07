@@ -194,6 +194,7 @@ public final class BrowserUiRuntime{
     }
 
     private static void returnToMenuWithAd(){
+        BrowserYandex.beginMenuFullscreenAdv();
         if(BrowserCampaignRuntime.active()){
             BrowserCampaignRuntime.returnToMenu();
         }else{
