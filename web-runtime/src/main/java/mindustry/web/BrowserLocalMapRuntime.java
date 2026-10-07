@@ -76,7 +76,7 @@ public final class BrowserLocalMapRuntime{
     public static void init(){
         if(initialized) return;
         if(Core.files == null || content == null || waves == null){
-            throw new IllegalStateException("Browser local maps require packaged files, content and Waves");
+            throw new IllegalStateException("BLM01");
         }
 
         // Maps is retained only for Map.filters()/readFilters semantics. Do not call
@@ -84,13 +84,13 @@ public final class BrowserLocalMapRuntime{
         // validates paths only; metadata is decoded lazily when a map is selected.
         if(maps == null) maps = new Maps();
         if(!maps.all().isEmpty()){
-            throw new IllegalStateException("Browser local map catalog must start from an empty Maps registry");
+            throw new IllegalStateException("BLM02");
         }
 
         for(String slug : builtinSlugs){
             Fi file = Core.files.internal("maps/default/" + slug + "." + mapExtension);
             if(!file.exists()){
-                throw new IllegalStateException("Pinned built-in map is missing from the Web package: " + slug);
+                throw new IllegalStateException("BLM03" + slug);
             }
         }
 
@@ -100,7 +100,7 @@ public final class BrowserLocalMapRuntime{
         }else if("survival".equals(requestedMode)){
             Core.settings.put("localgamemode", 0);
         }else if(requestedMode != null && !requestedMode.isEmpty()){
-            throw new IllegalArgumentException("Unknown mindustryLocalMode: " + requestedMode);
+            throw new IllegalArgumentException("BLM04" + requestedMode);
         }
 
         initialized = true;
@@ -109,7 +109,7 @@ public final class BrowserLocalMapRuntime{
     }
 
     public static String[] slugs(){
-        if(!initialized) throw new IllegalStateException("Browser local map catalog is not initialized");
+        if(!initialized) throw new IllegalStateException("BLM05");
         return builtinSlugs.clone();
     }
 
@@ -130,7 +130,7 @@ public final class BrowserLocalMapRuntime{
     }
 
     public static Seq<Map> catalog(){
-        if(!initialized) throw new IllegalStateException("Browser local map catalog is not initialized");
+        if(!initialized) throw new IllegalStateException("BLM06");
         return catalog;
     }
 
@@ -173,14 +173,14 @@ public final class BrowserLocalMapRuntime{
 
     public static void start(String slug){
         Map map = bySlug(slug);
-        if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
+        if(map == null) throw new IllegalArgumentException("BLM07" + slug);
         start(map, selectedMode());
     }
 
     public static void startAttack(String slug){
         if(!supportsAttack(slug)) return;
         Map map = bySlug(slug);
-        if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
+        if(map == null) throw new IllegalArgumentException("BLM08" + slug);
         start(map, Gamemode.attack);
     }
 
@@ -190,17 +190,17 @@ public final class BrowserLocalMapRuntime{
     }
 
     private static void start(Map map, Gamemode mode){
-        if(!initialized) throw new IllegalStateException("Browser local map catalog is not initialized");
-        if(active) throw new IllegalStateException("A browser local map session is already active");
+        if(!initialized) throw new IllegalStateException("BLM09");
+        if(active) throw new IllegalStateException("BLM10");
         if(map == null || !catalog.contains(map, true)){
-            throw new IllegalArgumentException("Map is not part of the pinned browser catalog");
+            throw new IllegalArgumentException("BLM11");
         }
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
-            throw new IllegalStateException("Browser local map start requires a stable production menu runtime");
+            throw new IllegalStateException("BLM12");
         }
         if(net == null || net.active() || netServer != null || netClient != null){
-            throw new IllegalStateException("Browser local map start escaped permanent single-player mode");
+            throw new IllegalStateException("BLM13");
         }
 
         String slug = slug(map);
@@ -217,10 +217,10 @@ public final class BrowserLocalMapRuntime{
         Rules rules = map.applyRules(mode);
         stageCoreRules(rules);
         if(mode == Gamemode.sandbox && (!rules.infiniteResources || !rules.waves || rules.waveTimer)){
-            throw new IllegalStateException("Stock Sandbox rules were not applied on Web");
+            throw new IllegalStateException("BLM14");
         }
         if(mode == Gamemode.attack && !rules.attackMode){
-            throw new IllegalStateException("Stock Attack rules were not applied on Web");
+            throw new IllegalStateException("BLM15");
         }
 
         // World.loadMap() intentionally converts any SaveIO failure into the single
@@ -236,7 +236,7 @@ public final class BrowserLocalMapRuntime{
             String reason = failureReason(error);
             markLoadDiagnostic(slug, "save-exception", reason, world.width(), world.height(), 0);
             markFailed(slug, reason);
-            throw new IllegalStateException("Failed to load packaged browser map " + slug + ": " + reason, error);
+            throw new IllegalStateException("BLM16" + slug + ": " + reason, error);
         }
         state.map = map;
 
@@ -245,7 +245,7 @@ public final class BrowserLocalMapRuntime{
         if(defaultCores == 0){
             String reason = "no-default-core:" + rules.defaultTeam.name;
             markFailed(slug, reason);
-            throw new IllegalStateException("Packaged browser map has no core for default team after SaveIO.load: " + slug + " / " + rules.defaultTeam.name);
+            throw new IllegalStateException("BLM17" + slug + " / " + rules.defaultTeam.name);
         }
 
         // Match Control.playMap(): retain content fields decoded from the real map file,
@@ -290,7 +290,7 @@ public final class BrowserLocalMapRuntime{
             String testMap = requestedTestMap();
             if(testMap != null && !testMap.isEmpty() && mode == Gamemode.survival){
                 if(!state.rules.waves || state.rules.spawns.isEmpty()){
-                    throw new IllegalStateException("Packaged-map smoke requires enabled survival waves and spawn groups");
+                    throw new IllegalStateException("BLM18");
                 }
                 testWaveExpected = true;
                 testWaveFired = false;
@@ -308,7 +308,7 @@ public final class BrowserLocalMapRuntime{
         if(!state.isPlaying() || !player.isAdded() || state.rules.defaultTeam.core() == null){
             active = false;
             current = null;
-            throw new IllegalStateException("Built-in browser map did not enter a valid local playing state: " + slug);
+            throw new IllegalStateException("BLM19" + slug);
         }
 
         Core.camera.position.set(state.rules.defaultTeam.core());
@@ -342,7 +342,7 @@ public final class BrowserLocalMapRuntime{
         SpriteBatch.webMaxSortRuns = 0;
         SpriteBatch.webSortedFastPaths = 0;
         if(!Fx.drillSteam.shouldCreate()){
-            throw new IllegalStateException("Browser particle perf smoke requires live renderer effects");
+            throw new IllegalStateException("BLM20");
         }
 
         // Deterministically exercise the browser SFX voice budget without waiting for
@@ -358,11 +358,11 @@ public final class BrowserLocalMapRuntime{
         int activeAudioVoices = Core.audio.countTotalPlaying();
         if(mobile){
             if(audioAccepted != 48 || audioDropped != 16 || activeAudioVoices != 48){
-                throw new IllegalStateException("Mobile SFX voice cap mismatch: accepted=" + audioAccepted
+                throw new IllegalStateException("BLM21" + audioAccepted
                     + " dropped=" + audioDropped + " active=" + activeAudioVoices);
             }
         }else if(audioAccepted != 64 || audioDropped != 0 || activeAudioVoices != 64){
-            throw new IllegalStateException("Desktop SFX voice path must remain unlimited: accepted=" + audioAccepted
+            throw new IllegalStateException("BLM22" + audioAccepted
                 + " dropped=" + audioDropped + " active=" + activeAudioVoices);
         }
         for(int voice : audioVoices){
@@ -401,7 +401,7 @@ public final class BrowserLocalMapRuntime{
     /** One production browser frame. Unlike BrowserPlayingRuntime this never auto-restores. */
     public static void updateFrame(){
         if(!active || current == null || !state.isPlaying()){
-            throw new IllegalStateException("Browser production map frame requires an active playing session");
+            throw new IllegalStateException("BLM23");
         }
 
         if(gameOverFreeze || state.gameOver){
@@ -451,11 +451,11 @@ public final class BrowserLocalMapRuntime{
         // Pause may transition this just-completed simulation tick into paused state.
         if(!active || state.isMenu()) return;
         if(state.updateId != beforeUpdateId + 1L){
-            throw new IllegalStateException("Browser production map update clock advanced incorrectly");
+            throw new IllegalStateException("BLM24");
         }
         if(state.isPaused()) return;
         if(!state.isPlaying()){
-            throw new IllegalStateException("Browser production map unexpectedly left playing state");
+            throw new IllegalStateException("BLM25");
         }
 
         frames++;
@@ -474,10 +474,10 @@ public final class BrowserLocalMapRuntime{
         if(frames >= 3){
             if(telemetry){
                 if(testWaveExpected && (!testWaveFired || state.wave <= testWaveStart)){
-                    throw new IllegalStateException("Packaged-map smoke did not execute a real survival wave");
+                    throw new IllegalStateException("BLM26");
                 }
                 if(testWaveExpected && state.enemies <= 0){
-                    throw new IllegalStateException("Packaged-map smoke wave produced no live enemy units");
+                    throw new IllegalStateException("BLM27");
                 }
 
                 if(saveSmoke && !saveSmokeArmed){
@@ -488,7 +488,7 @@ public final class BrowserLocalMapRuntime{
 
                 if(gameOverSmoke && !gameOverSmokeArmed){
                     if(!state.rules.canGameOver || state.rules.defaultTeam.cores().isEmpty()){
-                        throw new IllegalStateException("Game-over smoke requires canGameOver and an existing default-team core");
+                        throw new IllegalStateException("BLM28");
                     }
                     state.rules.defaultTeam.cores().clear();
                     gameOverSmokeArmed = true;
@@ -512,14 +512,14 @@ public final class BrowserLocalMapRuntime{
         }
         if(perfSmoke && !perfReady && frames >= perfTargetFrames){
             if(perfEffects != perfTargetEffects){
-                throw new IllegalStateException("Browser perf effect workload count mismatch: " + perfEffects);
+                throw new IllegalStateException("BLM29" + perfEffects);
             }
             if(SpriteBatch.webSortCalls <= 0 || SpriteBatch.webSortedFastPaths <= 0){
-                throw new IllegalStateException("Browser perf smoke did not exercise optimized SpriteBatch sorting");
+                throw new IllegalStateException("BLM30");
             }
             int controlPathSteps = controlPath.webSteps() - perfControlPathStartSteps;
             if(controlPathSteps <= 0){
-                throw new IllegalStateException("Browser perf smoke did not execute ControlPathfinder worker steps");
+                throw new IllegalStateException("BLM31");
             }
 
             int effectBudget = mindustry.entities.Effect.webMaxActiveEffects();
@@ -527,11 +527,11 @@ public final class BrowserLocalMapRuntime{
             int droppedEffects = mindustry.entities.Effect.webDroppedEffects();
             if(mobile){
                 if(effectBudget != 512 || activeEffects > effectBudget || droppedEffects <= 0){
-                    throw new IllegalStateException("Mobile effect budget did not cap the particle burst: budget="
+                    throw new IllegalStateException("BLM32"
                         + effectBudget + " active=" + activeEffects + " dropped=" + droppedEffects);
                 }
             }else if(effectBudget != 0 || droppedEffects != 0){
-                throw new IllegalStateException("Desktop effect budget must stay unlimited");
+                throw new IllegalStateException("BLM33");
             }
 
             perfReady = true;
@@ -544,7 +544,7 @@ public final class BrowserLocalMapRuntime{
 
     public static void saveLocalSession(){
         if(!active || current == null || state.gameOver || (!state.isPlaying() && !state.isPaused())){
-            throw new IllegalStateException("Browser local save requires an active playing or paused session");
+            throw new IllegalStateException("BLM34");
         }
         SaveMeta meta = BrowserSaveRuntime.saveLocalSession();
         periodicSaveTick = state.tick;
@@ -555,10 +555,10 @@ public final class BrowserLocalMapRuntime{
         telemetry = smokeTelemetryRequested();
         if(!initialized || active || state == null || !state.isMenu() || logic == null || world == null
         || control == null || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
-            throw new IllegalStateException("Browser local continue requires a stable production menu runtime");
+            throw new IllegalStateException("BLM35");
         }
         if(net == null || net.active() || netServer != null || netClient != null){
-            throw new IllegalStateException("Browser local continue escaped permanent single-player mode");
+            throw new IllegalStateException("BLM36");
         }
 
         mindustry.entities.Effect.webResetEffectBudget();
@@ -566,10 +566,10 @@ public final class BrowserLocalMapRuntime{
         String savedName = meta.tags.get("mapname", "");
         Map builtin = byName(savedName);
         if(builtin == null){
-            throw new IllegalStateException("Browser local save refers to a non-built-in map: " + savedName);
+            throw new IllegalStateException("BLM37" + savedName);
         }
         if(state.gameOver || state.rules == null || state.rules.pvp || state.rules.sector != null){
-            throw new IllegalStateException("Browser local save restored unsupported game state");
+            throw new IllegalStateException("BLM38");
         }
 
         Gamemode restoredMode = savedMode(state.rules);
@@ -578,17 +578,17 @@ public final class BrowserLocalMapRuntime{
         markModeRestored(restoredMode.name());
         if(restoredMode == Gamemode.sandbox
         && (!state.rules.infiniteResources || !state.rules.waves || state.rules.waveTimer)){
-            throw new IllegalStateException("Browser local Sandbox save restored inconsistent rules");
+            throw new IllegalStateException("BLM39");
         }
         if(restoredMode == Gamemode.attack && !state.rules.attackMode){
-            throw new IllegalStateException("Browser local Attack save restored inconsistent rules");
+            throw new IllegalStateException("BLM40");
         }
         state.map = builtin;
         state.rules.sector = null;
         state.rules.editor = false;
 
         if(state.rules.defaultTeam.core() == null){
-            throw new IllegalStateException("Browser local save restored no core for default team");
+            throw new IllegalStateException("BLM41");
         }
 
         player.team(state.rules.defaultTeam);
@@ -637,7 +637,7 @@ public final class BrowserLocalMapRuntime{
         if(!active || current == null || !state.isPaused() || state.gameOver) return;
         long frozenUpdateId = state.updateId;
         if(pauseUpdateId != 0L && frozenUpdateId != pauseUpdateId){
-            throw new IllegalStateException("Browser local pause advanced the gameplay update clock");
+            throw new IllegalStateException("BLM42");
         }
         state.set(mindustry.core.GameState.State.playing);
         markResumed(frozenUpdateId);
@@ -645,7 +645,7 @@ public final class BrowserLocalMapRuntime{
 
     public static void updatePausedFrame(){
         if(!active || current == null || !state.isPaused() || state.gameOver){
-            throw new IllegalStateException("Browser paused frame requires an active paused local session");
+            throw new IllegalStateException("BLM43");
         }
 
         long beforeUpdateId = state.updateId;
@@ -658,15 +658,15 @@ public final class BrowserLocalMapRuntime{
         if(!active || state.isMenu()) return;
         if(state.isPlaying()){
             if(state.updateId != beforeUpdateId){
-                throw new IllegalStateException("Browser resume changed updateId inside the paused frame");
+                throw new IllegalStateException("BLM44");
             }
             return;
         }
         if(!state.isPaused()){
-            throw new IllegalStateException("Browser paused local session entered an unexpected state");
+            throw new IllegalStateException("BLM45");
         }
         if(state.updateId != beforeUpdateId || state.updateId != pauseUpdateId){
-            throw new IllegalStateException("Browser paused frame advanced the gameplay update clock");
+            throw new IllegalStateException("BLM46");
         }
 
         pausedFrames++;
@@ -756,7 +756,7 @@ public final class BrowserLocalMapRuntime{
 
         if(continueSmokeRequested()){
             if(!BrowserSaveRuntime.hasLocalSession()){
-                throw new IllegalStateException("mindustryContinueSmoke requested with no valid browser local save");
+                throw new IllegalStateException("BLM47");
             }
             markContinueSmokeRequested();
             continueSaved();
@@ -772,7 +772,7 @@ public final class BrowserLocalMapRuntime{
                     return;
                 }
             }
-            throw new IllegalStateException("No pinned built-in map is valid for local Attack mode");
+            throw new IllegalStateException("BLM48");
         }
 
         String requested = requestedTestMap();
@@ -780,7 +780,7 @@ public final class BrowserLocalMapRuntime{
 
         Map map = bySlug(requested);
         if(map == null){
-            throw new IllegalArgumentException("Unknown mindustryMapSmoke built-in map: " + requested);
+            throw new IllegalArgumentException("BLM49" + requested);
         }
         markTestRequested(requested);
         start(map);
@@ -818,19 +818,19 @@ public final class BrowserLocalMapRuntime{
 
     private static Map loadBuiltInMap(String slug){
         Fi file = Core.files.internal("maps/default/" + slug + "." + mapExtension);
-        if(!file.exists()) throw new IllegalStateException("Pinned built-in map is missing: " + slug);
+        if(!file.exists()) throw new IllegalStateException("BLM50" + slug);
 
         try{
             Map map = MapIO.createMap(file, false);
             if(map.name() == null || map.name().trim().isEmpty()){
-                throw new IllegalStateException("Pinned built-in map has no display name: " + slug);
+                throw new IllegalStateException("BLM51" + slug);
             }
             catalog.add(map);
             maps.all().add(map);
             markMapMetadataLoaded(slug, catalog.size);
             return map;
         }catch(IOException error){
-            throw new IllegalStateException("Failed to read packaged built-in map metadata: " + slug, error);
+            throw new IllegalStateException("BLM52" + slug, error);
         }
     }
 
