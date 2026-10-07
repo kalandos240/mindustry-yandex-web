@@ -94,6 +94,15 @@ public final class BrowserLocalMapRuntime{
             }
         }
 
+        String requestedMode = requestedTestMode();
+        if("sandbox".equals(requestedMode)){
+            Core.settings.put("localgamemode", 1);
+        }else if("survival".equals(requestedMode)){
+            Core.settings.put("localgamemode", 0);
+        }else if(requestedMode != null && !requestedMode.isEmpty()){
+            throw new IllegalArgumentException("Unknown mindustryLocalMode: " + requestedMode);
+        }
+
         initialized = true;
         markCatalogReady(builtinSlugs.length);
         markCatalogPolicy();
@@ -133,6 +142,15 @@ public final class BrowserLocalMapRuntime{
         return current;
     }
 
+    public static int customModeCode(){
+        return selectedMode() == Gamemode.sandbox ? 1 : 0;
+    }
+
+    private static Gamemode selectedMode(){
+        if(Core.settings == null) return Gamemode.survival;
+        return Core.settings.getInt("localgamemode", 0) == 1 ? Gamemode.sandbox : Gamemode.survival;
+    }
+
     public static void start(String slug){
         Map map = bySlug(slug);
         if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
@@ -160,8 +178,15 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        Rules rules = map.applyRules(Gamemode.survival);
+        Gamemode mode = selectedMode();
+        // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
+        // reads Map.spawns, which is still zero before the MSAV body is loaded here.
+        // The packaged-map world load below is the authoritative validation boundary.
+        Rules rules = map.applyRules(mode);
         stageCoreRules(rules);
+        if(mode == Gamemode.sandbox && (!rules.infiniteResources || !rules.waves || rules.waveTimer)){
+            throw new IllegalStateException("Stock Sandbox rules were not applied on Web");
+        }
 
         // World.loadMap() intentionally converts any SaveIO failure into the single
         // invalidMap flag for desktop UI. That is too opaque for the browser port: a
@@ -228,7 +253,7 @@ public final class BrowserLocalMapRuntime{
             // Test-only acceleration for the existing packaged-map smoke. Normal
             // production preserves the selected map's stock survival countdown.
             String testMap = requestedTestMap();
-            if(testMap != null && !testMap.isEmpty()){
+            if(testMap != null && !testMap.isEmpty() && mode == Gamemode.survival){
                 if(!state.rules.waves || state.rules.spawns.isEmpty()){
                     throw new IllegalStateException("Packaged-map smoke requires enabled survival waves and spawn groups");
                 }
@@ -252,7 +277,8 @@ public final class BrowserLocalMapRuntime{
         }
 
         Core.camera.position.set(state.rules.defaultTeam.core());
-        markStarted(slug, map.plainName(), world.width(), world.height());
+        markStarted(slug, map.plainName(), mode.name(), state.rules.infiniteResources,
+            state.rules.waveTimer, world.width(), world.height());
         if(perfSmoke) stagePerfLoad();
     }
 
@@ -826,6 +852,9 @@ public final class BrowserLocalMapRuntime{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryMapSmoke') || ''; ")
     private static native String requestedTestMap();
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryLocalMode') || ''; ")
+    private static native String requestedTestMode();
+
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPerfSmoke') === '1';")
     private static native boolean perfSmokeRequested();
 
@@ -844,8 +873,8 @@ public final class BrowserLocalMapRuntime{
     @JSBody(params = {"slug", "status", "detail", "width", "height", "cores"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-load-status', status); document.documentElement.setAttribute('data-mindustry-local-map-load-detail', detail); document.documentElement.setAttribute('data-mindustry-local-map-load-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-load-cores', String(cores)); document.documentElement.setAttribute('data-mindustry-local-map-slug', slug);")
     private static native void markLoadDiagnostic(String slug, String status, String detail, int width, int height, int cores);
 
-    @JSBody(params = {"slug", "name", "width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-state', 'playing'); document.documentElement.setAttribute('data-mindustry-local-map-slug', slug); document.documentElement.setAttribute('data-mindustry-local-map-name', name); document.documentElement.setAttribute('data-mindustry-local-map-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-player', 'added'); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'starting');")
-    private static native void markStarted(String slug, String name, int width, int height);
+    @JSBody(params = {"slug", "name", "mode", "infinite", "waveTimer", "width", "height"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-map-state','playing'); r.setAttribute('data-mindustry-local-map-slug',slug); r.setAttribute('data-mindustry-local-map-name',name); r.setAttribute('data-mindustry-local-map-mode',mode); r.setAttribute('data-mindustry-local-map-infinite-resources',infinite?'true':'false'); r.setAttribute('data-mindustry-local-map-wave-timer',waveTimer?'true':'false'); r.setAttribute('data-mindustry-local-map-world',String(width)+'x'+String(height)); r.setAttribute('data-mindustry-local-map-player','added'); r.setAttribute('data-mindustry-local-map-loop','starting');")
+    private static native void markStarted(String slug, String name, String mode, boolean infinite, boolean waveTimer, int width, int height);
 
     @JSBody(params = {"frames", "updateId", "unit", "wave", "enemies", "wavetime"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-frames', String(frames)); document.documentElement.setAttribute('data-mindustry-local-map-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-map-unit', unit); document.documentElement.setAttribute('data-mindustry-local-map-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-map-wave-enemies', String(enemies)); document.documentElement.setAttribute('data-mindustry-local-map-wavetime', String(wavetime)); document.documentElement.setAttribute('data-mindustry-local-map-module-order', 'logic-pathfinding-control-renderer-ui');")
     private static native void markFrame(int frames, long updateId, String unit, int wave, int enemies, float wavetime);
