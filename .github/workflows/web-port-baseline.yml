@@ -403,6 +403,9 @@ jobs:
       - name: Verify Sandbox cold Continue mode restoration
         run: bash scripts/verify-browser-sandbox-continue.sh
 
+      - name: Verify real built-in local Attack mode
+        run: bash scripts/verify-browser-local-attack.sh
+
       - name: Verify campaign pause save and resume
         run: bash scripts/verify-browser-campaign-pause.sh
 
