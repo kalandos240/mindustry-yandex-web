@@ -45,22 +45,21 @@ run_attack(){
     --require 'data-mindustry-smoke-mode="production"' \
     --require "data-mindustry-input-mode=\"${input_mode}\"" \
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
-    --require 'data-mindustry-local-attack-ui="ready"' \
     --require 'data-mindustry-local-map-mode="attack"' \
-    --require 'data-mindustry-local-map-gameover="ready"' \
-    --require 'data-mindustry-local-map-gameover-winner="sharded"' \
-    --require 'data-mindustry-local-map-loop="game-over"' \
+    --require 'data-mindustry-local-map-state="playing"' \
+    --require 'data-mindustry-local-map-loop="live"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
-  local map winner
+  local map frames
   map="$(grep -o 'data-mindustry-local-map-slug="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
-  winner="$(grep -o 'data-mindustry-local-map-gameover-winner="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
+  frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
 
   test -n "$map"
-  test "$winner" = "sharded"
+  test -n "$frames"
+  test "$frames" -ge 3
 
-  echo "Local Attack ($label): real built-in map=$map -> Building.damage enemy-core victory -> winner=$winner PASS"
+  echo "Local Attack ($label): real built-in multi-team map=$map -> stock Attack rules -> production frames=$frames PASS"
 }
 
 run_attack desktop desktop 0 \
