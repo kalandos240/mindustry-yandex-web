@@ -178,7 +178,10 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     private void syncGameplayMarker(){
-        boolean gameplayActive = Vars.state != null && Vars.state.isPlaying();
+        // Yandex GameplayAPI must stop not only in menus/pauses, but also immediately
+        // when a local match reaches its Game Over overlay. Mindustry keeps the enum in
+        // playing state while state.gameOver freezes simulation, so check both signals.
+        boolean gameplayActive = Vars.state != null && Vars.state.isPlaying() && !Vars.state.gameOver;
         if(gameplayActive == lastGameplayActive) return;
 
         lastGameplayActive = gameplayActive;
