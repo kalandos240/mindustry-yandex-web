@@ -67,6 +67,18 @@ old_methods = '''    private static void startEnemyPathSmoke(){
 new_methods = '''    private static void startAttackSmoke(){
         if(!attackSmokeRequested()) return;
 
+        if(attackPresetSmokeRequested()){
+            for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
+                if(data.team != state.rules.defaultTeam && data.team != Team.derelict && !data.cores.isEmpty()){
+                    attackSmokeCore = data.cores.first();
+                    attackSmokeDestroyed = false;
+                    markAttackSmokeArmed(attackSmokeCore.id, attackSmokeCore.team.name);
+                    return;
+                }
+            }
+            throw new IllegalStateException("Real Attack smoke loaded no enemy core");
+        }
+
         state.rules.attackMode = true;
         state.rules.waves = false;
         state.rules.waveTimer = false;
@@ -133,10 +145,18 @@ new_methods = '''    private static void startAttackSmoke(){
         // production frames before destroying it through Building.damage -> Tile.buildDestroyed.
         if(frames < 3) return;
 
-        mindustry.gen.Building core = attackSmokeCore;
-        core.damage(core.health + 1f);
-        if(core.isValid() || !state.rules.waveTeam.cores().isEmpty()){
-            throw new IllegalStateException("Local-authoritative enemy core destruction did not update team core state");
+        if(attackPresetSmokeRequested()){
+            for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
+                if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
+                    while(!data.cores.isEmpty()) data.cores.first().kill();
+                }
+            }
+        }else{
+            mindustry.gen.Building core = attackSmokeCore;
+            core.damage(core.health + 1f);
+            if(core.isValid() || !state.rules.waveTeam.cores().isEmpty()){
+                throw new IllegalStateException("Local-authoritative enemy core destruction did not update team core state");
+            }
         }
         attackSmokeDestroyed = true;
         attackSmokeCore = null;
