@@ -64,6 +64,8 @@ run_attack_continue(){
     --require 'data-mindustry-local-map-save="ready"' \
     --require 'data-mindustry-local-save-state="saved"' \
     --require 'data-mindustry-local-save-slot="available"' \
+    --require 'data-mindustry-local-save-flush="ready"' \
+    --require 'data-mindustry-storage-write-policy="task-coalesced-readwrite"' \
     --require 'data-mindustry-local-autosave="ready"' \
     --require 'data-mindustry-local-map-state="menu"' \
     --require 'data-mindustry-network="local-only"' \
