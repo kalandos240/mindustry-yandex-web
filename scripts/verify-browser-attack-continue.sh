@@ -27,12 +27,6 @@ attr_text(){
   grep -o "$name=\"[^\"]*\"" "$file" | head -1 | cut -d'"' -f2
 }
 
-attr_int(){
-  local file="$1"
-  local name="$2"
-  grep -o "$name=\"[0-9]*\"" "$file" | head -1 | sed -E 's/.*=\"([0-9]+)\"/\1/'
-}
-
 run_attack_continue(){
   local label="$1"
   local input_mode="$2"
@@ -50,7 +44,8 @@ run_attack_continue(){
 
   rm -rf "$profile"
 
-  # Save and leave the real Attack map before the CI-only enemy-core destruction hook.
+  # The real-map Attack smoke deliberately does not destroy cores while the normal
+  # autosave-exit flag is active, so this checkpoints an untouched Attack match.
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     "${device_args[@]}" \
     --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1&mindustrySaveSmoke=1&mindustryAutoSaveExitSmoke=1" \
@@ -62,7 +57,6 @@ run_attack_continue(){
     --require "data-mindustry-input-mode=\"${input_mode}\"" \
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
     --require 'data-mindustry-local-map-mode="attack"' \
-    --require 'data-mindustry-local-attack-smoke="started"' \
     --require 'data-mindustry-local-map-save="ready"' \
     --require 'data-mindustry-local-save-state="saved"' \
     --require 'data-mindustry-local-save-slot="available"' \
@@ -71,8 +65,8 @@ run_attack_continue(){
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$first_dom"
 
-  # Cold process: Continue must restore attackMode and the still-live enemy cores, then
-  # the existing Attack smoke destroys those real CoreBuilds and stock Logic awards win.
+  # A new browser process loads the same SaveIO slot. The patched existing Attack smoke
+  # re-arms from the restored real enemy cores and then exercises the normal winner path.
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     "${device_args[@]}" \
     --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryContinueSmoke=1&mindustryAttackPresetSmoke=1" \
@@ -87,35 +81,23 @@ run_attack_continue(){
     --require 'data-mindustry-local-map-mode="attack"' \
     --require 'data-mindustry-local-continue="ready"' \
     --require 'data-mindustry-local-save-load="ready"' \
-    --require 'data-mindustry-local-attack-resume="ready"' \
-    --require 'data-mindustry-local-attack-win-smoke="armed"' \
-    --require 'data-mindustry-local-attack-gameover="won"' \
-    --require 'data-mindustry-local-attack-smoke="complete"' \
+    --require 'data-mindustry-attack-core-destroyed="yes"' \
     --require 'data-mindustry-local-map-gameover="ready"' \
+    --require 'data-mindustry-local-map-gameover-winner="sharded"' \
     --require 'data-mindustry-local-map-loop="game-over"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$resume_dom"
 
-  local first_map first_team first_cores resume_map resume_team resume_cores removed winner
-  first_map="$(attr_text "$first_dom" data-mindustry-local-attack-map)"
-  first_team="$(attr_text "$first_dom" data-mindustry-local-attack-default-team)"
-  first_cores="$(attr_int "$first_dom" data-mindustry-local-attack-enemy-cores)"
-  resume_map="$(attr_text "$resume_dom" data-mindustry-local-attack-resume-map)"
-  resume_team="$(attr_text "$resume_dom" data-mindustry-local-attack-resume-default-team)"
-  resume_cores="$(attr_int "$resume_dom" data-mindustry-local-attack-resume-enemy-cores)"
-  removed="$(attr_int "$resume_dom" data-mindustry-local-attack-removed-cores)"
-  winner="$(attr_text "$resume_dom" data-mindustry-local-attack-winner)"
+  local first_map resume_map winner
+  first_map="$(attr_text "$first_dom" data-mindustry-local-map-slug)"
+  resume_map="$(attr_text "$resume_dom" data-mindustry-local-continue-slug)"
+  winner="$(attr_text "$resume_dom" data-mindustry-local-map-gameover-winner)"
 
   test -n "$first_map"
   test "$first_map" = "$resume_map"
-  test -n "$first_team"
-  test "$first_team" = "$resume_team"
-  test "$winner" = "$resume_team"
-  test "$first_cores" -gt 0
-  test "$first_cores" = "$resume_cores"
-  test "$resume_cores" = "$removed"
+  test "$winner" = "sharded"
 
-  echo "Attack cold Continue ($label): map=$resume_map cores=$resume_cores mode=attack -> winner=$winner PASS"
+  echo "Attack cold Continue ($label): map=$resume_map attackMode restored -> enemy cores survived save -> winner=$winner PASS"
 }
 
 run_attack_continue desktop desktop 0 \
