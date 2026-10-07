@@ -79,4 +79,61 @@ run_attack mobile mobile 1 \
   /tmp/mindustry-local-attack-mobile-profile \
   /tmp/mindustry-local-attack-mobile.html 9331
 
-echo 'Local Attack matrix: desktop + auto-detected mobile real built-in map victory PASS'
+run_attack_loss(){
+  local label="$1"
+  local input_mode="$2"
+  local emulate_mobile="$3"
+  local profile="$4"
+  local dom="$5"
+  local cdp="$6"
+
+  local device_args=()
+  if [ "$emulate_mobile" = "1" ]; then
+    device_args+=(--emulate-mobile)
+  fi
+
+  rm -rf "$profile"
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    "${device_args[@]}" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1&mindustryGameOverSmoke=loss" \
+    --profile "$profile" \
+    --port "$cdp" \
+    --timeout 90 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="production"' \
+    --require "data-mindustry-input-mode=\"${input_mode}\"" \
+    --require "data-mindustry-stock-input=\"${input_mode}\"" \
+    --require 'data-mindustry-local-map-mode="attack"' \
+    --require 'data-mindustry-local-map-state="playing"' \
+    --require 'data-mindustry-local-map-gameover-smoke="armed"' \
+    --require 'data-mindustry-local-map-gameover="ready"' \
+    --require 'data-mindustry-local-map-loop="game-over"' \
+    --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
+
+  local map frames winner
+  map="$(grep -o 'data-mindustry-local-map-slug="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
+  frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+  winner="$(grep -o 'data-mindustry-local-map-gameover-winner="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
+
+  case "$map" in
+    veins|glacier|passage) ;;
+    *) echo "Unexpected Attack loss map: $map" >&2; exit 1 ;;
+  esac
+  test -n "$winner"
+  test "$winner" != "sharded"
+  test "$winner" != "derelict"
+  test "$frames" -ge 3
+
+  echo "Local Attack loss ($label): pinned map=$map -> default-team cores damaged -> winner=$winner after frames=$frames PASS"
+}
+
+run_attack_loss desktop desktop 0 \
+  /tmp/mindustry-local-attack-loss-desktop-profile \
+  /tmp/mindustry-local-attack-loss-desktop.html 9332
+
+run_attack_loss mobile mobile 1 \
+  /tmp/mindustry-local-attack-loss-mobile-profile \
+  /tmp/mindustry-local-attack-loss-mobile.html 9333
+
+echo 'Local Attack matrix: desktop + auto-detected mobile victory and defeat PASS'
