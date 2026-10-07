@@ -304,7 +304,7 @@
         return true;
     }
 
-    function gameplayStop(){
+    function gameplayStop(showBanner = true){
         const changed = state.gameplayActive;
         if(changed){
             state.gameplayActive = false;
@@ -312,13 +312,14 @@
             const api = state.ysdk && state.ysdk.features && state.ysdk.features.GameplayAPI;
             if(api && typeof api.stop === 'function') api.stop();
         }
-        void syncStickyBanner(true, 'gameplay-stop');
+        void syncStickyBanner(showBanner, showBanner ? 'gameplay-stop' : 'gameplay-stop-ad');
         return changed;
     }
 
     function finishFullscreenAdv(){
         if(!state.adResumeGameplay){
             state.adInFlight = false;
+            void syncStickyBanner(true, 'fullscreen-ad-finished-menu');
             return;
         }
 
@@ -352,7 +353,10 @@
         state.adResumeGameplay = state.gameplayActive;
         state.adWaitingForResume = false;
         state.adInFlight = true;
-        if(state.adResumeGameplay) gameplayStop();
+        // Sticky banners and fullscreen ads must never overlap. If this ad interrupts
+        // gameplay, stop GameplayAPI without exposing the menu banner in between.
+        if(state.adResumeGameplay) gameplayStop(false);
+        else void syncStickyBanner(false, 'fullscreen-ad-menu');
 
         let finalized = false;
         const finalize = (kind, payload) => {
