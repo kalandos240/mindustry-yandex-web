@@ -68,7 +68,10 @@ jobs:
 
   web-runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # This job intentionally executes several full Chrome cold-restart persistence
+    # pairs. Fog/weather gates add two more real v13 save/restore cycles, so keep
+    # enough headroom for shared-runner startup variance without weakening checks.
+    timeout-minutes: 50
 
     steps:
       - name: Checkout port repository
@@ -418,6 +421,12 @@ jobs:
 
       - name: Verify local pause save continue and autosave
         run: bash scripts/verify-browser-local-save.sh
+
+      - name: Verify static fog persistence across cold Continue
+        run: bash scripts/verify-browser-fog-persistence.sh
+
+      - name: Verify active weather persistence across cold Continue
+        run: bash scripts/verify-browser-weather-persistence.sh
 
       - name: Verify Sandbox cold Continue mode restoration
         run: bash scripts/verify-browser-sandbox-continue.sh
