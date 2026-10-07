@@ -57,9 +57,13 @@ run_attack(){
 
   test -n "$map"
   test -n "$frames"
+  case "$map" in
+    veins|glacier|passage) ;;
+    *) echo "Unexpected non-multi-team built-in Attack map: $map" >&2; exit 1 ;;
+  esac
   test "$frames" -ge 3
 
-  echo "Local Attack ($label): real built-in multi-team map=$map -> stock Attack rules -> production frames=$frames PASS"
+  echo "Local Attack ($label): pinned multi-team map=$map -> stock Attack rules -> production frames=$frames PASS"
 }
 
 run_attack desktop desktop 0 \
