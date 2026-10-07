@@ -20,9 +20,11 @@ if text.count(old_fields) != 1:
     raise SystemExit("Enemy path fields anchor changed")
 text = text.replace(old_fields, new_fields, 1)
 
-old_start = '''        markStarted(slug, map.plainName(), world.width(), world.height());
+old_start = '''        markStarted(slug, map.plainName(), mode.name(), state.rules.infiniteResources,
+            state.rules.waveTimer, world.width(), world.height());
 '''
-new_start = '''        markStarted(slug, map.plainName(), world.width(), world.height());
+new_start = '''        markStarted(slug, map.plainName(), mode.name(), state.rules.infiniteResources,
+            state.rules.waveTimer, world.width(), world.height());
         startEnemyPathSmoke();
 '''
 if text.count(old_start) != 1:
