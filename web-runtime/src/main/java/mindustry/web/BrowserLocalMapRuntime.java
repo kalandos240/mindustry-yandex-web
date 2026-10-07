@@ -318,7 +318,51 @@ public final class BrowserLocalMapRuntime{
         Core.camera.position.set(state.rules.defaultTeam.core());
         markStarted(slug, map.plainName(), mode.name(), state.rules.infiniteResources,
             state.rules.waveTimer, world.width(), world.height());
+        if(attackPresetSmoke){
+            int enemyCores = enemyAttackCoreCount();
+            if(mode != Gamemode.attack || enemyCores <= 0){
+                throw new IllegalStateException("Attack preset smoke requires a real multi-team Attack map");
+            }
+            markAttackPresetStarted(slug, state.rules.defaultTeam.name, enemyCores);
+        }
         if(perfSmoke) stagePerfLoad();
+    }
+
+    private static int enemyAttackCoreCount(){
+        int count = 0;
+        for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
+            if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
+                count += data.cores.size;
+            }
+        }
+        return count;
+    }
+
+    private static void updateAttackPresetSmoke(){
+        if(!attackPresetSmoke || attackPresetSmokeArmed || !state.rules.attackMode || frames < 3) return;
+
+        Seq<mindustry.gen.Building> targets = new Seq<>();
+        for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
+            if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
+                targets.addAll(data.cores);
+            }
+        }
+        if(targets.isEmpty()){
+            throw new IllegalStateException("Attack preset smoke found no enemy cores to destroy");
+        }
+
+        int removed = targets.size;
+        for(mindustry.gen.Building core : targets){
+            if(core != null && core.isValid()){
+                core.damage(core.health + 1f);
+            }
+        }
+        if(enemyAttackCoreCount() != 0){
+            throw new IllegalStateException("Attack preset smoke left enemy cores alive after Building.damage");
+        }
+
+        attackPresetSmokeArmed = true;
+        markAttackPresetDestroyed(removed);
     }
 
     private static void stagePerfLoad(){
@@ -425,7 +469,11 @@ public final class BrowserLocalMapRuntime{
         }
         if(state.gameOver){
             gameOverFreeze = true;
-            markGameOver(state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
+            String winner = state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name;
+            markGameOver(winner, state.wave);
+            if(attackPresetSmoke && attackPresetSmokeArmed && state.rules.attackMode){
+                markAttackPresetWon(winner);
+            }
             diagPhase("logic-gameover");
             updateGameOverFrame();
             return;
@@ -922,8 +970,26 @@ public final class BrowserLocalMapRuntime{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPerfSmoke') === '1';")
     private static native boolean perfSmokeRequested();
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryAttackPresetSmoke') === '1';")
+    private static native boolean attackPresetSmokeRequested();
+
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-local-mode-restore', mode);")
     private static native void markModeRestored(String mode);
+
+    @JSBody(params = {"slug", "name"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-unavailable',slug); r.setAttribute('data-mindustry-local-attack-unavailable-name',name);")
+    private static native void markAttackUnavailable(String slug, String name);
+
+    @JSBody(params = {"slug", "name"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-smoke','requested'); r.setAttribute('data-mindustry-local-attack-map',slug); r.setAttribute('data-mindustry-local-attack-map-name',name);")
+    private static native void markAttackPresetRequested(String slug, String name);
+
+    @JSBody(params = {"slug", "team", "cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-smoke','started'); r.setAttribute('data-mindustry-local-attack-map',slug); r.setAttribute('data-mindustry-local-attack-default-team',team); r.setAttribute('data-mindustry-local-attack-enemy-cores',String(cores));")
+    private static native void markAttackPresetStarted(String slug, String team, int cores);
+
+    @JSBody(params = {"cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-win-smoke','armed'); r.setAttribute('data-mindustry-local-attack-removed-cores',String(cores));")
+    private static native void markAttackPresetDestroyed(int cores);
+
+    @JSBody(params = {"winner"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-gameover','won'); r.setAttribute('data-mindustry-local-attack-winner',winner); r.setAttribute('data-mindustry-local-attack-smoke','complete');")
+    private static native void markAttackPresetWon(String winner);
 
     @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-map-catalog', 'ready'); document.documentElement.setAttribute('data-mindustry-map-count', String(count)); document.documentElement.setAttribute('data-mindustry-map-source', 'pinned-builtin-local-only');")
     private static native void markCatalogReady(int count);
