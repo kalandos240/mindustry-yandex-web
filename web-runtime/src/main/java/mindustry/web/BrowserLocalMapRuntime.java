@@ -492,9 +492,9 @@ public final class BrowserLocalMapRuntime{
                         throw new IllegalStateException("Game-over smoke requires canGameOver and an existing default-team core");
                     }
                     if(state.rules.attackMode){
-                        while(!state.rules.waveTeam.cores().isEmpty()){
-                            mindustry.gen.Building core = state.rules.waveTeam.core();
-                            core.damage(core.health + 1f);
+                        var enemyCores = state.rules.waveTeam.cores();
+                        for(int i = enemyCores.size - 1; i >= 0; i--){
+                            enemyCores.get(i).damage(Float.MAX_VALUE);
                         }
                     }else{
                         state.rules.defaultTeam.cores().clear();
