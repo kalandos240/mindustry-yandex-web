@@ -398,11 +398,16 @@ PY
   test -s "$ATTACK_CLOUD_SEED"
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudSeedFile=attack-cloud-seed.json&mindustryContinueSmoke=1&mindustryYandexAttackCloudSmoke=1&mindustryYandexTestDevice=desktop" \
+    --emulate-mobile \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudSeedFile=attack-cloud-seed.json&mindustryContinueSmoke=1&mindustryYandexAttackCloudSmoke=1&mindustryYandexTestDevice=mobile" \
     --profile "$second_profile" \
     --port 9272 \
     --timeout 90 \
     --require 'data-yandex-sdk="ready"' \
+    --require 'data-yandex-device-type="mobile"' \
+    --require 'data-yandex-device-source="yandex-sdk"' \
+    --require 'data-mindustry-input-mode="mobile"' \
+    --require 'data-mindustry-stock-input="mobile"' \
     --require 'data-yandex-test-cloud-seed-loaded="yes"' \
     --require 'data-yandex-cloud-restore="ready"' \
     --require 'data-yandex-cloud-restored-settings="yes"' \
@@ -424,7 +429,7 @@ PY
   test "$second_map" = "$first_map"
   test "$frames" -ge 3
 
-  echo "Yandex Attack cloud round-trip: $first_map SaveIO -> Player.setData ($cloud_bytes bytes) -> clean profile Player.getData -> Attack Continue frames=$frames PASS"
+  echo "Yandex Attack cloud round-trip: desktop $first_map SaveIO -> Player.setData ($cloud_bytes bytes) -> clean mobile profile Player.getData -> Attack Continue frames=$frames PASS"
 }
 
 if [ "${MINDUSTRY_SKIP_ATTACK_CLOUD:-0}" != "1" ]; then
