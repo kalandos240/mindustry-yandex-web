@@ -553,6 +553,7 @@ public final class BrowserLocalMapRuntime{
         stageCoreRules(state.rules);
         Gamemode restoredMode = savedMode(state.rules);
         persistSelectedMode(restoredMode);
+        markModeRestored(restoredMode.name());
         if(restoredMode == Gamemode.sandbox
         && (!state.rules.infiniteResources || !state.rules.waves || state.rules.waveTimer)){
             throw new IllegalStateException("Browser local Sandbox save restored inconsistent rules");
@@ -879,6 +880,9 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPerfSmoke') === '1';")
     private static native boolean perfSmokeRequested();
+
+    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-local-mode-restore', mode);")
+    private static native void markModeRestored(String mode);
 
     @JSBody(params = {"count"}, script = "document.documentElement.setAttribute('data-mindustry-map-catalog', 'ready'); document.documentElement.setAttribute('data-mindustry-map-count', String(count)); document.documentElement.setAttribute('data-mindustry-map-source', 'pinned-builtin-local-only');")
     private static native void markCatalogReady(int count);
