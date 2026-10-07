@@ -151,6 +151,19 @@ public final class BrowserLocalMapRuntime{
         return Core.settings.getInt("localgamemode", 0) == 1 ? Gamemode.sandbox : Gamemode.survival;
     }
 
+    private static Gamemode savedMode(Rules rules){
+        if(rules != null && rules.infiniteResources && rules.waves && !rules.waveTimer){
+            return Gamemode.sandbox;
+        }
+        return Gamemode.survival;
+    }
+
+    private static void persistSelectedMode(Gamemode mode){
+        Core.settings.put("localgamemode", mode == Gamemode.sandbox ? 1 : 0);
+        Core.settings.forceSave();
+        BrowserUiRuntime.syncLocalModeUi();
+    }
+
     public static void start(String slug){
         Map map = bySlug(slug);
         if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
@@ -538,6 +551,12 @@ public final class BrowserLocalMapRuntime{
         }
 
         stageCoreRules(state.rules);
+        Gamemode restoredMode = savedMode(state.rules);
+        persistSelectedMode(restoredMode);
+        if(restoredMode == Gamemode.sandbox
+        && (!state.rules.infiniteResources || !state.rules.waves || state.rules.waveTimer)){
+            throw new IllegalStateException("Browser local Sandbox save restored inconsistent rules");
+        }
         state.map = builtin;
         state.rules.sector = null;
         state.rules.editor = false;
@@ -576,7 +595,8 @@ public final class BrowserLocalMapRuntime{
         periodicSaveSmokeDone = false;
 
         state.set(mindustry.core.GameState.State.playing);
-        markContinued(slug(builtin), meta.wave, meta.version, world.width(), world.height());
+        markContinued(slug(builtin), meta.wave, meta.version, restoredMode.name(),
+            state.rules.infiniteResources, state.rules.waveTimer, world.width(), world.height());
     }
 
     public static void pause(){
@@ -914,8 +934,8 @@ public final class BrowserLocalMapRuntime{
     @JSBody(params = {"slug", "wave", "version", "width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-local-map-save', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-save-slug', slug); document.documentElement.setAttribute('data-mindustry-local-map-save-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-map-save-version', String(version)); document.documentElement.setAttribute('data-mindustry-local-map-save-world', String(width) + 'x' + String(height));")
     private static native void markSessionSaved(String slug, int wave, int version, int width, int height);
 
-    @JSBody(params = {"slug", "wave", "version", "width", "height"}, script = "document.documentElement.setAttribute('data-mindustry-local-continue', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slug', slug); document.documentElement.setAttribute('data-mindustry-local-continue-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-continue-version', String(version)); document.documentElement.setAttribute('data-mindustry-local-continue-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-state', 'playing'); document.documentElement.setAttribute('data-mindustry-local-map-slug', slug); document.documentElement.setAttribute('data-mindustry-local-map-world', String(width) + 'x' + String(height)); document.documentElement.setAttribute('data-mindustry-local-map-player', 'added'); document.documentElement.setAttribute('data-mindustry-local-map-loop', 'starting');")
-    private static native void markContinued(String slug, int wave, int version, int width, int height);
+    @JSBody(params = {"slug", "wave", "version", "mode", "infinite", "waveTimer", "width", "height"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-continue','ready'); r.setAttribute('data-mindustry-local-continue-slug',slug); r.setAttribute('data-mindustry-local-continue-wave',String(wave)); r.setAttribute('data-mindustry-local-continue-version',String(version)); r.setAttribute('data-mindustry-local-continue-world',String(width)+'x'+String(height)); r.setAttribute('data-mindustry-local-map-state','playing'); r.setAttribute('data-mindustry-local-map-slug',slug); r.setAttribute('data-mindustry-local-map-mode',mode); r.setAttribute('data-mindustry-local-map-infinite-resources',infinite?'true':'false'); r.setAttribute('data-mindustry-local-map-wave-timer',waveTimer?'true':'false'); r.setAttribute('data-mindustry-local-map-world',String(width)+'x'+String(height)); r.setAttribute('data-mindustry-local-map-player','added'); r.setAttribute('data-mindustry-local-map-loop','starting');")
+    private static native void markContinued(String slug, int wave, int version, String mode, boolean infinite, boolean waveTimer, int width, int height);
 
     @JSBody(params = {"slug", "wave", "tick", "updateId", "reason"}, script = "document.documentElement.setAttribute('data-mindustry-local-periodic-save', 'ready'); document.documentElement.setAttribute('data-mindustry-local-periodic-save-slug', slug); document.documentElement.setAttribute('data-mindustry-local-periodic-save-wave', String(wave)); document.documentElement.setAttribute('data-mindustry-local-periodic-save-tick', String(tick)); document.documentElement.setAttribute('data-mindustry-local-periodic-save-update-id', String(updateId)); document.documentElement.setAttribute('data-mindustry-local-periodic-save-reason', reason);")
     private static native void markPeriodicSaved(String slug, int wave, double tick, long updateId, String reason);
