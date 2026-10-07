@@ -266,6 +266,34 @@ test "$attack_mobile_map" = "$attack_map"
 test "$attack_mobile_frames" -ge 3
 test "$attack_mobile_winner" = "sharded"
 
+rm -rf /tmp/mindustry-release-archive-attack-loss-mobile
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --emulate-mobile \
+  --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryAttackPresetSmoke=1&mindustryGameOverSmoke=loss" \
+  --profile /tmp/mindustry-release-archive-attack-loss-mobile \
+  --port 9294 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-smoke-mode="production"' \
+  --require 'data-mindustry-local-map-mode="attack"' \
+  --require 'data-mindustry-local-map-state="playing"' \
+  --require 'data-mindustry-local-map-gameover-smoke="armed"' \
+  --require 'data-mindustry-local-map-gameover="ready"' \
+  --require 'data-mindustry-local-map-loop="game-over"' \
+  --require 'data-mindustry-input-mode="mobile"' \
+  --require 'data-mindustry-stock-input="mobile"' \
+  --require 'data-mindustry-network="local-only"' \
+  --require 'data-mindustry-network-mode="singleplayer-only"' > /tmp/mindustry-release-archive-attack-loss-mobile.html
+
+attack_loss_mobile_map="$(grep -o 'data-mindustry-local-map-slug="[^"]*"' /tmp/mindustry-release-archive-attack-loss-mobile.html | head -1 | cut -d'"' -f2)"
+attack_loss_mobile_frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' /tmp/mindustry-release-archive-attack-loss-mobile.html | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+attack_loss_mobile_winner="$(grep -o 'data-mindustry-local-map-gameover-winner="[^"]*"' /tmp/mindustry-release-archive-attack-loss-mobile.html | head -1 | cut -d'"' -f2)"
+test "$attack_loss_mobile_map" = "$attack_map"
+test "$attack_loss_mobile_frames" -ge 3
+test -n "$attack_loss_mobile_winner"
+test "$attack_loss_mobile_winner" != "sharded"
+test "$attack_loss_mobile_winner" != "derelict"
+
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --emulate-mobile \
   --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryAttackPresetSmoke=1&mindustrySaveSmoke=1&mindustryAutoSaveExitSmoke=1" \
@@ -379,4 +407,4 @@ test "$attack_desktop_resume_world" = "$attack_desktop_saved_world"
 test "$attack_desktop_resume_wave" = "$attack_desktop_saved_wave"
 test "$attack_desktop_resume_frames" -ge 3
 
-echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack victory desktop/mobile map=$attack_map winner=$attack_winner/$attack_mobile_winner frames=$attack_frames/$attack_mobile_frames + cold Continue mobile=$attack_resume_map/$attack_resume_frames desktop=$attack_desktop_resume_map/$attack_desktop_resume_frames PASS"
+echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack victory desktop/mobile map=$attack_map winner=$attack_winner/$attack_mobile_winner frames=$attack_frames/$attack_mobile_frames + packaged mobile defeat winner=$attack_loss_mobile_winner frames=$attack_loss_mobile_frames + cold Continue mobile=$attack_resume_map/$attack_resume_frames desktop=$attack_desktop_resume_map/$attack_desktop_resume_frames PASS"
