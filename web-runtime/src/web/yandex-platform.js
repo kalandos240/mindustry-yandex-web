@@ -19,7 +19,13 @@
         playerPromise: null,
         cloudSyncPromise: null,
         cloudLastPayload: '',
-        fullscreenButton: null
+        fullscreenButton: null,
+        bannerWanted: false,
+        bannerShowing: false,
+        bannerRequest: 0,
+        bannerReason: '',
+        bannerSyncPromise: Promise.resolve(true),
+        menuAdRequestedAt: 0
     };
 
     const cloudKey = 'mindustryWebCheckpointV1';
@@ -244,30 +250,84 @@
         api.ready();
         state.loadingReadySent = true;
         mark('data-yandex-loading-ready', 'sent');
+        void syncStickyBanner(!state.gameplayActive, state.gameplayActive ? 'game-ready-playing' : 'game-ready');
         return true;
     }
 
+    function syncStickyBanner(wanted, reason){
+        state.bannerWanted = !!wanted;
+        state.bannerReason = reason || '';
+        const request = ++state.bannerRequest;
+
+        // Serialize banner side effects. A previous implementation tried to repair stale
+        // async results recursively; rapid show -> hide transitions could make two
+        // resolved promises continuously invalidate each other and starve the browser
+        // microtask queue. Each queued operation now waits for the prior SDK call and
+        // applies the latest desired state at execution time.
+        state.bannerSyncPromise = state.bannerSyncPromise.catch(() => false).then(async () => {
+            const target = state.bannerWanted;
+            const adv = state.ysdk && state.ysdk.adv;
+            const method = target ? 'showBannerAdv' : 'hideBannerAdv';
+
+            if(!adv || typeof adv[method] !== 'function'){
+                mark('data-yandex-banner-state', 'unavailable');
+                mark('data-yandex-banner-reason', state.bannerReason || 'unsupported');
+                return false;
+            }
+
+            mark('data-yandex-banner-state', target ? 'show-pending' : 'hide-pending');
+            try{
+                const result = await Promise.resolve(adv[method]());
+                state.bannerShowing = !!(result && result.stickyAdvIsShowing);
+
+                if(target){
+                    mark('data-yandex-banner-state', state.bannerShowing ? 'shown' : 'not-shown');
+                }else{
+                    mark('data-yandex-banner-state', state.bannerShowing ? 'still-shown' : 'hidden');
+                }
+
+                const detail = result && result.reason ? String(result.reason) : state.bannerReason;
+                if(detail) mark('data-yandex-banner-reason', detail);
+                mark('data-yandex-banner-request', String(request));
+                return state.bannerShowing === target;
+            }catch(error){
+                mark('data-yandex-banner-state', 'error');
+                mark('data-yandex-banner-reason', String(error && error.message ? error.message : error));
+                return false;
+            }
+        });
+        return state.bannerSyncPromise;
+    }
+
     function gameplayStart(){
-        if(state.gameplayActive) return false;
+        if(state.gameplayActive){
+            void syncStickyBanner(false, 'gameplay-start');
+            return false;
+        }
         state.gameplayActive = true;
+        void syncStickyBanner(false, 'gameplay-start');
         if(!state.paused) mark('data-yandex-game-state', 'playing');
         const api = state.ysdk && state.ysdk.features && state.ysdk.features.GameplayAPI;
         if(api && typeof api.start === 'function') api.start();
         return true;
     }
 
-    function gameplayStop(){
-        if(!state.gameplayActive) return false;
-        state.gameplayActive = false;
-        if(!state.paused) mark('data-yandex-game-state', 'ready');
-        const api = state.ysdk && state.ysdk.features && state.ysdk.features.GameplayAPI;
-        if(api && typeof api.stop === 'function') api.stop();
-        return true;
+    function gameplayStop(showBanner = true){
+        const changed = state.gameplayActive;
+        if(changed){
+            state.gameplayActive = false;
+            if(!state.paused) mark('data-yandex-game-state', 'ready');
+            const api = state.ysdk && state.ysdk.features && state.ysdk.features.GameplayAPI;
+            if(api && typeof api.stop === 'function') api.stop();
+        }
+        void syncStickyBanner(showBanner, showBanner ? 'gameplay-stop' : 'gameplay-stop-ad');
+        return changed;
     }
 
     function finishFullscreenAdv(){
         if(!state.adResumeGameplay){
             state.adInFlight = false;
+            void syncStickyBanner(true, 'fullscreen-ad-finished-menu');
             return;
         }
 
@@ -301,7 +361,10 @@
         state.adResumeGameplay = state.gameplayActive;
         state.adWaitingForResume = false;
         state.adInFlight = true;
-        if(state.adResumeGameplay) gameplayStop();
+        // Sticky banners and fullscreen ads must never overlap. If this ad interrupts
+        // gameplay, stop GameplayAPI without exposing the menu banner in between.
+        if(state.adResumeGameplay) gameplayStop(false);
+        else void syncStickyBanner(false, 'fullscreen-ad-menu');
 
         let finalized = false;
         const finalize = (kind, payload) => {
@@ -344,24 +407,41 @@
         return true;
     }
 
+    function beginMenuFullscreenAdv(){
+        state.menuAdRequestedAt = performance.now();
+        mark('data-yandex-menu-ad-intent', 'ready');
+    }
+
     async function showMenuFullscreenAdv(){
-        // This path is called only after the user's explicit Back action has already
-        // saved/reset the Mindustry world. Keep GameplayAPI stopped for the menu instead
-        // of restoring the pre-ad gameplay state when game_api_resume arrives.
+        // beginMenuFullscreenAdv() is called at the start of the user's Back action,
+        // before Mindustry performs its local save/reset. Measure the full click-to-ad
+        // path that Yandex moderation observes.
+        const requestedAt = state.menuAdRequestedAt || performance.now();
+        state.menuAdRequestedAt = 0;
         if(state.gameplayActive) gameplayStop();
 
         const storage = globalThis.__mindustryStorage;
         if(storage && typeof storage.lifecycleFlush === 'function'){
             mark('data-yandex-menu-ad-storage', 'pending');
-            const durable = await storage.lifecycleFlush('before-menu-ad');
+            let durable = false;
+            try{
+                durable = await withTimeout(
+                    storage.lifecycleFlush('before-menu-ad'),
+                    1200,
+                    'Pre-ad storage flush'
+                );
+            }catch(error){
+                mark('data-yandex-menu-ad-storage', 'timeout');
+                mark('data-yandex-menu-ad-state', 'skipped-storage-timeout');
+                return false;
+            }
             mark('data-yandex-menu-ad-storage', durable ? 'ready' : 'error');
             if(!durable) return false;
         }
 
-        await syncCloudCheckpoint('menu-transition', true);
-
         if(!state.ysdk || !state.ysdk.adv || typeof state.ysdk.adv.showFullscreenAdv !== 'function'){
             mark('data-yandex-menu-ad-state', 'unavailable');
+            void syncCloudCheckpoint('menu-transition', true);
             return false;
         }
 
@@ -373,12 +453,18 @@
             return false;
         }
 
+        mark('data-yandex-menu-ad-delay-ms', String(Math.round(performance.now() - requestedAt)));
         mark('data-yandex-menu-ad-state', 'requested');
-        return showFullscreenAdv({
+        const requested = showFullscreenAdv({
             onOpen: () => mark('data-yandex-menu-ad-state', 'open'),
             onClose: wasShown => mark('data-yandex-menu-ad-state', wasShown ? 'closed-shown' : 'closed-not-shown'),
             onError: () => mark('data-yandex-menu-ad-state', 'error')
         });
+
+        // Cloud persistence still runs for this transition, but it must not delay the ad.
+        // game_api_pause will coalesce with this call through cloudSyncPromise.
+        void syncCloudCheckpoint('menu-transition', true);
+        return requested;
     }
 
     async function getPlayer(){
@@ -608,8 +694,10 @@
         loadingReady,
         gameplayStart,
         gameplayStop,
+        syncStickyBanner,
         toggleFullscreen,
         showFullscreenAdv,
+        beginMenuFullscreenAdv,
         showMenuFullscreenAdv,
         getPlayer,
         syncCloudCheckpoint,

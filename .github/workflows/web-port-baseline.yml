@@ -136,6 +136,19 @@ jobs:
           python3 scripts/patch-mindustry-no-links-web.py
           python3 scripts/patch-mindustry-external-urls-web.py
 
+      - name: Verify applied local gameplay overlays
+        run: |
+          logic='work/Mindustry/core/src/mindustry/core/Logic.java'
+          local_runtime='web-runtime/src/main/java/mindustry/web/BrowserLocalMapRuntime.java'
+          browser_app='web-runtime/src/main/java/mindustry/web/BrowserApplication.java'
+          grep -Fq 'Local attack-mode maps are supported on Web; preserve the selected map rule.' "$local_runtime"
+          grep -Fq 'int countAlive = state.teams.getActive().count(t -> t.isAlive() && t.team != Team.derelict);' "$logic"
+          grep -Fq 'stock buildAi/rtsAi/prebuildAi/fillItems are now supported by the Web loop.' "$local_runtime"
+          grep -Fq 'if(data.rtsAi == null) data.rtsAi = new RtsAI(data);' "$logic"
+          grep -Fq 'if(data.buildAi == null) data.buildAi = new BaseBuilderAI(data);' "$logic"
+          grep -Fq 'Vars.state.isPlaying() && !Vars.state.gameOver' "$browser_app"
+          echo 'Local Attack + stock Team AI + Yandex Game Over lifecycle applied before TeaVM compile'
+
       - name: Verify applied Web renderer hot-path patch
         run: |
           sprite='work/Arc/arc-core/src/arc/graphics/g2d/SpriteBatch.java'

@@ -30,6 +30,7 @@ cat > "$SDK_STUB" <<'JS'
     let pauseScheduled = false;
     let adScheduled = false;
     let adTriggered = false;
+    let bannerShowing = false;
 
     const params = new URLSearchParams(location.search);
     const adSmoke = params.get('mindustryYandexAdSmoke') === '1';
@@ -153,6 +154,29 @@ cat > "$SDK_STUB" <<'JS'
                     }
                 },
                 adv: {
+                    async getBannerAdvStatus(){
+                        count('data-yandex-test-banner-status-count');
+                        return {stickyAdvIsShowing: bannerShowing};
+                    },
+                    async showBannerAdv(){
+                        bannerShowing = true;
+                        count('data-yandex-test-banner-show-count');
+                        root.setAttribute('data-yandex-test-banner-visible', 'yes');
+                        const platform = globalThis.__mindustryYandex;
+                        if(platform && platform.gameplayActive){
+                            root.setAttribute('data-yandex-test-banner-gameplay-violation', 'yes');
+                        }
+                        if(platform && platform.adInFlight){
+                            root.setAttribute('data-yandex-test-banner-fullscreen-violation', 'yes');
+                        }
+                        return {stickyAdvIsShowing: true};
+                    },
+                    async hideBannerAdv(){
+                        bannerShowing = false;
+                        count('data-yandex-test-banner-hide-count');
+                        root.setAttribute('data-yandex-test-banner-visible', 'no');
+                        return {stickyAdvIsShowing: false};
+                    },
                     showFullscreenAdv({callbacks} = {}){
                         adTriggered = true;
                         if(menuAdSmoke){
@@ -211,6 +235,12 @@ cat > "$SDK_STUB" <<'JS'
                     }
                     return {
                         async setData(data, flush){
+                            // Menu interstitial CI deliberately makes cloud persistence
+                            // slower than Yandex's 2s ad-delay budget. The ad must already
+                            // be open while this background sync is still pending.
+                            if(menuAdSmoke){
+                                await new Promise(resolve => setTimeout(resolve, 2500));
+                            }
                             Object.assign(playerData, data || {});
                             count('data-yandex-test-cloud-set-count');
                             root.setAttribute('data-yandex-test-cloud-flush', flush === true ? 'true' : 'false');
@@ -314,6 +344,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-playing-module-order="logic-control-renderer-ui"' \
   --require 'data-mindustry-playing-state="restored-menu"' \
   --require 'data-mindustry-ui-sync="ready"' \
+  --require 'data-yandex-banner-state="shown"' \
+  --require 'data-yandex-test-banner-visible="yes"' \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-network="yandex-sdk-only"' > "$DOM"
 
@@ -326,7 +358,13 @@ fi
 grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$DOM"
-echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + input reset + BrowserAudio + gameplay transport PASS'
+grep -Eq 'data-yandex-test-banner-show-count="[1-9][0-9]*"' "$DOM"
+grep -Eq 'data-yandex-test-banner-hide-count="[1-9][0-9]*"' "$DOM"
+if grep -q 'data-yandex-test-banner-gameplay-violation="yes"' "$DOM"; then
+  echo 'Sticky banner was shown while GameplayAPI was active.' >&2
+  exit 1
+fi
+echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + input reset + BrowserAudio + gameplay transport + menu-only sticky banner PASS'
 
 CLOUD_PROFILE="/tmp/mindustry-yandex-cloud-boot-profile"
 CLOUD_DOM="/tmp/mindustry-yandex-cloud-boot-dom.html"
@@ -484,6 +522,8 @@ run_ad_lifecycle(){
     --require 'data-mindustry-audio-resume-observed="yes"' \
     --require 'data-mindustry-audio-platform="running"' \
     --require 'data-yandex-game-state="playing"' \
+    --require 'data-yandex-banner-state="hidden"' \
+    --require 'data-yandex-test-banner-visible="no"' \
     --require 'data-mindustry-canvas-viewport-match="true"' \
     --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
 
@@ -492,7 +532,11 @@ run_ad_lifecycle(){
   grep -Eq 'data-yandex-test-gameplay-start-count="([2-9]|[1-9][0-9]+)"' "$dom"
   grep -Eq 'data-yandex-test-gameplay-stop-count="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-platform-resume-frame-index="[1-9][0-9]*"' "$dom"
-  echo "Yandex fullscreen ad lifecycle ($device): held input -> pause/audio stop -> close-before-resume race -> input reset -> viewport-aligned real Ground Zero frame after gameplay/audio resume PASS"
+  if grep -q 'data-yandex-test-banner-fullscreen-violation="yes"' "$dom"; then
+    echo "Sticky banner overlapped fullscreen ad on $device." >&2
+    exit 1
+  fi
+  echo "Yandex fullscreen ad lifecycle ($device): held input -> pause/audio stop -> sticky hidden -> close-before-resume race -> input reset -> viewport-aligned real Ground Zero frame after gameplay/audio resume PASS"
 }
 
 run_ad_lifecycle desktop 9266
@@ -519,9 +563,11 @@ run_menu_ad_transition(){
     --require 'data-mindustry-campaign-back-autosave="ready"' \
     --require 'data-mindustry-campaign-return="menu"' \
     --require 'data-mindustry-campaign-state="menu"' \
+    --require 'data-yandex-menu-ad-intent="ready"' \
     --require 'data-yandex-test-menu-ad-call="yes"' \
     --require 'data-yandex-test-menu-ad-gameplay-before="stopped"' \
     --require 'data-yandex-menu-ad-storage="ready"' \
+    --require 'data-yandex-menu-ad-delay-ms="' \
     --require 'data-yandex-test-cloud-set-count="1"' \
     --require 'data-yandex-test-cloud-flush="true"' \
     --require 'data-yandex-test-cloud-under-limit="yes"' \
@@ -539,6 +585,8 @@ run_menu_ad_transition(){
     --require 'data-mindustry-input-reset="platform-pause"' \
     --require 'data-mindustry-audio-platform="running"' \
     --require 'data-yandex-game-state="ready"' \
+    --require 'data-yandex-banner-state="shown"' \
+    --require 'data-yandex-test-banner-visible="yes"' \
     --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
 
   if grep -q 'data-yandex-test-ad-gameplay-restarted="yes"' "$dom"; then
@@ -546,11 +594,19 @@ run_menu_ad_transition(){
     grep -o '<html[^>]*>' "$dom" >&2 || true
     exit 1
   fi
+  if grep -q 'data-yandex-test-banner-fullscreen-violation="yes"' "$dom"; then
+    echo "Sticky banner overlapped menu fullscreen ad on $device." >&2
+    exit 1
+  fi
   grep -q 'data-yandex-test-gameplay-start-count="1"' "$dom"
   grep -q 'data-yandex-test-gameplay-stop-count="1"' "$dom"
   grep -Eq 'data-yandex-test-cloud-campaign-bytes="[1-9][0-9]{2,}"' "$dom"
   grep -Eq 'data-yandex-test-cloud-bytes="[1-9][0-9]*"' "$dom"
-  echo "Yandex menu interstitial ($device): campaign autosave -> durable storage -> bounded cloud checkpoint -> menu-only ad -> no gameplay restart PASS"
+  local ad_delay
+  ad_delay="$(grep -o 'data-yandex-menu-ad-delay-ms="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+  test -n "$ad_delay"
+  test "$ad_delay" -lt 2000
+  echo "Yandex menu interstitial ($device): campaign autosave -> <=${ad_delay}ms durable pre-ad gate -> ad requested before intentionally-slow cloud sync -> no gameplay restart PASS"
 }
 
 run_menu_ad_transition desktop 9268

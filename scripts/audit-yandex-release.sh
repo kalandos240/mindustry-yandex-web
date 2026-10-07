@@ -144,6 +144,15 @@ grep -Fq "ysdk.on('game_api_resume'" "$PLATFORM" || fail "game_api_resume subscr
 grep -Fq 'LoadingAPI' "$PLATFORM" || fail "LoadingAPI.ready integration missing"
 grep -Fq 'GameplayAPI' "$PLATFORM" || fail "GameplayAPI integration missing"
 grep -Fq 'showFullscreenAdv' "$PLATFORM" || fail "Yandex fullscreen advertisement integration missing"
+grep -Fq 'showBannerAdv' "$PLATFORM" || fail "Yandex sticky-banner show integration missing"
+grep -Fq 'hideBannerAdv' "$PLATFORM" || fail "Yandex sticky-banner hide integration missing"
+grep -Fq "syncStickyBanner(false, 'gameplay-start')" "$PLATFORM" || fail "sticky banner must hide when gameplay starts"
+grep -Fq "function gameplayStop(showBanner = true)" "$PLATFORM" || fail "gameplay stop banner policy missing"
+grep -Fq "syncStickyBanner(showBanner, showBanner ? 'gameplay-stop' : 'gameplay-stop-ad')" "$PLATFORM" || fail "sticky banner must follow gameplay-stop policy"
+grep -Fq "gameplayStop(false)" "$PLATFORM" || fail "fullscreen ads must stop gameplay without exposing sticky banner"
+grep -Fq "data-yandex-menu-ad-delay-ms" "$PLATFORM" || fail "menu interstitial delay telemetry missing"
+grep -Fq "beginMenuFullscreenAdv" "$PLATFORM" || fail "menu interstitial intent timestamp hook missing"
+grep -Fq "void syncCloudCheckpoint('menu-transition', true);" "$PLATFORM" || fail "menu interstitial cloud sync must remain non-blocking"
 grep -Fq 'getPlayer' "$PLATFORM" || fail "Yandex Player bridge missing"
 
 # Mobile/browser UX requirements: full active area, no page scroll/swipe refresh,
