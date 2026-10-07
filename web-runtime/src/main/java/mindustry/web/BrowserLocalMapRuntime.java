@@ -146,12 +146,18 @@ public final class BrowserLocalMapRuntime{
         return selectedMode() == Gamemode.sandbox ? 1 : 0;
     }
 
+    /** Pinned v159.7 built-ins whose stock map cache contains multiple teams. */
+    public static boolean supportsAttack(String slug){
+        return "veins".equals(slug) || "glacier".equals(slug) || "passage".equals(slug);
+    }
+
     private static Gamemode selectedMode(){
         if(Core.settings == null) return Gamemode.survival;
         return Core.settings.getInt("localgamemode", 0) == 1 ? Gamemode.sandbox : Gamemode.survival;
     }
 
     private static Gamemode savedMode(Rules rules){
+        if(rules != null && rules.attackMode) return Gamemode.attack;
         if(rules != null && rules.infiniteResources && rules.waves && !rules.waveTimer){
             return Gamemode.sandbox;
         }
@@ -159,6 +165,7 @@ public final class BrowserLocalMapRuntime{
     }
 
     private static void persistSelectedMode(Gamemode mode){
+        // Attack is chosen per-map, not as the global Survival/Sandbox preference.
         Core.settings.put("localgamemode", mode == Gamemode.sandbox ? 1 : 0);
         Core.settings.forceSave();
         BrowserUiRuntime.syncLocalModeUi();
@@ -167,11 +174,22 @@ public final class BrowserLocalMapRuntime{
     public static void start(String slug){
         Map map = bySlug(slug);
         if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
-        start(map);
+        start(map, selectedMode());
+    }
+
+    public static void startAttack(String slug){
+        if(!supportsAttack(slug)) return;
+        Map map = bySlug(slug);
+        if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
+        start(map, Gamemode.attack);
     }
 
     /** Start the selected packaged map through the stock local world/play lifecycle. */
     public static void start(Map map){
+        start(map, selectedMode());
+    }
+
+    private static void start(Map map, Gamemode mode){
         if(!initialized) throw new IllegalStateException("Browser local map catalog is not initialized");
         if(active) throw new IllegalStateException("A browser local map session is already active");
         if(map == null || !catalog.contains(map, true)){
@@ -191,7 +209,8 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        Gamemode mode = selectedMode();
+        if(mode == Gamemode.attack && !supportsAttack(slug)) return;
+
         // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
         // reads Map.spawns, which is still zero before the MSAV body is loaded here.
         // The packaged-map world load below is the authoritative validation boundary.
@@ -199,6 +218,9 @@ public final class BrowserLocalMapRuntime{
         stageCoreRules(rules);
         if(mode == Gamemode.sandbox && (!rules.infiniteResources || !rules.waves || rules.waveTimer)){
             throw new IllegalStateException("Stock Sandbox rules were not applied on Web");
+        }
+        if(mode == Gamemode.attack && !rules.attackMode){
+            throw new IllegalStateException("Stock Attack rules were not applied on Web");
         }
 
         // World.loadMap() intentionally converts any SaveIO failure into the single
@@ -550,13 +572,16 @@ public final class BrowserLocalMapRuntime{
             throw new IllegalStateException("Browser local save restored unsupported game state");
         }
 
-        stageCoreRules(state.rules);
         Gamemode restoredMode = savedMode(state.rules);
+        stageCoreRules(state.rules);
         persistSelectedMode(restoredMode);
         markModeRestored(restoredMode.name());
         if(restoredMode == Gamemode.sandbox
         && (!state.rules.infiniteResources || !state.rules.waves || state.rules.waveTimer)){
             throw new IllegalStateException("Browser local Sandbox save restored inconsistent rules");
+        }
+        if(restoredMode == Gamemode.attack && !state.rules.attackMode){
+            throw new IllegalStateException("Browser local Attack save restored inconsistent rules");
         }
         state.map = builtin;
         state.rules.sector = null;
@@ -738,6 +763,18 @@ public final class BrowserLocalMapRuntime{
             return;
         }
 
+        if(attackPresetSmokeRequested()){
+            for(String slug : builtinSlugs){
+                if(!supportsAttack(slug)) continue;
+                Map map = bySlug(slug);
+                if(map != null){
+                    start(map, Gamemode.attack);
+                    return;
+                }
+            }
+            throw new IllegalStateException("No pinned built-in map is valid for local Attack mode");
+        }
+
         String requested = requestedTestMap();
         if(requested == null || requested.isEmpty()) return;
 
@@ -880,6 +917,9 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPerfSmoke') === '1';")
     private static native boolean perfSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryAttackPresetSmoke') === '1';")
+    private static native boolean attackPresetSmokeRequested();
 
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-local-mode-restore', mode);")
     private static native void markModeRestored(String mode);
