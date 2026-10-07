@@ -37,7 +37,7 @@ run_attack(){
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     "${device_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1&mindustryAttackSmoke=1" \
     --profile "$profile" \
     --port "$cdp" \
     --timeout 90 \
@@ -47,23 +47,29 @@ run_attack(){
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
     --require 'data-mindustry-local-map-mode="attack"' \
     --require 'data-mindustry-local-map-state="playing"' \
-    --require 'data-mindustry-local-map-loop="live"' \
+    --require 'data-mindustry-attack-smoke="armed"' \
+    --require 'data-mindustry-attack-core-destroyed="yes"' \
+    --require 'data-mindustry-local-map-gameover="ready"' \
+    --require 'data-mindustry-local-map-loop="game-over"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
-  local map frames
+  local map frames winner
   map="$(grep -o 'data-mindustry-local-map-slug="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
   frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+  winner="$(grep -o 'data-mindustry-local-map-gameover-winner="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
 
   test -n "$map"
   test -n "$frames"
+  test -n "$winner"
   case "$map" in
     veins|glacier|passage) ;;
     *) echo "Unexpected non-multi-team built-in Attack map: $map" >&2; exit 1 ;;
   esac
   test "$frames" -ge 3
+  test "$winner" = "sharded"
 
-  echo "Local Attack ($label): pinned multi-team map=$map -> stock Attack rules -> production frames=$frames PASS"
+  echo "Local Attack ($label): pinned multi-team map=$map -> real enemy CoreBuild destruction -> stock winner=$winner after frames=$frames PASS"
 }
 
 run_attack desktop desktop 0 \
