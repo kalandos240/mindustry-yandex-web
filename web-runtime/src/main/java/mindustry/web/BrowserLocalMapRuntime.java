@@ -412,13 +412,15 @@ public final class BrowserLocalMapRuntime{
         ui.update();
         diagPhase("ui-ready");
 
-        // A local HUD action may intentionally return to the map menu during Scene.act().
+        // HUD actions run during Scene.act(). Back may return to the menu, while
+        // Pause may transition this just-completed simulation tick into paused state.
         if(!active || state.isMenu()) return;
-        if(!state.isPlaying()){
-            throw new IllegalStateException("Browser production map unexpectedly left playing state");
-        }
         if(state.updateId != beforeUpdateId + 1L){
             throw new IllegalStateException("Browser production map update clock advanced incorrectly");
+        }
+        if(state.isPaused()) return;
+        if(!state.isPlaying()){
+            throw new IllegalStateException("Browser production map unexpectedly left playing state");
         }
 
         frames++;
