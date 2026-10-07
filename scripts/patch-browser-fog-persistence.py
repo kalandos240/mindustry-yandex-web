@@ -31,6 +31,13 @@ old_start = '''        periodicSaveTick = state.tick;
 
         try{
 '''
+attack_start = '''        periodicSaveTick = state.tick;
+        periodicSaveSmokeDone = false;
+        attackPresetSmokeArmed = false;
+        active = true;
+
+        try{
+'''
 new_start = '''        periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
         fogPersistSeedDone = false;
@@ -39,9 +46,21 @@ new_start = '''        periodicSaveTick = state.tick;
 
         try{
 '''
-if text.count(old_start) != 1:
+new_attack_start = '''        periodicSaveTick = state.tick;
+        periodicSaveSmokeDone = false;
+        fogPersistSeedDone = false;
+        fogPersistRestoreDone = false;
+        attackPresetSmokeArmed = false;
+        active = true;
+
+        try{
+'''
+if text.count(old_start) == 1:
+    text = text.replace(old_start, new_start, 1)
+elif text.count(attack_start) == 1:
+    text = text.replace(attack_start, new_attack_start, 1)
+else:
     raise SystemExit("Fog persistence new-session reset anchor no longer matches")
-text = text.replace(old_start, new_start, 1)
 
 old_rules = '''        if(fogSmokeRequested()){
             // Test-only: force both dynamic visibility and static exploration fog on a
@@ -155,14 +174,27 @@ text = text.replace(old_helper, new_helper, 1)
 old_cache = '''        periodicSaveSmoke = periodicSaveSmokeRequested();
     }
 '''
+attack_cache = '''        periodicSaveSmoke = periodicSaveSmokeRequested();
+        attackPresetSmoke = attackPresetSmokeRequested();
+    }
+'''
 new_cache = '''        periodicSaveSmoke = periodicSaveSmokeRequested();
         fogPersistSeedSmoke = fogPersistSeedRequested();
         fogPersistRestoreSmoke = fogPersistRestoreRequested();
     }
 '''
-if text.count(old_cache) != 1:
+new_attack_cache = '''        periodicSaveSmoke = periodicSaveSmokeRequested();
+        attackPresetSmoke = attackPresetSmokeRequested();
+        fogPersistSeedSmoke = fogPersistSeedRequested();
+        fogPersistRestoreSmoke = fogPersistRestoreRequested();
+    }
+'''
+if text.count(old_cache) == 1:
+    text = text.replace(old_cache, new_cache, 1)
+elif text.count(attack_cache) == 1:
+    text = text.replace(attack_cache, new_attack_cache, 1)
+else:
     raise SystemExit("Fog persistence session smoke-cache anchor no longer matches")
-text = text.replace(old_cache, new_cache, 1)
 
 old_continue_head = '''    public static void continueSaved(){
         telemetry = smokeTelemetryRequested();
@@ -196,15 +228,30 @@ old_return_reset = '''        periodicSaveTick = 0.0;
         periodicSaveSmokeDone = false;
         logic.reset();
 '''
+attack_return_reset = '''        periodicSaveTick = 0.0;
+        periodicSaveSmokeDone = false;
+        attackPresetSmokeArmed = false;
+        logic.reset();
+'''
 new_return_reset = '''        periodicSaveTick = 0.0;
         periodicSaveSmokeDone = false;
         fogPersistSeedDone = false;
         fogPersistRestoreDone = false;
         logic.reset();
 '''
-if text.count(old_return_reset) != 1:
+new_attack_return_reset = '''        periodicSaveTick = 0.0;
+        periodicSaveSmokeDone = false;
+        fogPersistSeedDone = false;
+        fogPersistRestoreDone = false;
+        attackPresetSmokeArmed = false;
+        logic.reset();
+'''
+if text.count(old_return_reset) == 1:
+    text = text.replace(old_return_reset, new_return_reset, 1)
+elif text.count(attack_return_reset) == 1:
+    text = text.replace(attack_return_reset, new_attack_return_reset, 1)
+else:
     raise SystemExit("Fog persistence return reset anchor no longer matches periodic runtime")
-text = text.replace(old_return_reset, new_return_reset, 1)
 
 old_query = '''    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryFogSmoke') === '1';")
     private static native boolean fogSmokeRequested();
