@@ -625,13 +625,16 @@ public final class BrowserLocalMapRuntime{
             throw new IllegalStateException("Browser local save restored unsupported game state");
         }
 
-        stageCoreRules(state.rules);
         Gamemode restoredMode = savedMode(state.rules);
+        stageCoreRules(state.rules);
         persistSelectedMode(restoredMode);
         markModeRestored(restoredMode.name());
         if(restoredMode == Gamemode.sandbox
         && (!state.rules.infiniteResources || !state.rules.waves || state.rules.waveTimer)){
             throw new IllegalStateException("Browser local Sandbox save restored inconsistent rules");
+        }
+        if(restoredMode == Gamemode.attack && !state.rules.attackMode){
+            throw new IllegalStateException("Browser local Attack save restored inconsistent rules");
         }
         state.map = builtin;
         state.rules.sector = null;
@@ -669,6 +672,7 @@ public final class BrowserLocalMapRuntime{
         saveSmokeArmed = false;
         periodicSaveTick = state.tick;
         periodicSaveSmokeDone = false;
+        attackPresetSmokeArmed = false;
 
         state.set(mindustry.core.GameState.State.playing);
         markContinued(slug(builtin), meta.wave, meta.version, restoredMode.name(),
