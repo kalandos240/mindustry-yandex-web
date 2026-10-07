@@ -67,6 +67,16 @@ old_methods = '''    private static void startEnemyPathSmoke(){
 new_methods = '''    private static void startAttackSmoke(){
         if(!attackSmokeRequested()) return;
 
+        if(attackPresetSmokeRequested()){
+            attackSmokeCore = firstAttackEnemyCore();
+            if(attackSmokeCore == null){
+                throw new IllegalStateException("Real Attack smoke loaded no enemy core");
+            }
+            attackSmokeDestroyed = false;
+            markAttackSmokeArmed(attackSmokeCore.id, attackSmokeCore.team.name);
+            return;
+        }
+
         state.rules.attackMode = true;
         state.rules.waves = false;
         state.rules.waveTimer = false;
@@ -111,6 +121,15 @@ new_methods = '''    private static void startAttackSmoke(){
         markAttackSmokeArmed(attackSmokeCore.id, state.rules.waveTeam.name);
     }
 
+    private static mindustry.gen.Building firstAttackEnemyCore(){
+        for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
+            if(data.team != state.rules.defaultTeam && data.team != Team.derelict && !data.cores.isEmpty()){
+                return data.cores.first();
+            }
+        }
+        return null;
+    }
+
     private static boolean attackCoreFootprintClear(int x, int y){
         // CoreShard is 3x3. This test setup only needs a collision-safe empty footprint;
         // Tile.setBlock then exercises the real CoreBuild creation/team bookkeeping.
@@ -135,9 +154,17 @@ new_methods = '''    private static void startAttackSmoke(){
 
         mindustry.gen.Building core = attackSmokeCore;
         core.damage(core.health + 1f);
-        if(core.isValid() || !state.rules.waveTeam.cores().isEmpty()){
-            throw new IllegalStateException("Local-authoritative enemy core destruction did not update team core state");
+        if(core.isValid()){
+            throw new IllegalStateException("Local-authoritative enemy core destruction did not remove the CoreBuild");
         }
+
+        if(attackPresetSmokeRequested()){
+            attackSmokeCore = firstAttackEnemyCore();
+            if(attackSmokeCore != null) return;
+        }else if(!state.rules.waveTeam.cores().isEmpty()){
+            throw new IllegalStateException("Synthetic Attack smoke left the wave-team core alive");
+        }
+
         attackSmokeDestroyed = true;
         attackSmokeCore = null;
         markAttackSmokeDestroyed();
