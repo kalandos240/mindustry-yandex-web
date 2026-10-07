@@ -15,6 +15,17 @@ test -s "$WEB_DIR/assets/logicids.dat"
 test -s "$WEB_DIR/browser-storage.js"
 test -s "$WEB_DIR/browser-audio.js"
 
+attack_en="$(grep -E '^mode\.attack\.name[[:space:]]*=' "$EN_BUNDLE" | head -1 | cut -d= -f2- | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+attack_ru="$(grep -E '^mode\.attack\.name[[:space:]]*=' "$RU_BUNDLE" | head -1 | cut -d= -f2- | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+test -n "$attack_en"
+test -n "$attack_ru"
+if [ "$attack_en" = "$attack_ru" ]; then
+  echo "Attack mode label did not localize between English and Russian bundles: $attack_en" >&2
+  exit 1
+fi
+grep -Fq 'Core.bundle.get("mode.attack.name", "Attack")' \
+  "$ROOT_DIR/web-runtime/src/main/java/mindustry/web/BrowserUiRuntime.java"
+
 bash "$ROOT_DIR/scripts/audit-yandex-release.sh"
 
 for bundle in "$EN_BUNDLE" "$RU_BUNDLE"; do
