@@ -171,7 +171,7 @@ grep -Eq 'data-mindustry-assets-preload-ms="[1-9][0-9]*"' /tmp/mindustry-release
 
 # Prove that campaign and local Attack assets remain loadable after ZIP
 # packaging/extraction, not merely present by filename.
-rm -rf /tmp/mindustry-release-archive-serpulo /tmp/mindustry-release-archive-erekir /tmp/mindustry-release-archive-attack /tmp/mindustry-release-archive-attack-mobile
+rm -rf /tmp/mindustry-release-archive-serpulo /tmp/mindustry-release-archive-erekir /tmp/mindustry-release-archive-attack /tmp/mindustry-release-archive-attack-mobile /tmp/mindustry-release-archive-attack-continue-mobile
 
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1" \
@@ -256,4 +256,63 @@ esac
 test "$attack_mobile_map" = "$attack_map"
 test "$attack_mobile_frames" -ge 3
 
-echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack desktop/mobile map=$attack_map frames=$attack_frames/$attack_mobile_frames PASS"
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --emulate-mobile \
+  --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryAttackPresetSmoke=1&mindustrySaveSmoke=1&mindustryAutoSaveExitSmoke=1" \
+  --profile /tmp/mindustry-release-archive-attack-continue-mobile \
+  --port 9290 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-smoke-mode="production"' \
+  --require 'data-mindustry-input-mode="mobile"' \
+  --require 'data-mindustry-stock-input="mobile"' \
+  --require 'data-mindustry-local-map-mode="attack"' \
+  --require 'data-mindustry-local-map-save="ready"' \
+  --require 'data-mindustry-local-save-state="saved"' \
+  --require 'data-mindustry-local-save-slot="available"' \
+  --require 'data-mindustry-local-save-flush="ready"' \
+  --require 'data-mindustry-storage-write-policy="task-coalesced-readwrite"' \
+  --require 'data-mindustry-local-autosave="ready"' \
+  --require 'data-mindustry-local-map-state="menu"' \
+  --require 'data-mindustry-network="local-only"' \
+  --require 'data-mindustry-network-mode="singleplayer-only"' > /tmp/mindustry-release-archive-attack-continue-mobile-first.html
+
+attack_saved_map="$(grep -o 'data-mindustry-local-map-save-slug="[^"]*"' /tmp/mindustry-release-archive-attack-continue-mobile-first.html | head -1 | cut -d'"' -f2)"
+attack_saved_world="$(grep -o 'data-mindustry-local-map-save-world="[^"]*"' /tmp/mindustry-release-archive-attack-continue-mobile-first.html | head -1 | cut -d'"' -f2)"
+attack_saved_wave="$(grep -o 'data-mindustry-local-map-save-wave="[0-9]*"' /tmp/mindustry-release-archive-attack-continue-mobile-first.html | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+case "$attack_saved_map" in
+  veins|glacier|passage) ;;
+  *) echo "Unexpected packaged saved Attack map: $attack_saved_map" >&2; exit 1 ;;
+esac
+test -n "$attack_saved_world"
+test -n "$attack_saved_wave"
+
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --emulate-mobile \
+  --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryContinueSmoke=1" \
+  --profile /tmp/mindustry-release-archive-attack-continue-mobile \
+  --port 9291 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-smoke-mode="production"' \
+  --require 'data-mindustry-input-mode="mobile"' \
+  --require 'data-mindustry-stock-input="mobile"' \
+  --require 'data-mindustry-local-mode-restore="attack"' \
+  --require 'data-mindustry-local-map-mode="attack"' \
+  --require 'data-mindustry-local-continue="ready"' \
+  --require 'data-mindustry-local-save-load="ready"' \
+  --require 'data-mindustry-local-map-state="playing"' \
+  --require 'data-mindustry-local-map-loop="live"' \
+  --require 'data-mindustry-network="local-only"' \
+  --require 'data-mindustry-network-mode="singleplayer-only"' > /tmp/mindustry-release-archive-attack-continue-mobile-resume.html
+
+attack_resume_map="$(grep -o 'data-mindustry-local-continue-slug="[^"]*"' /tmp/mindustry-release-archive-attack-continue-mobile-resume.html | head -1 | cut -d'"' -f2)"
+attack_resume_world="$(grep -o 'data-mindustry-local-continue-world="[^"]*"' /tmp/mindustry-release-archive-attack-continue-mobile-resume.html | head -1 | cut -d'"' -f2)"
+attack_resume_wave="$(grep -o 'data-mindustry-local-continue-wave="[0-9]*"' /tmp/mindustry-release-archive-attack-continue-mobile-resume.html | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+attack_resume_frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' /tmp/mindustry-release-archive-attack-continue-mobile-resume.html | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+test "$attack_resume_map" = "$attack_saved_map"
+test "$attack_resume_world" = "$attack_saved_world"
+test "$attack_resume_wave" = "$attack_saved_wave"
+test "$attack_resume_frames" -ge 3
+
+echo "Yandex release ZIP smoke: SHA-256 + exact 19 default/29 Serpulo/17 Erekir map sets + desktop/mobile boot + packaged Serpulo/Erekir loads + packaged Attack desktop/mobile map=$attack_map frames=$attack_frames/$attack_mobile_frames + mobile cold Continue map=$attack_resume_map world=$attack_resume_world wave=$attack_resume_wave frames=$attack_resume_frames PASS"
