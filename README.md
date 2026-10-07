@@ -14,6 +14,18 @@ The release pipeline is now in pre-publication stabilization: TeaVM source maps 
 
 Custom Game now preserves the full proven local survival loop on the 18 stock built-in maps: stock wave timer/spawning, local core-loss Game Over, Pause/Resume with a frozen simulation clock, current-v13 Save/Continue across a cold browser restart, and automatic save before a normal Back-to-menu action. Valid built-in multi-team maps also expose stock local Attack mode without enabling multiplayer/PvP transport; Attack saves restore their saved attackMode through a completely new browser process on both desktop and auto-detected mobile. The Attack selector uses the stock localized `mode.attack.name` bundle key, and CI requires distinct English/Russian labels. Desktop and mobile persistence tests verify the restored map/mode after restart. A separate production load smoke runs 64 vanilla units for 120 complete Logic → pathfinding → Control → Renderer → UI frames and records elapsed-time/FPS telemetry; its threshold is only a catastrophic-regression guard, not a claim of constant 60 FPS.
 
+## Yandex publication checklist
+
+The Web package contains the Yandex SDK lifecycle, cloud saves and ad call sites, but Developer Console configuration is still required before publication:
+
+- Enable YAN monetization for the game.
+- Keep fullscreen interstitials enabled; the port requests them only on a logical Back-to-menu transition after save/storage/cloud durability barriers.
+- Configure sticky banners for the intended desktop/mobile orientations and enable **Use the API to display a sticky-banner**. The runtime shows the banner only in menu/ready state and hides it while `GameplayAPI` is active.
+- Do not add third-party advertising. All ad calls in the packaged build go through the Yandex Games SDK.
+- Test the final uploaded build in Yandex's environment as well as the deterministic local release-ZIP smoke; `/sdk.js` is intentionally loaded from the platform and is not bundled into the archive.
+
+If API-managed sticky banners are not enabled in the Developer Console, the runtime degrades safely: the banner API reports unavailable/not connected and gameplay continues without a sticky banner.
+
 ## Upstream baseline
 
 - Mindustry: v8 Build 159.7 (`c9686eb5d0ae5dd47ee02c40f99f7d5018ccbc8c`)

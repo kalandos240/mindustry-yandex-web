@@ -157,7 +157,7 @@ test -s "$SEED"
 
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --emulate-mobile \
-  --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryYandexCloudSeedFile=attack-cloud-seed.json&mindustryContinueSmoke=1&mindustryYandexTestDevice=mobile" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryYandexCloudSeedFile=attack-cloud-seed.json&mindustryContinueSmoke=1&mindustryGameOverSmoke=1&mindustryYandexTestDevice=mobile" \
   --profile "$second_profile" \
   --port 9295 \
   --timeout 90 \
@@ -175,15 +175,21 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-local-continue="ready"' \
   --require 'data-mindustry-local-save-load="ready"' \
   --require 'data-mindustry-local-map-state="playing"' \
-  --require 'data-mindustry-local-map-loop="live"' \
+  --require 'data-mindustry-local-map-gameover-smoke="armed"' \
+  --require 'data-mindustry-local-map-gameover="ready"' \
+  --require 'data-mindustry-local-map-gameover-winner="sharded"' \
+  --require 'data-mindustry-local-gameover-ui="ready"' \
+  --require 'data-mindustry-local-map-loop="game-over"' \
   --require 'data-mindustry-network="yandex-sdk-only"' > "$second_dom"
 
 restored_files="$(grep -o 'data-yandex-cloud-restored-files="[0-9]*"' "$second_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
 restored_map="$(grep -o 'data-mindustry-local-continue-slug="[^"]*"' "$second_dom" | head -1 | cut -d'"' -f2)"
 frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' "$second_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+winner="$(grep -o 'data-mindustry-local-map-gameover-winner="[^"]*"' "$second_dom" | head -1 | cut -d'"' -f2)"
 
 test "$restored_files" -ge 1
 test "$restored_map" = "$source_map"
 test "$frames" -ge 3
+test "$winner" = "sharded"
 
-echo "Yandex release ZIP Attack cloud: desktop $source_map SaveIO -> Player.setData ($cloud_bytes bytes) -> clean mobile Player.getData -> Continue frames=$frames PASS"
+echo "Yandex release ZIP Attack cloud: desktop $source_map SaveIO -> Player.setData ($cloud_bytes bytes) -> clean mobile Player.getData -> Continue -> stock victory winner=$winner frames=$frames PASS"

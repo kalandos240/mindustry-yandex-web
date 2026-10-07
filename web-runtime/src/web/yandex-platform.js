@@ -19,7 +19,10 @@
         playerPromise: null,
         cloudSyncPromise: null,
         cloudLastPayload: '',
-        fullscreenButton: null
+        fullscreenButton: null,
+        bannerWanted: false,
+        bannerShowing: false,
+        bannerRequest: 0
     };
 
     const cloudKey = 'mindustryWebCheckpointV1';
@@ -244,12 +247,57 @@
         api.ready();
         state.loadingReadySent = true;
         mark('data-yandex-loading-ready', 'sent');
+        void syncStickyBanner(true, 'game-ready');
         return true;
     }
 
+    async function syncStickyBanner(wanted, reason){
+        state.bannerWanted = !!wanted;
+        const request = ++state.bannerRequest;
+        const adv = state.ysdk && state.ysdk.adv;
+        const method = state.bannerWanted ? 'showBannerAdv' : 'hideBannerAdv';
+
+        if(!adv || typeof adv[method] !== 'function'){
+            mark('data-yandex-banner-state', 'unavailable');
+            mark('data-yandex-banner-reason', reason || 'unsupported');
+            return false;
+        }
+
+        mark('data-yandex-banner-state', state.bannerWanted ? 'show-pending' : 'hide-pending');
+        try{
+            const result = await Promise.resolve(adv[method]());
+            if(request !== state.bannerRequest){
+                // The SDK call itself may have completed out of order, so ignoring only
+                // this response is not enough: re-assert the newest desired side effect.
+                void syncStickyBanner(state.bannerWanted, 'stale-correction');
+                return false;
+            }
+
+            state.bannerShowing = !!(result && result.stickyAdvIsShowing);
+            if(state.bannerWanted){
+                mark('data-yandex-banner-state', state.bannerShowing ? 'shown' : 'not-shown');
+            }else{
+                mark('data-yandex-banner-state', state.bannerShowing ? 'still-shown' : 'hidden');
+            }
+            const detail = result && result.reason ? String(result.reason) : (reason || '');
+            if(detail) mark('data-yandex-banner-reason', detail);
+            return state.bannerShowing === state.bannerWanted;
+        }catch(error){
+            if(request === state.bannerRequest){
+                mark('data-yandex-banner-state', 'error');
+                mark('data-yandex-banner-reason', String(error && error.message ? error.message : error));
+            }
+            return false;
+        }
+    }
+
     function gameplayStart(){
-        if(state.gameplayActive) return false;
+        if(state.gameplayActive){
+            void syncStickyBanner(false, 'gameplay-start');
+            return false;
+        }
         state.gameplayActive = true;
+        void syncStickyBanner(false, 'gameplay-start');
         if(!state.paused) mark('data-yandex-game-state', 'playing');
         const api = state.ysdk && state.ysdk.features && state.ysdk.features.GameplayAPI;
         if(api && typeof api.start === 'function') api.start();
@@ -257,12 +305,15 @@
     }
 
     function gameplayStop(){
-        if(!state.gameplayActive) return false;
-        state.gameplayActive = false;
-        if(!state.paused) mark('data-yandex-game-state', 'ready');
-        const api = state.ysdk && state.ysdk.features && state.ysdk.features.GameplayAPI;
-        if(api && typeof api.stop === 'function') api.stop();
-        return true;
+        const changed = state.gameplayActive;
+        if(changed){
+            state.gameplayActive = false;
+            if(!state.paused) mark('data-yandex-game-state', 'ready');
+            const api = state.ysdk && state.ysdk.features && state.ysdk.features.GameplayAPI;
+            if(api && typeof api.stop === 'function') api.stop();
+        }
+        void syncStickyBanner(true, 'gameplay-stop');
+        return changed;
     }
 
     function finishFullscreenAdv(){
@@ -608,6 +659,7 @@
         loadingReady,
         gameplayStart,
         gameplayStop,
+        syncStickyBanner,
         toggleFullscreen,
         showFullscreenAdv,
         showMenuFullscreenAdv,

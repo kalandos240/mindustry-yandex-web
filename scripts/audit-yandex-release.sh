@@ -144,6 +144,10 @@ grep -Fq "ysdk.on('game_api_resume'" "$PLATFORM" || fail "game_api_resume subscr
 grep -Fq 'LoadingAPI' "$PLATFORM" || fail "LoadingAPI.ready integration missing"
 grep -Fq 'GameplayAPI' "$PLATFORM" || fail "GameplayAPI integration missing"
 grep -Fq 'showFullscreenAdv' "$PLATFORM" || fail "Yandex fullscreen advertisement integration missing"
+grep -Fq 'showBannerAdv' "$PLATFORM" || fail "Yandex sticky-banner show integration missing"
+grep -Fq 'hideBannerAdv' "$PLATFORM" || fail "Yandex sticky-banner hide integration missing"
+grep -Fq "syncStickyBanner(false, 'gameplay-start')" "$PLATFORM" || fail "sticky banner must hide when gameplay starts"
+grep -Fq "syncStickyBanner(true, 'gameplay-stop')" "$PLATFORM" || fail "sticky banner must return only after gameplay stops"
 grep -Fq 'getPlayer' "$PLATFORM" || fail "Yandex Player bridge missing"
 
 # Mobile/browser UX requirements: full active area, no page scroll/swipe refresh,
