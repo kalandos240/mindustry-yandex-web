@@ -248,7 +248,7 @@
         api.ready();
         state.loadingReadySent = true;
         mark('data-yandex-loading-ready', 'sent');
-        void syncStickyBanner(true, 'game-ready');
+        void syncStickyBanner(!state.gameplayActive, state.gameplayActive ? 'game-ready-playing' : 'game-ready');
         return true;
     }
 
