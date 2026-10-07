@@ -28,6 +28,43 @@ attr(){
   grep -o "$name=\"[0-9]*\"" "$file" | head -1 | sed -E 's/.*="([0-9]+)"/\1/'
 }
 
+run_sandbox_boot(){
+  local label="$1"
+  local input_mode="$2"
+  local emulate_mobile="$3"
+  local profile="$4"
+  local dom="$5"
+  local cdp="$6"
+
+  local device_args=()
+  if [ "$emulate_mobile" = "1" ]; then
+    device_args+=(--emulate-mobile)
+  fi
+
+  rm -rf "$profile"
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    "${device_args[@]}" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryMapSmoke=maze&mindustryLocalMode=sandbox" \
+    --profile "$profile" \
+    --port "$cdp" \
+    --timeout 90 \
+    --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-smoke-mode="production"' \
+    --require "data-mindustry-input-mode=\"${input_mode}\"" \
+    --require "data-mindustry-stock-input=\"${input_mode}\"" \
+    --require 'data-mindustry-local-mode-ui="ready"' \
+    --require 'data-mindustry-local-mode-selection="sandbox"' \
+    --require 'data-mindustry-local-map-test="maze"' \
+    --require 'data-mindustry-local-map-mode="sandbox"' \
+    --require 'data-mindustry-local-map-infinite-resources="true"' \
+    --require 'data-mindustry-local-map-wave-timer="false"' \
+    --require 'data-mindustry-local-map-loop="live"' \
+    --require 'data-mindustry-network="local-only"' \
+    --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
+
+  echo "Local Sandbox ($label): DOM mode selector -> stock Gamemode.sandbox -> infinite resources + manual waves -> production frames PASS"
+}
+
 run_local_save(){
   local label="$1"
   local input_mode="$2"
@@ -140,6 +177,16 @@ run_local_save(){
   echo "Local survival save ($label): pause frozen at updateId=$pause_id -> manual save -> autosave exit -> cold continue wave=$load_wave -> autosave exit PASS"
 }
 
+run_sandbox_boot desktop desktop 0 \
+  /tmp/mindustry-local-sandbox-desktop-profile \
+  /tmp/mindustry-local-sandbox-desktop.html \
+  9288
+
+run_sandbox_boot mobile mobile 1 \
+  /tmp/mindustry-local-sandbox-mobile-profile \
+  /tmp/mindustry-local-sandbox-mobile.html \
+  9289
+
 run_local_save desktop desktop 0 \
   /tmp/mindustry-local-save-desktop-profile \
   /tmp/mindustry-local-save-desktop-first.html \
@@ -152,4 +199,4 @@ run_local_save mobile mobile 1 \
   /tmp/mindustry-local-save-mobile-resume.html \
   9292 9293
 
-echo 'Local survival pause/save/continue/autosave matrix: desktop + auto-detected mobile PASS'
+echo 'Local custom game matrix: Sandbox desktop/mobile + Survival pause/save/continue/autosave desktop/mobile PASS'
