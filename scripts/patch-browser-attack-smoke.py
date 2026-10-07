@@ -44,60 +44,27 @@ if text.count(old_step) != 1:
     raise SystemExit("Attack smoke update anchor no longer matches final runtime")
 text = text.replace(old_step, new_step, 1)
 
-old_continue = '''        markContinued(slug(builtin), meta.wave, meta.version, restoredMode.name(),
-            state.rules.infiniteResources, state.rules.waveTimer, world.width(), world.height());
-'''
-new_continue = '''        markContinued(slug(builtin), meta.wave, meta.version, restoredMode.name(),
-            state.rules.infiniteResources, state.rules.waveTimer, world.width(), world.height());
-        if(attackPresetSmokeRequested()) startAttackSmoke();
-'''
-if text.count(old_continue) != 1:
-    raise SystemExit("Attack cold-Continue hook anchor no longer matches")
-text = text.replace(old_continue, new_continue, 1)
-
 old_gameover = '''            markGameOver(state.rules.waveTeam.name, state.wave);
 '''
 new_gameover = '''            markGameOver(state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
 '''
 old_gameover_count = text.count(old_gameover)
 new_gameover_count = text.count(new_gameover)
-winner_block_present = (
-    'String winner = state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name;' in text
-    and 'markGameOver(winner, state.wave);' in text
-)
-if old_gameover_count == 1 and new_gameover_count == 0 and not winner_block_present:
+if old_gameover_count == 1 and new_gameover_count == 0:
     text = text.replace(old_gameover, new_gameover, 1)
-elif old_gameover_count == 0 and (new_gameover_count == 1 or winner_block_present):
+elif old_gameover_count == 0 and new_gameover_count == 1:
+    # The committed BrowserLocalMapRuntime already carries this correctness fix.
+    # Treat the overlay as idempotent instead of failing the whole build.
     pass
 else:
     raise SystemExit(
         "Attack smoke game-over winner marker is ambiguous: "
-        f"old={old_gameover_count}, new={new_gameover_count}, winnerBlock={winner_block_present}"
+        f"old={old_gameover_count}, new={new_gameover_count}"
     )
 
 old_methods = '''    private static void startEnemyPathSmoke(){
 '''
 new_methods = '''    private static void startAttackSmoke(){
-        if(attackPresetSmokeRequested()){
-            if(!state.rules.attackMode || state.rules.defaultTeam.core() == null){
-                throw new IllegalStateException("Real Attack smoke did not enter a valid Attack session");
-            }
-
-            int enemyCores = 0;
-            for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
-                if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
-                    enemyCores += data.cores.size;
-                }
-            }
-            if(enemyCores <= 0){
-                throw new IllegalStateException("Real Attack smoke loaded no enemy cores");
-            }
-
-            attackSmokeCore = state.rules.defaultTeam.core();
-            attackSmokeDestroyed = false;
-            markAttackPresetReady(slug(current), state.rules.defaultTeam.name, enemyCores);
-            return;
-        }
         if(!attackSmokeRequested()) return;
 
         state.rules.attackMode = true;
@@ -160,27 +127,11 @@ new_methods = '''    private static void startAttackSmoke(){
     }
 
     private static void updateAttackSmoke(){
-        if(attackSmokeCore == null || attackSmokeDestroyed || state.gameOver || frames < 3) return;
+        if(attackSmokeCore == null || attackSmokeDestroyed || state.gameOver) return;
 
-        if(attackSmokeCore.team == state.rules.defaultTeam && state.rules.attackMode){
-            // The first cold-persistence process must checkpoint an untouched Attack map.
-            if(autoSaveExitSmokeRequested()) return;
-
-            arc.struct.Seq<mindustry.gen.Building> targets = new arc.struct.Seq<>();
-            for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
-                if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
-                    targets.addAll(data.cores);
-                }
-            }
-            if(targets.isEmpty()) throw new IllegalStateException("Real Attack smoke lost enemy cores");
-            for(mindustry.gen.Building core : targets){
-                if(core != null && core.isValid()) core.damage(core.health + 1f);
-            }
-            attackSmokeDestroyed = true;
-            attackSmokeCore = null;
-            markAttackSmokeDestroyed();
-            return;
-        }
+        // Let the real entity/team/pathfinding graph observe the enemy core for several
+        // production frames before destroying it through Building.damage -> Tile.buildDestroyed.
+        if(frames < 3) return;
 
         mindustry.gen.Building core = attackSmokeCore;
         core.damage(core.health + 1f);
@@ -206,9 +157,6 @@ new_query = '''    @JSBody(script = "return new URLSearchParams(location.search)
 
     @JSBody(params = {"id", "team"}, script = "document.documentElement.setAttribute('data-mindustry-attack-smoke','armed'); document.documentElement.setAttribute('data-mindustry-attack-core-id',String(id)); document.documentElement.setAttribute('data-mindustry-attack-enemy-team',team); document.documentElement.setAttribute('data-mindustry-attack-mode','local-core-victory');")
     private static native void markAttackSmokeArmed(int id, String team);
-
-    @JSBody(params = {"slug", "team", "cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-attack-preset','ready'); r.setAttribute('data-mindustry-attack-preset-map',slug); r.setAttribute('data-mindustry-attack-preset-default-team',team); r.setAttribute('data-mindustry-attack-preset-enemy-cores',String(cores));")
-    private static native void markAttackPresetReady(String slug, String team, int cores);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-attack-core-destroyed','yes');")
     private static native void markAttackSmokeDestroyed();
