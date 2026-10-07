@@ -35,8 +35,10 @@ cat > "$SDK_STUB" <<'JS'
     const menuAdSmoke = params.get('mindustryYandexMenuAdSmoke') === '1';
     const fullscreenSmoke = params.get('mindustryYandexFullscreenSmoke') === '1';
     const cloudBootSmoke = params.get('mindustryYandexCloudBootSmoke') === '1';
+    const cloudSeedFile = params.get('mindustryYandexCloudSeedFile') || '';
     const testDevice = params.get('mindustryYandexTestDevice') === 'mobile' ? 'mobile' : 'desktop';
     const playerData = Object.create(null);
+    let cloudSeedLoaded = false;
     if(cloudBootSmoke){
         playerData.mindustryWebCheckpointV1 = {
             schema: 1,
@@ -198,6 +200,13 @@ cat > "$SDK_STUB" <<'JS'
                     }
                 },
                 async getPlayer(){
+                    if(cloudSeedFile && !cloudSeedLoaded){
+                        const response = await fetch('/' + cloudSeedFile.replace(/^\/+/, ''));
+                        if(!response.ok) throw new Error('Cloud seed HTTP ' + response.status);
+                        Object.assign(playerData, await response.json());
+                        cloudSeedLoaded = true;
+                        root.setAttribute('data-yandex-test-cloud-seed-loaded', 'yes');
+                    }
                     return {
                         async setData(data, flush){
                             Object.assign(playerData, data || {});
@@ -217,6 +226,16 @@ cat > "$SDK_STUB" <<'JS'
                                     root.setAttribute('data-yandex-test-cloud-campaign-file', raw.length >= 128 ? 'yes' : 'invalid');
                                     root.setAttribute('data-yandex-test-cloud-campaign-bytes', String(raw.length));
                                 }
+                                const local = files['saves/web-local-survival.msav'];
+                                if(local){
+                                    const raw = atob(local);
+                                    root.setAttribute('data-yandex-test-cloud-local-file', raw.length >= 128 ? 'yes' : 'invalid');
+                                    root.setAttribute('data-yandex-test-cloud-local-bytes', String(raw.length));
+                                }
+                                root.setAttribute(
+                                    'data-yandex-test-cloud-snapshot-b64',
+                                    btoa(JSON.stringify({mindustryWebCheckpointV1: snapshot}))
+                                );
                             }
                         },
                         async getData(keys){
