@@ -487,14 +487,15 @@ public final class BrowserLocalMapRuntime{
                 }
 
                 if(gameOverSmoke && !gameOverSmokeArmed){
+                    boolean attackLossSmoke = state.rules.attackMode && gameOverLossSmokeRequested();
                     if(!state.rules.canGameOver || state.rules.defaultTeam.cores().isEmpty()
-                    || (state.rules.attackMode && state.rules.waveTeam.cores().isEmpty())){
-                        throw new IllegalStateException("Game-over smoke requires canGameOver and an existing default-team core");
+                    || (state.rules.attackMode && !attackLossSmoke && state.rules.waveTeam.cores().isEmpty())){
+                        throw new IllegalStateException("Game-over smoke requires canGameOver and required Attack cores");
                     }
                     if(state.rules.attackMode){
-                        var enemyCores = state.rules.waveTeam.cores();
-                        for(int i = enemyCores.size - 1; i >= 0; i--){
-                            enemyCores.get(i).damage(Float.MAX_VALUE);
+                        var targetCores = attackLossSmoke ? state.rules.defaultTeam.cores() : state.rules.waveTeam.cores();
+                        for(int i = targetCores.size - 1; i >= 0; i--){
+                            targetCores.get(i).damage(Float.MAX_VALUE);
                         }
                     }else{
                         state.rules.defaultTeam.cores().clear();
@@ -911,8 +912,11 @@ public final class BrowserLocalMapRuntime{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryPauseSmoke') === '1';")
     private static native boolean pauseSmokeRequested();
 
-    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryGameOverSmoke') === '1';")
+    @JSBody(script = "const v=new URLSearchParams(location.search).get('mindustryGameOverSmoke'); return v === '1' || v === 'loss';")
     private static native boolean gameOverSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryGameOverSmoke') === 'loss';")
+    private static native boolean gameOverLossSmokeRequested();
 
     @JSBody(script = "const p=new URLSearchParams(location.search); for(const key of p.keys()){ if(key.startsWith('mindustry') && key.toLowerCase().endsWith('smoke')) return true; } return false;")
     private static native boolean smokeTelemetryRequested();
