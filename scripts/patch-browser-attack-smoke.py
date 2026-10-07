@@ -44,6 +44,17 @@ if text.count(old_step) != 1:
     raise SystemExit("Attack smoke update anchor no longer matches final runtime")
 text = text.replace(old_step, new_step, 1)
 
+old_continue = '''        markContinued(slug(builtin), meta.wave, meta.version, restoredMode.name(),
+            state.rules.infiniteResources, state.rules.waveTimer, world.width(), world.height());
+'''
+new_continue = '''        markContinued(slug(builtin), meta.wave, meta.version, restoredMode.name(),
+            state.rules.infiniteResources, state.rules.waveTimer, world.width(), world.height());
+        if(attackPresetSmokeRequested()) startAttackSmoke();
+'''
+if text.count(old_continue) != 1:
+    raise SystemExit("Attack cold-Continue hook anchor no longer matches")
+text = text.replace(old_continue, new_continue, 1)
+
 old_gameover = '''            markGameOver(state.rules.waveTeam.name, state.wave);
 '''
 new_gameover = '''            markGameOver(state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
@@ -156,6 +167,10 @@ new_methods = '''    private static void startAttackSmoke(){
         if(attackSmokeCore == null || attackSmokeDestroyed || state.gameOver || frames < 3) return;
 
         if(attackSmokeCore.team == state.rules.defaultTeam && state.rules.attackMode){
+            // Cold-persistence seed uses the normal Save/Back path later in this frame.
+            // Leave enemy cores untouched until the browser has checkpointed and exited.
+            if(autoSaveExitSmokeRequested()) return;
+
             arc.struct.Seq<mindustry.gen.Building> targets = new arc.struct.Seq<>();
             for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
                 if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
