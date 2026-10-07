@@ -322,4 +322,4 @@ run_enemy_path
 
 cleanup_locale
 trap - EXIT
-bash "$ROOT_DIR/scripts/verify-yandex-sdk.sh"
+MINDUSTRY_SKIP_ATTACK_CLOUD=1 bash "$ROOT_DIR/scripts/verify-yandex-sdk.sh"

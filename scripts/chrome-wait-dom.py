@@ -171,6 +171,25 @@ def evaluate(ws: WebSocket, message_id: int, expression: str) -> str:
     return str(result.get("value", ""))
 
 
+def evaluate_await(ws: WebSocket, message_id: int, expression: str) -> str:
+    payload = cdp_command(
+        ws,
+        message_id,
+        "Runtime.evaluate",
+        {
+            "expression": expression,
+            "returnByValue": True,
+            "awaitPromise": True,
+        },
+    )
+    details = payload.get("result", {}).get("exceptionDetails")
+    if details:
+        text = details.get("text", "Runtime.evaluate failed")
+        raise RuntimeError(text)
+    result = payload.get("result", {}).get("result", {})
+    return str(result.get("value", ""))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", required=True)
@@ -187,6 +206,11 @@ def main() -> int:
     parser.add_argument("--third-resize-width", type=int)
     parser.add_argument("--third-resize-height", type=int)
     parser.add_argument("--third-resize-require", action="append", default=[])
+    parser.add_argument(
+        "--after-ready-eval",
+        help="Promise-aware JavaScript expression to run once required DOM markers are ready.",
+    )
+    parser.add_argument("--after-ready-require", action="append", default=[])
     parser.add_argument("--chrome", default="google-chrome")
     parser.add_argument(
         "--emulate-mobile",
@@ -210,6 +234,8 @@ def main() -> int:
         parser.error("--third-resize-* requires the second --second-resize-* phase")
     if args.third_resize_require and args.third_resize_width is None:
         parser.error("--third-resize-require requires --third-resize-width/--third-resize-height")
+    if args.after_ready_require and not args.after_ready_eval:
+        parser.error("--after-ready-require requires --after-ready-eval")
 
     # BrowserGameplayRuntime deliberately keeps deterministic self-tests out of normal
     # production startup. When a caller explicitly requires the CI-only GameState tick
@@ -220,6 +246,7 @@ def main() -> int:
         + args.after_resize_require
         + args.second_resize_require
         + args.third_resize_require
+        + args.after_ready_require
     )
     if any('data-mindustry-game-state-tick-smoke=' in marker for marker in all_required):
         if 'mindustrySmoke=' not in args.url:
@@ -372,6 +399,23 @@ def main() -> int:
                     resize_phase = 3
                     continue
 
+                if args.after_ready_eval:
+                    eval_result = evaluate_await(ws, message_id, args.after_ready_eval)
+                    message_id += 1
+                    last_html = evaluate(
+                        ws,
+                        message_id,
+                        "document.documentElement.outerHTML",
+                    )
+                    message_id += 1
+                    missing_after = [marker for marker in args.after_ready_require if marker not in last_html]
+                    if missing_after:
+                        sys.stderr.write("Chrome after-ready eval completed but required marker(s) are missing:\n")
+                        for marker in missing_after:
+                            sys.stderr.write(f"  {marker!r}\n")
+                        sys.stderr.write(f"After-ready eval result: {eval_result!r}\n")
+                        return 1
+
                 elapsed = time.monotonic() - started
                 phase = (
                     " after third live resize" if resize_phase == 3
@@ -398,6 +442,18 @@ def main() -> int:
             required = args.third_resize_require
         missing = [marker for marker in required if marker not in last_html]
         if not missing:
+            if args.after_ready_eval:
+                eval_result = evaluate_await(ws, message_id, args.after_ready_eval)
+                message_id += 1
+                last_html = evaluate(ws, message_id, "document.documentElement.outerHTML")
+                message_id += 1
+                missing_after = [marker for marker in args.after_ready_require if marker not in last_html]
+                if missing_after:
+                    sys.stderr.write("Chrome after-ready eval completed at deadline edge but required marker(s) are missing:\n")
+                    for marker in missing_after:
+                        sys.stderr.write(f"  {marker!r}\n")
+                    sys.stderr.write(f"After-ready eval result: {eval_result!r}\n")
+                    return 1
             elapsed = time.monotonic() - started
             phase = (
                 " after third live resize" if resize_phase == 3
