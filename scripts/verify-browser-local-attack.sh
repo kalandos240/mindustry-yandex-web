@@ -107,6 +107,7 @@ run_attack_loss(){
     --require 'data-mindustry-local-map-state="playing"' \
     --require 'data-mindustry-local-map-gameover-smoke="armed"' \
     --require 'data-mindustry-local-map-gameover="ready"' \
+    --require 'data-mindustry-local-gameover-ui="ready"' \
     --require 'data-mindustry-local-map-loop="game-over"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
