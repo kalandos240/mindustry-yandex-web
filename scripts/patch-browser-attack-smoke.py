@@ -95,6 +95,7 @@ new_methods = '''    private static void startAttackSmoke(){
 
             attackSmokeCore = state.rules.defaultTeam.core();
             attackSmokeDestroyed = false;
+            markAttackPresetReady(slug(current), state.rules.defaultTeam.name, enemyCores);
             return;
         }
         if(!attackSmokeRequested()) return;
@@ -205,6 +206,9 @@ new_query = '''    @JSBody(script = "return new URLSearchParams(location.search)
 
     @JSBody(params = {"id", "team"}, script = "document.documentElement.setAttribute('data-mindustry-attack-smoke','armed'); document.documentElement.setAttribute('data-mindustry-attack-core-id',String(id)); document.documentElement.setAttribute('data-mindustry-attack-enemy-team',team); document.documentElement.setAttribute('data-mindustry-attack-mode','local-core-victory');")
     private static native void markAttackSmokeArmed(int id, String team);
+
+    @JSBody(params = {"slug", "team", "cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-attack-preset','ready'); r.setAttribute('data-mindustry-attack-preset-map',slug); r.setAttribute('data-mindustry-attack-preset-default-team',team); r.setAttribute('data-mindustry-attack-preset-enemy-cores',String(cores));")
+    private static native void markAttackPresetReady(String slug, String team, int cores);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-attack-core-destroyed','yes');")
     private static native void markAttackSmokeDestroyed();
