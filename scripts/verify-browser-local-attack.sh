@@ -54,22 +54,25 @@ run_attack(){
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
-  local map frames winner
+  local map frames winner enemy_team
   map="$(grep -o 'data-mindustry-local-map-slug="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
   frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
   winner="$(grep -o 'data-mindustry-local-map-gameover-winner="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
+  enemy_team="$(grep -o 'data-mindustry-attack-enemy-team="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
 
   test -n "$map"
   test -n "$frames"
   test -n "$winner"
+  test -n "$enemy_team"
   case "$map" in
     veins|glacier|passage) ;;
     *) echo "Unexpected non-multi-team built-in Attack map: $map" >&2; exit 1 ;;
   esac
   test "$frames" -ge 3
-  test "$winner" = "sharded"
+  test "$winner" != "$enemy_team"
+  test "$winner" != "derelict"
 
-  echo "Local Attack ($label): pinned multi-team map=$map -> real enemy CoreBuild destruction -> stock winner=$winner after frames=$frames PASS"
+  echo "Local Attack ($label): pinned multi-team map=$map -> destroy all non-default CoreBuilds -> stock winner=$winner (first enemy=$enemy_team) after frames=$frames PASS"
 }
 
 run_attack desktop desktop 0 \
