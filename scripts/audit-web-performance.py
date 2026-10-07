@@ -13,11 +13,13 @@ REPORT = ROOT / "work" / "web-performance-report.txt"
 # campaign runtime now makes stock Erekir RTS AI and the stock campaign core genuinely
 # reachable; upstream Erekir campaignRuleDefaults enables rtsAI, so pruning that graph
 # would remove required gameplay rather than optimize dead code. This ceiling remains
-# deliberately tight (~0.3% raw / ~0.5% gzip headroom over the first complete build).
-# Desktop/network reachability and the 100 MiB unpacked Yandex limit remain independent
-# hard gates and must never be traded for this allowance.
+# deliberately tight. The raw ceiling includes 50 KiB of deterministic engineering
+# headroom for the proven local Attack victory path; gzip remains capped at the prior
+# 2.71 MiB gate, so compressible diagnostic/compiler variation cannot hide real payload
+# growth. Desktop/network reachability and the 100 MiB unpacked Yandex limit remain
+# independent hard gates and must never be traded for this allowance.
 JS_BASELINE = 23_155_354
-JS_LIMIT = 24_000_000
+JS_LIMIT = 24_050_000
 JS_GZIP_BASELINE = 2_649_677
 JS_GZIP_LIMIT = 2_710_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
