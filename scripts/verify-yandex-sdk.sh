@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="$ROOT_DIR/web-runtime/build/web"
 SDK_STUB="$WEB_DIR/sdk.js"
+ATTACK_CLOUD_SEED="$WEB_DIR/attack-cloud-seed.json"
 PROFILE="/tmp/mindustry-yandex-sdk-profile"
 DOM="/tmp/mindustry-yandex-sdk-dom.html"
 PORT=8082
@@ -17,7 +18,7 @@ command -v google-chrome >/dev/null
 [ ! -e "$SDK_STUB" ]
 
 cleanup(){
-  rm -f "$SDK_STUB"
+  rm -f "$SDK_STUB" "$ATTACK_CLOUD_SEED"
   if [ -n "${server_pid:-}" ]; then kill "$server_pid" 2>/dev/null || true; fi
 }
 trap cleanup EXIT
