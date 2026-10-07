@@ -511,7 +511,6 @@ public final class BrowserLocalMapRuntime{
         }
 
         frames++;
-        updateAttackPresetSmoke();
         if(telemetry){
             markFrame(frames, state.updateId, player.unit() == null ? "spawning" : player.unit().type.name,
                 state.wave, state.enemies, state.wavetime);
@@ -563,6 +562,12 @@ public final class BrowserLocalMapRuntime{
                 maybePeriodicSave();
             }
         }
+
+        // Keep CI-only Attack victory staging after the normal Save/Back path. This
+        // allows the same real Attack session to be checkpointed before enemy cores
+        // are destroyed, then resumed in a completely new browser process.
+        updateAttackPresetSmoke();
+
         if(perfSmoke && !perfReady && frames >= perfTargetFrames){
             if(perfEffects != perfTargetEffects){
                 throw new IllegalStateException("Browser perf effect workload count mismatch: " + perfEffects);
@@ -675,6 +680,13 @@ public final class BrowserLocalMapRuntime{
         attackPresetSmokeArmed = false;
 
         state.set(mindustry.core.GameState.State.playing);
+        if(attackPresetSmoke && restoredMode == Gamemode.attack){
+            int enemyCores = enemyAttackCoreCount();
+            if(enemyCores <= 0){
+                throw new IllegalStateException("Cold Attack Continue restored no enemy cores");
+            }
+            markAttackPresetResumed(slug(builtin), state.rules.defaultTeam.name, enemyCores);
+        }
         markContinued(slug(builtin), meta.wave, meta.version, restoredMode.name(),
             state.rules.infiniteResources, state.rules.waveTimer, world.width(), world.height());
     }
@@ -991,6 +1003,9 @@ public final class BrowserLocalMapRuntime{
 
     @JSBody(params = {"cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-win-smoke','armed'); r.setAttribute('data-mindustry-local-attack-removed-cores',String(cores));")
     private static native void markAttackPresetDestroyed(int cores);
+
+    @JSBody(params = {"slug", "team", "cores"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-resume','ready'); r.setAttribute('data-mindustry-local-attack-resume-map',slug); r.setAttribute('data-mindustry-local-attack-resume-default-team',team); r.setAttribute('data-mindustry-local-attack-resume-enemy-cores',String(cores));")
+    private static native void markAttackPresetResumed(String slug, String team, int cores);
 
     @JSBody(params = {"winner"}, script = "var r=document.documentElement; r.setAttribute('data-mindustry-local-attack-gameover','won'); r.setAttribute('data-mindustry-local-attack-winner',winner); r.setAttribute('data-mindustry-local-attack-smoke','complete');")
     private static native void markAttackPresetWon(String winner);
