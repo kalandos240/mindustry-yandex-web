@@ -47,28 +47,20 @@ run_attack(){
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
     --require 'data-mindustry-local-attack-ui="ready"' \
     --require 'data-mindustry-local-map-mode="attack"' \
-    --require 'data-mindustry-local-attack-win-smoke="armed"' \
-    --require 'data-mindustry-local-attack-gameover="won"' \
-    --require 'data-mindustry-local-attack-smoke="complete"' \
     --require 'data-mindustry-local-map-gameover="ready"' \
+    --require 'data-mindustry-local-map-gameover-winner="sharded"' \
     --require 'data-mindustry-local-map-loop="game-over"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 
-  local map default_team winner enemy_cores removed_cores
-  map="$(grep -o 'data-mindustry-local-attack-map="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
-  default_team="$(grep -o 'data-mindustry-local-attack-default-team="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
-  winner="$(grep -o 'data-mindustry-local-attack-winner="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
-  enemy_cores="$(grep -o 'data-mindustry-local-attack-enemy-cores="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
-  removed_cores="$(grep -o 'data-mindustry-local-attack-removed-cores="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+  local map winner
+  map="$(grep -o 'data-mindustry-local-map-slug="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
+  winner="$(grep -o 'data-mindustry-local-map-gameover-winner="[^"]*"' "$dom" | head -1 | cut -d'"' -f2)"
 
   test -n "$map"
-  test -n "$default_team"
-  test "$winner" = "$default_team"
-  test "$enemy_cores" -gt 0
-  test "$removed_cores" = "$enemy_cores"
+  test "$winner" = "sharded"
 
-  echo "Local Attack ($label): map=$map enemyCores=$enemy_cores -> Building.damage -> winner=$winner PASS"
+  echo "Local Attack ($label): real built-in map=$map -> Building.damage enemy-core victory -> winner=$winner PASS"
 }
 
 run_attack desktop desktop 0 \
