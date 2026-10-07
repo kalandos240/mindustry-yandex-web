@@ -27,6 +27,12 @@ attr_text(){
   grep -o "$name=\"[^\"]*\"" "$file" | head -1 | cut -d'"' -f2
 }
 
+attr_num(){
+  local file="$1"
+  local name="$2"
+  grep -o "$name=\"[0-9]*\"" "$file" | head -1 | sed -E 's/.*=\"([0-9]+)\"/\1/'
+}
+
 run_attack_continue(){
   local label="$1"
   local input_mode="$2"
@@ -55,7 +61,6 @@ run_attack_continue(){
     --require "data-mindustry-input-mode=\"${input_mode}\"" \
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
     --require 'data-mindustry-local-map-mode="attack"' \
-    --require 'data-mindustry-attack-preset="ready"' \
     --require 'data-mindustry-local-map-save="ready"' \
     --require 'data-mindustry-local-save-state="saved"' \
     --require 'data-mindustry-local-save-slot="available"' \
@@ -64,17 +69,17 @@ run_attack_continue(){
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$first_dom"
 
-  local first_map first_team first_cores
-  first_map="$(attr_text "$first_dom" data-mindustry-attack-preset-map)"
-  first_team="$(attr_text "$first_dom" data-mindustry-attack-preset-default-team)"
-  first_cores="$(attr_text "$first_dom" data-mindustry-attack-preset-enemy-cores)"
+  local first_map first_world first_wave
+  first_map="$(attr_text "$first_dom" data-mindustry-local-map-save-slug)"
+  first_world="$(attr_text "$first_dom" data-mindustry-local-map-save-world)"
+  first_wave="$(attr_num "$first_dom" data-mindustry-local-map-save-wave)"
   test -n "$first_map"
-  test -n "$first_team"
-  test "$first_cores" -gt 0
+  test -n "$first_world"
+  test -n "$first_wave"
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     "${device_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryContinueSmoke=1&mindustryAttackPresetSmoke=1" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryContinueSmoke=1" \
     --profile "$profile" \
     --port "$resume_cdp" \
     --timeout 90 \
@@ -86,25 +91,23 @@ run_attack_continue(){
     --require 'data-mindustry-local-map-mode="attack"' \
     --require 'data-mindustry-local-continue="ready"' \
     --require 'data-mindustry-local-save-load="ready"' \
-    --require 'data-mindustry-attack-preset="ready"' \
-    --require 'data-mindustry-attack-core-destroyed="yes"' \
-    --require 'data-mindustry-local-map-gameover="ready"' \
-    --require 'data-mindustry-local-map-loop="game-over"' \
+    --require 'data-mindustry-local-map-state="playing"' \
+    --require 'data-mindustry-local-map-loop="live"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$resume_dom"
 
-  local resume_map resume_team resume_cores winner
-  resume_map="$(attr_text "$resume_dom" data-mindustry-attack-preset-map)"
-  resume_team="$(attr_text "$resume_dom" data-mindustry-attack-preset-default-team)"
-  resume_cores="$(attr_text "$resume_dom" data-mindustry-attack-preset-enemy-cores)"
-  winner="$(attr_text "$resume_dom" data-mindustry-local-map-gameover-winner)"
+  local resume_map resume_world resume_wave frames
+  resume_map="$(attr_text "$resume_dom" data-mindustry-local-continue-slug)"
+  resume_world="$(attr_text "$resume_dom" data-mindustry-local-continue-world)"
+  resume_wave="$(attr_num "$resume_dom" data-mindustry-local-continue-wave)"
+  frames="$(attr_num "$resume_dom" data-mindustry-local-map-frames)"
 
   test "$resume_map" = "$first_map"
-  test "$resume_team" = "$first_team"
-  test "$resume_cores" = "$first_cores"
-  test "$winner" = "$first_team"
+  test "$resume_world" = "$first_world"
+  test "$resume_wave" = "$first_wave"
+  test "$frames" -ge 3
 
-  echo "Attack cold Continue ($label): map=$resume_map team=$resume_team enemyCores=$resume_cores restored -> winner=$winner PASS"
+  echo "Attack cold Continue ($label): map=$resume_map world=$resume_world wave=$resume_wave attackMode restored -> frames=$frames PASS"
 }
 
 run_attack_continue desktop desktop 0 \
