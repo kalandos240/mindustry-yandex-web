@@ -22,7 +22,8 @@
         fullscreenButton: null,
         bannerWanted: false,
         bannerShowing: false,
-        bannerRequest: 0
+        bannerRequest: 0,
+        menuAdRequestedAt: 0
     };
 
     const cloudKey = 'mindustryWebCheckpointV1';
@@ -399,12 +400,17 @@
         return true;
     }
 
+    function beginMenuFullscreenAdv(){
+        state.menuAdRequestedAt = performance.now();
+        mark('data-yandex-menu-ad-intent', 'ready');
+    }
+
     async function showMenuFullscreenAdv(){
-        // This path is called only after the user's explicit Back action has already
-        // saved/reset the Mindustry world. Yandex moderation measures the time from that
-        // user action to the interstitial request, so never put a network cloud round-trip
-        // on this critical path.
-        const requestedAt = performance.now();
+        // beginMenuFullscreenAdv() is called at the start of the user's Back action,
+        // before Mindustry performs its local save/reset. Measure the full click-to-ad
+        // path that Yandex moderation observes.
+        const requestedAt = state.menuAdRequestedAt || performance.now();
+        state.menuAdRequestedAt = 0;
         if(state.gameplayActive) gameplayStop();
 
         const storage = globalThis.__mindustryStorage;
@@ -684,6 +690,7 @@
         syncStickyBanner,
         toggleFullscreen,
         showFullscreenAdv,
+        beginMenuFullscreenAdv,
         showMenuFullscreenAdv,
         getPlayer,
         syncCloudCheckpoint,
