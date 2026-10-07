@@ -232,6 +232,12 @@ cat > "$SDK_STUB" <<'JS'
                     }
                     return {
                         async setData(data, flush){
+                            // Menu interstitial CI deliberately makes cloud persistence
+                            // slower than Yandex's 2s ad-delay budget. The ad must already
+                            // be open while this background sync is still pending.
+                            if(menuAdSmoke){
+                                await new Promise(resolve => setTimeout(resolve, 2500));
+                            }
                             Object.assign(playerData, data || {});
                             count('data-yandex-test-cloud-set-count');
                             root.setAttribute('data-yandex-test-cloud-flush', flush === true ? 'true' : 'false');
@@ -553,6 +559,7 @@ run_menu_ad_transition(){
     --require 'data-yandex-test-menu-ad-call="yes"' \
     --require 'data-yandex-test-menu-ad-gameplay-before="stopped"' \
     --require 'data-yandex-menu-ad-storage="ready"' \
+    --require 'data-yandex-menu-ad-delay-ms="' \
     --require 'data-yandex-test-cloud-set-count="1"' \
     --require 'data-yandex-test-cloud-flush="true"' \
     --require 'data-yandex-test-cloud-under-limit="yes"' \
@@ -583,7 +590,11 @@ run_menu_ad_transition(){
   grep -q 'data-yandex-test-gameplay-stop-count="1"' "$dom"
   grep -Eq 'data-yandex-test-cloud-campaign-bytes="[1-9][0-9]{2,}"' "$dom"
   grep -Eq 'data-yandex-test-cloud-bytes="[1-9][0-9]*"' "$dom"
-  echo "Yandex menu interstitial ($device): campaign autosave -> durable storage -> bounded cloud checkpoint -> menu-only ad -> no gameplay restart PASS"
+  local ad_delay
+  ad_delay="$(grep -o 'data-yandex-menu-ad-delay-ms="[0-9]*"' "$dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+  test -n "$ad_delay"
+  test "$ad_delay" -lt 2000
+  echo "Yandex menu interstitial ($device): campaign autosave -> <=${ad_delay}ms durable pre-ad gate -> ad requested before intentionally-slow cloud sync -> no gameplay restart PASS"
 }
 
 run_menu_ad_transition desktop 9268
