@@ -416,8 +416,7 @@ public final class BrowserLocalMapRuntime{
         }
         if(state.gameOver){
             gameOverFreeze = true;
-            String winner = state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name;
-            markGameOver(winner, state.wave);
+            markGameOver(state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
             diagPhase("logic-gameover");
             updateGameOverFrame();
             return;
