@@ -175,7 +175,7 @@ public final class BrowserLocalMapRuntime{
     public static void startAttack(String slug){
         Map map = bySlug(slug);
         if(map == null) throw new IllegalArgumentException("Unknown built-in browser map: " + slug);
-        if(!map.teams.size > 1) return;
+        if(map.teams.size <= 1) return;
         start(map, Gamemode.attack);
     }
 
@@ -204,7 +204,7 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        if(mode == Gamemode.attack && !map.teams.size > 1) return;
+        if(mode == Gamemode.attack && map.teams.size <= 1) return;
 
         // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
         // reads Map.spawns, which is still zero before the MSAV body is loaded here.
