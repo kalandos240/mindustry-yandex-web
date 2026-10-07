@@ -266,7 +266,12 @@
         mark('data-yandex-banner-state', state.bannerWanted ? 'show-pending' : 'hide-pending');
         try{
             const result = await Promise.resolve(adv[method]());
-            if(request !== state.bannerRequest) return false;
+            if(request !== state.bannerRequest){
+                // The SDK call itself may have completed out of order, so ignoring only
+                // this response is not enough: re-assert the newest desired side effect.
+                void syncStickyBanner(state.bannerWanted, 'stale-correction');
+                return false;
+            }
 
             state.bannerShowing = !!(result && result.stickyAdvIsShowing);
             if(state.bannerWanted){
