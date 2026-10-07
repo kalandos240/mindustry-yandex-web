@@ -50,47 +50,21 @@ new_gameover = '''            markGameOver(state.won ? state.rules.defaultTeam.n
 '''
 old_gameover_count = text.count(old_gameover)
 new_gameover_count = text.count(new_gameover)
-winner_block_present = (
-    'String winner = state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name;' in text
-    and 'markGameOver(winner, state.wave);' in text
-)
-if old_gameover_count == 1 and new_gameover_count == 0 and not winner_block_present:
+if old_gameover_count == 1 and new_gameover_count == 0:
     text = text.replace(old_gameover, new_gameover, 1)
-elif old_gameover_count == 0 and (new_gameover_count == 1 or winner_block_present):
-    # The committed BrowserLocalMapRuntime already carries this correctness fix,
-    # either as the direct call or the newer shared winner variable.
+elif old_gameover_count == 0 and new_gameover_count == 1:
+    # The committed BrowserLocalMapRuntime already carries this correctness fix.
+    # Treat the overlay as idempotent instead of failing the whole build.
     pass
 else:
     raise SystemExit(
         "Attack smoke game-over winner marker is ambiguous: "
-        f"old={old_gameover_count}, new={new_gameover_count}, winnerBlock={winner_block_present}"
+        f"old={old_gameover_count}, new={new_gameover_count}"
     )
 
 old_methods = '''    private static void startEnemyPathSmoke(){
 '''
 new_methods = '''    private static void startAttackSmoke(){
-        if(attackPresetSmokeRequested()){
-            if(!state.rules.attackMode || state.rules.defaultTeam.core() == null){
-                throw new IllegalStateException("Real Attack smoke did not enter a valid Attack session");
-            }
-
-            int enemyCores = 0;
-            for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
-                if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
-                    enemyCores += data.cores.size;
-                }
-            }
-            if(enemyCores <= 0){
-                throw new IllegalStateException("Real Attack smoke loaded no enemy cores");
-            }
-
-            // Reuse the already-budgeted smoke fields. A default-team core is a sentinel
-            // that selects the real-map branch in updateAttackSmoke(); synthetic maze
-            // smoke stores the generated wave-team core here instead.
-            attackSmokeCore = state.rules.defaultTeam.core();
-            attackSmokeDestroyed = false;
-            return;
-        }
         if(!attackSmokeRequested()) return;
 
         state.rules.attackMode = true;
@@ -153,24 +127,11 @@ new_methods = '''    private static void startAttackSmoke(){
     }
 
     private static void updateAttackSmoke(){
-        if(attackSmokeCore == null || attackSmokeDestroyed || state.gameOver || frames < 3) return;
+        if(attackSmokeCore == null || attackSmokeDestroyed || state.gameOver) return;
 
-        if(attackSmokeCore.team == state.rules.defaultTeam && state.rules.attackMode){
-            arc.struct.Seq<mindustry.gen.Building> targets = new arc.struct.Seq<>();
-            for(mindustry.game.Teams.TeamData data : state.teams.getActive()){
-                if(data.team != state.rules.defaultTeam && data.team != Team.derelict){
-                    targets.addAll(data.cores);
-                }
-            }
-            if(targets.isEmpty()) throw new IllegalStateException("Real Attack smoke lost enemy cores");
-            for(mindustry.gen.Building core : targets){
-                if(core != null && core.isValid()) core.damage(core.health + 1f);
-            }
-            attackSmokeDestroyed = true;
-            attackSmokeCore = null;
-            markAttackSmokeDestroyed();
-            return;
-        }
+        // Let the real entity/team/pathfinding graph observe the enemy core for several
+        // production frames before destroying it through Building.damage -> Tile.buildDestroyed.
+        if(frames < 3) return;
 
         mindustry.gen.Building core = attackSmokeCore;
         core.damage(core.health + 1f);
