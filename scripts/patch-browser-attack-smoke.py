@@ -50,16 +50,20 @@ new_gameover = '''            markGameOver(state.won ? state.rules.defaultTeam.n
 '''
 old_gameover_count = text.count(old_gameover)
 new_gameover_count = text.count(new_gameover)
-if old_gameover_count == 1 and new_gameover_count == 0:
+winner_block_present = (
+    'String winner = state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name;' in text
+    and 'markGameOver(winner, state.wave);' in text
+)
+if old_gameover_count == 1 and new_gameover_count == 0 and not winner_block_present:
     text = text.replace(old_gameover, new_gameover, 1)
-elif old_gameover_count == 0 and new_gameover_count == 1:
-    # The committed BrowserLocalMapRuntime already carries this correctness fix.
-    # Treat the overlay as idempotent instead of failing the whole build.
+elif old_gameover_count == 0 and (new_gameover_count == 1 or winner_block_present):
+    # The committed BrowserLocalMapRuntime already carries this correctness fix,
+    # either as the direct call or the newer shared winner variable.
     pass
 else:
     raise SystemExit(
         "Attack smoke game-over winner marker is ambiguous: "
-        f"old={old_gameover_count}, new={new_gameover_count}"
+        f"old={old_gameover_count}, new={new_gameover_count}, winnerBlock={winner_block_present}"
     )
 
 old_methods = '''    private static void startEnemyPathSmoke(){
