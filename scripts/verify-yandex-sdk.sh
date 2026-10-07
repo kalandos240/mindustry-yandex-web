@@ -340,6 +340,96 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-web="ready"' > "$CLOUD_DOM"
 echo 'Yandex cloud boot restore: player.getData -> BrowserSettings before TeaVM -> musicvol=25 PASS'
 
+run_attack_cloud_roundtrip(){
+  local first_profile="/tmp/mindustry-yandex-attack-cloud-first-profile"
+  local second_profile="/tmp/mindustry-yandex-attack-cloud-second-profile"
+  local first_dom="/tmp/mindustry-yandex-attack-cloud-first.html"
+  local second_dom="/tmp/mindustry-yandex-attack-cloud-second.html"
+  rm -rf "$first_profile" "$second_profile"
+  rm -f "$ATTACK_CLOUD_SEED"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1&mindustrySaveSmoke=1&mindustryAutoSaveExitSmoke=1&mindustryYandexTestDevice=desktop" \
+    --profile "$first_profile" \
+    --port 9271 \
+    --timeout 90 \
+    --require 'data-yandex-sdk="ready"' \
+    --require 'data-yandex-device-type="desktop"' \
+    --require 'data-mindustry-local-map-mode="attack"' \
+    --require 'data-mindustry-local-map-state="menu"' \
+    --require 'data-mindustry-local-autosave="ready"' \
+    --require 'data-mindustry-local-save-slot="available"' \
+    --require 'data-mindustry-local-save-flush="ready"' \
+    --require 'data-mindustry-storage-write-policy="task-coalesced-readwrite"' \
+    --require 'data-mindustry-network="yandex-sdk-only"' \
+    --after-ready-eval "(async()=>{const ok=await globalThis.__mindustryYandex.syncCloudCheckpoint('attack-cloud-smoke',true);document.documentElement.setAttribute('data-yandex-attack-cloud-write',ok?'ready':'error');return ok;})()" \
+    --after-ready-require 'data-yandex-attack-cloud-write="ready"' \
+    --after-ready-require 'data-yandex-cloud-state="saved"' \
+    --after-ready-require 'data-yandex-cloud-reason="attack-cloud-smoke"' \
+    --after-ready-require 'data-yandex-test-cloud-local-file="yes"' \
+    --after-ready-require 'data-yandex-test-cloud-snapshot-b64="' > "$first_dom"
+
+  local first_map snapshot_b64 cloud_bytes
+  first_map="$(grep -o 'data-mindustry-local-map-returned-from="[^"]*"' "$first_dom" | head -1 | cut -d'"' -f2)"
+  snapshot_b64="$(grep -o 'data-yandex-test-cloud-snapshot-b64="[^"]*"' "$first_dom" | head -1 | cut -d'"' -f2)"
+  cloud_bytes="$(grep -o 'data-yandex-test-cloud-local-bytes="[0-9]*"' "$first_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+
+  test -n "$first_map"
+  case "$first_map" in
+    veins|glacier|passage) ;;
+    *) echo "Unexpected Attack cloud source map: $first_map" >&2; exit 1 ;;
+  esac
+  test -n "$snapshot_b64"
+  test "$cloud_bytes" -ge 128
+
+  SNAPSHOT_B64="$snapshot_b64" python3 - "$ATTACK_CLOUD_SEED" <<'PY'
+import base64
+import json
+import os
+import sys
+
+payload = base64.b64decode(os.environ["SNAPSHOT_B64"]).decode("utf-8")
+obj = json.loads(payload)
+path = sys.argv[1]
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(obj, fh, separators=(",", ":"))
+PY
+  test -s "$ATTACK_CLOUD_SEED"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudSeedFile=attack-cloud-seed.json&mindustryContinueSmoke=1&mindustryYandexTestDevice=desktop" \
+    --profile "$second_profile" \
+    --port 9272 \
+    --timeout 90 \
+    --require 'data-yandex-sdk="ready"' \
+    --require 'data-yandex-test-cloud-seed-loaded="yes"' \
+    --require 'data-yandex-cloud-restore="ready"' \
+    --require 'data-yandex-cloud-restored-settings="yes"' \
+    --require 'data-mindustry-local-save-slot="available"' \
+    --require 'data-mindustry-local-mode-restore="attack"' \
+    --require 'data-mindustry-local-map-mode="attack"' \
+    --require 'data-mindustry-local-continue="ready"' \
+    --require 'data-mindustry-local-save-load="ready"' \
+    --require 'data-mindustry-local-map-state="playing"' \
+    --require 'data-mindustry-local-map-loop="live"' \
+    --require 'data-mindustry-network="yandex-sdk-only"' > "$second_dom"
+
+  local restored_files second_map frames
+  restored_files="$(grep -o 'data-yandex-cloud-restored-files="[0-9]*"' "$second_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+  second_map="$(grep -o 'data-mindustry-local-continue-slug="[^"]*"' "$second_dom" | head -1 | cut -d'"' -f2)"
+  frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' "$second_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+
+  test "$restored_files" -ge 1
+  test "$second_map" = "$first_map"
+  test "$frames" -ge 3
+
+  echo "Yandex Attack cloud round-trip: $first_map SaveIO -> Player.setData ($cloud_bytes bytes) -> clean profile Player.getData -> Attack Continue frames=$frames PASS"
+}
+
+if [ "${MINDUSTRY_SKIP_ATTACK_CLOUD:-0}" != "1" ]; then
+  run_attack_cloud_roundtrip
+fi
+
 run_ad_lifecycle(){
   local device="$1"
   local cdp="$2"
