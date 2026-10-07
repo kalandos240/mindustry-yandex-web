@@ -406,6 +406,9 @@ jobs:
       - name: Verify real built-in local Attack mode
         run: bash scripts/verify-browser-local-attack.sh
 
+      - name: Verify Attack cold Continue persistence
+        run: bash scripts/verify-browser-attack-continue.sh
+
       - name: Verify campaign pause save and resume
         run: bash scripts/verify-browser-campaign-pause.sh
 
