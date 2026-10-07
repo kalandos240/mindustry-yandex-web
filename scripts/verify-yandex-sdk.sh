@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="$ROOT_DIR/web-runtime/build/web"
 SDK_STUB="$WEB_DIR/sdk.js"
+ATTACK_CLOUD_SEED="$WEB_DIR/attack-cloud-seed.json"
 PROFILE="/tmp/mindustry-yandex-sdk-profile"
 DOM="/tmp/mindustry-yandex-sdk-dom.html"
 PORT=8082
@@ -17,7 +18,7 @@ command -v google-chrome >/dev/null
 [ ! -e "$SDK_STUB" ]
 
 cleanup(){
-  rm -f "$SDK_STUB"
+  rm -f "$SDK_STUB" "$ATTACK_CLOUD_SEED"
   if [ -n "${server_pid:-}" ]; then kill "$server_pid" 2>/dev/null || true; fi
 }
 trap cleanup EXIT
@@ -35,8 +36,11 @@ cat > "$SDK_STUB" <<'JS'
     const menuAdSmoke = params.get('mindustryYandexMenuAdSmoke') === '1';
     const fullscreenSmoke = params.get('mindustryYandexFullscreenSmoke') === '1';
     const cloudBootSmoke = params.get('mindustryYandexCloudBootSmoke') === '1';
+    const attackCloudSmoke = params.get('mindustryYandexAttackCloudSmoke') === '1';
+    const cloudSeedFile = params.get('mindustryYandexCloudSeedFile') || '';
     const testDevice = params.get('mindustryYandexTestDevice') === 'mobile' ? 'mobile' : 'desktop';
     const playerData = Object.create(null);
+    let cloudSeedLoaded = false;
     if(cloudBootSmoke){
         playerData.mindustryWebCheckpointV1 = {
             schema: 1,
@@ -57,7 +61,7 @@ cat > "$SDK_STUB" <<'JS'
     }
 
     function schedulePauseCycle(){
-        if(adSmoke || menuAdSmoke || fullscreenSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
+        if(adSmoke || menuAdSmoke || fullscreenSmoke || attackCloudSmoke || pauseScheduled || !listeners.game_api_pause || !listeners.game_api_resume) return;
         pauseScheduled = true;
         afterFrames(3, () => {
             root.setAttribute('data-yandex-test-pause-sent', 'yes');
@@ -198,6 +202,13 @@ cat > "$SDK_STUB" <<'JS'
                     }
                 },
                 async getPlayer(){
+                    if(cloudSeedFile && !cloudSeedLoaded){
+                        const response = await fetch('/' + cloudSeedFile.replace(/^\/+/, ''));
+                        if(!response.ok) throw new Error('Cloud seed HTTP ' + response.status);
+                        Object.assign(playerData, await response.json());
+                        cloudSeedLoaded = true;
+                        root.setAttribute('data-yandex-test-cloud-seed-loaded', 'yes');
+                    }
                     return {
                         async setData(data, flush){
                             Object.assign(playerData, data || {});
@@ -217,6 +228,21 @@ cat > "$SDK_STUB" <<'JS'
                                     root.setAttribute('data-yandex-test-cloud-campaign-file', raw.length >= 128 ? 'yes' : 'invalid');
                                     root.setAttribute('data-yandex-test-cloud-campaign-bytes', String(raw.length));
                                 }
+                                const local = files['saves/web-local-survival.msav'];
+                                if(local){
+                                    const raw = atob(local);
+                                    root.setAttribute('data-yandex-test-cloud-local-file', raw.length >= 128 ? 'yes' : 'invalid');
+                                    root.setAttribute('data-yandex-test-cloud-local-bytes', String(raw.length));
+                                }
+                                const snapshotBytes = new TextEncoder().encode(
+                                    JSON.stringify({mindustryWebCheckpointV1: snapshot})
+                                );
+                                let snapshotBinary = '';
+                                for(const byte of snapshotBytes) snapshotBinary += String.fromCharCode(byte);
+                                root.setAttribute(
+                                    'data-yandex-test-cloud-snapshot-b64',
+                                    btoa(snapshotBinary)
+                                );
                             }
                         },
                         async getData(keys){
@@ -319,6 +345,101 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-settings-music-value="25"' \
   --require 'data-mindustry-web="ready"' > "$CLOUD_DOM"
 echo 'Yandex cloud boot restore: player.getData -> BrowserSettings before TeaVM -> musicvol=25 PASS'
+
+run_attack_cloud_roundtrip(){
+  local first_profile="/tmp/mindustry-yandex-attack-cloud-first-profile"
+  local second_profile="/tmp/mindustry-yandex-attack-cloud-second-profile"
+  local first_dom="/tmp/mindustry-yandex-attack-cloud-first.html"
+  local second_dom="/tmp/mindustry-yandex-attack-cloud-second.html"
+  rm -rf "$first_profile" "$second_profile"
+  rm -f "$ATTACK_CLOUD_SEED"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryAttackPresetSmoke=1&mindustrySaveSmoke=1&mindustryAutoSaveExitSmoke=1&mindustryYandexAttackCloudSmoke=1&mindustryYandexTestDevice=desktop" \
+    --profile "$first_profile" \
+    --port 9271 \
+    --timeout 90 \
+    --require 'data-yandex-sdk="ready"' \
+    --require 'data-yandex-device-type="desktop"' \
+    --require 'data-mindustry-local-map-mode="attack"' \
+    --require 'data-mindustry-local-map-state="menu"' \
+    --require 'data-mindustry-local-autosave="ready"' \
+    --require 'data-mindustry-local-save-slot="available"' \
+    --require 'data-mindustry-local-save-flush="ready"' \
+    --require 'data-mindustry-storage-write-policy="task-coalesced-readwrite"' \
+    --require 'data-mindustry-network="yandex-sdk-only"' \
+    --after-ready-eval "(async()=>{const ok=await globalThis.__mindustryYandex.syncCloudCheckpoint('attack-cloud-smoke',true);document.documentElement.setAttribute('data-yandex-attack-cloud-write',ok?'ready':'error');return ok;})()" \
+    --after-ready-require 'data-yandex-attack-cloud-write="ready"' \
+    --after-ready-require 'data-yandex-cloud-state="saved"' \
+    --after-ready-require 'data-yandex-cloud-reason="attack-cloud-smoke"' \
+    --after-ready-require 'data-yandex-test-cloud-local-file="yes"' \
+    --after-ready-require 'data-yandex-test-cloud-snapshot-b64="' > "$first_dom"
+
+  local first_map snapshot_b64 cloud_bytes
+  first_map="$(grep -o 'data-mindustry-local-map-returned-from="[^"]*"' "$first_dom" | head -1 | cut -d'"' -f2)"
+  snapshot_b64="$(grep -o 'data-yandex-test-cloud-snapshot-b64="[^"]*"' "$first_dom" | head -1 | cut -d'"' -f2)"
+  cloud_bytes="$(grep -o 'data-yandex-test-cloud-local-bytes="[0-9]*"' "$first_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+
+  test -n "$first_map"
+  case "$first_map" in
+    veins|glacier|passage) ;;
+    *) echo "Unexpected Attack cloud source map: $first_map" >&2; exit 1 ;;
+  esac
+  test -n "$snapshot_b64"
+  test "$cloud_bytes" -ge 128
+
+  SNAPSHOT_B64="$snapshot_b64" python3 - "$ATTACK_CLOUD_SEED" <<'PY'
+import base64
+import json
+import os
+import sys
+
+payload = base64.b64decode(os.environ["SNAPSHOT_B64"]).decode("utf-8")
+obj = json.loads(payload)
+path = sys.argv[1]
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(obj, fh, separators=(",", ":"))
+PY
+  test -s "$ATTACK_CLOUD_SEED"
+
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+    --emulate-mobile \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryYandexCloudSeedFile=attack-cloud-seed.json&mindustryContinueSmoke=1&mindustryYandexAttackCloudSmoke=1&mindustryYandexTestDevice=mobile" \
+    --profile "$second_profile" \
+    --port 9272 \
+    --timeout 90 \
+    --require 'data-yandex-sdk="ready"' \
+    --require 'data-yandex-device-type="mobile"' \
+    --require 'data-yandex-device-source="yandex-sdk"' \
+    --require 'data-mindustry-input-mode="mobile"' \
+    --require 'data-mindustry-stock-input="mobile"' \
+    --require 'data-yandex-test-cloud-seed-loaded="yes"' \
+    --require 'data-yandex-cloud-restore="ready"' \
+    --require 'data-yandex-cloud-restored-settings="yes"' \
+    --require 'data-mindustry-local-save-slot="available"' \
+    --require 'data-mindustry-local-mode-restore="attack"' \
+    --require 'data-mindustry-local-map-mode="attack"' \
+    --require 'data-mindustry-local-continue="ready"' \
+    --require 'data-mindustry-local-save-load="ready"' \
+    --require 'data-mindustry-local-map-state="playing"' \
+    --require 'data-mindustry-local-map-loop="live"' \
+    --require 'data-mindustry-network="yandex-sdk-only"' > "$second_dom"
+
+  local restored_files second_map frames
+  restored_files="$(grep -o 'data-yandex-cloud-restored-files="[0-9]*"' "$second_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+  second_map="$(grep -o 'data-mindustry-local-continue-slug="[^"]*"' "$second_dom" | head -1 | cut -d'"' -f2)"
+  frames="$(grep -o 'data-mindustry-local-map-frames="[0-9]*"' "$second_dom" | head -1 | sed -E 's/.*="([0-9]+)"/\1/')"
+
+  test "$restored_files" -ge 1
+  test "$second_map" = "$first_map"
+  test "$frames" -ge 3
+
+  echo "Yandex Attack cloud round-trip: desktop $first_map SaveIO -> Player.setData ($cloud_bytes bytes) -> clean mobile profile Player.getData -> Attack Continue frames=$frames PASS"
+}
+
+if [ "${MINDUSTRY_SKIP_ATTACK_CLOUD:-0}" != "1" ]; then
+  run_attack_cloud_roundtrip
+fi
 
 run_ad_lifecycle(){
   local device="$1"
