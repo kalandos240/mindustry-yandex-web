@@ -93,7 +93,6 @@ public final class BrowserUiRuntime{
         initialized = true;
         markReady();
         markLocalMapUiReady();
-        markAttackUiReady();
         markLocalSaveUiReady(BrowserSaveRuntime.hasLocalSession() ? "available" : "empty");
     }
 
@@ -266,9 +265,6 @@ public final class BrowserUiRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-menu', 'builtin-selector'); document.documentElement.setAttribute('data-mindustry-local-map-back', 'ready');")
     private static native void markLocalMapUiReady();
-
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-attack-ui','ready');")
-    private static native void markAttackUiReady();
 
     @JSBody(params = {"slot"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slot', slot);")
     private static native void markLocalSaveUiReady(String slot);
