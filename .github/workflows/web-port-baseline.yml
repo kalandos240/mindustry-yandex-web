@@ -414,6 +414,9 @@ jobs:
       - name: Verify game fits portal area beside advertising blocks
         run: bash scripts/verify-browser-portal-bounds.sh
 
+      - name: Verify stock campaign autosave is not called each frame
+        run: bash scripts/verify-browser-autosave-cadence.sh
+
       - name: Verify adaptive frame-rate governor in desktop/mobile Chrome
         run: bash scripts/verify-browser-frame-budget.sh
 
