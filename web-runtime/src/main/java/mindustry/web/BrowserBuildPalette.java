@@ -73,7 +73,7 @@ public final class BrowserBuildPalette{
         root.update(() -> {
             // Read real in-game palette visibility, not just startup construction.
             if(state != null && state.isGame() && (++visibilityFrames & 31) == 0){
-                markDisplay(root.isVisible(), categories.getChildren().size > 0,
+                markDisplay(root.visible, categories.getChildren().size > 0,
                     blocks.getChildren().size > 0);
             }
         });
