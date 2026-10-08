@@ -201,8 +201,9 @@ public final class BrowserApplication extends WebApplicationBase{
         }
         budgetWindowMs += elapsed;
         budgetFrames++;
-        if(elapsed > 22d) budgetSlowFrames++;
-        if(budgetWindowMs < 2500d || budgetFrames < 8) return false;
+        // More than ~18.5ms exceeds the 60Hz budget after scheduling jitter.
+        if(elapsed > 18.5d) budgetSlowFrames++;
+        if(budgetWindowMs < 1250d || budgetFrames < 8) return false;
 
         double fps = budgetFrames * 1000d / budgetWindowMs;
         int slow = budgetSlowFrames, frames = budgetFrames;
@@ -210,12 +211,13 @@ public final class BrowserApplication extends WebApplicationBase{
         budgetFrames = budgetSlowFrames = 0;
 
         float previous = renderRatioCap;
-        if(fps < 47d && slow * 3 >= frames){
-            // 0.625x limits GPU fill-rate to ~39% of CSS-native resolution.
-            renderRatioCap = Math.max(0.625f, renderRatioCap - 0.125f);
+        if(fps < 55d && slow * 4 >= frames){
+            // React within a few seconds to persistent frame drops. 0.5x
+            // keeps 25% of native fill-rate on very constrained hardware.
+            renderRatioCap = Math.max(0.5f, renderRatioCap - 0.2f);
             budgetHealthyWindows = 0;
-        }else if(fps > 57d && slow * 12 <= frames){
-            if(++budgetHealthyWindows >= 3){
+        }else if(fps > 59d && slow * 12 <= frames){
+            if(++budgetHealthyWindows >= 5){
                 renderRatioCap = Math.min(pixelRatioCap, renderRatioCap + 0.125f);
                 budgetHealthyWindows = 0;
             }
@@ -329,7 +331,7 @@ public final class BrowserApplication extends WebApplicationBase{
     @JSBody(params = {"sample", "total", "update", "posted"}, script = "const d=document.documentElement; d.setAttribute('data-mindustry-cpu-sample',String(sample)); d.setAttribute('data-mindustry-cpu-frame-ms',String(Math.round(total*10)/10)); d.setAttribute('data-mindustry-cpu-update-ms',String(Math.round(update*10)/10)); d.setAttribute('data-mindustry-cpu-posted-ms',String(Math.round(posted*10)/10));")
     private static native void markCpuFrame(int sample, double total, double update, double posted);
 
-    @JSBody(params = {"fps", "ratio", "slow", "frames"}, script = "const root=document.documentElement; root.setAttribute('data-mindustry-frame-budget-policy','adaptive-ratio-2500ms'); root.setAttribute('data-mindustry-frame-budget-fps',String(fps)); root.setAttribute('data-mindustry-frame-budget-dpr',String(ratio)); root.setAttribute('data-mindustry-frame-budget-slow',String(slow)); root.setAttribute('data-mindustry-frame-budget-samples',String(frames));")
+    @JSBody(params = {"fps", "ratio", "slow", "frames"}, script = "const root=document.documentElement; root.setAttribute('data-mindustry-frame-budget-policy','adaptive-ratio-1250ms-60fps'); root.setAttribute('data-mindustry-frame-budget-fps',String(fps)); root.setAttribute('data-mindustry-frame-budget-dpr',String(ratio)); root.setAttribute('data-mindustry-frame-budget-slow',String(slow)); root.setAttribute('data-mindustry-frame-budget-samples',String(frames));")
     private static native void markFrameBudget(int fps, float ratio, int slow, int frames);
 
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-input-mode', mode);")
