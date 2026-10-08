@@ -185,10 +185,10 @@ require(ASYNC_CORE_PATCH, "if(p == avoidance && (webFrame & 1) != 0) continue;",
 # Renderer/settings polling and game-state work stay off the 60Hz critical path.
 for needle in [
     '"effects", true',
-    '"animatedwater", !mobileMode',
-    '"animatedshields", !mobileMode',
-    '"drawlight", !mobileMode',
-    'if(mobileMode && !Core.settings.has("bloom"))',
+    '"animatedwater", false',
+    '"animatedshields", false',
+    '"drawlight", false',
+    'if(!Core.settings.has("bloom"))',
     'Core.settings.put("bloom", false)',
     "data-mindustry-renderer-settings-policy','32-frame",
 ]:
