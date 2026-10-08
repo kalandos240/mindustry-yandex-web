@@ -209,19 +209,25 @@ public final class WebClientLauncher extends ClientLauncher{
         mindustry.entities.Effect.setWebMaxActiveEffects(effectBudget);
         Core.settings.defaults(
             "effects", true,
-            "animatedwater", !mobileMode,
-            "animatedshields", !mobileMode,
-            "drawlight", !mobileMode,
+            // Performance-first on all Yandex desktop and mobile clients.
+            // Rendering bloom, lighting, animated liquids and shields at native
+            // full-screen resolution is disproportionately expensive in WebGL.
+            // Users may override defaults; their saved choices remain authoritative.
+            "animatedwater", false,
+            "animatedshields", false,
+            "drawlight", false,
             "linear", !mobileMode,
             "blockstatus", false,
             "pixelate", false
         );
-        if(mobileMode && !Core.settings.has("bloom")){
+        if(!Core.settings.has("bloom")){
+            // Render scale governor cannot save CPU on expensive post-processing;
+            // disable bloom on a clean Yandex profile without overriding users.
             Core.settings.put("bloom", false);
         }
 
         markRendererProfile(
-            mobileMode ? "mobile-performance" : "desktop-stock",
+            mobileMode ? "mobile-performance" : "desktop-performance",
             Core.settings.getBool("bloom", true),
             Core.settings.getBool("effects"),
             Core.settings.getBool("animatedwater"),
