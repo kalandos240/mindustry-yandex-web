@@ -408,6 +408,9 @@ jobs:
       - name: Verify desktop/mobile resize and orientation continuity
         run: bash scripts/verify-browser-resize-orientation.sh
 
+      - name: Verify game fits portal area beside advertising blocks
+        run: bash scripts/verify-browser-portal-bounds.sh
+
       - name: Verify desktop/mobile runtime load stability
         run: bash scripts/verify-browser-runtime-load.sh
 
