@@ -46,7 +46,11 @@ public class WebGraphics extends Graphics{
     public void updateFrame(double timestampMs){
         frameId++;
         if(lastTimestampMs >= 0d){
-            double elapsed = Math.max(0d, Math.min(250d, timestampMs - lastTimestampMs));
+            // A slow browser renderer must not hand the simulation a quarter-second
+            // delta in one update: physics/effects/AI then produce additional work and
+            // can enter a self-reinforcing frame-time spiral. Bound a visible frame to
+            // 50ms of game time; actual measured FPS still uses uncapped rAF timestamps.
+            double elapsed = Math.max(0d, Math.min(50d, timestampMs - lastTimestampMs));
             deltaTime = (float)(elapsed / 1000d);
         }
         lastTimestampMs = timestampMs;
