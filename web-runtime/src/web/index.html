@@ -12,6 +12,11 @@
            The game must never use fixed positioning relative to the whole viewport:
            only the platform-provided iframe/document game area is ours to fill. */
         #mindustry-game-surface { position: relative; width: 100%; height: 100%; overflow: hidden; }
+        /* Yandex requirement 1.6.2.2: desktop active area must not be wider
+           than 2:1 (or taller than 1:2). Keep mobile fullscreen unaffected. */
+        @media (pointer: fine) {
+            #mindustry-game-surface { max-width: 200vh; max-height: 200vw; }
+        }
         #mindustry-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
         #mindustry-web-status { position: absolute; left: 12px; bottom: 12px; z-index: 2; font-size: 12px; opacity: .75; pointer-events: none; }
     </style>
@@ -265,16 +270,18 @@
                 launch.textContent = word.settings;
                 title.textContent = word.settings;
                 back.textContent = word.back;
-                launch.style.cssText = 'position:fixed;right:12px;top:12px;z-index:50;min-width:124px;height:44px;font:16px sans-serif;';
-                panel.style.cssText = 'position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:#111d;color:white;font:18px sans-serif;';
+                launch.style.cssText = 'position:absolute;right:12px;top:12px;z-index:50;min-width:124px;height:44px;font:16px sans-serif;';
+                panel.style.cssText = 'position:absolute;inset:0;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:#111d;color:white;font:18px sans-serif;';
                 title.style.cssText = 'font-size:24px;margin-bottom:8px;';
                 for(const button of controls){
                     button.style.cssText = 'min-width:260px;min-height:48px;font:17px sans-serif;';
                     panel.appendChild(button);
                 }
                 panel.insertBefore(title, sfx);
-                document.body.appendChild(launch);
-                document.body.appendChild(panel);
+                const surface = document.getElementById('mindustry-game-surface');
+                if(!surface) throw new Error('Missing portal game surface for settings');
+                surface.appendChild(launch);
+                surface.appendChild(panel);
 
                 let sfxState = sfxInitial, musicState = musicInitial;
                 let effectsState = effectsInitial, qualityState = qualityInitial;
@@ -338,8 +345,10 @@
                 let mode = initial === 1 ? 1 : 0;
 
                 button.id = 'mindustry-local-mode';
-                button.style.cssText = 'position:fixed;right:12px;top:64px;z-index:50;min-width:190px;height:44px;font:16px sans-serif;';
-                document.body.appendChild(button);
+                button.style.cssText = 'position:absolute;right:12px;top:64px;z-index:50;min-width:190px;height:44px;font:16px sans-serif;';
+                const surface = document.getElementById('mindustry-game-surface');
+                if(!surface) throw new Error('Missing portal game surface for custom mode');
+                surface.appendChild(button);
 
                 const render = () => {
                     button.textContent = (ru ? 'Режим карты: ' : 'Custom mode: ') +
