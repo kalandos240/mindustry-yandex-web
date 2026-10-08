@@ -462,6 +462,26 @@ jobs:
           test -s work/release/mindustry-yandex-release.zip
           test -s work/release/mindustry-yandex-release.zip.sha256
 
+      # Prove the archive is reproducible, not just consistently ordered. Touching
+      # staged files changes filesystem mtimes but must not affect ZIP metadata,
+      # bytes, the published digest sidecar, or the release report.
+      - name: Verify byte-identical Yandex release repack
+        if: success()
+        run: |
+          zip=work/release/mindustry-yandex-release.zip
+          sidecar="$zip.sha256"
+          report=work/release/mindustry-yandex-release-report.txt
+          before_zip="$(sha256sum "$zip" | cut -d' ' -f1)"
+          before_sidecar="$(sha256sum "$sidecar" | cut -d' ' -f1)"
+          before_report="$(sha256sum "$report" | cut -d' ' -f1)"
+          touch web-runtime/build/web/index.html web-runtime/build/web/yandex-platform.js
+          python3 scripts/package-yandex-release.py
+          test "$before_zip" = "$(sha256sum "$zip" | cut -d' ' -f1)"
+          test "$before_sidecar" = "$(sha256sum "$sidecar" | cut -d' ' -f1)"
+          test "$before_report" = "$(sha256sum "$report" | cut -d' ' -f1)"
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          echo "Yandex release ZIP reproducibility (mtime-independent): PASS"
+
       - name: Verify packaged Yandex release archive
         if: success()
         run: bash scripts/verify-yandex-release-archive.sh
