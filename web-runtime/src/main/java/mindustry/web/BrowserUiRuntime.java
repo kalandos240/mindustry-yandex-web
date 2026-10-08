@@ -166,6 +166,30 @@ public final class BrowserUiRuntime{
         controls.button(Core.bundle.get("pause", "Pause"), BrowserUiRuntime::pauseActiveSession)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
+
+        // Ground Zero's stock tutorial asks the player to research Mechanical Drill
+        // while the game is running. The slim Web HUD has no desktop ResearchDialog:
+        // expose the genuine TechNode purchase using the existing campaign research
+        // bridge, then immediately refresh the construction palette on unlock.
+        controls.row();
+        TextButton drillResearch = controls.button(
+            Core.bundle.get("research", "Research") + ": " + mindustry.content.Blocks.mechanicalDrill.localizedName, () -> {
+                if(BrowserCampaignRuntime.active() && state.isCampaign()
+                && state.rules.sector == mindustry.content.SectorPresets.groundZero.sector
+                && BrowserCampaignResearch.canSpend(mindustry.content.Blocks.mechanicalDrill)){
+                    BrowserCampaignResearch.spend(mindustry.content.Blocks.mechanicalDrill);
+                    BrowserBuildPalette.refresh();
+                }
+            }).size(mobile ? 270f : 240f, mobile ? 52f : 44f).colspan(2).pad(8f).get();
+        drillResearch.getLabel().setFontScale(0.78f);
+        drillResearch.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign()
+            && state.rules.sector == mindustry.content.SectorPresets.groundZero.sector
+            && !mindustry.content.Blocks.mechanicalDrill.unlocked());
+        drillResearch.update(() -> {
+            if(BrowserCampaignRuntime.active() && state.isCampaign()){
+                drillResearch.setDisabled(!BrowserCampaignResearch.canSpend(mindustry.content.Blocks.mechanicalDrill));
+            }
+        });
         ui.hudGroup.addChild(controls);
     }
 
