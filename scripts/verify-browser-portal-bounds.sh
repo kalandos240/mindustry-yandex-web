@@ -61,6 +61,16 @@ for mode in desktop mobile; do
       const surface = document.getElementById('mindustry-game-surface');
       const canvas = document.getElementById('mindustry-canvas');
       if(!surface || !canvas || !surface.contains(canvas)) throw new Error('Game surface hierarchy missing');
+      for(const id of ['mindustry-settings-toggle','mindustry-settings-overlay','mindustry-local-mode']){
+        const control = document.getElementById(id);
+        if(!control || !surface.contains(control) || getComputedStyle(control).position !== 'absolute'){
+          throw new Error('Portal control escaped into banner area: ' + id);
+        }
+      }
+      const fullscreen = document.getElementById('mindustry-fullscreen-toggle');
+      if(fullscreen && (!surface.contains(fullscreen) || getComputedStyle(fullscreen).position !== 'absolute')){
+        throw new Error('Fullscreen control escaped portal bounds');
+      }
       const outerWidth = window.innerWidth, outerHeight = window.innerHeight;
       surface.style.width = '72%';
       surface.style.height = '80%';
