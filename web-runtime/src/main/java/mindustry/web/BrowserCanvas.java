@@ -84,7 +84,7 @@ public final class BrowserCanvas{
     @JSBody(params = {"canvasId", "maxPixelRatio"}, script = """
         const canvas = document.getElementById(canvasId);
         const deviceRatio = Math.max(1, window.devicePixelRatio || 1);
-        const cap = Math.max(0.625, Number(maxPixelRatio) || 1);
+        const cap = Math.max(0.5, Number(maxPixelRatio) || 1);
         const ratio = Math.min(deviceRatio, cap);
         if (!canvas.__mindustryResizeDirty && canvas.__mindustryLastDpr === ratio) return false;
 
@@ -158,7 +158,7 @@ public final class BrowserCanvas{
     @JSBody(params = {"canvasId", "maxPixelRatio"}, script = """
         const canvas = document.getElementById(canvasId);
         if (canvas && canvas.__mindustryPixelRatio) return canvas.__mindustryPixelRatio;
-        return Math.min(Math.max(1, window.devicePixelRatio || 1), Math.max(0.625, Number(maxPixelRatio) || 1));
+        return Math.min(Math.max(1, window.devicePixelRatio || 1), Math.max(0.5, Number(maxPixelRatio) || 1));
         """)
     public static native float getDensity(String canvasId, float maxPixelRatio);
 
