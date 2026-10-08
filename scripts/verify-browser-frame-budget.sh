@@ -53,6 +53,12 @@ for mode in desktop mobile; do
       const expectedWidth=Math.floor(canvas.clientWidth * Math.min(window.devicePixelRatio || 1,ratio));
       if(Math.abs(canvas.width-expectedWidth)>2)
         throw new Error('Back buffer not aligned to dynamic scale: '+canvas.width+'/'+expectedWidth);
+      const cpuSample=Number(root.getAttribute('data-mindustry-cpu-sample') || 0);
+      const cpuTotal=Number(root.getAttribute('data-mindustry-cpu-frame-ms'));
+      const cpuUpdate=Number(root.getAttribute('data-mindustry-cpu-update-ms'));
+      const cpuPost=Number(root.getAttribute('data-mindustry-cpu-posted-ms'));
+      if(cpuSample > 0 && (!(cpuTotal >= 0) || !(cpuUpdate >= 0) || !(cpuPost >= 0)))
+        throw new Error('Invalid sampled CPU stage timings');
       root.setAttribute('data-mindustry-frame-budget-smoke','ready');
       return true;
     })()" \
