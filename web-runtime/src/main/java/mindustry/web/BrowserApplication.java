@@ -27,6 +27,10 @@ public final class BrowserApplication extends WebApplicationBase{
     private final BrowserGL20 gl20;
     private final boolean mobileBrowser;
     private final float pixelRatioCap;
+    // Scale backing-buffer pixels, never canvas CSS dimensions or input coordinates.
+    private float renderRatioCap;
+    private double lastBudgetTimestamp = -1d, budgetWindowMs;
+    private int budgetFrames, budgetSlowFrames, budgetHealthyWindows;
     private String clipboard = "";
     private boolean platformPaused;
     private boolean lastPlatformPaused;
@@ -39,6 +43,8 @@ public final class BrowserApplication extends WebApplicationBase{
 
         mobileBrowser = detectMobileBrowser();
         pixelRatioCap = mobileBrowser ? Math.min(config.maxPixelRatio, 1.5f) : config.maxPixelRatio;
+        renderRatioCap = Math.min(pixelRatioCap, 1f);
+        markFrameBudget(60, renderRatioCap, 0, 0);
         markBrowserInputMode(mobileBrowser ? "mobile" : "desktop");
         markPixelRatioPolicy(pixelRatioCap, mobileBrowser ? "mobile" : "desktop");
 
@@ -51,7 +57,7 @@ public final class BrowserApplication extends WebApplicationBase{
         graphics.setWebGLVersion(BrowserCanvas.getWebGLMajor(config.canvasId));
         gl20 = new BrowserGL20(BrowserCanvas.getContext(config.canvasId));
         graphics.setGL20(gl20);
-        BrowserCanvas.resizeToDisplay(config.canvasId, pixelRatioCap);
+        BrowserCanvas.resizeToDisplay(config.canvasId, renderRatioCap);
         updateGraphicsMetrics();
         BrowserCanvas.installResizeSignal(config.canvasId, resizeCallback);
         Core.graphics = graphics;
@@ -85,12 +91,14 @@ public final class BrowserApplication extends WebApplicationBase{
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "resize";
+            // Observe rAF pacing without DOM reads or per-frame allocations.
+            if(sampleFrameBudget(timestamp)) resizePending = true;
             // DOM resize events signal the next frame immediately. A low-frequency fallback
             // catches rare DPR changes that do not dispatch resize/orientation events.
             boolean resizeFallback = (callbackIndex & 63) == 0;
             if(resizePending || resizeFallback){
                 resizePending = false;
-                if(BrowserCanvas.resizeToDisplay(config.canvasId, pixelRatioCap)){
+                if(BrowserCanvas.resizeToDisplay(config.canvasId, renderRatioCap)){
                     updateGraphicsMetrics();
                     resize(graphics.getWidth(), graphics.getHeight());
                 }
@@ -153,6 +161,55 @@ public final class BrowserApplication extends WebApplicationBase{
         }
     }
 
+    private boolean sampleFrameBudget(double timestamp){
+        boolean playing = !platformPaused && Vars.state != null && Vars.state.isPlaying()
+            && !Vars.state.gameOver;
+        if(!playing){
+            lastBudgetTimestamp = timestamp;
+            budgetWindowMs = 0d;
+            budgetFrames = budgetSlowFrames = budgetHealthyWindows = 0;
+            return false;
+        }
+        if(lastBudgetTimestamp < 0d){
+            lastBudgetTimestamp = timestamp;
+            return false;
+        }
+        double elapsed = timestamp - lastBudgetTimestamp;
+        lastBudgetTimestamp = timestamp;
+        // Omit background throttling and full ad/tab suspension. Visible slow
+        // frames up to 500ms still count and trigger quality reduction.
+        if(elapsed <= 0d || elapsed > 500d){
+            budgetWindowMs = 0d;
+            budgetFrames = budgetSlowFrames = 0;
+            return false;
+        }
+        budgetWindowMs += elapsed;
+        budgetFrames++;
+        if(elapsed > 22d) budgetSlowFrames++;
+        if(budgetWindowMs < 2500d || budgetFrames < 8) return false;
+
+        double fps = budgetFrames * 1000d / budgetWindowMs;
+        int slow = budgetSlowFrames, frames = budgetFrames;
+        budgetWindowMs = 0d;
+        budgetFrames = budgetSlowFrames = 0;
+
+        float previous = renderRatioCap;
+        if(fps < 47d && slow * 3 >= frames){
+            // 0.625x limits GPU fill-rate to ~39% of CSS-native resolution.
+            renderRatioCap = Math.max(0.625f, renderRatioCap - 0.125f);
+            budgetHealthyWindows = 0;
+        }else if(fps > 57d && slow * 12 <= frames){
+            if(++budgetHealthyWindows >= 3){
+                renderRatioCap = Math.min(pixelRatioCap, renderRatioCap + 0.125f);
+                budgetHealthyWindows = 0;
+            }
+        }else{
+            budgetHealthyWindows = 0;
+        }
+        markFrameBudget((int)Math.round(fps), renderRatioCap, slow, frames);
+        return previous != renderRatioCap;
+    }
+
     private static String describe(Throwable error){
         return String.valueOf(error.getMessage());
     }
@@ -198,7 +255,7 @@ public final class BrowserApplication extends WebApplicationBase{
             BrowserCanvas.getClientHeight(config.canvasId),
             BrowserCanvas.getBackBufferWidth(config.canvasId),
             BrowserCanvas.getBackBufferHeight(config.canvasId),
-            BrowserCanvas.getDensity(config.canvasId, pixelRatioCap)
+            BrowserCanvas.getDensity(config.canvasId, renderRatioCap)
         );
     }
 
@@ -249,6 +306,9 @@ public final class BrowserApplication extends WebApplicationBase{
         return points > 0 && (coarse || noHover);
         """)
     private static native boolean detectMobileBrowser();
+
+    @JSBody(params = {"fps", "ratio", "slow", "frames"}, script = "const root=document.documentElement; root.setAttribute('data-mindustry-frame-budget-policy','adaptive-ratio-2500ms'); root.setAttribute('data-mindustry-frame-budget-fps',String(fps)); root.setAttribute('data-mindustry-frame-budget-dpr',String(ratio)); root.setAttribute('data-mindustry-frame-budget-slow',String(slow)); root.setAttribute('data-mindustry-frame-budget-samples',String(frames));")
+    private static native void markFrameBudget(int fps, float ratio, int slow, int frames);
 
     @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-input-mode', mode);")
     private static native void markBrowserInputMode(String mode);
