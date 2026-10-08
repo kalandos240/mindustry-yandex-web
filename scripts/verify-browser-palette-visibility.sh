@@ -57,3 +57,25 @@ for mode in desktop mobile; do
   grep -q "data-mindustry-input-mode=\"$mode\"" "$dom"
   echo "Production $mode: labeled palette visible during live map gameplay PASS"
 done
+
+# Stock Ground Zero tutorial must expose both the construction palette and
+# a usable research action for the Mechanical Drill, not an empty HUD.
+profile="/tmp/mindustry-palette-visible-ground-zero"
+dom="/tmp/mindustry-palette-visible-ground-zero.html"
+rm -rf "$profile"
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1" \
+  --profile "$profile" \
+  --port 9297 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-campaign-preset="groundZero"' \
+  --require 'data-mindustry-campaign-state="playing"' \
+  --require 'data-mindustry-build-palette="ready"' \
+  --require 'data-mindustry-build-palette-visible="yes"' \
+  --require 'data-mindustry-build-palette-actions="present"' \
+  --require 'data-mindustry-ground-zero-drill-research-ui="visible"' \
+  --require 'data-mindustry-network="local-only"' > "$dom"
+grep -Eq 'data-mindustry-build-categories="[1-9][0-9]*"' "$dom"
+grep -Eq 'data-mindustry-build-blocks="[1-9][0-9]*"' "$dom"
+echo "Production Ground Zero: build palette + in-game Mechanical Drill research available PASS"
