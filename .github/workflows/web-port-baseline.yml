@@ -399,6 +399,9 @@ jobs:
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
 
+      - name: Verify visible construction palette during real desktop/mobile gameplay
+        run: bash scripts/verify-browser-palette-visibility.sh
+
       - name: Verify automatic desktop/mobile device detection
         run: bash scripts/verify-browser-device-autodetect.sh
 
