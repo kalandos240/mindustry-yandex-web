@@ -37,6 +37,8 @@ public final class BrowserApplication extends WebApplicationBase{
     private boolean lastGameplayActive;
     private boolean awaitingPlatformResumeFrame;
     private int browserFrameCallbacks;
+    private double cpuFrameStart, cpuUpdateStart, cpuUpdateMs, cpuPostedMs;
+    private int cpuSampleCount;
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
         super(listener, config);
@@ -88,6 +90,10 @@ public final class BrowserApplication extends WebApplicationBase{
         boolean traceStartup = callbackIndex <= 3;
         String phase = "entry";
         try{
+            // Sample only every 64th callback to avoid profiling overhead on
+            // the other 63 frames. JS performance.now() is monotonic.
+            boolean cpuSample = (callbackIndex & 63) == 0;
+            if(cpuSample) cpuFrameStart = performanceNow();
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "resize";
@@ -129,10 +135,16 @@ public final class BrowserApplication extends WebApplicationBase{
                 }
 
                 phase = "frame-listeners";
+                if(cpuSample) cpuUpdateStart = performanceNow();
                 listen(ApplicationListener::update);
+                if(cpuSample){
+                    cpuUpdateMs = performanceNow() - cpuUpdateStart;
+                    cpuUpdateStart = performanceNow();
+                }
 
                 phase = "frame-post";
                 runPostedTasks();
+                if(cpuSample) cpuPostedMs = performanceNow() - cpuUpdateStart;
 
                 phase = "gameplay-sync";
                 syncGameplayMarker();
@@ -153,6 +165,10 @@ public final class BrowserApplication extends WebApplicationBase{
             if(traceStartup) markFrameStage(phase, callbackIndex);
 
             phase = "reschedule";
+            if(cpuSample && !platformPaused){
+                markCpuFrame(++cpuSampleCount, performanceNow() - cpuFrameStart,
+                    cpuUpdateMs, cpuPostedMs);
+            }
             requestAnimationFrame(frameCallback);
             if(traceStartup) markFrameStage("scheduled", callbackIndex);
         }catch(Throwable error){
@@ -306,6 +322,12 @@ public final class BrowserApplication extends WebApplicationBase{
         return points > 0 && (coarse || noHover);
         """)
     private static native boolean detectMobileBrowser();
+
+    @JSBody(script = "return performance.now();")
+    private static native double performanceNow();
+
+    @JSBody(params = {"sample", "total", "update", "posted"}, script = "const d=document.documentElement; d.setAttribute('data-mindustry-cpu-sample',String(sample)); d.setAttribute('data-mindustry-cpu-frame-ms',String(Math.round(total*10)/10)); d.setAttribute('data-mindustry-cpu-update-ms',String(Math.round(update*10)/10)); d.setAttribute('data-mindustry-cpu-posted-ms',String(Math.round(posted*10)/10));")
+    private static native void markCpuFrame(int sample, double total, double update, double posted);
 
     @JSBody(params = {"fps", "ratio", "slow", "frames"}, script = "const root=document.documentElement; root.setAttribute('data-mindustry-frame-budget-policy','adaptive-ratio-2500ms'); root.setAttribute('data-mindustry-frame-budget-fps',String(fps)); root.setAttribute('data-mindustry-frame-budget-dpr',String(ratio)); root.setAttribute('data-mindustry-frame-budget-slow',String(slow)); root.setAttribute('data-mindustry-frame-budget-samples',String(frames));")
     private static native void markFrameBudget(int fps, float ratio, int slow, int frames);
