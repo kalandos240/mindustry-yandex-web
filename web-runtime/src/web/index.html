@@ -8,13 +8,19 @@
     <title>Mindustry</title>
     <style>
         html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; background: #111; color: #fff; font-family: sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-        #mindustry-canvas { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
-        #mindustry-web-status { position: fixed; left: 12px; bottom: 12px; z-index: 2; font-size: 12px; opacity: .75; pointer-events: none; }
+        /* The portal owns the outer layout, including right-hand advertising space.
+           The game must never use fixed positioning relative to the whole viewport:
+           only the platform-provided iframe/document game area is ours to fill. */
+        #mindustry-game-surface { position: relative; width: 100%; height: 100%; overflow: hidden; }
+        #mindustry-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+        #mindustry-web-status { position: absolute; left: 12px; bottom: 12px; z-index: 2; font-size: 12px; opacity: .75; pointer-events: none; }
     </style>
 </head>
 <body>
-    <canvas id="mindustry-canvas" width="1280" height="720" tabindex="0"></canvas>
-    <div id="mindustry-web-status">Initializing Yandex Games and storage...</div>
+    <main id="mindustry-game-surface">
+        <canvas id="mindustry-canvas" width="1280" height="720" tabindex="0"></canvas>
+        <div id="mindustry-web-status">Initializing Yandex Games and storage...</div>
+    </main>
     <script src="browser-storage.js"></script>
     <script src="browser-audio.js"></script>
     <script src="yandex-platform.js"></script>
