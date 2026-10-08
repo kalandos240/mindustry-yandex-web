@@ -105,6 +105,21 @@ public final class BrowserBuildPalette{
         markReady(visibleCategoryCount(), visibleBlockCount(current));
     }
 
+    /** Refresh available actions after research unlocks a new construction block. */
+    public static void refresh(){
+        if(!initialized) return;
+        if(!hasBlocks(current)){
+            for(Category category : Category.all){
+                if(hasBlocks(category)){
+                    current = category;
+                    break;
+                }
+            }
+        }
+        rebuildCategories();
+        rebuildBlocks();
+    }
+
     private static void rebuildCategories(){
         categories.clear();
         for(Category category : Category.all){
