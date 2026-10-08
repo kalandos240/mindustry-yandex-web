@@ -31,6 +31,7 @@ public final class BrowserUiRuntime{
 
     private static boolean initialized;
     private static TextButton localContinueButton;
+    private static int drillResearchUiFrames;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
@@ -188,6 +189,9 @@ public final class BrowserUiRuntime{
         drillResearch.update(() -> {
             if(BrowserCampaignRuntime.active() && state.isCampaign()){
                 drillResearch.setDisabled(!BrowserCampaignResearch.canSpend(mindustry.content.Blocks.mechanicalDrill));
+                if((++drillResearchUiFrames & 31) == 0 && !mindustry.content.Blocks.mechanicalDrill.unlocked()){
+                    markGroundZeroResearchUi(drillResearch.visible);
+                }
             }
         });
         ui.hudGroup.addChild(controls);
@@ -277,6 +281,9 @@ public final class BrowserUiRuntime{
         if(!initialized) return;
         setLocalModeUi(BrowserLocalMapRuntime.customModeCode());
     }
+
+    @JSBody(params = {"visible"}, script = "document.documentElement.setAttribute('data-mindustry-ground-zero-drill-research-ui', visible ? 'visible' : 'hidden');")
+    private static native void markGroundZeroResearchUi(boolean visible);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
     private static native void markReady();
