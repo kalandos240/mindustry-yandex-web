@@ -1384,45 +1384,57 @@ public final class BrowserCampaignResearch{
     }
 
     private static void spend(UnlockableContent content, boolean activeSectorOnly){
-        TechNode node = node(content);
-        if(content.unlocked()) return;
-        if(node.parent != null && !node.parent.content.unlocked()){
-            throw new IllegalStateException("r:p:" + content.name);
-        }
-        if(!objectivesComplete(node)){
-            throw new IllegalStateException("r:o:" + content.name);
-        }
-
-        boolean complete = true;
-        int spent = 0;
-
-        for(int i = 0; i < node.requirements.length; i++){
-            ItemStack req = node.requirements[i];
-            ItemStack done = node.finishedRequirements[i];
-            int missing = Math.max(0, req.amount - done.amount);
-            int used = Math.min(missing, available(node, req.item, activeSectorOnly));
-
-            if(used > 0){
-                removeFromResearchPlanet(node, req.item, used, activeSectorOnly);
-                done.amount += used;
-                spent += used;
+        String phase = "resolve-node";
+        try{
+            TechNode node = node(content);
+            phase = "check-unlock";
+            if(content.unlocked()) return;
+            phase = "check-parent";
+            if(node.parent != null && !node.parent.content.unlocked()){
+                throw new IllegalStateException("r:p:" + content.name);
+            }
+            phase = "check-objectives";
+            if(!objectivesComplete(node)){
+                throw new IllegalStateException("r:o:" + content.name);
             }
 
-            if(done.amount < req.amount) complete = false;
-        }
+            boolean complete = true;
+            int spent = 0;
+            for(int i = 0; i < node.requirements.length; i++){
+                phase = "read-requirement-" + i;
+                ItemStack req = node.requirements[i];
+                ItemStack done = node.finishedRequirements[i];
+                int missing = Math.max(0, req.amount - done.amount);
+                phase = "available-" + i;
+                int used = Math.min(missing, available(node, req.item, activeSectorOnly));
+                if(used > 0){
+                    phase = "remove-items-" + i;
+                    removeFromResearchPlanet(node, req.item, used, activeSectorOnly);
+                    done.amount += used;
+                    spent += used;
+                }
+                if(done.amount < req.amount) complete = false;
+            }
 
-        if(complete){
-            unlock(node);
+            phase = "unlock";
+            if(complete){
+                unlock(node);
+            }
+            phase = "save-node";
+            node.save();
+            phase = "auto-unlocks";
+            if(control != null) control.checkAutoUnlocks();
+            phase = "save-settings";
+            Core.settings.forceSave();
+            phase = "publish-research";
+            markResearch(content.name, spent, remaining(content), content.unlocked(),
+                SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked(),
+                SectorPresets.crateredBattleground != null && SectorPresets.crateredBattleground.unlocked(),
+                SectorPresets.ruinousShores != null && SectorPresets.ruinousShores.unlocked(),
+                SectorPresets.windsweptIslands != null && SectorPresets.windsweptIslands.unlocked());
+        }catch(Throwable error){
+            throw new IllegalStateException("research-spend: " + content.name + "/" + phase, error);
         }
-        node.save();
-        if(control != null) control.checkAutoUnlocks();
-        Core.settings.forceSave();
-
-        markResearch(content.name, spent, remaining(content), content.unlocked(),
-            SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked(),
-            SectorPresets.crateredBattleground != null && SectorPresets.crateredBattleground.unlocked(),
-            SectorPresets.ruinousShores != null && SectorPresets.ruinousShores.unlocked(),
-            SectorPresets.windsweptIslands != null && SectorPresets.windsweptIslands.unlocked());
     }
 
     private static TechNode node(UnlockableContent content){
