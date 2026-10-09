@@ -9,6 +9,7 @@ SCRIPTS = ROOT / "scripts"
 
 APP = (WEB_JAVA / "BrowserApplication.java").read_text(encoding="utf-8")
 CANVAS = (WEB_JAVA / "BrowserCanvas.java").read_text(encoding="utf-8")
+WEB_GL = (WEB_JAVA / "BrowserGL20.java").read_text(encoding="utf-8")
 INPUT = (WEB_JAVA / "BrowserInputBridge.java").read_text(encoding="utf-8")
 LOCAL_MAP = (WEB_JAVA / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 BROWSER_UI = (WEB_JAVA / "BrowserUiRuntime.java").read_text(encoding="utf-8")
@@ -188,6 +189,17 @@ require(CONTROL_PATH_PATCH, "int requestChecks = Math.min(32, requestCount);", "
 require(CONTROL_PATH_PATCH, "int fieldChecks = Math.min(8, fieldCount);", "ControlPathfinder stale cleanup")
 require(CONTROL_PATH_PATCH, "webInvalidSweepPending", "ControlPathfinder invalidation budget")
 require(ASYNC_CORE_PATCH, "if(p == avoidance && (webFrame & 1) != 0) continue;", "AsyncCore avoidance 30Hz cadence")
+
+# WebGL state caching prevents redundant TeaVM->JS transition per SpriteBatch
+# submission. Explicit buffer deletion must invalidate each binding independently.
+for needle in (
+    "private int boundArrayBuffer = -1, boundElementArrayBuffer = -1;",
+    "if(boundArrayBuffer == buffer) return;",
+    "if(boundElementArrayBuffer == buffer) return;",
+    "if(boundArrayBuffer == buffer) boundArrayBuffer = -1;",
+    "if(boundElementArrayBuffer == buffer) boundElementArrayBuffer = -1;",
+):
+    require(WEB_GL, needle, "WebGL safe buffer binding cache")
 
 # Renderer/settings polling and game-state work stay off the 60Hz critical path.
 for needle in [
