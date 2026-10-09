@@ -359,7 +359,7 @@ grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$DOM"
 grep -Eq 'data-yandex-test-banner-show-count="[1-9][0-9]*"' "$DOM"
-grep -Eq 'data-yandex-test-banner-hide-count="[1-9][0-9]*"' "$DOM"
+grep -q 'data-yandex-test-banner-during-gameplay="yes"' "$DOM"
 echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + input reset + BrowserAudio + sticky banner in gameplay and menu PASS'
 
 CLOUD_PROFILE="/tmp/mindustry-yandex-cloud-boot-profile"
