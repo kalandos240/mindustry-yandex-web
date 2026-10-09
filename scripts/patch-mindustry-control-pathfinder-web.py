@@ -13,9 +13,10 @@ replacements = [
     (
         "public class ControlPathfinder implements Runnable{",
         """public class ControlPathfinder{
-    // Avoid JS BigInt overhead in the browser worker's short wall-clock budgets.
-    @org.teavm.jso.JSBody(script = "return performance.now();")
-    private static native double webNowMillis();
+    // Minimize long arithmetic in the browser worker's short wall-clock budgets.
+    // Read the monotonic JVM clock once per deadline check. The loop and its
+    // time arithmetic use doubles, avoiding repeated long subtraction in TeaVM.
+    private static double webNowMillis(){ return System.nanoTime() / 1000000d; }
 """,
         "class declaration",
     ),
