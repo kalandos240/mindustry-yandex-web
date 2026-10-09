@@ -181,6 +181,9 @@ public final class BrowserUiRuntime{
         controls.button(Core.bundle.get("pause", "Pause"), BrowserUiRuntime::pauseActiveSession)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
+        // Keep Back and Pause on the first row. Three 132px-wide actions do not
+        // fit a narrow mobile game viewport once the portal reserves ad space.
+        controls.row();
         TextButton researchAction = controls.button(Core.bundle.get("research", "Research"), BrowserResearchUi::show)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .name("web-research-hud").pad(8f).get();
