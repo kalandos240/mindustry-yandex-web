@@ -73,8 +73,8 @@ public final class BrowserBuildPalette{
         root.update(() -> {
             // Read real in-game palette visibility, not just startup construction.
             if(state != null && state.isGame() && (++visibilityFrames & 31) == 0){
-                markDisplay(root.visible, categories.getChildren().size > 0,
-                    blocks.getChildren().size > 0);
+                markDisplay(root.visible, visibleCategoryCount() > 0,
+                    visibleBlockCount(current) > 0, waitingForFirstResearch());
             }
         });
 
@@ -163,9 +163,26 @@ public final class BrowserBuildPalette{
             button.update(() -> button.setChecked(control.input.block == block));
             if(++index % columns == 0) blocks.row();
         }
+        if(index == 0){
+            // Ground Zero starts before any buildable technology is unlocked.
+            // Never present an unexplained black/empty pane: guide the player
+            // to the actual research action exposed by BrowserUiRuntime.
+            String label = waitingForFirstResearch()
+                ? Core.bundle.get("research", "Research") + ": " + mindustry.content.Blocks.mechanicalDrill.localizedName
+                : Core.bundle.get("none", "No available blocks");
+            Label hint = new Label(label);
+            hint.setWrap(true);
+            blocks.add(hint).width(mobile ? 208f : 188f).pad(6f).left();
+        }
         blocks.invalidateHierarchy();
         pane.setScrollYForce(0f);
         markCounts(visibleCategoryCount(), index);
+    }
+
+    private static boolean waitingForFirstResearch(){
+        return state != null && state.isCampaign() && state.rules != null
+            && state.rules.sector == mindustry.content.SectorPresets.groundZero.sector
+            && !mindustry.content.Blocks.mechanicalDrill.unlocked();
     }
 
     private static boolean available(Block block){
@@ -200,8 +217,8 @@ public final class BrowserBuildPalette{
         return initialized;
     }
 
-    @JSBody(params = {"visible", "categories", "blocks"}, script = "document.documentElement.setAttribute('data-mindustry-build-palette-visible', visible ? 'yes' : 'no'); document.documentElement.setAttribute('data-mindustry-build-palette-actions', categories && blocks ? 'present' : 'missing');")
-    private static native void markDisplay(boolean visible, boolean categories, boolean blocks);
+    @JSBody(params = {"visible", "categories", "blocks", "research"}, script = "const r=document.documentElement; r.setAttribute('data-mindustry-build-palette-visible', visible ? 'yes' : 'no'); r.setAttribute('data-mindustry-build-palette-actions', categories && blocks ? 'present' : research ? 'research-needed' : 'none');")
+    private static native void markDisplay(boolean visible, boolean categories, boolean blocks, boolean research);
 
     @JSBody(params = {"categories", "blocks"}, script = "document.documentElement.setAttribute('data-mindustry-build-palette', 'ready'); document.documentElement.setAttribute('data-mindustry-build-categories', String(categories)); document.documentElement.setAttribute('data-mindustry-build-blocks', String(blocks));")
     private static native void markReady(int categories, int blocks);
