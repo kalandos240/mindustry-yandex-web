@@ -390,20 +390,22 @@ jobs:
 
       # Independent fresh-profile campaign proofs. Run them before the long localization/
       # persistence matrices so TechTree/map compatibility regressions fail fast.
+      # Input, build selection, and localized scene behavior fail fast ahead of
+      # long campaign matrices while the original PlacementFragment is restored.
+      - name: Verify visible construction palette during real desktop/mobile gameplay
+        run: bash scripts/verify-browser-palette-visibility.sh
+
+      - name: Verify English and Russian browser localization
+        run: bash scripts/verify-browser-locales.sh
+
+      - name: Verify all Serpulo TechTree sectors through Weathered Channels
+        run: bash scripts/verify-browser-campaign-capture.sh
+
       - name: Verify Yandex SDK lifecycle and fullscreen control
         run: bash scripts/verify-yandex-sdk.sh
 
       - name: Verify complete Erekir campaign through Origin capture
         run: bash scripts/verify-browser-erekir-progression.sh
-
-      - name: Verify all Serpulo TechTree sectors through Weathered Channels
-        run: bash scripts/verify-browser-campaign-capture.sh
-
-      - name: Verify English and Russian browser localization
-        run: bash scripts/verify-browser-locales.sh
-
-      - name: Verify visible construction palette during real desktop/mobile gameplay
-        run: bash scripts/verify-browser-palette-visibility.sh
 
       - name: Click the complete Research TechTree from real menu and campaign HUD
         run: bash scripts/verify-browser-research-actions.sh

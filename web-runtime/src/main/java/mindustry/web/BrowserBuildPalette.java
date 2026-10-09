@@ -47,7 +47,10 @@ public final class BrowserBuildPalette{
         root.bottom().right();
         root.touchable = Touchable.childrenOnly;
         // A missing or non-builder unit must not make the entire construction HUD disappear.
-        root.visible(() -> state != null && state.isGame() && !state.gameOver);
+        // Keep the compact palette only as a fallback. The original PlacementFragment
+        // becomes the visible build HUD once its actor graph is successfully mounted.
+        root.visible(() -> state != null && state.isGame() && !state.gameOver
+            && !BrowserStockPlacement.active());
 
         Table panel = new Table(Tex.pane2);
         panel.margin(4f);
@@ -70,13 +73,8 @@ public final class BrowserBuildPalette{
 
         root.add(panel).bottom().right().pad(mobile ? 6f : 4f);
         parent.addChild(root);
-        root.update(() -> {
-            // Read real in-game palette visibility, not just startup construction.
-            if(state != null && state.isGame() && (++visibilityFrames & 31) == 0){
-                markDisplay(root.visible, visibleCategoryCount() > 0,
-                    visibleBlockCount(current) > 0, waitingForFirstResearch());
-            }
-        });
+        // A hidden fallback actor does not receive Scene.act() updates. Report the
+        // visible native PlacementFragment through updateVisibility() instead.
 
         rebuildCategories();
         rebuildBlocks();
@@ -103,6 +101,24 @@ public final class BrowserBuildPalette{
 
         initialized = true;
         markReady(visibleCategoryCount(), visibleBlockCount(current));
+    }
+
+    /**
+     * BrowserApplication calls this from its regular gameplay frame even when the
+     * compact fallback palette is hidden. A hidden Scene actor never receives
+     * Element.update(), so tying the portal visibility status to root.update()
+     * silently stopped reporting after the native PlacementFragment was mounted.
+     */
+    public static void updateVisibility(){
+        if(!initialized || state == null || !state.isGame()) return;
+        if((++visibilityFrames & 31) != 0) return;
+
+        boolean nativeVisible = BrowserStockPlacement.active() && ui != null
+            && ui.hudfrag != null && ui.hudfrag.shown;
+        boolean fallbackVisible = root != null && root.visible;
+        markDisplay(!state.gameOver && (nativeVisible || fallbackVisible),
+            visibleCategoryCount() > 0, visibleBlockCount(current) > 0,
+            waitingForFirstResearch());
     }
 
     /** Refresh available actions after research unlocks a new construction block. */

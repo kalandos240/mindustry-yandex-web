@@ -69,7 +69,7 @@ public final class BrowserBuildPlacementSmoke{
         }
 
         if(stage == 0){
-            Element button = Core.scene == null ? null : Core.scene.find("web-block-conveyor");
+            Element button = Core.scene == null ? null : findBuildButton();
             if(button == null || button.getWidth() <= 1f || button.getHeight() <= 1f){
                 if(++uiFrames >= maxUiFrames){
                     throw new IllegalStateException("build:no-palette");
@@ -86,7 +86,7 @@ public final class BrowserBuildPlacementSmoke{
         }
 
         if(stage == 1){
-            Element button = Core.scene.find("web-block-conveyor");
+            Element button = findBuildButton();
             if(button == null) throw new IllegalStateException("build:palette-down");
             Vec2 point = button.localToStageCoordinates(new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
             dispatchPointer("pointerdown", point.x, point.y, 0, true);
@@ -97,7 +97,7 @@ public final class BrowserBuildPlacementSmoke{
         }
 
         if(stage == 2){
-            Element button = Core.scene.find("web-block-conveyor");
+            Element button = findBuildButton();
             if(button == null) throw new IllegalStateException("build:palette-up");
             Vec2 point = button.localToStageCoordinates(new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
             dispatchPointer("pointerup", point.x, point.y, 0, false);
@@ -115,6 +115,11 @@ public final class BrowserBuildPlacementSmoke{
                 markWaiting("selection", uiFrames);
                 return;
             }
+
+            // The original PlacementFragment does not publish the Web fallback's
+            // selection marker. Report only a selection already confirmed by the
+            // real InputHandler, so the existing browser smoke checks stay valid.
+            markVerifiedSelection();
 
             if(!findTarget(unit)){
                 throw new IllegalStateException("build:no-target");
@@ -517,6 +522,12 @@ public final class BrowserBuildPlacementSmoke{
         return enabled;
     }
 
+    /** Click the visible original PlacementFragment button, not the hidden Web fallback. */
+    private static Element findBuildButton(){
+        if(Core.scene == null) return null;
+        return Core.scene.find(BrowserStockPlacement.active() ? "block-conveyor" : "web-block-conveyor");
+    }
+
     private static void releasePointer(){
         if(!pointerDown) return;
         dispatchPointer("pointerup", targetScreenX, targetScreenY, pointerButton, false);
@@ -576,6 +587,9 @@ public final class BrowserBuildPlacementSmoke{
         }));
         """)
     private static native void dispatchWheel(float dx, float dy);
+
+    @JSBody(script = "const r=document.documentElement; r.setAttribute('data-mindustry-build-selected', 'conveyor'); r.setAttribute('data-mindustry-build-placement-ui', 'vanilla-placement-fragment');")
+    private static native void markVerifiedSelection();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-build-placement-smoke', 'requested'); document.documentElement.setAttribute('data-mindustry-build-placement-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-placement-block', 'conveyor');")
     private static native void markRequested();

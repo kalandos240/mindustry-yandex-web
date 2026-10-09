@@ -711,20 +711,44 @@ public final class BrowserCampaignResearch{
             throw new IllegalStateException("r:44");
         }
 
-        stageMissing(source, Blocks.conveyor);
-        spend(Blocks.conveyor);
+        try{
+            stageMissing(source, Blocks.conveyor);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: conveyor/stage-resources", error);
+        }
+        try{
+            spend(Blocks.conveyor);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: conveyor/purchase", error);
+        }
         if(!Blocks.conveyor.unlocked()){
             throw new IllegalStateException("r:45");
         }
 
-        stageMissing(source, Blocks.junction);
-        spend(Blocks.junction);
+        try{
+            stageMissing(source, Blocks.junction);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: junction/stage-resources", error);
+        }
+        try{
+            spend(Blocks.junction);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: junction/purchase", error);
+        }
         if(!Blocks.junction.unlocked()){
             throw new IllegalStateException("r:46");
         }
 
-        stageMissing(source, Blocks.router);
-        spend(Blocks.router);
+        try{
+            stageMissing(source, Blocks.router);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: router/stage-resources", error);
+        }
+        try{
+            spend(Blocks.router);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: router/purchase", error);
+        }
         if(!Blocks.router.unlocked()){
             throw new IllegalStateException("r:47");
         }
@@ -1301,39 +1325,47 @@ public final class BrowserCampaignResearch{
     }
 
     private static void stageMissing(Sector source, UnlockableContent content){
-        TechNode node = node(content);
-        Planet planet = researchPlanet(node);
-        if(planet == null) throw new IllegalStateException("r:no-planet");
+        String phase = "find-tech-node";
+        int index = -1;
+        try{
+            TechNode node = node(content);
+            phase = "resolve-planet";
+            Planet planet = researchPlanet(node);
+            if(planet == null) throw new IllegalStateException("r:no-planet");
 
-        for(int i = 0; i < node.requirements.length; i++){
-            Item item = node.requirements[i].item;
+            for(int i = 0; i < node.requirements.length; i++){
+                index = i;
+                phase = "read-requirement";
+                Item item = node.requirements[i].item;
+                while(node.finishedRequirements[i].amount < node.requirements[i].amount){
+                    // Exhaust already staged resources before adding another chunk.
+                    phase = "spend-staged";
+                    spend(content, true);
+                    phase = "check-spend";
+                    if(content.unlocked()) return;
+                    if(node.finishedRequirements[i].amount >= node.requirements[i].amount) break;
 
-            while(node.finishedRequirements[i].amount < node.requirements[i].amount){
-                // Spend the previous chunk first, freeing the same finite campaign
-                // storage before the next contribution is staged.
-                spend(content, true);
-                if(content.unlocked()) return;
-                if(node.finishedRequirements[i].amount >= node.requirements[i].amount) break;
-
-                int missing = node.requirements[i].amount - node.finishedRequirements[i].amount;
-                int staged = 0;
-                if(source != null && source.planet == planet && source.hasBase() && !source.isFrozen()){
-                    staged = stageIntoSector(source, item, missing);
-                    // Research costs can exceed one sector's storage capacity. Do not
-                    // walk every historical SectorInfo just to fill the remainder in one
-                    // pass: the next loop iteration spends this staged chunk, frees the
-                    // same storage, and can stage the next chunk in the authoritative
-                    // source sector. This keeps late Erekir research deterministic and
-                    // avoids touching sparse/minimal metadata from unrelated saves.
-                    if(staged > 0) continue;
+                    int missing = node.requirements[i].amount - node.finishedRequirements[i].amount;
+                    int staged = 0;
+                    phase = "check-active-sector";
+                    if(source != null && source.planet == planet && source.hasBase() && !source.isFrozen()){
+                        phase = "stage-active-sector";
+                        staged = stageIntoSector(source, item, missing);
+                        if(staged > 0) continue;
+                    }
+                    phase = "scan-other-sectors";
+                    for(Sector sector : planet.sectors){
+                        phase = "check-other-sector";
+                        if(sector == source || !sector.hasBase() || sector.isFrozen()) continue;
+                        phase = "stage-other-sector";
+                        staged += stageIntoSector(sector, item, missing - staged);
+                        if(staged > 0) break;
+                    }
+                    if(staged <= 0) throw new IllegalStateException("r:capacity");
                 }
-                for(Sector sector : planet.sectors){
-                    if(sector == source || !sector.hasBase() || sector.isFrozen()) continue;
-                    staged += stageIntoSector(sector, item, missing - staged);
-                    if(staged > 0) break;
-                }
-                if(staged <= 0) throw new IllegalStateException("r:capacity");
             }
+        }catch(Throwable error){
+            throw new IllegalStateException("research-stage: " + content.name + "/requirement-" + index + "/" + phase, error);
         }
     }
 
@@ -1352,45 +1384,57 @@ public final class BrowserCampaignResearch{
     }
 
     private static void spend(UnlockableContent content, boolean activeSectorOnly){
-        TechNode node = node(content);
-        if(content.unlocked()) return;
-        if(node.parent != null && !node.parent.content.unlocked()){
-            throw new IllegalStateException("r:p:" + content.name);
-        }
-        if(!objectivesComplete(node)){
-            throw new IllegalStateException("r:o:" + content.name);
-        }
-
-        boolean complete = true;
-        int spent = 0;
-
-        for(int i = 0; i < node.requirements.length; i++){
-            ItemStack req = node.requirements[i];
-            ItemStack done = node.finishedRequirements[i];
-            int missing = Math.max(0, req.amount - done.amount);
-            int used = Math.min(missing, available(node, req.item, activeSectorOnly));
-
-            if(used > 0){
-                removeFromResearchPlanet(node, req.item, used, activeSectorOnly);
-                done.amount += used;
-                spent += used;
+        String phase = "resolve-node";
+        try{
+            TechNode node = node(content);
+            phase = "check-unlock";
+            if(content.unlocked()) return;
+            phase = "check-parent";
+            if(node.parent != null && !node.parent.content.unlocked()){
+                throw new IllegalStateException("r:p:" + content.name);
+            }
+            phase = "check-objectives";
+            if(!objectivesComplete(node)){
+                throw new IllegalStateException("r:o:" + content.name);
             }
 
-            if(done.amount < req.amount) complete = false;
-        }
+            boolean complete = true;
+            int spent = 0;
+            for(int i = 0; i < node.requirements.length; i++){
+                phase = "read-requirement-" + i;
+                ItemStack req = node.requirements[i];
+                ItemStack done = node.finishedRequirements[i];
+                int missing = Math.max(0, req.amount - done.amount);
+                phase = "available-" + i;
+                int used = Math.min(missing, available(node, req.item, activeSectorOnly));
+                if(used > 0){
+                    phase = "remove-items-" + i;
+                    removeFromResearchPlanet(node, req.item, used, activeSectorOnly);
+                    done.amount += used;
+                    spent += used;
+                }
+                if(done.amount < req.amount) complete = false;
+            }
 
-        if(complete){
-            unlock(node);
+            phase = "unlock";
+            if(complete){
+                unlock(node);
+            }
+            phase = "save-node";
+            node.save();
+            phase = "auto-unlocks";
+            if(control != null) control.checkAutoUnlocks();
+            phase = "save-settings";
+            Core.settings.forceSave();
+            phase = "publish-research";
+            markResearch(content.name, spent, remaining(content), content.unlocked(),
+                SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked(),
+                SectorPresets.crateredBattleground != null && SectorPresets.crateredBattleground.unlocked(),
+                SectorPresets.ruinousShores != null && SectorPresets.ruinousShores.unlocked(),
+                SectorPresets.windsweptIslands != null && SectorPresets.windsweptIslands.unlocked());
+        }catch(Throwable error){
+            throw new IllegalStateException("research-spend: " + content.name + "/" + phase, error);
         }
-        node.save();
-        if(control != null) control.checkAutoUnlocks();
-        Core.settings.forceSave();
-
-        markResearch(content.name, spent, remaining(content), content.unlocked(),
-            SectorPresets.frozenForest != null && SectorPresets.frozenForest.unlocked(),
-            SectorPresets.crateredBattleground != null && SectorPresets.crateredBattleground.unlocked(),
-            SectorPresets.ruinousShores != null && SectorPresets.ruinousShores.unlocked(),
-            SectorPresets.windsweptIslands != null && SectorPresets.windsweptIslands.unlocked());
     }
 
     private static TechNode node(UnlockableContent content){
@@ -1530,15 +1574,23 @@ public final class BrowserCampaignResearch{
     }
 
     private static void unlock(TechNode node){
-        node.content.unlock();
+        String phase = "content-unlock";
+        try{
+            node.content.unlock();
 
-        TechNode parent = node.parent;
-        while(parent != null){
-            parent.content.unlock();
-            parent = parent.parent;
+            phase = "parent-unlock";
+            TechNode parent = node.parent;
+            while(parent != null){
+                phase = "parent-unlock/" + parent.content.name;
+                parent.content.unlock();
+                parent = parent.parent;
+            }
+
+            phase = "research-event";
+            Events.fire(new ResearchEvent(node.content));
+        }catch(Throwable error){
+            throw new IllegalStateException("research-unlock: " + node.content.name + "/" + phase, error);
         }
-
-        Events.fire(new ResearchEvent(node.content));
     }
 
     private static void markProgressSmoke(){
