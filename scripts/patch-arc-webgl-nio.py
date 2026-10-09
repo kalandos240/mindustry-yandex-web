@@ -92,17 +92,42 @@ new_anchor = '''    /**
      * the requested byte range into a real JavaScript Int8Array; signedness is irrelevant
      * for raw GL buffer storage and every packed float/color/index bit is preserved.
      */
-    private static ArrayBufferView copyBufferUpload(Buffer data, int size){
+    // Reusing the same few exact-sized Java byte arrays avoids a young-gen
+    // allocation on every sprite/mesh VBO upload. The TeaVM Int8Array bridge
+    // immediately COPIES these bytes to a fresh JS typed array, so reusing the
+    // Java staging array does not mutate a previously submitted WebGL upload.
+    // Four slots cover stable VBO/IBO sizes; never pin >256 KiB per slot.
+    private final byte[][] webUploadStaging = new byte[4][];
+    private int webUploadStagingNext;
+
+    private byte[] webUploadBytes(int size){
+        if(size > 262144) return new byte[size];
+        for(byte[] candidate : webUploadStaging){
+            if(candidate != null && candidate.length == size) return candidate;
+        }
+        byte[] allocated = new byte[size];
+        webUploadStaging[(webUploadStagingNext++) & 3] = allocated;
+        return allocated;
+    }
+
+    private ArrayBufferView copyBufferUpload(Buffer data, int size){
         if(data == null) return null;
         if(!(data instanceof ByteBuffer)){
             throw new ArcRuntimeException("Unsupported WebGL upload buffer: " + data.getClass().getName());
         }
-        ByteBuffer source = ((ByteBuffer)data).duplicate();
+        ByteBuffer source = (ByteBuffer)data;
         if(size < 0 || source.remaining() < size){
             throw new ArcRuntimeException("Invalid WebGL upload byte range: requested=" + size + ", remaining=" + source.remaining());
         }
-        byte[] bytes = new byte[size];
-        source.get(bytes);
+        byte[] bytes = webUploadBytes(size);
+        // Preserve the Arc buffer's position without allocating a duplicate
+        // ByteBuffer object for every GPU submission.
+        int position = source.position();
+        try{
+            source.get(bytes);
+        }finally{
+            source.position(position);
+        }
         return Int8Array.copyFromJavaArray(bytes);
     }
 
