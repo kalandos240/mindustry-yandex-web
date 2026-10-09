@@ -233,7 +233,7 @@ public final class BrowserApplication extends WebApplicationBase{
         // RuntimeException("post", cause). Expose the cause chain so CI/browser
         // markers report the offending stock HUD initializer, not just "post".
         StringBuilder detail = new StringBuilder();
-        for(int depth = 0; error != null && depth < 4; depth++, error = error.getCause()){
+        for(int depth = 0; error != null && depth < 7; depth++, error = error.getCause()){
             if(depth != 0) detail.append(" <- ");
             detail.append(error.getClass().getName());
             if(error.getMessage() != null){
