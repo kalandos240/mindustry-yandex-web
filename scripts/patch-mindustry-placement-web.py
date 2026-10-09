@@ -23,12 +23,12 @@ replacements = {
 probe_replacements = {
     '                    blockTable.act(0f);':
     '                    try{ blockTable.act(0f); }catch(Throwable error){ throw new IllegalStateException("stock-placement: category-act", error); }',
-    '                        rebuildCommand.run();\\n                    }).grow();':
-    '                        try{ rebuildCommand.run(); }catch(Throwable error){ throw new IllegalStateException("stock-placement: command-ui", error); }\\n                    }).grow();',
+    '                        rebuildCommand.run();\n                    }).grow();':
+    '                        try{ rebuildCommand.run(); }catch(Throwable error){ throw new IllegalStateException("stock-placement: command-ui", error); }\n                    }).grow();',
     '                            control.input.buildPlacementUI(t);':
     '                            try{ control.input.buildPlacementUI(t); }catch(Throwable error){ throw new IllegalStateException("stock-placement: placement-buttons", error); }',
-    '                rebuildCategory.run();\\n                frame.update(() -> {':
-    '                try{ rebuildCategory.run(); }catch(Throwable error){ throw new IllegalStateException("stock-placement: initial-category", error); }\\n                frame.update(() -> {',
+    '                rebuildCategory.run();\n                frame.update(() -> {':
+    '                try{ rebuildCategory.run(); }catch(Throwable error){ throw new IllegalStateException("stock-placement: initial-category", error); }\n                frame.update(() -> {',
 }
 for old, new in probe_replacements.items():
     if source.count(old) != 1:
