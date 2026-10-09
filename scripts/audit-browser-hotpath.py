@@ -13,6 +13,7 @@ WEB_GL = (WEB_JAVA / "BrowserGL20.java").read_text(encoding="utf-8")
 INPUT = (WEB_JAVA / "BrowserInputBridge.java").read_text(encoding="utf-8")
 LOCAL_MAP = (WEB_JAVA / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 BROWSER_UI = (WEB_JAVA / "BrowserUiRuntime.java").read_text(encoding="utf-8")
+RESEARCH_UI = (WEB_JAVA / "BrowserResearchUi.java").read_text(encoding="utf-8")
 WEB_LAUNCHER = (WEB_JAVA / "WebClientLauncher.java").read_text(encoding="utf-8")
 GAMEPLAY = (WEB_JAVA / "BrowserGameplayRuntime.java").read_text(encoding="utf-8")
 CAMPAIGN_RUNTIME = (WEB_JAVA / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
@@ -349,6 +350,25 @@ forbid(BROWSER_STORAGE, "transaction('readwrite').delete(", "IndexedDB per-file 
 
 # Yandex lifecycle/ad wrapper must never strand gameplay paused/stopped.
 require(YANDEX_JS, "storage.lifecycleFlush('yandex-pause')", "Yandex pause durability barrier")
+# Keep the portal-owned right-hand desktop banner visible while playing,
+# but never overlap the SDK fullscreen advertisement with a sticky banner.
+require(YANDEX_JS, "syncStickyBanner(true, 'gameplay-start')", "sticky banner during gameplay")
+forbid(YANDEX_JS, "syncStickyBanner(false, 'gameplay-start')", "no hidden sticky gameplay banner")
+require(YANDEX_JS, "void state.bannerSyncPromise.then(() =>", "wait for banner hide before fullscreen")
+require(YANDEX_JS, "if(state.bannerShowing)", "do not overlap ads when sticky hide fails")
+
+# Unlike the old scripted campaign UI, regular players can open all stock
+# TechTree research from the active HUD and menu using real Arc click paths.
+require(BROWSER_UI, "BrowserResearchUi.init();", "research dialog in browser UI startup")
+require(BROWSER_UI, "BrowserResearchUi::show", "menu and gameplay research actions")
+require(RESEARCH_UI, "for(TechNode node : TechTree.all)", "complete vanilla TechTree catalog")
+require(RESEARCH_UI, "BrowserCampaignResearch.canSpend(node.content)", "stock research affordability")
+require(RESEARCH_UI, "BrowserCampaignResearch.spend(node.content)", "real research purchase")
+require(RESEARCH_UI, "BrowserBuildPalette.refresh()", "build palette refresh on research")
+require(RESEARCH_UI, "pageSize = 32", "mobile-friendly research paging")
+require((SCRIPTS / "verify-browser-research-actions.sh").read_text(encoding="utf-8"),
+        "new PointerEvent('pointerdown'", "live Arc research button interaction")
+
 require(YANDEX_JS, "adInFlight: false", "Yandex fullscreen ad re-entry guard")
 require(YANDEX_JS, "if(state.adInFlight)", "Yandex fullscreen ad re-entry guard")
 require(YANDEX_JS, "state.adWaitingForResume = true", "Yandex ad/platform resume race")

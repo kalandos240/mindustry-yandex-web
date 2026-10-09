@@ -90,6 +90,8 @@ public final class BrowserUiRuntime{
         buildLocalHudControls();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
+        installResearchMenuEntry();
+        BrowserResearchUi.init();
 
         initialized = true;
         markReady();
@@ -130,6 +132,18 @@ public final class BrowserUiRuntime{
         ui.menuGroup.addChild(root);
     }
 
+    private static void installResearchMenuEntry(){
+        Table entry = new Table();
+        entry.setFillParent(true);
+        entry.top().left();
+        entry.touchable = Touchable.childrenOnly;
+        entry.visible(() -> state.isMenu());
+        entry.button(Core.bundle.get("research", "Research"), BrowserResearchUi::show)
+            .name("web-research-menu")
+            .size(mobile ? 158f : 136f, mobile ? 52f : 44f).pad(8f);
+        ui.menuGroup.addChild(entry);
+    }
+
     private static void applySettingAction(int setting, int value){
         switch(setting){
             case 1 -> Core.settings.put("sfxvol", value);
@@ -167,6 +181,13 @@ public final class BrowserUiRuntime{
         controls.button(Core.bundle.get("pause", "Pause"), BrowserUiRuntime::pauseActiveSession)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .pad(8f);
+        // Keep Back and Pause on the first row. Three 132px-wide actions do not
+        // fit a narrow mobile game viewport once the portal reserves ad space.
+        controls.row();
+        TextButton researchAction = controls.button(Core.bundle.get("research", "Research"), BrowserResearchUi::show)
+            .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
+            .name("web-research-hud").pad(8f).get();
+        researchAction.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
 
         // Ground Zero's stock tutorial asks the player to research Mechanical Drill
         // while the game is running. The slim Web HUD has no desktop ResearchDialog:

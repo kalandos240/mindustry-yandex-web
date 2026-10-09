@@ -164,7 +164,7 @@ cat > "$SDK_STUB" <<'JS'
                         root.setAttribute('data-yandex-test-banner-visible', 'yes');
                         const platform = globalThis.__mindustryYandex;
                         if(platform && platform.gameplayActive){
-                            root.setAttribute('data-yandex-test-banner-gameplay-violation', 'yes');
+                            root.setAttribute('data-yandex-test-banner-during-gameplay', 'yes');
                         }
                         if(platform && platform.adInFlight){
                             root.setAttribute('data-yandex-test-banner-fullscreen-violation', 'yes');
@@ -359,12 +359,8 @@ grep -Eq 'data-mindustry-audio-smoke-ms="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-update-id="[1-9][0-9]*"' "$DOM"
 grep -Eq 'data-mindustry-playing-unit-id="[0-9]+"' "$DOM"
 grep -Eq 'data-yandex-test-banner-show-count="[1-9][0-9]*"' "$DOM"
-grep -Eq 'data-yandex-test-banner-hide-count="[1-9][0-9]*"' "$DOM"
-if grep -q 'data-yandex-test-banner-gameplay-violation="yes"' "$DOM"; then
-  echo 'Sticky banner was shown while GameplayAPI was active.' >&2
-  exit 1
-fi
-echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + input reset + BrowserAudio + gameplay transport + menu-only sticky banner PASS'
+grep -q 'data-yandex-test-banner-during-gameplay="yes"' "$DOM"
+echo 'Yandex SDK browser smoke: SDK locale + deviceInfo desktop + Game Ready + pause/resume + input reset + BrowserAudio + sticky banner in gameplay and menu PASS'
 
 CLOUD_PROFILE="/tmp/mindustry-yandex-cloud-boot-profile"
 CLOUD_DOM="/tmp/mindustry-yandex-cloud-boot-dom.html"
@@ -522,8 +518,9 @@ run_ad_lifecycle(){
     --require 'data-mindustry-audio-resume-observed="yes"' \
     --require 'data-mindustry-audio-platform="running"' \
     --require 'data-yandex-game-state="playing"' \
-    --require 'data-yandex-banner-state="hidden"' \
-    --require 'data-yandex-test-banner-visible="no"' \
+    --require 'data-yandex-banner-state="shown"' \
+    --require 'data-yandex-test-banner-visible="yes"' \
+    --require 'data-yandex-test-banner-during-gameplay="yes"' \
     --require 'data-mindustry-canvas-viewport-match="true"' \
     --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
 
@@ -536,7 +533,7 @@ run_ad_lifecycle(){
     echo "Sticky banner overlapped fullscreen ad on $device." >&2
     exit 1
   fi
-  echo "Yandex fullscreen ad lifecycle ($device): held input -> pause/audio stop -> sticky hidden -> close-before-resume race -> input reset -> viewport-aligned real Ground Zero frame after gameplay/audio resume PASS"
+  echo "Yandex fullscreen ad lifecycle ($device): sticky shown during gameplay -> hidden before fullscreen -> input/audio pause -> resume with sticky restored PASS"
 }
 
 run_ad_lifecycle desktop 9266

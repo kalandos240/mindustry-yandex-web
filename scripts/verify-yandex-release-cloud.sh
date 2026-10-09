@@ -232,6 +232,12 @@ test "$frames" -ge 3
 test "$winner" = "sharded"
 grep -Eq 'data-yandex-test-gameplay-stop-count="[1-9][0-9]*"' "$second_dom"
 grep -Eq 'data-yandex-test-banner-show-count="[1-9][0-9]*"' "$second_dom"
-grep -Eq 'data-yandex-test-banner-hide-count="[1-9][0-9]*"' "$second_dom"
+# This cloud/Continue test never opens a fullscreen ad. With the sticky banner
+# retained during gameplay it should not be hidden on entry to the saved map.
+# Separate Yandex SDK tests prove hide-before-fullscreen and restoration.
+if grep -Eq 'data-yandex-test-banner-hide-count="[1-9][0-9]*"' "$second_dom"; then
+  echo "Sticky banner was hidden without a fullscreen ad in the cloud Continue flow" >&2
+  exit 1
+fi
 
 echo "Yandex release ZIP Attack cloud: desktop $source_map SaveIO -> Player.setData ($cloud_bytes bytes) -> clean mobile Player.getData -> Continue -> stock victory winner=$winner -> GameplayAPI.stop + menu/GameOver banner shown frames=$frames PASS"
