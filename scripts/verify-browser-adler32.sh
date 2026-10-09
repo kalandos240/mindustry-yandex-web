@@ -63,7 +63,7 @@ public class Adler32Regression{
     }
 
     private static long checksum(byte[] data, int from, int length){
-        Adler32 a = new Adler32();
+        WebAdler32 a = new WebAdler32();
         a.update(data, from, length);
         return a.getValue();
     }
