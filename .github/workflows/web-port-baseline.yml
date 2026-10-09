@@ -71,7 +71,7 @@ jobs:
     # This job intentionally executes several full Chrome cold-restart persistence
     # pairs. Fog/weather gates add two more real v13 save/restore cycles, so keep
     # enough headroom for shared-runner startup variance without weakening checks.
-    timeout-minutes: 50
+    timeout-minutes: 110
 
     steps:
       - name: Checkout port repository
