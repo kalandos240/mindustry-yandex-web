@@ -22,7 +22,10 @@ old = """            if(ui.hudfrag != null && e.content.showUnlock()){
 """
 new = """            if(ui.hudfrag != null && e.content.showUnlock()){
                 try{
-                    ui.hudfrag.showToast(new TextureRegionDrawable(e.content.uiIcon), iconLarge,
+                    // SectorPreset.loadIcon() leaves uiIcon null if the compact
+                    // browser bootstrap has no Icon.terrain atlas region yet.
+                    // The stock HUD toast requires a non-null Drawable.
+                    ui.hudfrag.showToast(e.content.uiIcon == null ? Icon.ok : new TextureRegionDrawable(e.content.uiIcon), iconLarge,
                         bundle.get("unlocked") + ": " + e.content.localizedName);
                 }catch(Throwable error){
                     throw new IllegalStateException("web-unlock-toast/" + e.content.name, error);
@@ -37,5 +40,11 @@ new = """            if(ui.hudfrag != null && e.content.showUnlock()){
 """
 if source.count(old) != 1:
     raise SystemExit("Pinned single-player Control UnlockEvent toast anchor changed")
-path.write_text(source.replace(old, new, 1), encoding="utf-8")
-print("Preserved vanilla Scene unlock toasts without full desktop aggregation widget")
+source = source.replace(old, new, 1)
+available = 'ui.hudfrag.showToast(new TextureRegionDrawable(node.content.uiIcon), iconLarge, bundle.get("available"));'
+fallback = 'ui.hudfrag.showToast(node.content.uiIcon == null ? Icon.ok : new TextureRegionDrawable(node.content.uiIcon), iconLarge, bundle.get("available"));'
+if source.count(available) != 1:
+    raise SystemExit("Pinned sector-available toast anchor changed")
+source = source.replace(available, fallback, 1)
+path.write_text(source, encoding="utf-8")
+print("Preserved vanilla Scene unlock toasts with null-safe sector/research icons")
