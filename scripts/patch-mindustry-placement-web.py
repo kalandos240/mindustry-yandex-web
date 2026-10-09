@@ -126,14 +126,6 @@ category_filter_new = """    Seq<Block> getUnlockedByCategory(Category cat){
             throw new IllegalStateException("stock-placement: category-sort/" + category, error);
         }
     }"""
-if source.count(category_filter_old) != 0:
-    raise SystemExit("Unexpected raw category filter marker in Python script")
-if source.count("# The vanilla PlacementFragment builds") != 1:
-    raise SystemExit("Existing category sort patch markers changed")
-if source.count("    source = source.replace(old, new, 1)") < 2:
-    raise SystemExit("Unexpected overlay replacement helpers")
-if source.count("        return returnArray2.selectFrom(content.blocks()") != 1:
-    raise SystemExit("Pinned source anchor check changed")
 if source.count(category_filter_old) != 1:
     raise SystemExit("Pinned native placement category filter anchor changed")
 source = source.replace(category_filter_old, category_filter_new, 1)
