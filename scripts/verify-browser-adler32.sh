@@ -107,6 +107,10 @@ if match is None:
     raise SystemExit("TeaVM Adler32.update not found in generated JS")
 body = match.group(1)
 if re.search(r"\bLong_(?:add|rem|fromInt|mul|div|sub)\b", body):
+    # Identify the emitted implementation without disabling the regression gate.
+    calls = sorted(set(re.findall(r"\bLong_[A-Za-z0-9_]+\b", body)))
+    print("Generated Adler32.update BigInt helpers:", calls, file=sys.stderr)
+    print("Emitted function excerpt:", body[:1800], file=sys.stderr)
     raise SystemExit("TeaVM still generated BigInt arithmetic in Adler32.update")
 if not re.search(r"2048|chunkLimit", body):
     raise SystemExit("TeaVM did not select the optimized 2048-byte Adler32 loop")
