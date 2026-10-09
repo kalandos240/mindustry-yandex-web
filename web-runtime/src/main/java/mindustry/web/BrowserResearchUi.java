@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.scene.*;
+import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import mindustry.content.*;
@@ -39,6 +40,7 @@ public final class BrowserResearchUi{
         buildPanel(ui.hudGroup, false);
         initialized = true;
         markResearchReady();
+        markResearchCatalog(TechTree.all.size);
     }
 
     private static void buildPanel(Group parent, boolean menu){
