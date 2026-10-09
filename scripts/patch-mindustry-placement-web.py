@@ -63,6 +63,32 @@ source = source.replace(method_end,
     + '        }' + chr(10) + '    }' + chr(10) + chr(10)
     + '    @Nullable String getUnplaceableReason(Block block){', 1)
 
+# Narrow the category-builder failure to exact vanilla operations. This is
+# diagnostic-only and intentionally leaves UI/gameplay behavior unchanged.
+category_phase_markers = (
+    ('                        categories.bottom();', 'category/start'),
+    ('                        categories.defaults().size(50f);', 'category/defaults'),
+    ('                        ButtonGroup<ImageButton> group = new ButtonGroup<>();', 'category/button-group'),
+    ('                        for(Category cat : Category.all){', 'category/unlocked-scan'),
+    ('                        boolean needsAssign = categoryEmpty[currentCategory.ordinal()];', 'category/assign-check'),
+    ('                        for(Category cat : getCategories()){', 'category/category-iteration'),
+    ('                            if(categoryEmpty[cat.ordinal()]){', 'category/check-visible'),
+    ('                            categories.button(ui.getIcon(cat.name()), Styles.clearTogglei, () -> {', 'category/build-button'),
+    ('                    }).fillY().bottom().touchable(Touchable.enabled);', 'category/end'),
+)
+for anchor, phase in category_phase_markers:
+    expected = 2 if anchor == '                    }).fillY().bottom().touchable(Touchable.enabled);' else 1
+    if source.count(anchor) != expected:
+        raise SystemExit(f"Pinned vanilla category phase anchor changed: {anchor!r}, {source.count(anchor)} != {expected}")
+    if expected == 2:
+        # Instrument after the first block controls table, before category table ends.
+        # The second matching table close belongs to the category builder itself.
+        pos = source.rfind(anchor)
+        source = source[:pos] + '                        initPhase[0] = "' + phase + '";' + chr(10) + source[pos:]
+    else:
+        indent = anchor[:len(anchor) - len(anchor.lstrip())]
+        source = source.replace(anchor, indent + 'initPhase[0] = "' + phase + '";' + chr(10) + anchor, 1)
+
 for old, new in replacements.items():
     occurrences = source.count(old)
     expected = 2 if old == 'ui.content.show(displayBlock);' else 1
