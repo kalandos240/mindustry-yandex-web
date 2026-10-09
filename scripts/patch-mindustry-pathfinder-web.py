@@ -20,7 +20,13 @@ replacements = [
     // for this short (2-3 ms) cooperative worker time slice.
     // Read the monotonic JVM clock once per deadline check. The loop and its
     // time arithmetic use doubles, avoiding repeated long subtraction in TeaVM.
-    private static double webNowMillis(){ return System.nanoTime() / 1000000d; }
+    // TeaVM JSO lives in web-runtime, not the pinned Mindustry core. Inject a
+    // monotonic millisecond source from the browser launcher instead of adding
+    // a compile-breaking web-only annotation to this shared class.
+    public static java.util.function.DoubleSupplier webClock;
+    private static double webNowMillis(){
+        return webClock != null ? webClock.getAsDouble() : System.nanoTime() / 1000000d;
+    }
 """,
         "class declaration",
     ),
