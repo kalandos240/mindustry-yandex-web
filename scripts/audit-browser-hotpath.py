@@ -30,6 +30,7 @@ YANDEX_JS = (WEB_JS / "yandex-platform.js").read_text(encoding="utf-8")
 
 APPLY_PORT = (SCRIPTS / "apply-port.sh").read_text(encoding="utf-8")
 EFFECT_PATCH = (SCRIPTS / "patch-mindustry-effects-web.py").read_text(encoding="utf-8")
+ARC_NIO_PATCH = (SCRIPTS / "patch-arc-webgl-nio.py").read_text(encoding="utf-8")
 CAMPAIGN_UI = (SCRIPTS / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
 PATHFINDER_PATCH = (SCRIPTS / "patch-mindustry-pathfinder-web.py").read_text(encoding="utf-8")
 CONTROL_PATH_PATCH = (SCRIPTS / "patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")
@@ -209,6 +210,20 @@ for needle in (
     "if(boundElementArrayBuffer == buffer) boundElementArrayBuffer = -1;",
 ):
     require(WEB_GL, needle, "WebGL safe buffer binding cache")
+
+# WebGL VBO/IBO transfers reuse a strictly bounded Java-side byte[] staging
+# cache, while copying to an independent Int8Array synchronously for WebGL.
+for needle in (
+    "private final byte[][] webUploadStaging = new byte[4][];",
+    "if(size > 262144) return new byte[size];",
+    "candidate.length == size",
+    "webUploadStaging[(webUploadStagingNext++) & 3] = allocated;",
+    "int position = source.position();",
+    "source.position(position);",
+    "Int8Array.copyFromJavaArray(bytes)",
+):
+    require(ARC_NIO_PATCH, needle, "bounded WebGL upload staging")
+forbid(ARC_NIO_PATCH, "ByteBuffer source = ((ByteBuffer)data).duplicate();", "no per-upload ByteBuffer duplication")
 
 # Renderer/settings polling and game-state work stay off the 60Hz critical path.
 for needle in [
