@@ -184,6 +184,15 @@ for source, label, update_marker in [
 require(CANVAS, 'public static native double performanceNowMillis();', "browser monotonic clock bridge")
 require(GAMEPLAY, 'Pathfinder.webClock = BrowserCanvas::performanceNowMillis;', "pathfinder clock injection")
 require(GAMEPLAY, 'ControlPathfinder.webClock = BrowserCanvas::performanceNowMillis;', "control pathfinder clock injection")
+# The inner tile-expansion kernels must also use the injected monotonic clock.
+# This prevents BigInt-heavy wall-clock checks on the high-frequency BFS path.
+for source, label in (
+    (PATHFINDER_PATCH, "Pathfinder inner frontier deadline"),
+    (CONTROL_PATH_PATCH, "ControlPathfinder inner fields deadline"),
+):
+    require(source, "kernel_start = text.index(", label)
+    require(source, "webNowMillis() - webStartMs >= nsToRun / 1000000d", label)
+    require(source, "kernel.count(old) != 1", label)
 require(CONTROL_PATH_PATCH, "if(Time.timeSinceMillis(webLastStep) < updateInterval) return;", "ControlPathfinder 30Hz cadence")
 require(CONTROL_PATH_PATCH, "int requestChecks = Math.min(32, requestCount);", "ControlPathfinder stale cleanup")
 require(CONTROL_PATH_PATCH, "int fieldChecks = Math.min(8, fieldCount);", "ControlPathfinder stale cleanup")
