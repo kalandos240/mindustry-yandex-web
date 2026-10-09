@@ -36,11 +36,16 @@ public final class BrowserResearchUi{
             throw new IllegalStateException("Research UI requires initialized menu and HUD groups");
         }
 
+        if(TechTree.all.size < 30 || Blocks.conveyor.techNode == null
+            || Blocks.junction.techNode == null || Blocks.router.techNode == null
+            || Blocks.mechanicalDrill.techNode == null){
+            throw new IllegalStateException("Browser research catalog lost starter technologies");
+        }
         buildPanel(ui.menuGroup, true);
         buildPanel(ui.hudGroup, false);
         initialized = true;
         markResearchReady();
-        markResearchCatalog(TechTree.all.size);
+        markResearchCatalog(totalNodes());
     }
 
     private static void buildPanel(Group parent, boolean menu){
