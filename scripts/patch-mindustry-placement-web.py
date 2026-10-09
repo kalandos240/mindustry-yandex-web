@@ -17,19 +17,23 @@ replacements = {
     'ui.content.show(unit.type());': 'if(ui.content != null) ui.content.show(unit.type());',
     'ui.content.show(displayBlock);': 'if(ui.content != null) ui.content.show(displayBlock);',
 }
-# Vanilla schedules a second ScrollPane force-layout while constructing the HUD.
-# That runs in BrowserApplication.runPostedTasks() before the first rendered
-# frame. On TeaVM this deferred path fails at frame-post #1; the pane already
-# received the scroll position and act(0f) synchronously, and Arc Scene runs
-# layout on the next draw. Keep normal block/category selection unchanged.
-scroll_layout = """                    Core.app.post(() -> {
-                        blockPane.setScrollYForce(scrollPositions.get(currentCategory, 0));
-                        blockPane.act(0f);
-                        blockPane.layout();
-                    });"""
-if source.count(scroll_layout) != 1:
-    raise SystemExit("Pinned PlacementFragment scroll-layout callback anchor changed")
-source = source.replace(scroll_layout, "", 1)
+# Keep the vanilla actor and UI behavior, but label failures in the four
+# eager placement bootstrap points. TeaVM does not always emit Java stacks
+# in Chrome, so preserving a meaningful cause label is critical for CI.
+probe_replacements = {
+    '                    blockTable.act(0f);':
+    '                    try{ blockTable.act(0f); }catch(Throwable error){ throw new IllegalStateException("stock-placement: category-act", error); }',
+    '                        rebuildCommand.run();\\n                    }).grow();':
+    '                        try{ rebuildCommand.run(); }catch(Throwable error){ throw new IllegalStateException("stock-placement: command-ui", error); }\\n                    }).grow();',
+    '                            control.input.buildPlacementUI(t);':
+    '                            try{ control.input.buildPlacementUI(t); }catch(Throwable error){ throw new IllegalStateException("stock-placement: placement-buttons", error); }',
+    '                rebuildCategory.run();\\n                frame.update(() -> {':
+    '                try{ rebuildCategory.run(); }catch(Throwable error){ throw new IllegalStateException("stock-placement: initial-category", error); }\\n                frame.update(() -> {',
+}
+for old, new in probe_replacements.items():
+    if source.count(old) != 1:
+        raise SystemExit(f"Pinned vanilla placement probe anchor changed: {old!r}")
+    source = source.replace(old, new, 1)
 
 for old, new in replacements.items():
     occurrences = source.count(old)
