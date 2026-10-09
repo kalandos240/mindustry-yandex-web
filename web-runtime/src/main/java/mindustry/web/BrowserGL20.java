@@ -33,6 +33,10 @@ public final class BrowserGL20 implements GL20{
     private final int[] bound2DTextures = new int[32];
     private int activeTextureUnit = 0;
     private int boundProgram = -1;
+    // WebGL ARRAY_BUFFER and ELEMENT_ARRAY_BUFFER bindings are independent.
+    // The GL20 browser adapter owns both states; avoid re-entering JS for
+    // unchanged bindings during sprite and mesh batch submissions.
+    private int boundArrayBuffer = -1, boundElementArrayBuffer = -1;
 
     public BrowserGL20(WebGLRenderingContext gl){
         if(gl == null) throw new IllegalArgumentException("WebGL context is null");
@@ -206,7 +210,20 @@ public final class BrowserGL20 implements GL20{
     public void glBindAttribLocation(int program, int index, String name){ gl.bindAttribLocation(programs.getRequired(program), index, name); }
 
     @Override
-    public void glBindBuffer(int target, int buffer){ gl.bindBuffer(target, buffers.get(buffer)); }
+    public void glBindBuffer(int target, int buffer){
+        if(target == 0x8892){ // GL_ARRAY_BUFFER
+            if(boundArrayBuffer == buffer) return;
+            gl.bindBuffer(target, buffers.get(buffer));
+            boundArrayBuffer = buffer;
+        }else if(target == 0x8893){ // GL_ELEMENT_ARRAY_BUFFER
+            if(boundElementArrayBuffer == buffer) return;
+            gl.bindBuffer(target, buffers.get(buffer));
+            boundElementArrayBuffer = buffer;
+        }else{
+            // Unsupported binding targets should still reach WebGL validation.
+            gl.bindBuffer(target, buffers.get(buffer));
+        }
+    }
 
     @Override
     public void glBindFramebuffer(int target, int framebuffer){ gl.bindFramebuffer(target, framebuffers.get(framebuffer)); }
@@ -249,6 +266,10 @@ public final class BrowserGL20 implements GL20{
 
     @Override
     public void glDeleteBuffer(int buffer){
+        // WebGL implicitly unbinds deleted buffers. Never leave their IDs in
+        // the binding cache, especially if a later mesh uses a new handle.
+        if(boundArrayBuffer == buffer) boundArrayBuffer = -1;
+        if(boundElementArrayBuffer == buffer) boundElementArrayBuffer = -1;
         WebGLBuffer value = buffers.remove(buffer);
         if(value != null) gl.deleteBuffer(value);
     }
