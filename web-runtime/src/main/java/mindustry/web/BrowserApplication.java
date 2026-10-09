@@ -270,6 +270,10 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     private void syncGameplayMarker(){
+        // Do not rely on the hidden fallback palette's Scene.act() callback: the
+        // original PlacementFragment is now the visible construction interface.
+        BrowserBuildPalette.updateVisibility();
+
         // Yandex GameplayAPI must stop not only in menus/pauses, but also immediately
         // when a local match reaches its Game Over overlay. Mindustry keeps the enum in
         // playing state while state.gameOver freezes simulation, so check both signals.
