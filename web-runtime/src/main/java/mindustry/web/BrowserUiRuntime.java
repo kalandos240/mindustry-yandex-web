@@ -5,6 +5,9 @@ import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import mindustry.core.*;
+import mindustry.content.TechTree;
+import mindustry.ctype.UnlockableContent;
+import mindustry.content.SectorPresets;
 import mindustry.input.*;
 import mindustry.maps.Map;
 import org.teavm.jso.*;
@@ -32,6 +35,8 @@ public final class BrowserUiRuntime{
     private static boolean initialized;
     private static TextButton localContinueButton;
     private static int drillResearchUiFrames;
+    private static boolean researchOpen;
+    private static Table researchItems;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
@@ -88,6 +93,7 @@ public final class BrowserUiRuntime{
             qualityVisuals());
         installLocalModeUi(settingsAction, BrowserLocalMapRuntime.customModeCode());
         buildLocalHudControls();
+        buildCampaignResearchPanel();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
 
@@ -194,7 +200,74 @@ public final class BrowserUiRuntime{
                 }
             }
         });
+        controls.row();
+        TextButton openResearch = controls.button(Core.bundle.get("research", "Research"), () -> {
+            researchOpen = !researchOpen;
+            if(researchOpen) rebuildCampaignResearch();
+            markCampaignResearchPanel(researchOpen, researchItems == null ? 0 : researchItems.getChildren().size);
+        }).size(mobile ? 270f : 240f, mobile ? 52f : 44f).colspan(2).pad(8f).get();
+        openResearch.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
         ui.hudGroup.addChild(controls);
+    }
+
+    /**
+     * Lightweight *general* TechTree browser, not only the Ground Zero drill
+     * shortcut. Every purchase goes through the same stock requirement and
+     * objective validation used by campaign progression. Do not eagerly
+     * construct ResearchDialog and its large desktop UI graph in TeaVM.
+     */
+    private static void buildCampaignResearchPanel(){
+        Table overlay = new Table();
+        overlay.setFillParent(true);
+        overlay.touchable = Touchable.childrenOnly;
+        overlay.visible(() -> researchOpen && BrowserCampaignRuntime.active() && state.isCampaign());
+        Table window = new Table(mindustry.ui.Tex.pane2);
+        window.margin(12f);
+        window.add(Core.bundle.get("research", "Research")).left().padBottom(8f);
+        window.button(Core.bundle.get("back", "Back"), () -> {
+            researchOpen = false;
+            markCampaignResearchPanel(false, 0);
+        }).width(mobile ? 112f : 100f).height(40f);
+        window.row();
+        researchItems = new Table();
+        researchItems.top().left();
+        ScrollPane scroller = new ScrollPane(researchItems, mindustry.ui.Styles.smallPane);
+        scroller.setFadeScrollBars(false);
+        scroller.setScrollingDisabled(true, false);
+        window.add(scroller).colspan(2).width(mobile ? 340f : 440f).height(mobile ? 360f : 420f);
+        overlay.add(window);
+        ui.hudGroup.addChild(overlay);
+        researchOpen = false;
+        markCampaignResearchPanel(false, 0);
+    }
+
+    private static void rebuildCampaignResearch(){
+        if(researchItems == null || state == null || !state.isCampaign()
+        || state.rules == null || state.rules.sector == null) return;
+        researchItems.clear();
+        int count = 0;
+        for(TechTree.TechNode node : TechTree.all){
+            if(node == null || node.content == null || node.content.unlocked()) continue;
+            if(node.planet != null && node.planet != state.rules.sector.planet) continue;
+            if(node.parent != null && !node.parent.content.unlocked()) continue;
+            final UnlockableContent target = node.content;
+            TextButton button = researchItems.button(
+                target.localizedName + "  (" + BrowserCampaignResearch.remaining(target) + ")", () -> {
+                    if(BrowserCampaignResearch.canSpend(target)){
+                        BrowserCampaignResearch.spend(target);
+                        BrowserBuildPalette.refresh();
+                        rebuildCampaignResearch();
+                    }
+                }).width(mobile ? 316f : 406f).height(mobile ? 48f : 38f).pad(3f).get();
+            button.getLabel().setFontScale(0.76f);
+            button.getLabel().setEllipsis(true);
+            button.setDisabled(!BrowserCampaignResearch.canSpend(target));
+            researchItems.row();
+            count++;
+        }
+        if(count == 0) researchItems.add(Core.bundle.get("none", "No available research")).left();
+        researchItems.invalidateHierarchy();
+        markCampaignResearchPanel(true, count);
     }
 
     private static void pauseActiveSession(){
@@ -281,6 +354,9 @@ public final class BrowserUiRuntime{
         if(!initialized) return;
         setLocalModeUi(BrowserLocalMapRuntime.customModeCode());
     }
+
+    @JSBody(params = {"open", "count"}, script = "const r=document.documentElement; r.setAttribute('data-mindustry-research-panel', open ? 'open' : 'closed'); r.setAttribute('data-mindustry-research-actions', String(count));")
+    private static native void markCampaignResearchPanel(boolean open, int count);
 
     @JSBody(params = {"visible"}, script = "document.documentElement.setAttribute('data-mindustry-ground-zero-drill-research-ui', visible ? 'visible' : 'hidden');")
     private static native void markGroundZeroResearchUi(boolean visible);
