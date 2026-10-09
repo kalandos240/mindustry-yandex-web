@@ -16,10 +16,11 @@ replacements = [
         "public class Pathfinder implements Runnable{",
         """public class Pathfinder{
     // Wall-clock deadline only. In TeaVM, Java long System.nanoTime() arithmetic
-    // can become BigInt on the main thread. Monotonic browser doubles are enough
+    // can become BigInt on the main thread. Double-precision elapsed times are enough
     // for this short (2-3 ms) cooperative worker time slice.
-    @org.teavm.jso.JSBody(script = "return performance.now();")
-    private static native double webNowMillis();
+    // Read the monotonic JVM clock once per deadline check. The loop and its
+    // time arithmetic use doubles, avoiding repeated long subtraction in TeaVM.
+    private static double webNowMillis(){ return System.nanoTime() / 1000000d; }
 """,
         "class declaration",
     ),
