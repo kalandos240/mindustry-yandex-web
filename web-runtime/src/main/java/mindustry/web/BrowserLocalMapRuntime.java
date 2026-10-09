@@ -69,6 +69,7 @@ public final class BrowserLocalMapRuntime{
     private static final int perfEffectsPerFrame = 4;
     private static final int perfTargetEffects = perfTargetFrames * perfEffectsPerFrame;
     private static final int perfMobileEffectBurst = 640;
+    private static final int perfDesktopEffectBurst = 960;
 
     private BrowserLocalMapRuntime(){}
 
@@ -370,8 +371,9 @@ public final class BrowserLocalMapRuntime{
         }
 
         int burst = 0;
-        if(mobile){
-            burst = perfMobileEffectBurst;
+        {
+            // Exercise the saturation guard in both mobile and desktop WebGL.
+            burst = mobile ? perfMobileEffectBurst : perfDesktopEffectBurst;
             float burstX = Core.camera.position.x;
             float burstY = Core.camera.position.y;
             for(int i = 0; i < burst; i++){
@@ -539,8 +541,9 @@ public final class BrowserLocalMapRuntime{
                     throw new IllegalStateException("Mobile effect budget did not cap the particle burst: budget="
                         + effectBudget + " active=" + activeEffects + " dropped=" + droppedEffects);
                 }
-            }else if(effectBudget != 0 || droppedEffects != 0){
-                throw new IllegalStateException("Desktop effect budget must stay unlimited");
+            }else if(effectBudget != 768 || activeEffects > effectBudget || droppedEffects <= 0){
+                throw new IllegalStateException("Desktop effect cap did not contain the particle burst: budget="
+                    + effectBudget + " active=" + activeEffects + " dropped=" + droppedEffects);
             }
 
             perfReady = true;
