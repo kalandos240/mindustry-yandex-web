@@ -18,10 +18,15 @@ REPORT = ROOT / "work" / "web-performance-report.txt"
 # 2.71 MiB gate, so compressible diagnostic/compiler variation cannot hide real payload
 # growth. Desktop/network reachability and the 100 MiB unpacked Yandex limit remain
 # independent hard gates and must never be traded for this allowance.
+# The player-facing stock TechTree catalog restores research for the full campaign
+# instead of the tiny scripted set. Measured TeaVM output after this intentional
+# addition: 24,071,459 raw / 2,710,085 gzip-9. Raise the separate JS gates by
+# only ~0.2% / ~0.4% so future accidental reachability still fails quickly.
+# The total unpacked Yandex 100 MiB gate and forbidden network classes remain.
 JS_BASELINE = 23_155_354
-JS_LIMIT = 24_050_000
+JS_LIMIT = 24_100_000
 JS_GZIP_BASELINE = 2_649_677
-JS_GZIP_LIMIT = 2_710_000
+JS_GZIP_LIMIT = 2_720_000
 YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
