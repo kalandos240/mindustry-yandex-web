@@ -1574,15 +1574,23 @@ public final class BrowserCampaignResearch{
     }
 
     private static void unlock(TechNode node){
-        node.content.unlock();
+        String phase = "content-unlock";
+        try{
+            node.content.unlock();
 
-        TechNode parent = node.parent;
-        while(parent != null){
-            parent.content.unlock();
-            parent = parent.parent;
+            phase = "parent-unlock";
+            TechNode parent = node.parent;
+            while(parent != null){
+                phase = "parent-unlock/" + parent.content.name;
+                parent.content.unlock();
+                parent = parent.parent;
+            }
+
+            phase = "research-event";
+            Events.fire(new ResearchEvent(node.content));
+        }catch(Throwable error){
+            throw new IllegalStateException("research-unlock: " + node.content.name + "/" + phase, error);
         }
-
-        Events.fire(new ResearchEvent(node.content));
     }
 
     private static void markProgressSmoke(){
