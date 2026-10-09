@@ -89,19 +89,54 @@ for anchor, phase in category_phase_markers:
         indent = anchor[:len(anchor) - len(anchor.lstrip())]
         source = source.replace(anchor, indent + 'initPhase[0] = "' + phase + '";' + chr(10) + anchor, 1)
 
-# The vanilla PlacementFragment builds while Mindustry is still in menu state.
-# In a browser, state.rules is not associated with a loaded map yet. The
-# isPlaceable() comparator goes through Rule.isBanned during this early stage;
-# avoid that gameplay-only check until WorldLoadEvent rebuilds the HUD. Keep
-# the full, original stable sort while an actual world is active.
-early_menu_sort = {
-    '        return returnArray2.selectFrom(content.blocks(), block -> block.category == cat && block.isVisible() && unlocked(block)).sort((b1, b2) -> Boolean.compare(!b1.isPlaceable(), !b2.isPlaceable()));':
-    '        Seq<Block> blocks = returnArray2.selectFrom(content.blocks(), block -> block.category == cat && block.isVisible() && unlocked(block));\n        return state.isMenu() ? blocks : blocks.sort((b1, b2) -> Boolean.compare(!b1.isPlaceable(), !b2.isPlaceable()));',
-}
-for old, new in early_menu_sort.items():
-    if source.count(old) != 1:
-        raise SystemExit("Pinned native placement early-menu sort anchor changed")
-    source = source.replace(old, new, 1)
+# Preserve the stock category filtering/sorting semantics, while exposing the
+# precise predicate/entry that TeaVM reports as a plain NullPointerException.
+# The normal lambda/selectFrom implementation hides its originating block in
+# browser logs, so use an equivalent explicit iteration with localized errors.
+category_filter_old = (
+    '    Seq<Block> getUnlockedByCategory(Category cat){' + chr(10)
+    + '        return returnArray2.selectFrom(content.blocks(), block -> block.category == cat && block.isVisible() && unlocked(block)).sort((b1, b2) -> Boolean.compare(!b1.isPlaceable(), !b2.isPlaceable()));' + chr(10)
+    + '    }'
+)
+category_filter_new = """    Seq<Block> getUnlockedByCategory(Category cat){
+        String category = cat == null ? "null" : cat.name();
+        if(returnArray2 == null) throw new IllegalStateException("stock-placement: category-list missing " + category);
+        if(content == null || content.blocks() == null) throw new IllegalStateException("stock-placement: block content missing " + category);
+        Seq<Block> matches = returnArray2;
+        matches.clear();
+        for(Block block : content.blocks()){
+            String blockName = block == null ? "null" : block.name;
+            String step = "category";
+            try{
+                if(block == null || block.category != cat) continue;
+                step = "visible";
+                if(!block.isVisible()) continue;
+                step = "unlocked";
+                if(!unlocked(block)) continue;
+                step = "add";
+                matches.add(block);
+            }catch(Throwable error){
+                throw new IllegalStateException("stock-placement: filter/" + category + "/" + blockName + "/" + step, error);
+            }
+        }
+        if(state != null && state.isMenu()) return matches;
+        try{
+            return matches.sort((b1, b2) -> Boolean.compare(!b1.isPlaceable(), !b2.isPlaceable()));
+        }catch(Throwable error){
+            throw new IllegalStateException("stock-placement: category-sort/" + category, error);
+        }
+    }"""
+if source.count(category_filter_old) != 0:
+    raise SystemExit("Unexpected raw category filter marker in Python script")
+if source.count("# The vanilla PlacementFragment builds") != 1:
+    raise SystemExit("Existing category sort patch markers changed")
+if source.count("    source = source.replace(old, new, 1)") < 2:
+    raise SystemExit("Unexpected overlay replacement helpers")
+if source.count("        return returnArray2.selectFrom(content.blocks()") != 1:
+    raise SystemExit("Pinned source anchor check changed")
+if source.count(category_filter_old) != 1:
+    raise SystemExit("Pinned native placement category filter anchor changed")
+source = source.replace(category_filter_old, category_filter_new, 1)
 
 for old, new in replacements.items():
     occurrences = source.count(old)
