@@ -263,9 +263,6 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-placement-web.py" \
   "$MINDUSTRY_DIR/core/src/mindustry/ui/fragments/PlacementFragment.java"
 python3 "$ROOT_DIR/scripts/patch-mindustry-build-visibility-web.py" \
   "$MINDUSTRY_DIR/core/src/mindustry/world/meta/BuildVisibility.java"
-python3 "$ROOT_DIR/scripts/patch-mindustry-control-unlock-web.py" \
-  "$MINDUSTRY_DIR/core/src/mindustry/core/Control.java"
-
 # Logic's sector captured/lost events only need to update campaign state. The stock
 # Serpulo visual mesh refresh uses ExecutorService, which is unavailable in TeaVM.
 python3 "$ROOT_DIR/scripts/patch-mindustry-planet-events-web.py"
@@ -294,6 +291,8 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-pathfinder-web.py"
 # The Web/Yandex build is intentionally single-player. Remove Join from both menu
 # layouts, assign local PlayEvent players to rules.defaultTeam, and disable PvP auto-host.
 python3 "$ROOT_DIR/scripts/patch-mindustry-singleplayer-web.py"
+python3 "$ROOT_DIR/scripts/patch-mindustry-control-unlock-web.py" \
+  "$MINDUSTRY_DIR/core/src/mindustry/core/Control.java"
 
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
