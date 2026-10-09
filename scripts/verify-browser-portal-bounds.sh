@@ -79,16 +79,26 @@ for mode in desktop mobile; do
         const check = ()=>{
           const w = surface.clientWidth, h = surface.clientHeight;
           const metrics = root.getAttribute('data-mindustry-container-size');
-          const canvasMetrics = root.getAttribute('data-mindustry-canvas-viewport');
+          const resizeMetrics = root.getAttribute('data-mindustry-resize-last');
+          const bufferMetrics = root.getAttribute('data-mindustry-resize-buffer');
+          const ratio = Number(canvas.__mindustryPixelRatio || 1);
           const fit = canvas.clientWidth === w && canvas.clientHeight === h;
+          const expectedBuffer = Math.max(1, Math.floor(w * ratio)) + 'x'
+            + Math.max(1, Math.floor(h * ratio));
+          // The Chrome harness' data-mindustry-canvas-viewport marker is sampled
+          // before this after-ready DOM mutation, and its -match flag compares to
+          // window.innerWidth (which MUST be larger than the reserved game area).
+          // Instead verify actual Arc/WebGL backing metrics and container resize.
           if(w < outerWidth && h < outerHeight && metrics === w + 'x' + h
-            && canvasMetrics === w + 'x' + h && fit
-            && root.getAttribute('data-mindustry-canvas-viewport-match') === 'true'
+            && resizeMetrics === w + 'x' + h && fit
+            && bufferMetrics === expectedBuffer
+            && canvas.width === Math.max(1, Math.floor(w * ratio))
+            && canvas.height === Math.max(1, Math.floor(h * ratio))
             && root.getAttribute('data-mindustry-container-match') === 'true'){
             root.setAttribute('data-mindustry-portal-bounds-smoke','ready');
             resolve();
           } else if(performance.now() - started > 15000){
-            reject(new Error('Game did not fit resized portal surface: ' + metrics + ' / ' + canvasMetrics + ' / ' + w + 'x' + h));
+            reject(new Error('Game did not fit resized portal surface: ' + metrics + ' / ' + resizeMetrics + ' / ' + bufferMetrics + ' / ' + w + 'x' + h));
           } else {requestAnimationFrame(check);}
         };
         check();
