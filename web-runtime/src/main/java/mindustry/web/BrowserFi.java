@@ -126,9 +126,7 @@ public final class BrowserFi extends Fi{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-file-persistence', 'recovered');")
     private static native void markPersistenceRecovered();
 
-    // Count real successful MSAV writes, not calls to the autosave scheduler.
-    // The marker allows production-mode Chrome to detect a broken zero-second
-    // autosave interval without inspecting user save contents or filenames.
+    // Count actual committed MSAV saves, not scheduler calls.
     @JSBody(script = "const r=document.documentElement; r.setAttribute('data-mindustry-msav-write-count', String((Number(r.getAttribute('data-mindustry-msav-write-count')) || 0) + 1));")
     private static native void markSaveWritten();
 

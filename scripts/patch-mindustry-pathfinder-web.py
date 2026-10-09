@@ -14,7 +14,20 @@ text = PATH.read_text(encoding="utf-8")
 replacements = [
     (
         "public class Pathfinder implements Runnable{",
-        "public class Pathfinder{",
+        """public class Pathfinder{
+    // Wall-clock deadline only. In TeaVM, Java long System.nanoTime() arithmetic
+    // can become BigInt on the main thread. Double-precision elapsed times are enough
+    // for this short (2-3 ms) cooperative worker time slice.
+    // Read the monotonic JVM clock once per deadline check. The loop and its
+    // time arithmetic use doubles, avoiding repeated long subtraction in TeaVM.
+    // TeaVM JSO lives in web-runtime, not the pinned Mindustry core. Inject a
+    // monotonic millisecond source from the browser launcher instead of adding
+    // a compile-breaking web-only annotation to this shared class.
+    public static java.util.function.DoubleSupplier webClock;
+    private static double webNowMillis(){
+        return webClock != null ? webClock.getAsDouble() : System.nanoTime() / 1000000d;
+    }
+""",
         "class declaration",
     ),
     (
@@ -125,11 +138,11 @@ new_run = '''    /**
             // continue round-robin next frame. The frontier algorithm itself is unchanged.
             int fieldCount = threadList.size;
             if(fieldCount == 0) return;
-            long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);
-            long frameStart = Time.nanos();
+            double frameBudgetMs = Core.app != null && Core.app.isMobile() ? 2d : 3d;
+            double frameStartMs = webNowMillis();
             int visited = 0;
 
-            while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget){
+            while(visited < fieldCount && webNowMillis() - frameStartMs < frameBudgetMs){
                 if(webFieldCursor >= threadList.size) webFieldCursor = 0;
                 Flowfield data = threadList.get(webFieldCursor++);
                 visited++;
@@ -140,9 +153,12 @@ new_run = '''    /**
                     data.dirty = false;
                 }
 
-                long remaining = frameBudget - Time.timeSinceNanos(frameStart);
-                if(remaining <= 0L) break;
-                updateFrontier(data, Math.min(maxUpdate, remaining));
+                double remainingMs = frameBudgetMs - (webNowMillis() - frameStartMs);
+                if(remainingMs <= 0d) break;
+                // The stock frontier takes a nanosecond long budget. Convert just
+                // once per field instead of repeated BigInt wall-clock arithmetic.
+                long remainingNanos = (long)(remainingMs * 1000000d);
+                updateFrontier(data, Math.min(maxUpdate, remainingNanos));
             }
         }catch(Throwable e){
             e.printStackTrace();
@@ -152,6 +168,21 @@ new_run = '''    /**
 if old_run not in text:
     raise SystemExit("Pathfinder Web run-loop patch no longer matches pinned upstream")
 text = text.replace(old_run, new_run, 1)
+
+# The stock inner BFS loops check nanosecond budgets after a fixed number of
+# tiles. Keep their check interval, queue order and cost logic unchanged, but
+# avoid repeated Time.timeSinceNanos(long) / BigInt arithmetic in TeaVM.
+kernel_start = text.index("    private void updateFrontier(Flowfield path, long nsToRun){")
+kernel_end = text.index("    public static class EnemyCoreField extends Flowfield{", kernel_start)
+kernel = text[kernel_start:kernel_end]
+for old, replacement in (
+    ("        long start = Time.nanos();", "        // Browser-only wall-clock deadlines use a monotonic double rather than\n        // repeated Java long/BigInt nanosecond subtraction.\n        double webStartMs = webNowMillis();"),
+    ("Time.timeSinceNanos(start) >= nsToRun", "webNowMillis() - webStartMs >= nsToRun / 1000000d"),
+):
+    if kernel.count(old) != 1:
+        raise SystemExit("Pathfinder updateFrontier pinned deadline patch lost anchor: " + old)
+    kernel = kernel.replace(old, replacement, 1)
+text = text[:kernel_start] + kernel + text[kernel_end:]
 
 # Pathfinder must remain algorithmically intact but contain no JVM worker scheduler.
 for forbidden in (
@@ -170,9 +201,9 @@ required = (
     "public void updateWeb()",
     "updateTargets(data);",
     "queue.run(32);",
-    "long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);",
-    "while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget)",
-    "updateFrontier(data, Math.min(maxUpdate, remaining));",
+    "double frameBudgetMs = Core.app != null && Core.app.isMobile() ? 2d : 3d;",
+    "while(visited < fieldCount && webNowMillis() - frameStartMs < frameBudgetMs)",
+    "updateFrontier(data, Math.min(maxUpdate, remainingNanos));",
     "preloadPath(getField(state.rules.waveTeam, costGround, fieldCore));",
 )
 for marker in required:

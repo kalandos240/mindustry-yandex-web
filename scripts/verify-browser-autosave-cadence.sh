@@ -39,8 +39,8 @@ for mode in desktop mobile; do
     --timeout 90 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-campaign-state="playing"' \
-    --require 'data-mindustry-autosave-interval-seconds="180"' \
-    --require 'data-mindustry-autosave-policy="minimum-10-seconds-default-180"' \
+    --require 'data-mindustry-autosave-interval-seconds="60"' \
+    --require 'data-mindustry-autosave-policy="minimum-10-seconds-default-60"' \
     --after-ready-eval "(async()=>{
       const root=document.documentElement;
       const writes=()=>Number(root.getAttribute('data-mindustry-msav-write-count') || 0);
@@ -56,5 +56,5 @@ for mode in desktop mobile; do
       return true;
     })()" \
     --after-ready-require 'data-mindustry-autosave-cadence-smoke="ready"' > "$dom"
-  echo "Stock campaign $mode: 180-second autosave policy, zero spurious MSAV writes across 3.2 seconds PASS"
+  echo "Stock campaign $mode: 60-second autosave policy, zero spurious MSAV writes across 3.2 seconds PASS"
 done

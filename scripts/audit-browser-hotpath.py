@@ -9,6 +9,7 @@ SCRIPTS = ROOT / "scripts"
 
 APP = (WEB_JAVA / "BrowserApplication.java").read_text(encoding="utf-8")
 CANVAS = (WEB_JAVA / "BrowserCanvas.java").read_text(encoding="utf-8")
+WEB_GL = (WEB_JAVA / "BrowserGL20.java").read_text(encoding="utf-8")
 INPUT = (WEB_JAVA / "BrowserInputBridge.java").read_text(encoding="utf-8")
 LOCAL_MAP = (WEB_JAVA / "BrowserLocalMapRuntime.java").read_text(encoding="utf-8")
 BROWSER_UI = (WEB_JAVA / "BrowserUiRuntime.java").read_text(encoding="utf-8")
@@ -169,26 +170,53 @@ require(TASK_QUEUE_PATCH, "runnables.removeRange(0, count - 1);", "bounded TaskQ
 require(PATHFINDER_PATCH, "queue.run(32);", "Pathfinder bounded queue drain")
 require(CONTROL_PATH_PATCH, "queue.run(32);", "ControlPathfinder bounded queue drain")
 for source, label, update_marker in [
-    (PATHFINDER_PATCH, "Pathfinder Web patch", "updateFrontier(data, Math.min(maxUpdate, remaining));"),
-    (CONTROL_PATH_PATCH, "ControlPathfinder Web patch", "updateFields(cache, Math.min(maxUpdate, remaining));"),
+    (PATHFINDER_PATCH, "Pathfinder Web patch", "updateFrontier(data, Math.min(maxUpdate, remainingNanos));"),
+    (CONTROL_PATH_PATCH, "ControlPathfinder Web patch", "updateFields(cache, Math.min(maxUpdate, remainingNanos));"),
 ]:
-    require(source, "Core.app != null && Core.app.isMobile() ? 2 : 3", label)
-    require(source, "Time.timeSinceNanos(frameStart) < frameBudget", label)
+    require(source, "Core.app != null && Core.app.isMobile() ? 2d : 3d", label)
+    require(source, "webNowMillis() - frameStartMs < frameBudgetMs", label)
+    require(source, "public static java.util.function.DoubleSupplier webClock;", label)
+    require(source, "webClock.getAsDouble()", label)
+    forbid(source, "@org.teavm.jso.JSBody(", "No TeaVM annotation in pinned Mindustry Core")
+    require(source, "remainingMs * 1000000d", label)
     require(source, "webFieldCursor", label)
     require(source, update_marker, label)
+require(CANVAS, 'public static native double performanceNowMillis();', "browser monotonic clock bridge")
+require(GAMEPLAY, 'Pathfinder.webClock = BrowserCanvas::performanceNowMillis;', "pathfinder clock injection")
+require(GAMEPLAY, 'ControlPathfinder.webClock = BrowserCanvas::performanceNowMillis;', "control pathfinder clock injection")
+# The inner tile-expansion kernels must also use the injected monotonic clock.
+# This prevents BigInt-heavy wall-clock checks on the high-frequency BFS path.
+for source, label in (
+    (PATHFINDER_PATCH, "Pathfinder inner frontier deadline"),
+    (CONTROL_PATH_PATCH, "ControlPathfinder inner fields deadline"),
+):
+    require(source, "kernel_start = text.index(", label)
+    require(source, "webNowMillis() - webStartMs >= nsToRun / 1000000d", label)
+    require(source, "kernel.count(old) != 1", label)
 require(CONTROL_PATH_PATCH, "if(Time.timeSinceMillis(webLastStep) < updateInterval) return;", "ControlPathfinder 30Hz cadence")
 require(CONTROL_PATH_PATCH, "int requestChecks = Math.min(32, requestCount);", "ControlPathfinder stale cleanup")
 require(CONTROL_PATH_PATCH, "int fieldChecks = Math.min(8, fieldCount);", "ControlPathfinder stale cleanup")
 require(CONTROL_PATH_PATCH, "webInvalidSweepPending", "ControlPathfinder invalidation budget")
 require(ASYNC_CORE_PATCH, "if(p == avoidance && (webFrame & 1) != 0) continue;", "AsyncCore avoidance 30Hz cadence")
 
+# WebGL state caching prevents redundant TeaVM->JS transition per SpriteBatch
+# submission. Explicit buffer deletion must invalidate each binding independently.
+for needle in (
+    "private int boundArrayBuffer = -1, boundElementArrayBuffer = -1;",
+    "if(boundArrayBuffer == buffer) return;",
+    "if(boundElementArrayBuffer == buffer) return;",
+    "if(boundArrayBuffer == buffer) boundArrayBuffer = -1;",
+    "if(boundElementArrayBuffer == buffer) boundElementArrayBuffer = -1;",
+):
+    require(WEB_GL, needle, "WebGL safe buffer binding cache")
+
 # Renderer/settings polling and game-state work stay off the 60Hz critical path.
 for needle in [
     '"effects", true',
-    '"animatedwater", !mobileMode',
-    '"animatedshields", !mobileMode',
-    '"drawlight", !mobileMode',
-    'if(mobileMode && !Core.settings.has("bloom"))',
+    '"animatedwater", false',
+    '"animatedshields", false',
+    '"drawlight", false',
+    'if(!Core.settings.has("bloom"))',
     'Core.settings.put("bloom", false)',
     "data-mindustry-renderer-settings-policy','32-frame",
 ]:

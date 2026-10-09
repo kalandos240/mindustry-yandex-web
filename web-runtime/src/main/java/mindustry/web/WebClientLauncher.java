@@ -209,34 +209,34 @@ public final class WebClientLauncher extends ClientLauncher{
         mindustry.entities.Effect.setWebMaxActiveEffects(effectBudget);
         Core.settings.defaults(
             "effects", true,
-            "animatedwater", !mobileMode,
-            "animatedshields", !mobileMode,
-            "drawlight", !mobileMode,
+            // Performance-first on all Yandex desktop and mobile clients.
+            // Rendering bloom, lighting, animated liquids and shields at native
+            // full-screen resolution is disproportionately expensive in WebGL.
+            // Users may override defaults; their saved choices remain authoritative.
+            "animatedwater", false,
+            "animatedshields", false,
+            "drawlight", false,
             "linear", !mobileMode,
             "blockstatus", false,
             "pixelate", false,
-            // The lean Yandex UI never creates SettingsMenuDialog, which normally
-            // registers saveinterval=60. Without a default, stock Saves.update()
-            // compares against zero and serializes a full world almost EVERY FRAME.
-            // Browser sessions use three-minute autosave; Back/Pause/Exit remain
-            // explicit save checkpoints handled by the existing Web runtime.
-            "saveinterval", 180
+            // Stock settings UI normally defines this; the lean browser menu
+            // omits it and would otherwise autosave the entire world every frame.
+            "saveinterval", 60
         );
-        // Repair old installs that persisted the zero/missing setting while the
-        // lightweight menu was not registering this preference.
         int saveInterval = Core.settings.getInt("saveinterval");
         if(saveInterval < 10){
-            saveInterval = 180;
+            saveInterval = 60;
             Core.settings.put("saveinterval", saveInterval);
-            Core.settings.forceSave();
         }
         markBrowserSaveInterval(saveInterval);
-        if(mobileMode && !Core.settings.has("bloom")){
+        if(!Core.settings.has("bloom")){
+            // Render scale governor cannot save CPU on expensive post-processing;
+            // disable bloom on a clean Yandex profile without overriding users.
             Core.settings.put("bloom", false);
         }
 
         markRendererProfile(
-            mobileMode ? "mobile-performance" : "desktop-stock",
+            mobileMode ? "mobile-performance" : "desktop-performance",
             Core.settings.getBool("bloom", true),
             Core.settings.getBool("effects"),
             Core.settings.getBool("animatedwater"),
@@ -415,7 +415,7 @@ public final class WebClientLauncher extends ClientLauncher{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer', 'constructed');")
     private static native void markRendererReady();
 
-    @JSBody(params = {"seconds"}, script = "document.documentElement.setAttribute('data-mindustry-autosave-interval-seconds', String(seconds)); document.documentElement.setAttribute('data-mindustry-autosave-policy', 'minimum-10-seconds-default-180');")
+    @JSBody(params = {"seconds"}, script = "document.documentElement.setAttribute('data-mindustry-autosave-interval-seconds', String(seconds)); document.documentElement.setAttribute('data-mindustry-autosave-policy', 'minimum-10-seconds-default-60');")
     private static native void markBrowserSaveInterval(int seconds);
 
     @JSBody(params = {"profile", "bloom", "effects", "water", "shields", "lights", "effectBudget"}, script = "document.documentElement.setAttribute('data-mindustry-renderer-profile', profile); document.documentElement.setAttribute('data-mindustry-renderer-bloom', bloom ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-effects', effects ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-animated-water', water ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-animated-shields', shields ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-lights', lights ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-effect-budget', String(effectBudget)); document.documentElement.setAttribute('data-mindustry-renderer-effect-budget-policy', effectBudget > 0 ? 'mobile-active-cap' : 'desktop-unlimited'); document.documentElement.setAttribute('data-mindustry-renderer-settings-policy','32-frame'); document.documentElement.setAttribute('data-mindustry-renderer-gl-error-policy','120-frame');")

@@ -12,7 +12,18 @@ text = PATH.read_text(encoding="utf-8")
 replacements = [
     (
         "public class ControlPathfinder implements Runnable{",
-        "public class ControlPathfinder{",
+        """public class ControlPathfinder{
+    // Minimize long arithmetic in the browser worker's short wall-clock budgets.
+    // Read the monotonic JVM clock once per deadline check. The loop and its
+    // time arithmetic use doubles, avoiding repeated long subtraction in TeaVM.
+    // TeaVM JSO lives in web-runtime, not the pinned Mindustry core. Inject a
+    // monotonic millisecond source from the browser launcher instead of adding
+    // a compile-breaking web-only annotation to this shared class.
+    public static java.util.function.DoubleSupplier webClock;
+    private static double webNowMillis(){
+        return webClock != null ? webClock.getAsDouble() : System.nanoTime() / 1000000d;
+    }
+""",
         "class declaration",
     ),
     (
@@ -288,20 +299,20 @@ new_run = '''    /**
         try{
             queue.run(32);
 
-            long maintenanceBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 1 : 2);
-            long maintenanceStart = Time.nanos();
+            double maintenanceBudgetMs = Core.app != null && Core.app.isMobile() ? 1d : 2d;
+            double maintenanceStartMs = webNowMillis();
 
             var fullClusters = clustersToUpdate.iterator();
-            while(fullClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget){
+            while(fullClusters.hasNext && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs){
                 int cluster = fullClusters.next();
                 updateClustersComplete(cluster);
                 clustersToInnerUpdate.remove(cluster);
                 fullClusters.remove();
             }
 
-            if(Time.timeSinceNanos(maintenanceStart) < maintenanceBudget){
+            if(webNowMillis() - maintenanceStartMs < maintenanceBudgetMs){
                 var innerClusters = clustersToInnerUpdate.iterator();
-                while(innerClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget){
+                while(innerClusters.hasNext && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs){
                     int cluster = innerClusters.next();
                     updateClustersInner(cluster);
                     innerClusters.remove();
@@ -313,9 +324,9 @@ new_run = '''    /**
                 webInvalidSweepPending = true;
             }
 
-            if(webInvalidSweepPending && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget){
+            if(webInvalidSweepPending && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs){
                 var it = invalidRequests.iterator();
-                while(it.hasNext() && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget){
+                while(it.hasNext() && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs){
                     var request = it.next();
 
                     if(request.invalidated){
@@ -353,19 +364,20 @@ new_run = '''    /**
 
             int fieldCount = fieldList.size;
             if(fieldCount > 0){
-                long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);
-                long frameStart = Time.nanos();
+                double frameBudgetMs = Core.app != null && Core.app.isMobile() ? 2d : 3d;
+                double frameStartMs = webNowMillis();
                 int visited = 0;
 
-                while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget){
+                while(visited < fieldCount && webNowMillis() - frameStartMs < frameBudgetMs){
                     if(webFieldCursor >= fieldList.size) webFieldCursor = 0;
                     FieldCache cache = fieldList.get(webFieldCursor++);
                     visited++;
                     if(cache == null || fields.get(cache.mapKey) != cache) continue;
 
-                    long remaining = frameBudget - Time.timeSinceNanos(frameStart);
-                    if(remaining <= 0L) break;
-                    updateFields(cache, Math.min(maxUpdate, remaining));
+                    double remainingMs = frameBudgetMs - (webNowMillis() - frameStartMs);
+                    if(remainingMs <= 0d) break;
+                    long remainingNanos = (long)(remainingMs * 1000000d);
+                    updateFields(cache, Math.min(maxUpdate, remainingNanos));
                 }
             }
         }catch(Throwable e){
@@ -379,6 +391,21 @@ new_run = '''    /**
 if old_run not in text:
     raise SystemExit("ControlPathfinder Web run-loop patch no longer matches pinned upstream")
 text = text.replace(old_run, new_run, 1)
+
+# The stock inner BFS loops check nanosecond budgets after a fixed number of
+# tiles. Keep their check interval, queue order and cost logic unchanged, but
+# avoid repeated Time.timeSinceNanos(long) / BigInt arithmetic in TeaVM.
+kernel_start = text.index("    private void updateFields(FieldCache cache, long nsToRun){")
+kernel_end = text.index("    private void addFlowCluster(FieldCache cache, int cluster, boolean addingFrontier){", kernel_start)
+kernel = text[kernel_start:kernel_end]
+for old, replacement in (
+    ("        long start = Time.nanos();", "        // Use the injected monotonic browser clock for cooperative work budgets.\n        double webStartMs = webNowMillis();"),
+    ("Time.timeSinceNanos(start) >= nsToRun", "webNowMillis() - webStartMs >= nsToRun / 1000000d"),
+):
+    if kernel.count(old) != 1:
+        raise SystemExit("ControlPathfinder updateFields pinned deadline patch lost anchor: " + old)
+    kernel = kernel.replace(old, replacement, 1)
+text = text[:kernel_start] + kernel + text[kernel_end:]
 
 for forbidden in (
     "implements Runnable",
@@ -406,13 +433,13 @@ for required in (
     "clustersToUpdate.add(cx + cy * cwidth);",
     "int requestChecks = Math.min(32, requestCount);",
     "int fieldChecks = Math.min(8, fieldCount);",
-    "long maintenanceBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 1 : 2);",
-    "while(fullClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)",
-    "while(innerClusters.hasNext && Time.timeSinceNanos(maintenanceStart) < maintenanceBudget)",
+    "double maintenanceBudgetMs = Core.app != null && Core.app.isMobile() ? 1d : 2d;",
+    "while(fullClusters.hasNext && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs)",
+    "while(innerClusters.hasNext && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs)",
     "webInvalidSweepPending",
-    "long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);",
-    "while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget)",
-    "updateFields(cache, Math.min(maxUpdate, remaining));",
+    "double frameBudgetMs = Core.app != null && Core.app.isMobile() ? 2d : 3d;",
+    "while(visited < fieldCount && webNowMillis() - frameStartMs < frameBudgetMs)",
+    "updateFields(cache, Math.min(maxUpdate, remainingNanos));",
     "recalculatePath(request)",
 ):
     if required not in text:

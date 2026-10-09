@@ -33,7 +33,7 @@ for mode in desktop mobile; do
     --timeout 90 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-local-map-state="playing"' \
-    --require 'data-mindustry-frame-budget-policy="adaptive-ratio-2500ms"' \
+    --require 'data-mindustry-frame-budget-policy="adaptive-ratio-1250ms-60fps"' \
     --require 'data-mindustry-viewport-source="game-container"' \
     --after-ready-eval "(async()=>{
       const root=document.documentElement;
@@ -45,7 +45,7 @@ for mode in desktop mobile; do
       }
       const ratio=Number(root.getAttribute('data-mindustry-frame-budget-dpr'));
       const fps=Number(root.getAttribute('data-mindustry-frame-budget-fps'));
-      if(!(ratio >= 0.625 && ratio <= 2.01 && fps > 0)) throw new Error('Invalid adaptive frame budget');
+      if(!(ratio >= 0.5 && ratio <= 2.01 && fps > 0)) throw new Error('Invalid adaptive frame budget');
       if(canvas.clientWidth !== document.getElementById('mindustry-game-surface').clientWidth)
         throw new Error('Performance governor changed logical canvas width');
       if(canvas.clientHeight !== document.getElementById('mindustry-game-surface').clientHeight)
@@ -53,6 +53,12 @@ for mode in desktop mobile; do
       const expectedWidth=Math.floor(canvas.clientWidth * Math.min(window.devicePixelRatio || 1,ratio));
       if(Math.abs(canvas.width-expectedWidth)>2)
         throw new Error('Back buffer not aligned to dynamic scale: '+canvas.width+'/'+expectedWidth);
+      const cpuSample=Number(root.getAttribute('data-mindustry-cpu-sample') || 0);
+      const cpuTotal=Number(root.getAttribute('data-mindustry-cpu-frame-ms'));
+      const cpuUpdate=Number(root.getAttribute('data-mindustry-cpu-update-ms'));
+      const cpuPost=Number(root.getAttribute('data-mindustry-cpu-posted-ms'));
+      if(cpuSample > 0 && (!(cpuTotal >= 0) || !(cpuUpdate >= 0) || !(cpuPost >= 0)))
+        throw new Error('Invalid sampled CPU stage timings');
       root.setAttribute('data-mindustry-frame-budget-smoke','ready');
       return true;
     })()" \

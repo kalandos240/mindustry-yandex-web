@@ -27,17 +27,42 @@ public final class BrowserGL20 implements GL20{
     private final Registry<WebGLShader> shaders = new Registry<>();
     private final Registry<WebGLUniformLocation> uniforms = new Registry<>();
 
+    // Arc's SpriteBatch can redundantly bind the same texture/program many
+    // times each frame. Cache only GL state fully owned by this adapter.
+    // Texture bindings are per texture unit, not global.
+    private final int[] bound2DTextures = new int[32];
+    private int activeTextureUnit = 0;
+    private int boundProgram = -1;
+    // WebGL ARRAY_BUFFER and ELEMENT_ARRAY_BUFFER bindings are independent.
+    // The GL20 browser adapter owns both states; avoid re-entering JS for
+    // unchanged bindings during sprite and mesh batch submissions.
+    private int boundArrayBuffer = -1, boundElementArrayBuffer = -1;
+
     public BrowserGL20(WebGLRenderingContext gl){
         if(gl == null) throw new IllegalArgumentException("WebGL context is null");
         this.gl = gl;
+        Arrays.fill(bound2DTextures, -1);
         gl.pixelStorei(WebGLRenderingContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
     }
 
     @Override
-    public void glActiveTexture(int texture){ gl.activeTexture(texture); }
+    public void glActiveTexture(int texture){
+        int unit = texture - 0x84C0; // GL_TEXTURE0
+        if(unit >= 0 && unit < bound2DTextures.length && unit == activeTextureUnit) return;
+        gl.activeTexture(texture);
+        activeTextureUnit = unit >= 0 && unit < bound2DTextures.length ? unit : -1;
+    }
 
     @Override
-    public void glBindTexture(int target, int texture){ gl.bindTexture(target, textures.get(texture)); }
+    public void glBindTexture(int target, int texture){
+        if(target == 0x0DE1 && activeTextureUnit >= 0){ // GL_TEXTURE_2D
+            if(bound2DTextures[activeTextureUnit] == texture) return;
+            gl.bindTexture(target, textures.get(texture));
+            bound2DTextures[activeTextureUnit] = texture;
+        }else{
+            gl.bindTexture(target, textures.get(texture));
+        }
+    }
 
     @Override
     public void glBlendFunc(int sfactor, int dfactor){ gl.blendFunc(sfactor, dfactor); }
@@ -82,6 +107,9 @@ public final class BrowserGL20 implements GL20{
 
     @Override
     public void glDeleteTexture(int texture){
+        for(int i = 0; i < bound2DTextures.length; i++){
+            if(bound2DTextures[i] == texture) bound2DTextures[i] = -1;
+        }
         WebGLTexture value = textures.remove(texture);
         if(value != null) gl.deleteTexture(value);
     }
@@ -182,7 +210,20 @@ public final class BrowserGL20 implements GL20{
     public void glBindAttribLocation(int program, int index, String name){ gl.bindAttribLocation(programs.getRequired(program), index, name); }
 
     @Override
-    public void glBindBuffer(int target, int buffer){ gl.bindBuffer(target, buffers.get(buffer)); }
+    public void glBindBuffer(int target, int buffer){
+        if(target == 0x8892){ // GL_ARRAY_BUFFER
+            if(boundArrayBuffer == buffer) return;
+            gl.bindBuffer(target, buffers.get(buffer));
+            boundArrayBuffer = buffer;
+        }else if(target == 0x8893){ // GL_ELEMENT_ARRAY_BUFFER
+            if(boundElementArrayBuffer == buffer) return;
+            gl.bindBuffer(target, buffers.get(buffer));
+            boundElementArrayBuffer = buffer;
+        }else{
+            // Unsupported binding targets should still reach WebGL validation.
+            gl.bindBuffer(target, buffers.get(buffer));
+        }
+    }
 
     @Override
     public void glBindFramebuffer(int target, int framebuffer){ gl.bindFramebuffer(target, framebuffers.get(framebuffer)); }
@@ -225,6 +266,10 @@ public final class BrowserGL20 implements GL20{
 
     @Override
     public void glDeleteBuffer(int buffer){
+        // WebGL implicitly unbinds deleted buffers. Never leave their IDs in
+        // the binding cache, especially if a later mesh uses a new handle.
+        if(boundArrayBuffer == buffer) boundArrayBuffer = -1;
+        if(boundElementArrayBuffer == buffer) boundElementArrayBuffer = -1;
         WebGLBuffer value = buffers.remove(buffer);
         if(value != null) gl.deleteBuffer(value);
     }
@@ -237,6 +282,7 @@ public final class BrowserGL20 implements GL20{
 
     @Override
     public void glDeleteProgram(int program){
+        if(boundProgram == program) boundProgram = -1;
         WebGLProgram value = programs.remove(program);
         if(value != null) gl.deleteProgram(value);
     }
@@ -562,7 +608,11 @@ public final class BrowserGL20 implements GL20{
     public void glUniformMatrix4fv(int location, int count, boolean transpose, float[] value, int offset){ if(validUniform(location)) gl.uniformMatrix4fv(uniforms.get(location), transpose, slice(value, offset)); }
 
     @Override
-    public void glUseProgram(int program){ gl.useProgram(programs.get(program)); }
+    public void glUseProgram(int program){
+        if(boundProgram == program) return;
+        gl.useProgram(programs.get(program));
+        boundProgram = program;
+    }
 
     @Override
     public void glValidateProgram(int program){ gl.validateProgram(programs.getRequired(program)); }
