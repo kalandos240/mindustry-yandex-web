@@ -96,7 +96,7 @@ for anchor, phase in category_phase_markers:
 # the full, original stable sort while an actual world is active.
 early_menu_sort = {
     '        return returnArray2.selectFrom(content.blocks(), block -> block.category == cat && block.isVisible() && unlocked(block)).sort((b1, b2) -> Boolean.compare(!b1.isPlaceable(), !b2.isPlaceable()));':
-    '        Seq<Block> blocks = returnArray2.selectFrom(content.blocks(), block -> block.category == cat && block.isVisible() && unlocked(block));\\n        return state.isMenu() ? blocks : blocks.sort((b1, b2) -> Boolean.compare(!b1.isPlaceable(), !b2.isPlaceable()));',
+    '        Seq<Block> blocks = returnArray2.selectFrom(content.blocks(), block -> block.category == cat && block.isVisible() && unlocked(block));\n        return state.isMenu() ? blocks : blocks.sort((b1, b2) -> Boolean.compare(!b1.isPlaceable(), !b2.isPlaceable()));',
 }
 for old, new in early_menu_sort.items():
     if source.count(old) != 1:
