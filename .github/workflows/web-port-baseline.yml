@@ -405,6 +405,9 @@ jobs:
       - name: Verify visible construction palette during real desktop/mobile gameplay
         run: bash scripts/verify-browser-palette-visibility.sh
 
+      - name: Click the complete Research TechTree from real menu and campaign HUD
+        run: bash scripts/verify-browser-research-actions.sh
+
       - name: Verify automatic desktop/mobile device detection
         run: bash scripts/verify-browser-device-autodetect.sh
 
