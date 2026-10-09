@@ -27,6 +27,8 @@ probe_replacements = {
     '                        try{ rebuildCommand.run(); }catch(Throwable error){ throw new IllegalStateException("stock-placement: command-ui", error); }\n                    }).grow();',
     '                            control.input.buildPlacementUI(t);':
     '                            try{ control.input.buildPlacementUI(t); }catch(Throwable error){ throw new IllegalStateException("stock-placement: placement-buttons", error); }',
+    '            if(event.content instanceof Block){\n                rebuild();\n            }':
+    '            if(event.content instanceof Block){\n                try{ rebuild(); }catch(Throwable error){ throw new IllegalStateException("stock-placement: rebuild-on-unlock/" + event.content.name, error); }\n            }',
     '                rebuildCategory.run();\n                frame.update(() -> {':
     '                try{ rebuildCategory.run(); }catch(Throwable error){ throw new IllegalStateException("stock-placement: initial-category", error); }\n                frame.update(() -> {',
 }
