@@ -711,20 +711,44 @@ public final class BrowserCampaignResearch{
             throw new IllegalStateException("r:44");
         }
 
-        stageMissing(source, Blocks.conveyor);
-        spend(Blocks.conveyor);
+        try{
+            stageMissing(source, Blocks.conveyor);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: conveyor/stage-resources", error);
+        }
+        try{
+            spend(Blocks.conveyor);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: conveyor/purchase", error);
+        }
         if(!Blocks.conveyor.unlocked()){
             throw new IllegalStateException("r:45");
         }
 
-        stageMissing(source, Blocks.junction);
-        spend(Blocks.junction);
+        try{
+            stageMissing(source, Blocks.junction);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: junction/stage-resources", error);
+        }
+        try{
+            spend(Blocks.junction);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: junction/purchase", error);
+        }
         if(!Blocks.junction.unlocked()){
             throw new IllegalStateException("r:46");
         }
 
-        stageMissing(source, Blocks.router);
-        spend(Blocks.router);
+        try{
+            stageMissing(source, Blocks.router);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: router/stage-resources", error);
+        }
+        try{
+            spend(Blocks.router);
+        }catch(Throwable error){
+            throw new IllegalStateException("research-progress: router/purchase", error);
+        }
         if(!Blocks.router.unlocked()){
             throw new IllegalStateException("r:47");
         }
