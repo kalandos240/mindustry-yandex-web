@@ -102,10 +102,17 @@ from pathlib import Path
 import re
 import sys
 js = Path(sys.argv[1]).read_text(encoding="utf-8")
-match = re.search(r"\bcjj_WebAdler32_update\s*=\s*\([^)]*\)\s*=>\s*\{(.*?)\n\};", js, re.S)
+# TeaVM may emit the substituted body under the ORIGINAL class symbol.
+# Select the active Adler32.update entry and inspect its actual implementation.
+match = re.search(r"\bcjj_Adler32_update\s*=\s*\([^)]*\)\s*=>\s*\{(.*?)\n\};", js, re.S)
+symbol = "cjj_Adler32_update"
 if match is None:
-    raise SystemExit("TeaVM did not select WebAdler32 substitution in generated JS")
+    match = re.search(r"\bcjj_WebAdler32_update\s*=\s*\([^)]*\)\s*=>\s*\{(.*?)\n\};", js, re.S)
+    symbol = "cjj_WebAdler32_update"
+if match is None:
+    raise SystemExit("Neither Adler32.update nor WebAdler32.update found in generated JS")
 body = match.group(1)
+print("TeaVM emitted checksum implementation:", symbol)
 if re.search(r"\bLong_(?:add|rem|fromInt|mul|div|sub)\b", body):
     # Identify the emitted implementation without disabling the regression gate.
     calls = sorted(set(re.findall(r"\bLong_[A-Za-z0-9_]+\b", body)))
