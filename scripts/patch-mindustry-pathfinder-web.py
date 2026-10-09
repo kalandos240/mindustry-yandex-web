@@ -14,7 +14,13 @@ text = PATH.read_text(encoding="utf-8")
 replacements = [
     (
         "public class Pathfinder implements Runnable{",
-        "public class Pathfinder{",
+        """public class Pathfinder{
+    // Wall-clock deadline only. In TeaVM, Java long System.nanoTime() arithmetic
+    // can become BigInt on the main thread. Monotonic browser doubles are enough
+    // for this short (2-3 ms) cooperative worker time slice.
+    @org.teavm.jso.JSBody(script = "return performance.now();")
+    private static native double webNowMillis();
+""",
         "class declaration",
     ),
     (
@@ -125,11 +131,11 @@ new_run = '''    /**
             // continue round-robin next frame. The frontier algorithm itself is unchanged.
             int fieldCount = threadList.size;
             if(fieldCount == 0) return;
-            long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);
-            long frameStart = Time.nanos();
+            double frameBudgetMs = Core.app != null && Core.app.isMobile() ? 2d : 3d;
+            double frameStartMs = webNowMillis();
             int visited = 0;
 
-            while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget){
+            while(visited < fieldCount && webNowMillis() - frameStartMs < frameBudgetMs){
                 if(webFieldCursor >= threadList.size) webFieldCursor = 0;
                 Flowfield data = threadList.get(webFieldCursor++);
                 visited++;
@@ -140,9 +146,12 @@ new_run = '''    /**
                     data.dirty = false;
                 }
 
-                long remaining = frameBudget - Time.timeSinceNanos(frameStart);
-                if(remaining <= 0L) break;
-                updateFrontier(data, Math.min(maxUpdate, remaining));
+                double remainingMs = frameBudgetMs - (webNowMillis() - frameStartMs);
+                if(remainingMs <= 0d) break;
+                // The stock frontier takes a nanosecond long budget. Convert just
+                // once per field instead of repeated BigInt wall-clock arithmetic.
+                long remainingNanos = (long)(remainingMs * 1000000d);
+                updateFrontier(data, Math.min(maxUpdate, remainingNanos));
             }
         }catch(Throwable e){
             e.printStackTrace();
@@ -170,9 +179,9 @@ required = (
     "public void updateWeb()",
     "updateTargets(data);",
     "queue.run(32);",
-    "long frameBudget = Time.millisToNanos(Core.app != null && Core.app.isMobile() ? 2 : 3);",
-    "while(visited < fieldCount && Time.timeSinceNanos(frameStart) < frameBudget)",
-    "updateFrontier(data, Math.min(maxUpdate, remaining));",
+    "double frameBudgetMs = Core.app != null && Core.app.isMobile() ? 2d : 3d;",
+    "while(visited < fieldCount && webNowMillis() - frameStartMs < frameBudgetMs)",
+    "updateFrontier(data, Math.min(maxUpdate, remainingNanos));",
     "preloadPath(getField(state.rules.waveTeam, costGround, fieldCore));",
 )
 for marker in required:
