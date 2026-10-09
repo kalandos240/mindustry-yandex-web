@@ -1266,22 +1266,38 @@ public final class BrowserCampaignRuntime{
         long beforeUpdate = state.updateId;
 
         diagPhase("logic");
-        logic.updateWebPlayingCore();
+        try{
+            logic.updateWebPlayingCore();
+        }catch(Throwable error){
+            throw new IllegalStateException("campaign-frame: logic.updateWebPlayingCore", error);
+        }
         diagPhase("logic-ready");
 
         pathfinder.updateWeb();
         controlPath.updateWeb();
 
         diagPhase("control");
-        control.update();
+        try{
+            control.update();
+        }catch(Throwable error){
+            throw new IllegalStateException("campaign-frame: control.update", error);
+        }
         diagPhase("control-ready");
 
         diagPhase("renderer");
-        renderer.update();
+        try{
+            renderer.update();
+        }catch(Throwable error){
+            throw new IllegalStateException("campaign-frame: renderer.update", error);
+        }
         diagPhase("renderer-ready");
 
         diagPhase("ui");
-        ui.update();
+        try{
+            ui.update();
+        }catch(Throwable error){
+            throw new IllegalStateException("campaign-frame: ui.update", error);
+        }
         diagPhase("ui-ready");
 
         // HUD actions run during Scene.act(). Back may reset to menu, while Pause may
