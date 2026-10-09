@@ -61,7 +61,6 @@ python3 "$ROOT_DIR/scripts/patch-arc-audio-web.py"
 # Control/SoundControl/Music may remain reachable without any native SoLoud method.
 python3 "$ROOT_DIR/scripts/patch-arc-soloud-web.py"
 python3 "$ROOT_DIR/scripts/patch-arc-task-queue-web.py"
-python3 "$ROOT_DIR/scripts/patch-arc-sort-web.py"
 python3 "$ROOT_DIR/scripts/patch-arc-deflater-web.py"
 python3 "$ROOT_DIR/scripts/patch-browser-gl-buffer-diagnostics.py"
 
@@ -262,6 +261,8 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-input-web.py" \
 # the temporary text-only browser palette. Guard unmounted desktop dialog refs.
 python3 "$ROOT_DIR/scripts/patch-mindustry-placement-web.py" \
   "$MINDUSTRY_DIR/core/src/mindustry/ui/fragments/PlacementFragment.java"
+python3 "$ROOT_DIR/scripts/patch-mindustry-build-visibility-web.py" \
+  "$MINDUSTRY_DIR/core/src/mindustry/world/meta/BuildVisibility.java"
 
 # Logic's sector captured/lost events only need to update campaign state. The stock
 # Serpulo visual mesh refresh uses ExecutorService, which is unavailable in TeaVM.
