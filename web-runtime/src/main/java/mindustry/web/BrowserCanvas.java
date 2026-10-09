@@ -86,15 +86,21 @@ public final class BrowserCanvas{
         const deviceRatio = Math.max(1, window.devicePixelRatio || 1);
         const cap = Math.max(1, Number(maxPixelRatio) || 1);
         const ratio = Math.min(deviceRatio, cap);
-        if (!canvas.__mindustryResizeDirty && canvas.__mindustryLastDpr === ratio) return false;
-
-        // Never derive the game size from window.innerWidth/visualViewport: the
-        // portal may reserve a separate strip for desktop or sticky ads.
-        // The only area available to WebGL and Arc HUD is the provided game surface.
+        // The low-frequency resize fallback must also detect changes that do not
+        // dispatch window events or a ResizeObserver callback (portal ad layout).
+        // Reading the parent here is cheap because this method is only invoked on
+        // an event or every 64th frame, not on every WebGL draw call.
         const surface = document.getElementById('mindustry-game-surface');
         if (!surface || !surface.contains(canvas)) throw new Error('Mindustry game surface detached');
         const cssWidth = Math.max(1, surface.clientWidth | 0);
         const cssHeight = Math.max(1, surface.clientHeight | 0);
+        if (!canvas.__mindustryResizeDirty && canvas.__mindustryLastDpr === ratio
+            && canvas.__mindustryClientWidth === cssWidth
+            && canvas.__mindustryClientHeight === cssHeight) return false;
+
+        // Never derive the game size from window.innerWidth/visualViewport: the
+        // portal may reserve a separate strip for desktop or sticky ads.
+        // The only area available to WebGL and Arc HUD is the provided game surface.
         if (canvas.style.width !== cssWidth + 'px') canvas.style.width = cssWidth + 'px';
         if (canvas.style.height !== cssHeight + 'px') canvas.style.height = cssHeight + 'px';
         if (canvas.style.left !== '0px') canvas.style.left = '0px';
