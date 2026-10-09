@@ -133,6 +133,16 @@ require(EFFECT_PATCH, "webMaxActiveEffects", "Web effect active cap")
 require(EFFECT_PATCH, "webBudgetCounted", "Web effect pooled counter")
 require(EFFECT_PATCH, "Effect.webEffectRemoved()", "Web effect removal accounting")
 require(WEB_LAUNCHER, "int effectBudget = mobileMode ? 512 : 0", "mobile effect budget profile")
+# Campaign research must remain available after the Ground Zero drill:
+# conveyor, junction, router, and all reachable TechTree nodes cannot rely on
+# the old one-off tutorial action or on CI-only progression helpers.
+require(BROWSER_UI, "buildCampaignResearchPanel();", "campaign research panel registered")
+require(BROWSER_UI, "for(TechTree.TechNode node : TechTree.all)", "full vanilla TechTree enumeration")
+require(BROWSER_UI, "BrowserCampaignResearch.canSpend(target)", "research objective and resource gate")
+require(BROWSER_UI, "BrowserCampaignResearch.spend(target);", "real research purchase")
+require(BROWSER_UI, "BrowserBuildPalette.refresh();", "construction palette updated on research")
+require(BROWSER_UI, "data-mindustry-research-panel", "research panel observability")
+
 
 # Built-in map metadata stays lazy; Continue state stays event-driven.
 local_init = java_static_method(LOCAL_MAP, "public static void init()")
