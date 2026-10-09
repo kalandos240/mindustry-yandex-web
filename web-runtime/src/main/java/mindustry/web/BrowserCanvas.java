@@ -15,6 +15,8 @@ public final class BrowserCanvas{
     @JSBody(params = {"canvasId", "alpha", "stencil", "antialias", "premultipliedAlpha", "preserveDrawingBuffer"}, script = """
         const canvas = document.getElementById(canvasId);
         if (!canvas) throw new Error('Canvas #' + canvasId + ' not found');
+        const surface = document.getElementById('mindustry-game-surface');
+        if (!surface || !surface.contains(canvas)) throw new Error('Mindustry portal game surface is missing');
         const options = {
             alpha: alpha,
             depth: true,
@@ -39,6 +41,9 @@ public final class BrowserCanvas{
         if (typeof ResizeObserver !== 'undefined') {
             canvas.__mindustryResizeObserver = new ResizeObserver(markResizeDirty);
             canvas.__mindustryResizeObserver.observe(canvas);
+            // The advertising sidebar can resize the game area without changing the
+            // browser/iframe viewport at all; track the actual surface as well.
+            canvas.__mindustryResizeObserver.observe(surface);
         }
         window.addEventListener('resize', markResizeDirty, {passive: true});
         window.addEventListener('orientationchange', markResizeDirty, {passive: true});
@@ -81,11 +86,21 @@ public final class BrowserCanvas{
         const deviceRatio = Math.max(1, window.devicePixelRatio || 1);
         const cap = Math.max(1, Number(maxPixelRatio) || 1);
         const ratio = Math.min(deviceRatio, cap);
-        if (!canvas.__mindustryResizeDirty && canvas.__mindustryLastDpr === ratio) return false;
+        // The low-frequency resize fallback must also detect changes that do not
+        // dispatch window events or a ResizeObserver callback (portal ad layout).
+        // Reading the parent here is cheap because this method is only invoked on
+        // an event or every 64th frame, not on every WebGL draw call.
+        const surface = document.getElementById('mindustry-game-surface');
+        if (!surface || !surface.contains(canvas)) throw new Error('Mindustry game surface detached');
+        const cssWidth = Math.max(1, surface.clientWidth | 0);
+        const cssHeight = Math.max(1, surface.clientHeight | 0);
+        if (!canvas.__mindustryResizeDirty && canvas.__mindustryLastDpr === ratio
+            && canvas.__mindustryClientWidth === cssWidth
+            && canvas.__mindustryClientHeight === cssHeight) return false;
 
-        const viewport = window.visualViewport;
-        const cssWidth = viewport ? Math.max(1, Math.round(viewport.width)) : Math.max(1, window.innerWidth | 0);
-        const cssHeight = viewport ? Math.max(1, Math.round(viewport.height)) : Math.max(1, window.innerHeight | 0);
+        // Never derive the game size from window.innerWidth/visualViewport: the
+        // portal may reserve a separate strip for desktop or sticky ads.
+        // The only area available to WebGL and Arc HUD is the provided game surface.
         if (canvas.style.width !== cssWidth + 'px') canvas.style.width = cssWidth + 'px';
         if (canvas.style.height !== cssHeight + 'px') canvas.style.height = cssHeight + 'px';
         if (canvas.style.left !== '0px') canvas.style.left = '0px';
@@ -124,8 +139,11 @@ public final class BrowserCanvas{
             root.setAttribute('data-mindustry-resize-last', String(clientWidth) + 'x' + String(clientHeight));
             root.setAttribute('data-mindustry-resize-buffer', String(width) + 'x' + String(height));
             root.setAttribute('data-mindustry-resize-orientation', clientWidth >= clientHeight ? 'landscape' : 'portrait');
-            root.setAttribute('data-mindustry-viewport-source', viewport ? 'visualViewport' : 'window');
+            root.setAttribute('data-mindustry-viewport-source', 'game-container');
             root.setAttribute('data-mindustry-viewport-last', String(cssWidth) + 'x' + String(cssHeight));
+            root.setAttribute('data-mindustry-container-size', String(cssWidth) + 'x' + String(cssHeight));
+            root.setAttribute('data-mindustry-container-match',
+                clientWidth <= cssWidth && clientHeight <= cssHeight ? 'true' : 'false');
         }
         return metricsChanged;
         """)

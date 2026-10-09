@@ -71,7 +71,7 @@ jobs:
     # This job intentionally executes several full Chrome cold-restart persistence
     # pairs. Fog/weather gates add two more real v13 save/restore cycles, so keep
     # enough headroom for shared-runner startup variance without weakening checks.
-    timeout-minutes: 50
+    timeout-minutes: 110
 
     steps:
       - name: Checkout port repository
@@ -399,11 +399,17 @@ jobs:
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
 
+      - name: Verify visible construction palette during real desktop/mobile gameplay
+        run: bash scripts/verify-browser-palette-visibility.sh
+
       - name: Verify automatic desktop/mobile device detection
         run: bash scripts/verify-browser-device-autodetect.sh
 
       - name: Verify desktop/mobile resize and orientation continuity
         run: bash scripts/verify-browser-resize-orientation.sh
+
+      - name: Verify game fits portal area beside advertising blocks
+        run: bash scripts/verify-browser-portal-bounds.sh
 
       - name: Verify desktop/mobile runtime load stability
         run: bash scripts/verify-browser-runtime-load.sh

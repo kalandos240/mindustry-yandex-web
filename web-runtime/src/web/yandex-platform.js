@@ -234,9 +234,11 @@
         button.type = 'button';
         button.textContent = '⛶';
         button.setAttribute('aria-label', 'Fullscreen');
-        button.style.cssText = 'position:fixed;right:148px;top:12px;z-index:49;width:48px;height:44px;font:24px sans-serif;';
+        button.style.cssText = 'position:absolute;right:148px;top:12px;z-index:49;width:48px;height:44px;font:24px sans-serif;';
         button.onclick = () => { void toggleFullscreen(); };
-        document.body.appendChild(button);
+        const surface = document.getElementById('mindustry-game-surface');
+        if(!surface) throw new Error('Missing portal game surface for fullscreen control');
+        surface.appendChild(button);
         state.fullscreenButton = button;
         mark('data-yandex-fullscreen-control', 'ready');
         syncFullscreenState();

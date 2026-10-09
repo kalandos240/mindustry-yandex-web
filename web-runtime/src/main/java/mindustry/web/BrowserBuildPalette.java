@@ -26,11 +26,13 @@ import static mindustry.Vars.*;
  * in the stock InputHandler/DesktopInput/MobileInput graph already bound to hudGroup.
  */
 public final class BrowserBuildPalette{
-    private static final int columns = 4;
+    // Allow room for readable labels on desktop and touch screens.
+    private static final int columns = 2;
     private static boolean initialized;
     private static Category current = Category.distribution;
     private static Table root, categories, blocks;
-    private static ScrollPane pane;
+    private static ScrollPane pane, categoryPane;
+    private static int visibilityFrames;
 
     private BrowserBuildPalette(){}
 
@@ -44,10 +46,13 @@ public final class BrowserBuildPalette{
         root.setFillParent(true);
         root.bottom().right();
         root.touchable = Touchable.childrenOnly;
-        root.visible(() -> state != null && state.isGame() && player != null && player.isBuilder());
+        // A missing or non-builder unit must not make the entire construction HUD disappear.
+        root.visible(() -> state != null && state.isGame() && !state.gameOver);
 
         Table panel = new Table(Tex.pane2);
         panel.margin(4f);
+        panel.add(Core.bundle.get("category.blocks.name", "Blocks")).colspan(2).left().pad(3f);
+        panel.row();
 
         blocks = new Table();
         blocks.top().left();
@@ -57,11 +62,21 @@ public final class BrowserBuildPalette{
         panel.add(pane).width(mobile ? 236f : 204f).height(mobile ? 222f : 194f).growY();
 
         categories = new Table();
-        categories.bottom();
-        panel.add(categories).width(mobile ? 116f : 104f).bottom();
+        categories.top().left();
+        categoryPane = new ScrollPane(categories, Styles.smallPane);
+        categoryPane.setFadeScrollBars(false);
+        categoryPane.setScrollingDisabled(true, false);
+        panel.add(categoryPane).width(mobile ? 116f : 104f).height(mobile ? 222f : 194f).top();
 
         root.add(panel).bottom().right().pad(mobile ? 6f : 4f);
         parent.addChild(root);
+        root.update(() -> {
+            // Read real in-game palette visibility, not just startup construction.
+            if(state != null && state.isGame() && (++visibilityFrames & 31) == 0){
+                markDisplay(root.visible, visibleCategoryCount() > 0,
+                    visibleBlockCount(current) > 0, waitingForFirstResearch());
+            }
+        });
 
         rebuildCategories();
         rebuildBlocks();
@@ -90,23 +105,44 @@ public final class BrowserBuildPalette{
         markReady(visibleCategoryCount(), visibleBlockCount(current));
     }
 
+    /** Refresh available actions after research unlocks a new construction block. */
+    public static void refresh(){
+        if(!initialized) return;
+        if(!hasBlocks(current)){
+            for(Category category : Category.all){
+                if(hasBlocks(category)){
+                    current = category;
+                    break;
+                }
+            }
+        }
+        rebuildCategories();
+        rebuildBlocks();
+    }
+
     private static void rebuildCategories(){
         categories.clear();
-        int index = 0;
         for(Category category : Category.all){
             if(!hasBlocks(category)) continue;
 
-            ImageButton button = categories.button(ui.getIcon(category.name()), Styles.clearTogglei, () -> {
-                current = category;
-                if(control.input.block != null && control.input.block.category != current){
-                    control.input.block = null;
-                }
-                rebuildBlocks();
-                markSelection(current.name(), control.input.block == null ? "none" : control.input.block.name);
-            }).size(mobile ? 54f : 48f).name("web-category-" + category.name()).get();
+            // Avoid icon-only navigation: on some Web clients the icons have
+            // no visible pixels even though the controls are clickable.
+            TextButton button = categories.button(
+                Core.bundle.get("category." + category.name() + ".name", category.name()), () -> {
+                    current = category;
+                    if(control.input.block != null && control.input.block.category != current){
+                        control.input.block = null;
+                    }
+                    rebuildBlocks();
+                    markSelection(current.name(), control.input.block == null ? "none" : control.input.block.name);
+                }).size(mobile ? 112f : 100f, mobile ? 36f : 32f)
+                .name("web-category-" + category.name()).get();
+            button.getLabel().setFontScale(0.72f);
+            button.getLabel().setEllipsis(true);
             button.update(() -> button.setChecked(current == category));
-            if(++index % 2 == 0) categories.row();
+            categories.row();
         }
+        categories.invalidateHierarchy();
     }
 
     private static void rebuildBlocks(){
@@ -115,17 +151,38 @@ public final class BrowserBuildPalette{
         for(Block block : content.blocks()){
             if(block.category != current || !available(block)) continue;
 
-            ImageButton button = blocks.button(new TextureRegionDrawable(block.uiIcon), Styles.selecti, () -> {
+            // Render a real localized label even if block.uiIcon is blank.
+            // Keep the original actor names and stock InputHandler selection.
+            TextButton button = blocks.button(block.localizedName, () -> {
                 control.input.block = control.input.block == block ? null : block;
                 markSelection(current.name(), control.input.block == null ? "none" : control.input.block.name);
-            }).size(mobile ? 54f : 46f).name("web-block-" + block.name).get();
-            button.resizeImage(mobile ? 38f : 32f);
+            }).size(mobile ? 112f : 98f, mobile ? 46f : 42f)
+                .name("web-block-" + block.name).get();
+            button.getLabel().setFontScale(0.72f);
+            button.getLabel().setEllipsis(true);
             button.update(() -> button.setChecked(control.input.block == block));
             if(++index % columns == 0) blocks.row();
+        }
+        if(index == 0){
+            // Ground Zero starts before any buildable technology is unlocked.
+            // Never present an unexplained black/empty pane: guide the player
+            // to the actual research action exposed by BrowserUiRuntime.
+            String label = waitingForFirstResearch()
+                ? Core.bundle.get("research", "Research") + ": " + mindustry.content.Blocks.mechanicalDrill.localizedName
+                : Core.bundle.get("none", "No available blocks");
+            Label hint = new Label(label);
+            hint.setWrap(true);
+            blocks.add(hint).width(mobile ? 208f : 188f).pad(6f).left();
         }
         blocks.invalidateHierarchy();
         pane.setScrollYForce(0f);
         markCounts(visibleCategoryCount(), index);
+    }
+
+    private static boolean waitingForFirstResearch(){
+        return state != null && state.isCampaign() && state.rules != null
+            && state.rules.sector == mindustry.content.SectorPresets.groundZero.sector
+            && !mindustry.content.Blocks.mechanicalDrill.unlocked();
     }
 
     private static boolean available(Block block){
@@ -159,6 +216,9 @@ public final class BrowserBuildPalette{
     public static boolean initialized(){
         return initialized;
     }
+
+    @JSBody(params = {"visible", "categories", "blocks", "research"}, script = "const r=document.documentElement; r.setAttribute('data-mindustry-build-palette-visible', visible ? 'yes' : 'no'); r.setAttribute('data-mindustry-build-palette-actions', categories && blocks ? 'present' : research ? 'research-needed' : 'none');")
+    private static native void markDisplay(boolean visible, boolean categories, boolean blocks, boolean research);
 
     @JSBody(params = {"categories", "blocks"}, script = "document.documentElement.setAttribute('data-mindustry-build-palette', 'ready'); document.documentElement.setAttribute('data-mindustry-build-categories', String(categories)); document.documentElement.setAttribute('data-mindustry-build-blocks', String(blocks));")
     private static native void markReady(int categories, int blocks);
