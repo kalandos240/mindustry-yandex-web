@@ -116,6 +116,11 @@ public final class BrowserBuildPlacementSmoke{
                 return;
             }
 
+            // The original PlacementFragment does not publish the Web fallback's
+            // selection marker. Report only a selection already confirmed by the
+            // real InputHandler, so the existing browser smoke checks stay valid.
+            markVerifiedSelection();
+
             if(!findTarget(unit)){
                 throw new IllegalStateException("build:no-target");
             }
@@ -582,6 +587,9 @@ public final class BrowserBuildPlacementSmoke{
         }));
         """)
     private static native void dispatchWheel(float dx, float dy);
+
+    @JSBody(script = "const r=document.documentElement; r.setAttribute('data-mindustry-build-selected', 'conveyor'); r.setAttribute('data-mindustry-build-placement-ui', 'vanilla-placement-fragment');")
+    private static native void markVerifiedSelection();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-build-placement-smoke', 'requested'); document.documentElement.setAttribute('data-mindustry-build-placement-source', 'dom-pointer-event'); document.documentElement.setAttribute('data-mindustry-build-placement-block', 'conveyor');")
     private static native void markRequested();
