@@ -132,7 +132,10 @@ require(APPLY_PORT, "patch-mindustry-effects-web.py", "Web effect patch wiring")
 require(EFFECT_PATCH, "webMaxActiveEffects", "Web effect active cap")
 require(EFFECT_PATCH, "webBudgetCounted", "Web effect pooled counter")
 require(EFFECT_PATCH, "Effect.webEffectRemoved()", "Web effect removal accounting")
-require(WEB_LAUNCHER, "int effectBudget = mobileMode ? 512 : 0", "mobile effect budget profile")
+require(WEB_LAUNCHER, "int effectBudget = mobileMode ? 512 : 768", "desktop and mobile effect budget profiles")
+require(WEB_LAUNCHER, "desktop-active-cap", "desktop effect cap diagnostics")
+require(LOCAL_MAP, "private static final int perfDesktopEffectBurst = 960;", "desktop burst stress test")
+require(LOCAL_MAP, "effectBudget != 768 || activeEffects > effectBudget || droppedEffects <= 0", "desktop particle cap enforcement")
 
 # Built-in map metadata stays lazy; Continue state stays event-driven.
 local_init = java_static_method(LOCAL_MAP, "public static void init()")
