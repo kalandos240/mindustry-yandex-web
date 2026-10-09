@@ -169,11 +169,13 @@ require(TASK_QUEUE_PATCH, "runnables.removeRange(0, count - 1);", "bounded TaskQ
 require(PATHFINDER_PATCH, "queue.run(32);", "Pathfinder bounded queue drain")
 require(CONTROL_PATH_PATCH, "queue.run(32);", "ControlPathfinder bounded queue drain")
 for source, label, update_marker in [
-    (PATHFINDER_PATCH, "Pathfinder Web patch", "updateFrontier(data, Math.min(maxUpdate, remaining));"),
-    (CONTROL_PATH_PATCH, "ControlPathfinder Web patch", "updateFields(cache, Math.min(maxUpdate, remaining));"),
+    (PATHFINDER_PATCH, "Pathfinder Web patch", "updateFrontier(data, Math.min(maxUpdate, remainingNanos));"),
+    (CONTROL_PATH_PATCH, "ControlPathfinder Web patch", "updateFields(cache, Math.min(maxUpdate, remainingNanos));"),
 ]:
-    require(source, "Core.app != null && Core.app.isMobile() ? 2 : 3", label)
-    require(source, "Time.timeSinceNanos(frameStart) < frameBudget", label)
+    require(source, "Core.app != null && Core.app.isMobile() ? 2d : 3d", label)
+    require(source, "webNowMillis() - frameStartMs < frameBudgetMs", label)
+    require(source, "@org.teavm.jso.JSBody(script = \"return performance.now();\")", label)
+    require(source, "remainingMs * 1000000d", label)
     require(source, "webFieldCursor", label)
     require(source, update_marker, label)
 require(CONTROL_PATH_PATCH, "if(Time.timeSinceMillis(webLastStep) < updateInterval) return;", "ControlPathfinder 30Hz cadence")
