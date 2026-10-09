@@ -75,7 +75,11 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-build-palette-visible="yes"' \
   --require 'data-mindustry-build-palette-actions="research-needed"' \
   --require 'data-mindustry-ground-zero-drill-research-ui="visible"' \
+  --require 'data-mindustry-research-ui="ready"' \
+  --require 'data-mindustry-research-catalog="techtree-all"' \
+  --require 'data-mindustry-research-tech-nodes="' \
   --require 'data-mindustry-network="local-only"' > "$dom"
 grep -Fq 'data-mindustry-build-categories="0"' "$dom"
 grep -Fq 'data-mindustry-build-blocks="0"' "$dom"
-echo "Production Ground Zero: visible drill-research guidance (no building tech yet) PASS"
+grep -Eq 'data-mindustry-research-tech-nodes="[1-9][0-9]+"' "$dom"
+echo "Production Ground Zero: real full-tree research UI available in active campaign, starter drill guidance preserved PASS"
