@@ -252,7 +252,7 @@
         api.ready();
         state.loadingReadySent = true;
         mark('data-yandex-loading-ready', 'sent');
-        void syncStickyBanner(!state.gameplayActive, state.gameplayActive ? 'game-ready-playing' : 'game-ready');
+        void syncStickyBanner(true, state.gameplayActive ? 'game-ready-playing' : 'game-ready');
         return true;
     }
 
@@ -303,11 +303,11 @@
 
     function gameplayStart(){
         if(state.gameplayActive){
-            void syncStickyBanner(false, 'gameplay-start');
+            void syncStickyBanner(true, 'gameplay-start');
             return false;
         }
         state.gameplayActive = true;
-        void syncStickyBanner(false, 'gameplay-start');
+        void syncStickyBanner(true, 'gameplay-start');
         if(!state.paused) mark('data-yandex-game-state', 'playing');
         const api = state.ysdk && state.ysdk.features && state.ysdk.features.GameplayAPI;
         if(api && typeof api.start === 'function') api.start();
@@ -385,7 +385,13 @@
             }
         };
 
-        try{
+        // A sticky banner is now allowed to stay visible beside the game.
+        // Wait for its SDK hide call to complete BEFORE opening a fullscreen ad;
+        // otherwise the two placements can overlap when gameplay is interrupted.
+        void state.bannerSyncPromise.then(() => {
+            if(state.bannerShowing){
+                throw new Error('Fullscreen ad blocked: sticky banner could not be hidden');
+            }
             const result = state.ysdk.adv.showFullscreenAdv({
                 callbacks: {
                     onOpen: () => {
@@ -396,16 +402,10 @@
                     onError: (error) => finalize('error', error)
                 }
             });
-            // The current SDK reports completion through callbacks, but accepting a
-            // thenable here also prevents a future/replaced SDK from leaving gameplay
-            // stopped on an uncaught asynchronous rejection.
             if(result && typeof result.then === 'function'){
                 result.catch(error => finalize('error', error));
             }
-        }catch(error){
-            finalize('error', error);
-            return false;
-        }
+        }).catch(error => finalize('error', error));
         return true;
     }
 
