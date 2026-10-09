@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-SOURCE="$ROOT_DIR/web-runtime/src/main/java/com/jcraft/jzlib/Adler32.java"
+SOURCE="$ROOT_DIR/web-runtime/src/main/java/com/jcraft/jzlib/WebAdler32.java"
 BUNDLE="$ROOT_DIR/web-runtime/build/web/mindustry.js"
 LICENSE="$ROOT_DIR/web-runtime/build/web/licenses/JZlib-BSD-3-Clause.txt"
 test -s "$SOURCE"
@@ -37,7 +37,7 @@ public class Adler32Regression{
     private static void check(int count, int mode){
         byte[] data = new byte[count];
         new Random(0xADEF32L + count).nextBytes(data);
-        Adler32 actual = new Adler32();
+        WebAdler32 actual = new WebAdler32();
         java.util.zip.Adler32 reference = new java.util.zip.Adler32();
         int pos = 0;
         while(pos < count){
@@ -52,7 +52,7 @@ public class Adler32Regression{
             pos += batch;
         }
         assertEqual(actual.getValue(), reference.getValue(), "size=" + count + " mode=" + mode);
-        Adler32 copy = actual.copy();
+        WebAdler32 copy = actual.copy();
         assertEqual(copy.getValue(), reference.getValue(), "copy");
         actual.reset(reference.getValue());
         assertEqual(actual.getValue(), reference.getValue(), "reset(long)");
@@ -81,7 +81,7 @@ public class Adler32Regression{
         byte[] combined = new byte[32768];
         new Random(19645).nextBytes(combined);
         for(int pos : new int[]{0, 1, 2048, 16000, 32768}){
-            long joined = Adler32.combine(
+            long joined = WebAdler32.combine(
                 checksum(combined, 0, pos),
                 checksum(combined, pos, combined.length - pos),
                 combined.length - pos);
@@ -102,9 +102,9 @@ from pathlib import Path
 import re
 import sys
 js = Path(sys.argv[1]).read_text(encoding="utf-8")
-match = re.search(r"\bcjj_Adler32_update\s*=\s*\([^)]*\)\s*=>\s*\{(.*?)\n\};", js, re.S)
+match = re.search(r"\bcjj_WebAdler32_update\s*=\s*\([^)]*\)\s*=>\s*\{(.*?)\n\};", js, re.S)
 if match is None:
-    raise SystemExit("TeaVM Adler32.update not found in generated JS")
+    raise SystemExit("TeaVM did not select WebAdler32 substitution in generated JS")
 body = match.group(1)
 if re.search(r"\bLong_(?:add|rem|fromInt|mul|div|sub)\b", body):
     # Identify the emitted implementation without disabling the regression gate.

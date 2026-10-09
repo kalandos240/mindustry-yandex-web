@@ -35,13 +35,13 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package com.jcraft.jzlib;
 
 /**
- * TeaVM replacement for JZlib's Adler32, with the same public API.
+ * TeaVM-specific implementation of JZlib's Adler32, activated via SubstitutionPolicy, with the same public API.
  * JZlib originally accumulates every byte into two Java long fields; TeaVM's
  * Long_add lowers to JS BigInt in the main thread during PNG/asset inflation.
  * A 2,048-byte chunk keeps BOTH signed int sums safely below Integer.MAX_VALUE,
  * so only the one-off getValue/combine calls need 64-bit arithmetic.
  */
-public class Adler32 implements Checksum{
+public class WebAdler32 implements Checksum{
     private static final int base = 65521;
     private static final int chunkLimit = 2048;
 
@@ -82,8 +82,8 @@ public class Adler32 implements Checksum{
     }
 
     @Override
-    public Adler32 copy(){
-        Adler32 out = new Adler32();
+    public WebAdler32 copy(){
+        WebAdler32 out = new WebAdler32();
         out.s1 = s1;
         out.s2 = s2;
         return out;
