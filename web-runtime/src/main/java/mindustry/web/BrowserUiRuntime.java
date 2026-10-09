@@ -295,6 +295,8 @@ public final class BrowserUiRuntime{
     }
 
     private static void returnToMenuWithAd(){
+        researchOpen = false;
+        markCampaignResearchPanel(false, 0);
         BrowserYandex.beginMenuFullscreenAdv();
         if(BrowserCampaignRuntime.active()){
             BrowserCampaignRuntime.returnToMenu();
