@@ -17,6 +17,20 @@ replacements = {
     'ui.content.show(unit.type());': 'if(ui.content != null) ui.content.show(unit.type());',
     'ui.content.show(displayBlock);': 'if(ui.content != null) ui.content.show(displayBlock);',
 }
+# Vanilla schedules a second ScrollPane force-layout while constructing the HUD.
+# That runs in BrowserApplication.runPostedTasks() before the first rendered
+# frame. On TeaVM this deferred path fails at frame-post #1; the pane already
+# received the scroll position and act(0f) synchronously, and Arc Scene runs
+# layout on the next draw. Keep normal block/category selection unchanged.
+scroll_layout = """                    Core.app.post(() -> {
+                        blockPane.setScrollYForce(scrollPositions.get(currentCategory, 0));
+                        blockPane.act(0f);
+                        blockPane.layout();
+                    });"""
+if source.count(scroll_layout) != 1:
+    raise SystemExit("Pinned PlacementFragment scroll-layout callback anchor changed")
+source = source.replace(scroll_layout, "", 1)
+
 for old, new in replacements.items():
     occurrences = source.count(old)
     expected = 2 if old == 'ui.content.show(displayBlock);' else 1
