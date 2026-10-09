@@ -174,7 +174,7 @@ for source, label, update_marker in [
 ]:
     require(source, "Core.app != null && Core.app.isMobile() ? 2d : 3d", label)
     require(source, "webNowMillis() - frameStartMs < frameBudgetMs", label)
-    require(source, "@org.teavm.jso.JSBody(script = \"return performance.now();\")", label)
+    require(source, "private static double webNowMillis(){ return System.nanoTime() / 1000000d; }", label)
     require(source, "remainingMs * 1000000d", label)
     require(source, "webFieldCursor", label)
     require(source, update_marker, label)
