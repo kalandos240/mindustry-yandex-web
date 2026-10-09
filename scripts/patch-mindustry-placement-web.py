@@ -35,6 +35,34 @@ for old, new in probe_replacements.items():
         raise SystemExit(f"Pinned vanilla placement probe anchor changed: {old!r}")
     source = source.replace(old, new, 1)
 
+# Record the last *eager* scene-building milestone before an exception.
+# TeaVM may omit getStackTrace(), making this cheap phase label essential.
+method_begin = '    public void build(Group parent){'
+method_end = '        });' + chr(10) + '    }' + chr(10) + chr(10) + '    @Nullable String getUnplaceableReason(Block block){'
+if source.count(method_begin) != 1 or source.count(method_end) != 1:
+    raise SystemExit("Pinned vanilla native placement build method boundary changed")
+source = source.replace(method_begin,
+    method_begin + chr(10) + '        String[] initPhase = {"parent-fill"};' + chr(10) + '        try{', 1)
+# Insertion takes place after the new method entry so the phase array is scoped.
+for anchor, phase in (
+    ('            full.table(frame -> {', 'frame-layout'),
+    ('                frame.table(Tex.buttonEdge2, top -> {', 'info-panel'),
+    ('                frame.image().color(Pal.gray)', 'main-stack'),
+    ('                    commandTable.table(u -> {', 'command-controls'),
+    ('                    blockCatTable.table(Tex.pane2, blocksSelect -> {', 'block-controls'),
+    ('                    blockCatTable.table(categories -> {', 'category-controls'),
+    ('                mainStack.add(blockCatTable);', 'initial-rebuild'),
+):
+    if source.count(anchor) != 1:
+        raise SystemExit(f"Pinned native placement phase anchor changed: {anchor!r}")
+    indent = anchor[:len(anchor) - len(anchor.lstrip())]
+    source = source.replace(anchor, indent + 'initPhase[0] = "' + phase + '";' + chr(10) + anchor, 1)
+source = source.replace(method_end,
+    '        });' + chr(10) + '        }catch(Throwable error){' + chr(10)
+    + '            throw new IllegalStateException("stock-placement: build-graph/" + initPhase[0], error);' + chr(10)
+    + '        }' + chr(10) + '    }' + chr(10) + chr(10)
+    + '    @Nullable String getUnplaceableReason(Block block){', 1)
+
 for old, new in replacements.items():
     occurrences = source.count(old)
     expected = 2 if old == 'ui.content.show(displayBlock);' else 1
