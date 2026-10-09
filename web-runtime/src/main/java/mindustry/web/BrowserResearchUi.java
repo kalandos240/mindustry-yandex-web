@@ -5,6 +5,7 @@ import arc.scene.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import mindustry.content.*;
+import mindustry.gen.*;
 import mindustry.content.TechTree.*;
 import mindustry.ctype.*;
 import mindustry.type.*;
@@ -45,7 +46,7 @@ public final class BrowserResearchUi{
         overlay.setFillParent(true);
         overlay.touchable = Touchable.enabled;
         overlay.visible(() -> open && (menu ? state.isMenu() : state.isCampaign() && !state.gameOver));
-        overlay.setBackground(Tex.black8);
+        overlay.setBackground(Tex.pane2);
 
         Table panel = new Table(Tex.pane2);
         panel.defaults().pad(3f);
@@ -162,8 +163,11 @@ public final class BrowserResearchUi{
             }).width(mobile ? 308f : 474f).height(mobile ? 56f : 44f).get();
             button.getLabel().setFontScale(mobile ? 0.76f : 0.83f);
             button.getLabel().setWrap(true);
-            button.update(() -> button.setDisabled(node.content.unlocked()
-                || !BrowserCampaignResearch.canSpend(node.content)));
+            // Do not poll all research sectors for 64 UI buttons each frame.
+            // Purchases are guarded by canSpend() on click, so newly mined
+            // resources become spendable immediately without rebuilding UI.
+            button.setDisabled(node.content.unlocked()
+                || node.parent != null && !node.parent.content.unlocked());
             list.row();
         }
         list.invalidateHierarchy();
