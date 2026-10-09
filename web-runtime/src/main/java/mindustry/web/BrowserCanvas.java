@@ -12,6 +12,10 @@ public final class BrowserCanvas{
 
     private BrowserCanvas(){}
 
+    /** Monotonic, allocation-free browser time for frame-deadline checks. */
+    @JSBody(script = "return performance.now();")
+    public static native double performanceNowMillis();
+
     @JSBody(params = {"canvasId", "alpha", "stencil", "antialias", "premultipliedAlpha", "preserveDrawingBuffer"}, script = """
         const canvas = document.getElementById(canvasId);
         if (!canvas) throw new Error('Canvas #' + canvasId + ' not found');
