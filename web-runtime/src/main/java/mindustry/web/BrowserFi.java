@@ -126,6 +126,10 @@ public final class BrowserFi extends Fi{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-file-persistence', 'recovered');")
     private static native void markPersistenceRecovered();
 
+    // Count actual committed MSAV saves, not scheduler calls.
+    @JSBody(script = "const r=document.documentElement; r.setAttribute('data-mindustry-msav-write-count', String((Number(r.getAttribute('data-mindustry-msav-write-count')) || 0) + 1));")
+    private static native void markSaveWritten();
+
     private static final class PersistentOutputStream extends ByteArrayOutputStream{
         private final BrowserFiles files;
         private final String path;
@@ -148,6 +152,7 @@ public final class BrowserFi extends Fi{
             // storage layer clones it again. Pass the protected buffer + logical count so
             // browser-storage performs the single ownership copy.
             files.putLocal(path, buf, count);
+            if(path.endsWith(".msav")) markSaveWritten();
             super.close();
         }
     }
