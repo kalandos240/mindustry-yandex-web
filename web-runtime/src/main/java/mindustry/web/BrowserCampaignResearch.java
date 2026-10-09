@@ -1325,39 +1325,47 @@ public final class BrowserCampaignResearch{
     }
 
     private static void stageMissing(Sector source, UnlockableContent content){
-        TechNode node = node(content);
-        Planet planet = researchPlanet(node);
-        if(planet == null) throw new IllegalStateException("r:no-planet");
+        String phase = "find-tech-node";
+        int index = -1;
+        try{
+            TechNode node = node(content);
+            phase = "resolve-planet";
+            Planet planet = researchPlanet(node);
+            if(planet == null) throw new IllegalStateException("r:no-planet");
 
-        for(int i = 0; i < node.requirements.length; i++){
-            Item item = node.requirements[i].item;
+            for(int i = 0; i < node.requirements.length; i++){
+                index = i;
+                phase = "read-requirement";
+                Item item = node.requirements[i].item;
+                while(node.finishedRequirements[i].amount < node.requirements[i].amount){
+                    // Exhaust already staged resources before adding another chunk.
+                    phase = "spend-staged";
+                    spend(content, true);
+                    phase = "check-spend";
+                    if(content.unlocked()) return;
+                    if(node.finishedRequirements[i].amount >= node.requirements[i].amount) break;
 
-            while(node.finishedRequirements[i].amount < node.requirements[i].amount){
-                // Spend the previous chunk first, freeing the same finite campaign
-                // storage before the next contribution is staged.
-                spend(content, true);
-                if(content.unlocked()) return;
-                if(node.finishedRequirements[i].amount >= node.requirements[i].amount) break;
-
-                int missing = node.requirements[i].amount - node.finishedRequirements[i].amount;
-                int staged = 0;
-                if(source != null && source.planet == planet && source.hasBase() && !source.isFrozen()){
-                    staged = stageIntoSector(source, item, missing);
-                    // Research costs can exceed one sector's storage capacity. Do not
-                    // walk every historical SectorInfo just to fill the remainder in one
-                    // pass: the next loop iteration spends this staged chunk, frees the
-                    // same storage, and can stage the next chunk in the authoritative
-                    // source sector. This keeps late Erekir research deterministic and
-                    // avoids touching sparse/minimal metadata from unrelated saves.
-                    if(staged > 0) continue;
+                    int missing = node.requirements[i].amount - node.finishedRequirements[i].amount;
+                    int staged = 0;
+                    phase = "check-active-sector";
+                    if(source != null && source.planet == planet && source.hasBase() && !source.isFrozen()){
+                        phase = "stage-active-sector";
+                        staged = stageIntoSector(source, item, missing);
+                        if(staged > 0) continue;
+                    }
+                    phase = "scan-other-sectors";
+                    for(Sector sector : planet.sectors){
+                        phase = "check-other-sector";
+                        if(sector == source || !sector.hasBase() || sector.isFrozen()) continue;
+                        phase = "stage-other-sector";
+                        staged += stageIntoSector(sector, item, missing - staged);
+                        if(staged > 0) break;
+                    }
+                    if(staged <= 0) throw new IllegalStateException("r:capacity");
                 }
-                for(Sector sector : planet.sectors){
-                    if(sector == source || !sector.hasBase() || sector.isFrozen()) continue;
-                    staged += stageIntoSector(sector, item, missing - staged);
-                    if(staged > 0) break;
-                }
-                if(staged <= 0) throw new IllegalStateException("r:capacity");
             }
+        }catch(Throwable error){
+            throw new IllegalStateException("research-stage: " + content.name + "/requirement-" + index + "/" + phase, error);
         }
     }
 
