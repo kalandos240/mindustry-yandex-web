@@ -12,6 +12,10 @@ public final class BrowserCanvas{
 
     private BrowserCanvas(){}
 
+    /** Monotonic, allocation-free browser time for frame-deadline checks. */
+    @JSBody(script = "return performance.now();")
+    public static native double performanceNowMillis();
+
     @JSBody(params = {"canvasId", "alpha", "stencil", "antialias", "premultipliedAlpha", "preserveDrawingBuffer"}, script = """
         const canvas = document.getElementById(canvasId);
         if (!canvas) throw new Error('Canvas #' + canvasId + ' not found');
@@ -84,7 +88,7 @@ public final class BrowserCanvas{
     @JSBody(params = {"canvasId", "maxPixelRatio"}, script = """
         const canvas = document.getElementById(canvasId);
         const deviceRatio = Math.max(1, window.devicePixelRatio || 1);
-        const cap = Math.max(1, Number(maxPixelRatio) || 1);
+        const cap = Math.max(0.5, Number(maxPixelRatio) || 1);
         const ratio = Math.min(deviceRatio, cap);
         // The low-frequency resize fallback must also detect changes that do not
         // dispatch window events or a ResizeObserver callback (portal ad layout).
@@ -164,7 +168,7 @@ public final class BrowserCanvas{
     @JSBody(params = {"canvasId", "maxPixelRatio"}, script = """
         const canvas = document.getElementById(canvasId);
         if (canvas && canvas.__mindustryPixelRatio) return canvas.__mindustryPixelRatio;
-        return Math.min(Math.max(1, window.devicePixelRatio || 1), Math.max(1, Number(maxPixelRatio) || 1));
+        return Math.min(Math.max(1, window.devicePixelRatio || 1), Math.max(0.5, Number(maxPixelRatio) || 1));
         """)
     public static native float getDensity(String canvasId, float maxPixelRatio);
 

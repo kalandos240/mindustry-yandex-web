@@ -270,6 +270,9 @@ jobs:
       - name: Audit Yandex release package requirements
         run: bash scripts/audit-yandex-release.sh
 
+      - name: Verify HAR external-host isolation and redaction
+        run: bash scripts/verify-browser-network-har.sh
+
       - name: Audit browser performance budget
         run: python3 scripts/audit-web-performance.py
 
@@ -410,6 +413,9 @@ jobs:
 
       - name: Verify game fits portal area beside advertising blocks
         run: bash scripts/verify-browser-portal-bounds.sh
+
+      - name: Verify adaptive frame-rate governor in desktop/mobile Chrome
+        run: bash scripts/verify-browser-frame-budget.sh
 
       - name: Verify desktop/mobile runtime load stability
         run: bash scripts/verify-browser-runtime-load.sh
