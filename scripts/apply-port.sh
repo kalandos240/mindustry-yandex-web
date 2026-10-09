@@ -257,6 +257,11 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-input-web.py" \
   "$MINDUSTRY_DIR/core/src/mindustry/input/InputHandler.java" \
   "$MINDUSTRY_DIR/core/src/mindustry/input/MobileInput.java"
 
+# Restore the original four-column PlacementFragment instead of relying on
+# the temporary text-only browser palette. Guard unmounted desktop dialog refs.
+python3 "$ROOT_DIR/scripts/patch-mindustry-placement-web.py" \
+  "$MINDUSTRY_DIR/core/src/mindustry/ui/fragments/PlacementFragment.java"
+
 # Logic's sector captured/lost events only need to update campaign state. The stock
 # Serpulo visual mesh refresh uses ExecutorService, which is unavailable in TeaVM.
 python3 "$ROOT_DIR/scripts/patch-mindustry-planet-events-web.py"

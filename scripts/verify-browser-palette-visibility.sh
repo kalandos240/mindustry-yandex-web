@@ -47,6 +47,9 @@ for mode in desktop mobile; do
     --require 'data-mindustry-local-map-state="playing"' \
     --require 'data-mindustry-local-map-loop="live"' \
     --require 'data-mindustry-build-palette="ready"' \
+    --require 'data-mindustry-stock-placement="ready"' \
+    --require 'data-mindustry-stock-placement-input="ready"' \
+    --require 'data-mindustry-stock-placement-source="mindustry.ui.fragments.PlacementFragment"' \
     --require 'data-mindustry-build-palette-visible="yes"' \
     --require 'data-mindustry-build-palette-actions="present"' \
     --require 'data-mindustry-local-map-player="added"' \
@@ -72,6 +75,9 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-campaign-preset="groundZero"' \
   --require 'data-mindustry-campaign-state="playing"' \
   --require 'data-mindustry-build-palette="ready"' \
+    --require 'data-mindustry-stock-placement="ready"' \
+    --require 'data-mindustry-stock-placement-input="ready"' \
+    --require 'data-mindustry-stock-placement-source="mindustry.ui.fragments.PlacementFragment"' \
   --require 'data-mindustry-build-palette-visible="yes"' \
   --require 'data-mindustry-build-palette-actions="research-needed"' \
   --require 'data-mindustry-ground-zero-drill-research-ui="visible"' \

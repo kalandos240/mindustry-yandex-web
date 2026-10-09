@@ -40,6 +40,11 @@ LOGIC_PATCH = (SCRIPTS / "patch-mindustry-logic-web.py").read_text(encoding="utf
 FOG_PATCH = (SCRIPTS / "patch-mindustry-fog-web.py").read_text(encoding="utf-8")
 SAVE_PREVIEW_PATCH = (SCRIPTS / "patch-mindustry-save-preview-web.py").read_text(encoding="utf-8")
 RENDERER_PATCH = (SCRIPTS / "patch-mindustry-renderer-web.py").read_text(encoding="utf-8")
+STOCK_PLACEMENT = (WEB_JAVA / "BrowserStockPlacement.java").read_text(encoding="utf-8")
+LEAN_PALETTE = (WEB_JAVA / "BrowserBuildPalette.java").read_text(encoding="utf-8")
+STOCK_PLACEMENT_PATCH = (SCRIPTS / "patch-mindustry-placement-web.py").read_text(encoding="utf-8")
+PALETTE_WIRING = (SCRIPTS / "patch-browser-build-palette.py").read_text(encoding="utf-8")
+
 
 failures = []
 
@@ -74,6 +79,17 @@ def section(source: str, start_marker: str, end_marker: str) -> str:
     end = source.index(end_marker, start + len(start_marker))
     return source[start:end]
 
+
+# Upstream Mindustry placement fragment restores textured block selection,
+# native category icons, build cost and unit-command controls on desktop/mobile.
+require(STOCK_PLACEMENT, "ui.hudfrag.blockfrag.build(parent);", "stock PlacementFragment integration")
+require(STOCK_PLACEMENT, "parent.find(\"inputTable\")", "native inputTable structural proof")
+require(STOCK_PLACEMENT, "new HudFragment();", "stock HudFragment instance")
+require(STOCK_PLACEMENT, "data-mindustry-stock-placement", "native HUD runtime diagnostics")
+require(PALETTE_WIRING, "BrowserStockPlacement.install(ui.hudGroup);", "native placement boot wiring")
+require(LEAN_PALETTE, "!BrowserStockPlacement.active()", "disable Web text palette when native HUD is active")
+require(STOCK_PLACEMENT_PATCH, "ui.chatfrag != null", "Web-safe native placement key bindings")
+require(APPLY_PORT, "patch-mindustry-placement-web.py", "native PlacementFragment source overlay")
 
 # Packaged asset lookups and preloading must stay O(1) / bounded-concurrency.
 require(INDEX_HTML, "globalThis.__mindustryAssetSet = new Set(manifest)", "packaged asset O1 index")

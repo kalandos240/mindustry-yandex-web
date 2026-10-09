@@ -47,7 +47,10 @@ public final class BrowserBuildPalette{
         root.bottom().right();
         root.touchable = Touchable.childrenOnly;
         // A missing or non-builder unit must not make the entire construction HUD disappear.
-        root.visible(() -> state != null && state.isGame() && !state.gameOver);
+        // Keep the compact palette only as a fallback. The original PlacementFragment
+        // becomes the visible build HUD once its actor graph is successfully mounted.
+        root.visible(() -> state != null && state.isGame() && !state.gameOver
+            && !BrowserStockPlacement.active());
 
         Table panel = new Table(Tex.pane2);
         panel.margin(4f);
@@ -73,7 +76,7 @@ public final class BrowserBuildPalette{
         root.update(() -> {
             // Read real in-game palette visibility, not just startup construction.
             if(state != null && state.isGame() && (++visibilityFrames & 31) == 0){
-                markDisplay(root.visible, visibleCategoryCount() > 0,
+                markDisplay(root.visible || BrowserStockPlacement.active(), visibleCategoryCount() > 0,
                     visibleBlockCount(current) > 0, waitingForFirstResearch());
             }
         });
