@@ -27,17 +27,24 @@ public final class BrowserStockPlacement{
         if(parent == null || ui == null || control == null || control.input == null){
             throw new IllegalStateException("Stock Mindustry placement HUD requires core input and HUD group");
         }
-        if(ui.hudfrag == null) ui.hudfrag = new HudFragment();
-        // Build the upstream Mindustry actor graph, not a Web-only button clone.
-        ui.hudfrag.blockfrag.build(parent);
-        // This element is created only by upstream PlacementFragment and owns
-        // vanilla build placement/configuration controls. Checking it prevents
-        // an empty HUD from falsely claiming the native interface initialized.
-        if(parent.find("inputTable") == null){
-            throw new IllegalStateException("Stock PlacementFragment did not mount native placement inputTable");
+        String stage = "create-HudFragment";
+        try{
+            if(ui.hudfrag == null) ui.hudfrag = new HudFragment();
+            // Build the upstream Mindustry actor graph, not a Web-only clone.
+            stage = "build-PlacementFragment";
+            ui.hudfrag.blockfrag.build(parent);
+            stage = "verify-inputTable";
+            // The native inputTable owns stock placement/configuration controls.
+            if(parent.find("inputTable") == null){
+                throw new IllegalStateException("Stock PlacementFragment did not mount native placement inputTable");
+            }
+            stage = "mark-ready";
+            active = true;
+            markNativePlacementReady();
+        }catch(Throwable error){
+            active = false;
+            throw new IllegalStateException("Native placement setup failed at " + stage, error);
         }
-        active = true;
-        markNativePlacementReady();
     }
 
     @JSBody(script = "const r=document.documentElement; r.setAttribute('data-mindustry-stock-placement','ready'); r.setAttribute('data-mindustry-stock-placement-source','mindustry.ui.fragments.PlacementFragment'); r.setAttribute('data-mindustry-stock-placement-input','ready');")
