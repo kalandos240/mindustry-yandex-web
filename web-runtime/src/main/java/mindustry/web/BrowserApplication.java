@@ -229,7 +229,24 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     private static String describe(Throwable error){
-        return String.valueOf(error.getMessage());
+        // WebApplicationBase.runPostedTasks wraps the original failure in
+        // RuntimeException("post", cause). Expose the cause chain so CI/browser
+        // markers report the offending stock HUD initializer, not just "post".
+        StringBuilder detail = new StringBuilder();
+        for(int depth = 0; error != null && depth < 4; depth++, error = error.getCause()){
+            if(depth != 0) detail.append(" <- ");
+            detail.append(error.getClass().getName());
+            if(error.getMessage() != null){
+                detail.append(": ").append(error.getMessage());
+            }
+            StackTraceElement[] trace = error.getStackTrace();
+            if(trace != null && trace.length > 0){
+                detail.append(" @ ").append(trace[0].getClassName())
+                    .append(".").append(trace[0].getMethodName())
+                    .append(":").append(trace[0].getLineNumber());
+            }
+        }
+        return detail.toString();
     }
 
     private void setPlatformPaused(boolean paused){
