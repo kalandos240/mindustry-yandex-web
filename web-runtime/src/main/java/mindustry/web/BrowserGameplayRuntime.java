@@ -71,6 +71,11 @@ public final class BrowserGameplayRuntime{
         if(logic == null) logic = new Logic();
         if(pathfinder == null) pathfinder = new Pathfinder();
         if(controlPath == null) controlPath = new ControlPathfinder();
+        // The pinned Core module cannot depend on TeaVM JSO. Supply the real
+        // JavaScript monotonic clock here, avoiding BigInt nanosecond reads in
+        // the worker's repeatedly checked short time slice.
+        Pathfinder.webClock = BrowserCanvas::performanceNowMillis;
+        ControlPathfinder.webClock = BrowserCanvas::performanceNowMillis;
         if(fogControl == null) fogControl = new FogControl();
 
         if(world == null || waves == null || collisions == null || universe == null
