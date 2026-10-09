@@ -48,9 +48,9 @@ run_load(){
   local renderer_water="false"
   local renderer_shields="false"
   local renderer_lights="false"
-  local effect_budget="0"
-  local effect_policy="desktop-unlimited"
-  local effect_burst="0"
+  local effect_budget="768"
+  local effect_policy="desktop-active-cap"
+  local effect_burst="960"
   local audio_voice_cap="0"
   local audio_voice_policy="desktop-unlimited"
   local audio_buffer_cap="0"
@@ -194,8 +194,8 @@ run_load(){
       echo "Mobile particle cap regressed: active=${active_effects:-missing} dropped=${dropped_effects:-missing} budget=512" >&2
       exit 1
     fi
-  elif [ "${active_effects:-1}" -ne 0 ] || [ "${dropped_effects:-1}" -ne 0 ]; then
-    echo "Desktop particle budget must remain disabled: active=${active_effects:-missing} dropped=${dropped_effects:-missing}" >&2
+  elif [ -z "$active_effects" ] || [ "$active_effects" -gt 768 ] || [ -z "$dropped_effects" ] || [ "$dropped_effects" -le 0 ]; then
+    echo "Desktop particle cap regressed: active=${active_effects:-missing} dropped=${dropped_effects:-missing} budget=768" >&2
     exit 1
   fi
 
@@ -212,4 +212,4 @@ run_load mobile mobile 1 \
   /tmp/mindustry-runtime-load-mobile.html \
   9287
 
-echo 'Runtime load matrix: desktop unlimited effects + mobile 512-active particle cap under 640-effect burst / 120-frame stability PASS' | tee -a "$REPORT"
+echo 'Runtime load matrix: desktop 768-active cap under 960-effect burst + mobile 512-active cap under 640-effect burst / 120-frame stability PASS' | tee -a "$REPORT"

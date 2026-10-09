@@ -205,7 +205,8 @@ public final class WebClientLauncher extends ClientLauncher{
         // the stock defaults that Renderer normally receives there. Persisted user values
         // remain authoritative. Mobile starts with the expensive purely-visual paths off,
         // while gameplay effects stay enabled and are covered by the particle perf smoke.
-        int effectBudget = mobileMode ? 512 : 0;
+        // Limit purely visual effect entities during large combat bursts on both platforms.
+        int effectBudget = mobileMode ? 512 : 768;
         mindustry.entities.Effect.setWebMaxActiveEffects(effectBudget);
         Core.settings.defaults(
             "effects", true,
@@ -418,7 +419,7 @@ public final class WebClientLauncher extends ClientLauncher{
     @JSBody(params = {"seconds"}, script = "document.documentElement.setAttribute('data-mindustry-autosave-interval-seconds', String(seconds)); document.documentElement.setAttribute('data-mindustry-autosave-policy', 'minimum-10-seconds-default-60');")
     private static native void markBrowserSaveInterval(int seconds);
 
-    @JSBody(params = {"profile", "bloom", "effects", "water", "shields", "lights", "effectBudget"}, script = "document.documentElement.setAttribute('data-mindustry-renderer-profile', profile); document.documentElement.setAttribute('data-mindustry-renderer-bloom', bloom ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-effects', effects ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-animated-water', water ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-animated-shields', shields ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-lights', lights ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-effect-budget', String(effectBudget)); document.documentElement.setAttribute('data-mindustry-renderer-effect-budget-policy', effectBudget > 0 ? 'mobile-active-cap' : 'desktop-unlimited'); document.documentElement.setAttribute('data-mindustry-renderer-settings-policy','32-frame'); document.documentElement.setAttribute('data-mindustry-renderer-gl-error-policy','120-frame');")
+    @JSBody(params = {"profile", "bloom", "effects", "water", "shields", "lights", "effectBudget"}, script = "document.documentElement.setAttribute('data-mindustry-renderer-profile', profile); document.documentElement.setAttribute('data-mindustry-renderer-bloom', bloom ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-effects', effects ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-animated-water', water ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-animated-shields', shields ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-lights', lights ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-renderer-effect-budget', String(effectBudget)); document.documentElement.setAttribute('data-mindustry-renderer-effect-budget-policy', profile === 'mobile-performance' ? 'mobile-active-cap' : 'desktop-active-cap'); document.documentElement.setAttribute('data-mindustry-renderer-settings-policy','32-frame'); document.documentElement.setAttribute('data-mindustry-renderer-gl-error-policy','120-frame');")
     private static native void markRendererProfile(String profile, boolean bloom, boolean effects, boolean water, boolean shields, boolean lights, int effectBudget);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-renderer-init', 'ready');")
