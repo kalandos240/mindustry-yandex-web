@@ -133,6 +133,12 @@ require(EFFECT_PATCH, "webMaxActiveEffects", "Web effect active cap")
 require(EFFECT_PATCH, "webBudgetCounted", "Web effect pooled counter")
 require(EFFECT_PATCH, "Effect.webEffectRemoved()", "Web effect removal accounting")
 require(WEB_LAUNCHER, "int effectBudget = mobileMode ? 512 : 0", "mobile effect budget profile")
+require(WEB_LAUNCHER, '"saveinterval", 180', "safe three-minute browser autosave default")
+require(WEB_LAUNCHER, 'if(saveInterval < 10)', "repair invalid autosave interval")
+require(WEB_LAUNCHER, 'markBrowserSaveInterval(saveInterval);', "autosave interval diagnostics")
+require(BROWSER_FI, 'data-mindustry-msav-write-count', "count committed sector saves")
+require((SCRIPTS / "verify-browser-autosave-cadence.sh").read_text(encoding="utf-8"), "final!==initial", "browser autosave cadence regression")
+
 
 # Built-in map metadata stays lazy; Continue state stays event-driven.
 local_init = java_static_method(LOCAL_MAP, "public static void init()")
