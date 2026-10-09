@@ -392,6 +392,21 @@ if old_run not in text:
     raise SystemExit("ControlPathfinder Web run-loop patch no longer matches pinned upstream")
 text = text.replace(old_run, new_run, 1)
 
+# The stock inner BFS loops check nanosecond budgets after a fixed number of
+# tiles. Keep their check interval, queue order and cost logic unchanged, but
+# avoid repeated Time.timeSinceNanos(long) / BigInt arithmetic in TeaVM.
+kernel_start = text.index("    private void updateFields(FieldCache cache, long nsToRun){")
+kernel_end = text.index("    private void addFlowCluster(FieldCache cache, int cluster, boolean addingFrontier){", kernel_start)
+kernel = text[kernel_start:kernel_end]
+for old, replacement in (
+    ("        long start = Time.nanos();", "        // Use the injected monotonic browser clock for cooperative work budgets.\n        double webStartMs = webNowMillis();"),
+    ("Time.timeSinceNanos(start) >= nsToRun", "webNowMillis() - webStartMs >= nsToRun / 1000000d"),
+):
+    if kernel.count(old) != 1:
+        raise SystemExit("ControlPathfinder updateFields pinned deadline patch lost anchor: " + old)
+    kernel = kernel.replace(old, replacement, 1)
+text = text[:kernel_start] + kernel + text[kernel_end:]
+
 for forbidden in (
     "implements Runnable",
     "@Nullable Thread thread",
