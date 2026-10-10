@@ -153,14 +153,49 @@ public final class BrowserMobileRtsSmoke{
 
         if(stage == 5){
             if(control.input.selectedUnits.contains(probe)){
-                orderWorldX = Math.max(16f, Math.min((world.width()-2)*tilesize,
-                    Core.camera.position.x + Core.camera.width * 0.24f));
-                orderWorldY = Math.max(16f, Math.min((world.height()-2)*tilesize,
-                    Core.camera.position.y + Core.camera.height * 0.12f));
-                Vec2 p = Core.camera.project(new Vec2(orderWorldX, orderWorldY));
-                targetX = p.x;
-                targetY = p.y;
-                assertGameplayPosition(targetX,targetY,"RTS move target");
+                // On narrow/mobile screens the original building palette can
+                // overlap an apparently safe world destination (the previous
+                // 24%-right, 12%-up location hit UI at 390x844). Search for a
+                // genuinely touchable point using native Scene.hit. Do not
+                // move UI actors or write any stock command/selection state.
+                float[] xFractions = {0f, -0.16f, 0.16f, -0.25f, 0.25f};
+                float[] yFractions = {0.30f, 0.23f, 0.16f, 0.08f, -0.18f};
+                boolean foundTarget = false;
+                int viable = 0, covered = 0;
+                outer:
+                for(float yf : yFractions){
+                    for(float xf : xFractions){
+                        float wx = Core.camera.position.x + Core.camera.width * xf;
+                        float wy = Core.camera.position.y + Core.camera.height * yf;
+                        if(wx < 24f || wy < 24f ||
+                            wx > (world.width()-3)*tilesize ||
+                            wy > (world.height()-3)*tilesize ||
+                            probe.dst(wx, wy) < 65f) continue;
+                        if(world.tileWorld(wx, wy) == null) continue;
+                        Vec2 projected = Core.camera.project(new Vec2(wx, wy));
+                        float sx = projected.x, sy = projected.y;
+                        if(sx < 35f || sx > Core.graphics.getWidth()-35f ||
+                           sy < 35f || sy > Core.graphics.getHeight()-35f) continue;
+                        viable++;
+                        if(Core.scene.hasMouse(sx, Core.graphics.getHeight()-sy)){
+                            covered++;
+                            continue;
+                        }
+                        orderWorldX = wx;
+                        orderWorldY = wy;
+                        targetX = sx;
+                        targetY = sy;
+                        foundTarget = true;
+                        break outer;
+                    }
+                }
+                if(!foundTarget){
+                    throw new IllegalStateException(
+                        "No touchable world destination after native mobile unit selection" +
+                        ": inspected=" + viable + ", UIcovered=" + covered +
+                        ", screen=" + Core.graphics.getWidth() + "x" + Core.graphics.getHeight() +
+                        ", camera=" + Core.camera.position);
+                }
                 dispatchTouch("pointerdown",targetX,targetY);
                 stage = 6;
                 markSelected(probe.id);
