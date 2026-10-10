@@ -189,6 +189,31 @@ public final class BrowserUiRuntime{
             .name("web-research-hud").pad(8f).get();
         researchAction.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
 
+        // The native PlacementFragment already contains the full RTS command/
+        // stance table, but desktop users otherwise need to discover a keybind.
+        // Provide a mouse-accessible entry into the *existing* InputHandler
+        // commandMode. MobileInput ships its own dedicated command button.
+        TextButton commandAction = controls.button(Core.bundle.get("command", "Command"), () -> {
+            if(!state.isPlaying() || control == null || control.input == null) return;
+            // Vanilla defaults to "hold Shift for commands". A click-to-toggle
+            // control cannot operate while DesktopInput overwrites commandMode
+            // every frame from the held key. Clicking this explicit browser
+            // command button opts into the stock toggle preference, preserving
+            // the normal keyboard binding and all original RTS logic.
+            if(Core.settings.getBool("commandmodehold", true)){
+                Core.settings.put("commandmodehold", false);
+                markCommandInputMode("toggle");
+            }
+            control.input.block = null;
+            control.input.commandMode = !control.input.commandMode;
+            markCommandToggleState(control.input.commandMode ? "on" : "off");
+        }).size(116f, 44f).name("web-command-mode-hud").pad(8f).get();
+        commandAction.visible(() -> !mobile && state.isPlaying() && !state.gameOver);
+        commandAction.update(() -> {
+            commandAction.setChecked(control != null && control.input != null && control.input.commandMode);
+        });
+        markCommandToggleReady(mobile ? "stock-mobile-input" : "desktop-native-input");
+
         // Ground Zero's stock tutorial asks the player to research Mechanical Drill
         // while the game is running. The slim Web HUD has no desktop ResearchDialog:
         // expose the genuine TechNode purchase using the existing campaign research
@@ -310,6 +335,15 @@ public final class BrowserUiRuntime{
         if(!initialized) return;
         setLocalModeUi(BrowserLocalMapRuntime.customModeCode());
     }
+
+    @JSBody(params = {"source"}, script = "const r=document.documentElement;r.setAttribute('data-mindustry-hud-commands','stock-PlacementFragment');r.setAttribute('data-mindustry-hud-command-toggle',source);r.setAttribute('data-mindustry-hud-command-mode','off');")
+    private static native void markCommandToggleReady(String source);
+
+    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-hud-command-input-mode',mode);")
+    private static native void markCommandInputMode(String mode);
+
+    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-hud-command-mode',mode);")
+    private static native void markCommandToggleState(String mode);
 
     @JSBody(params = {"visible"}, script = "document.documentElement.setAttribute('data-mindustry-ground-zero-drill-research-ui', visible ? 'visible' : 'hidden');")
     private static native void markGroundZeroResearchUi(boolean visible);

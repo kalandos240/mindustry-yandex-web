@@ -55,6 +55,8 @@ for mode in desktop mobile; do
     --require 'data-mindustry-stock-placement="ready"' \
     --require 'data-mindustry-stock-placement-input="ready"' \
     --require 'data-mindustry-stock-placement-source="mindustry.ui.fragments.PlacementFragment"' \
+    --require 'data-mindustry-hud-commands="stock-PlacementFragment"' \
+    --require 'data-mindustry-hud-command-toggle="' \
     --require 'data-mindustry-hud-essentials="ready"' \
     --require 'data-mindustry-hud-minimap="stock-mindustry-ui-Minimap"' \
     --require 'data-mindustry-hud-minimap-overlay="stock-MiniMapFragment"' \
@@ -76,6 +78,11 @@ for mode in desktop mobile; do
   grep -Eq 'data-mindustry-build-categories="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-build-blocks="[1-9][0-9]*"' "$dom"
   grep -q "data-mindustry-input-mode=\"$mode\"" "$dom"
+  if [ "$mode" = desktop ]; then
+    grep -Fq 'data-mindustry-hud-command-toggle="desktop-native-input"' "$dom"
+  else
+    grep -Fq 'data-mindustry-hud-command-toggle="stock-mobile-input"' "$dom"
+  fi
   if [ "$mode" = mobile ]; then
     grep -Fq 'data-mindustry-mobile-palette-source="dom-touch-pointer-to-stock-mobile-input"' "$dom"
     grep -Fq 'data-mindustry-build-placement-ui="vanilla-placement-fragment"' "$dom"
