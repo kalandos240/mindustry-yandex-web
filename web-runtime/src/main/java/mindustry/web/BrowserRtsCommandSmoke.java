@@ -1,6 +1,8 @@
 package mindustry.web;
 
 import arc.*;
+import arc.input.*;
+import mindustry.ai.*;
 import mindustry.game.EventType.*;
 import arc.math.geom.*;
 import mindustry.ai.types.*;
@@ -26,7 +28,7 @@ import static mindustry.Vars.*;
  * Neither probe runs in a normal Yandex release.
  */
 public final class BrowserRtsCommandSmoke{
-    private static boolean checked, enabled, done, shiftHeld, groupMode, rectMode;
+    private static boolean checked, enabled, done, shiftHeld, groupMode, rectMode, stanceMode;
     private static int stage, frames, moveEvents, attackEvents;
     private static Unit probe, second;
     private static float targetX, targetY, targetScreenX, targetScreenY, dragStartX, dragStartY, dragEndX, dragEndY;
@@ -36,7 +38,8 @@ public final class BrowserRtsCommandSmoke{
     public static boolean requested(){
         if(!checked){
             rectMode = queryRectRequested();
-            groupMode = queryGroupRequested() || rectMode;
+            stanceMode = queryStanceRequested();
+            groupMode = queryGroupRequested() || rectMode || stanceMode;
             enabled = queryRequested() || groupMode;
             checked = true;
             if(enabled) markStage("requested");
@@ -143,6 +146,22 @@ public final class BrowserRtsCommandSmoke{
                 (!groupMode || control.input.selectedUnits.contains(second))){
                 if(!rectMode) dispatchKey(false);
                 if(rectMode) markRectSelected(control.input.selectedUnits.size);
+                if(stanceMode){
+                    // The stock keybind defaults to unset. Assign a temporary,
+                    // CI-only key so a real DOM keydown can exercise the native
+                    // PlacementFragment stance action instead of touching
+                    // CommandAI.stances or calling Call.setUnitStance here.
+                    if(!probe.type.allowStance(probe, UnitStance.holdFire)
+                        || !second.type.allowStance(second, UnitStance.holdFire)){
+                        throw new IllegalStateException("Stock Daggers do not support Hold Fire stance");
+                    }
+                    Binding.unitStanceHoldFire.value = new KeyBind.Axis(KeyCode.k);
+                    dispatchStanceKey(true);
+                    stage = 8;
+                    frames = 0;
+                    markStage("dom-hold-fire-down");
+                    return;
+                }
                 // The world can be much larger than the visible canvas.
                 // Use the actual camera center as the DOM target instead of
                 // assuming a +68 world-unit move remains on-screen at every
@@ -180,6 +199,48 @@ public final class BrowserRtsCommandSmoke{
                 throw new IllegalStateException(rectMode
                     ? "DOM left-button rectangle did not select both stock Daggers"
                     : "DOM KeyG did not select the stock Dagger through DesktopInput");
+            }
+            return;
+        }
+
+        if(stage == 8){
+            if(bothHaveHoldFire(true)){
+                dispatchStanceKey(false);
+                stage = 9;
+                frames = 0;
+                markStage("hold-fire-on");
+                return;
+            }
+            if(++frames > 120){
+                releaseShift();
+                throw new IllegalStateException("Native PlacementFragment did not enable Hold Fire on both selected Daggers");
+            }
+            return;
+        }
+
+        if(stage == 9){
+            // Give WebInput a full release frame before the second keydown,
+            // otherwise the keyboard edge-trigger can be coalesced.
+            if(++frames < 3) return;
+            dispatchStanceKey(true);
+            stage = 10;
+            frames = 0;
+            markStage("dom-hold-fire-toggle-off");
+            return;
+        }
+
+        if(stage == 10){
+            if(bothHaveHoldFire(false)){
+                dispatchStanceKey(false);
+                done = true;
+                releaseShift();
+                markStanceCommanded(probe.id, second.id);
+                return;
+            }
+            if(++frames > 120){
+                dispatchStanceKey(false);
+                releaseShift();
+                throw new IllegalStateException("Native PlacementFragment did not toggle Hold Fire off for both Daggers");
             }
             return;
         }
@@ -249,6 +310,13 @@ public final class BrowserRtsCommandSmoke{
         }
     }
 
+    private static boolean bothHaveHoldFire(boolean enabled){
+        if(!(probe.controller() instanceof CommandAI first) ||
+            !(second.controller() instanceof CommandAI other)) return false;
+        return first.hasStance(UnitStance.holdFire) == enabled &&
+            other.hasStance(UnitStance.holdFire) == enabled;
+    }
+
     private static void releaseShift(){
         if(!shiftHeld) return;
         dispatchShift(false);
@@ -261,6 +329,16 @@ public final class BrowserRtsCommandSmoke{
         }));
         """)
     private static native void dispatchShift(boolean down);
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryRtsStanceSmoke') === '1';")
+    private static native boolean queryStanceRequested();
+
+    @JSBody(params = {"down"}, script = """
+        window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', {
+            code:'KeyK', key:'k', bubbles:true, cancelable:true, repeat:false
+        }));
+        """)
+    private static native void dispatchStanceKey(boolean down);
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryRtsRectSmoke') === '1';")
     private static native boolean queryRectRequested();
@@ -338,4 +416,13 @@ public final class BrowserRtsCommandSmoke{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-rts-rect-smoke','commanded');")
     private static native void markRectCommanded();
+
+    @JSBody(params = {"firstId", "secondId"}, script = """
+        const root = document.documentElement;
+        root.setAttribute('data-mindustry-rts-stance-smoke','on-then-off');
+        root.setAttribute('data-mindustry-rts-stance-source','dom-key-k-native-placementfragment-keybind');
+        root.setAttribute('data-mindustry-rts-stance-unit-ids',String(firstId)+','+String(secondId));
+        root.setAttribute('data-mindustry-rts-stance-count','2');
+        """)
+    private static native void markStanceCommanded(int firstId, int secondId);
 }
