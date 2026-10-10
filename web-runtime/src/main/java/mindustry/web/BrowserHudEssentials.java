@@ -2,8 +2,11 @@ package mindustry.web;
 
 import arc.*;
 import arc.scene.*;
+import arc.scene.event.*;
 import arc.scene.ui.layout.*;
 import mindustry.game.EventType.*;
+import mindustry.core.*;
+import mindustry.gen.*;
 import mindustry.ui.*;
 import mindustry.ui.fragments.*;
 import org.teavm.jso.JSBody;
@@ -39,7 +42,7 @@ public final class BrowserHudEssentials{
         Table minimap = new Table();
         minimap.name = "web-hud-minimap-root";
         minimap.setFillParent(true);
-        minimap.top().right().padTop(mobile ? 125f : 5f).padRight(5f);
+        minimap.top().right().marginTop(mobile ? 125f : 5f).marginRight(5f);
         minimap.touchable = Touchable.childrenOnly;
         minimap.visible(() -> state != null && state.isGame() && !state.gameOver
             && ui.hudfrag.shown && Core.settings.getBool("minimap", true));
@@ -53,9 +56,9 @@ public final class BrowserHudEssentials{
         items.setFillParent(true);
         items.touchable = Touchable.childrenOnly;
         if(mobile){
-            items.bottom().left().padLeft(5f).padBottom(5f);
+            items.bottom().left().marginLeft(5f).marginBottom(5f);
         }else{
-            items.top().padTop(5f);
+            items.top().marginTop(5f);
         }
         items.visible(() -> state != null && state.isGame() && !state.gameOver
             && ui.hudfrag.shown && Core.settings.getBool("coreitems", true));
@@ -65,7 +68,7 @@ public final class BrowserHudEssentials{
         Table waves = new Table();
         waves.name = "web-hud-status-root";
         waves.setFillParent(true);
-        waves.top().left().padTop(mobile ? 195f : 145f).padLeft(5f);
+        waves.top().left().marginTop(mobile ? 195f : 145f).marginLeft(5f);
         waves.touchable = Touchable.childrenOnly;
         waves.visible(() -> state != null && state.isGame() && !state.gameOver && ui.hudfrag.shown);
         waves.table(Styles.black6, panel -> {
