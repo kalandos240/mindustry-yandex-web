@@ -57,13 +57,23 @@ public final class BrowserMobileRtsSmoke{
             // its children; this also proves it is not hidden by another UI.
             TextButton[] found = {null};
             Vec2[] pos = {null};
+            int[] buttons = {0}, matches = {0}, visibleMatches = {0}, hitMatches = {0};
+            StringBuilder samples = new StringBuilder();
+            String commandLabel = Core.bundle.get("command");
             Core.scene.root.forEach(actor -> {
-                if(!(actor instanceof TextButton button) || !button.visible ||
-                    !Core.bundle.get("command").contentEquals(button.getText())) return;
+                if(!(actor instanceof TextButton button)) return;
+                buttons[0]++;
+                String label = button.getText().toString();
+                if(samples.length() < 250) samples.append('[').append(label).append(']');
+                if(!commandLabel.equals(label) && !"@command".equals(label)) return;
+                matches[0]++;
+                if(!button.visible) return;
+                visibleMatches[0]++;
                 Vec2 stagePos = button.localToStageCoordinates(new Vec2(
                     button.getWidth() / 2f, button.getHeight() / 2f));
                 Element top = Core.scene.hit(stagePos.x, stagePos.y, true);
                 if(top == button || (top != null && top.isDescendantOf(button))){
+                    hitMatches[0]++;
                     found[0] = button;
                     pos[0] = stagePos;
                 }
@@ -71,7 +81,15 @@ public final class BrowserMobileRtsSmoke{
 
             if(found[0] == null){
                 if(++frames > 200)
-                    throw new IllegalStateException("Mobile RTS command button is not hittable in the stock Arc scene");
+                    throw new IllegalStateException(
+                        "Mobile RTS command button is not hittable in the stock Arc scene" +
+                        ": localized=" + commandLabel + ", allButtons=" + buttons[0] +
+                        ", matches=" + matches[0] + ", visible=" + visibleMatches[0] +
+                        ", hittable=" + hitMatches[0] +
+                        ", sceneInputUiChildren=" + (control.input.uiGroup == null ? -1 :
+                            control.input.uiGroup.getChildren().size) +
+                        ", hudGroup=" + (ui.hudGroup == null ? "missing" : ui.hudGroup.getChildren().size) +
+                        ", samples=" + samples);
                 return;
             }
             Vec2 screen = Core.scene.getViewport().project(pos[0]);
