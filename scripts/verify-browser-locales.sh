@@ -113,6 +113,8 @@ run_production_menu(){
         await new Promise(r=>setTimeout(r,100));
       }
       await wait(()=>root.getAttribute('data-mindustry-database-open')==='no','Database closed');
+      // Allow one Arc Scene act() to clear the now-invisible overlay's hit area.
+      await new Promise(r=>setTimeout(r,120));
       // Reopen from the real native menu, then close with the physical
       // Escape hotkey. HTML/Arc fake close buttons do not satisfy this test.
       await click('database');
