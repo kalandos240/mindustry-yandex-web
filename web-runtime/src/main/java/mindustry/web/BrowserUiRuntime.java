@@ -92,7 +92,6 @@ public final class BrowserUiRuntime{
         buildLocalHudControls();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
-        installResearchMenuEntry();
         BrowserResearchUi.init();
         BrowserStockDatabaseUi.init();
 
@@ -148,18 +147,6 @@ public final class BrowserUiRuntime{
         BrowserStockMainMenu.install(ui.menuGroup, root);
     }
 
-    private static void installResearchMenuEntry(){
-        Table entry = new Table();
-        entry.setFillParent(true);
-        entry.top().left();
-        entry.touchable = Touchable.childrenOnly;
-        entry.visible(() -> state.isMenu());
-        entry.button(Core.bundle.get("research", "Research"), BrowserResearchUi::show)
-            .name("web-research-menu")
-            .size(mobile ? 158f : 136f, mobile ? 52f : 44f).pad(8f);
-        ui.menuGroup.addChild(entry);
-    }
-
     private static void applySettingAction(int setting, int value){
         switch(setting){
             case 1 -> Core.settings.put("sfxvol", value);
@@ -200,7 +187,10 @@ public final class BrowserUiRuntime{
         // Keep Back and Pause on the first row. Three 132px-wide actions do not
         // fit a narrow mobile game viewport once the portal reserves ad space.
         controls.row();
-        TextButton researchAction = controls.button(Core.bundle.get("research", "Research"), BrowserResearchUi::show)
+        // The original HudFragment uses Icon.tree for the same research
+        // action. Keep its established Web HUD hit area and input callback,
+        // but draw the native Mindustry icon instead of a duplicate text tile.
+        ImageButton researchAction = controls.button(Icon.tree, Styles.clearNonei, BrowserResearchUi::show)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .name("web-research-hud").pad(8f).get();
         researchAction.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());

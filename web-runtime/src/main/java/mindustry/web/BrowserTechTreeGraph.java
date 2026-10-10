@@ -12,6 +12,7 @@ import arc.struct.*;
 import mindustry.content.TechTree.*;
 import mindustry.ui.*;
 import mindustry.graphics.*;
+import mindustry.gen.*;
 
 /**
  * Scrollable orthogonal tech graph built from original TechNode.parent/children.
@@ -22,10 +23,12 @@ import mindustry.graphics.*;
  * The enclosing stock ScrollPane handles touch drag and two-axis movement.
  */
 public final class BrowserTechTreeGraph extends WidgetGroup{
-    private static final float baseNodeWidth = 157f, baseNodeHeight = 47f;
-    private static final float baseColumn = 205f, baseRow = 69f;
+    private static final float baseNodeWidth = 46f, baseNodeHeight = 46f;
+    private static final float baseColumn = 79f, baseRow = 68f;
     private static final float margin = 23f;
     private final ObjectMap<TechNode, Vec2> coordinates = new ObjectMap<>();
+    // Lookup by the actual TechNode, not O(N) Scene.find() on every frame.
+    private final ObjectMap<TechNode, Button> buttons = new ObjectMap<>();
     private final ObjectSet<TechNode> visible = new ObjectSet<>();
     private TechNode root;
     private ObjectSet<TechNode> expanded;
@@ -42,6 +45,7 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
         this.zoom = zoom;
         clear();
         coordinates.clear();
+        buttons.clear();
         visible.clear();
         leaves = 0;
         maxDepth = 0;
@@ -57,28 +61,26 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
         for(TechNode node : visible){
             Vec2 point = coordinates.get(node);
             if(point == null) continue;
-            Button button = new Button(Styles.defaultb);
+            // Stock Mindustry ResearchDialog uses the small Styles.nodei
+            // image button with a yellow border for researched technologies
+            // and a red border for locked dependencies. No duplicate labels.
+            boolean parentReady = node.parent == null || node.parent.content.unlocked();
+            ImageButton button = !parentReady || node.content.uiIcon == null
+                ? new ImageButton(Icon.lock, Styles.nodei)
+                : new ImageButton(node.content.uiIcon, Styles.nodei);
             button.name = "web-research-node-" + node.content.name;
-            if(node.content.uiIcon != null){
-                button.add(new Image(node.content.uiIcon))
-                    .size(28f * zoom).padLeft(5f * zoom);
-            }
-            Label label = new Label(node.content.localizedName);
-            label.setFontScale((Core.graphics.isPortrait() ? 0.77f : 0.82f) * zoom);
-            label.setWrap(true);
-            button.add(label).growX().left().padLeft(4f * zoom);
-            Label symbol = new Label(node.content.unlocked() ? "+" :
-                node.children.size > 0 ? (expanded.contains(node) ? "-" : ">") : "");
-            symbol.setFontScale(0.83f * zoom);
-            button.add(symbol).width(15f * zoom).padRight(3f * zoom);
-            if(node.parent != null && !node.parent.content.unlocked()){
-                button.setColor(Color.lightGray);
-            }
+            button.resizeImage(32f * zoom);
+            button.getImage().setScaling(Scaling.fit);
+            boolean unlocked = node.content.unlocked();
+            button.getStyle().up = unlocked ? Tex.buttonOver :
+                parentReady ? Tex.button : Tex.buttonRed;
+            if(!unlocked) button.getImage().setColor(parentReady ? Color.gray : Pal.gray);
             button.setSize(nodeWidth, nodeHeight);
             button.setPosition(point.x - nodeWidth * 0.5f,
                 point.y - nodeHeight * 0.5f);
             button.clicked(() -> this.clicked.get(node));
             addChild(button);
+            buttons.put(node, button);
         }
         invalidateHierarchy();
     }
@@ -129,12 +131,10 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
             Vec2 point = coordinates.get(node);
             if(point == null) continue;
             float centerY = preferredHeight - margin - (point.y + 0.5f) * row;
-            for(var child : getChildren()){
-                if(("web-research-node-" + node.content.name).equals(child.name)){
-                    child.setPosition(point.x - nodeWidth * 0.5f,
-                        centerY - nodeHeight * 0.5f);
-                    break;
-                }
+            Button button = buttons.get(node);
+            if(button != null){
+                button.setPosition(point.x - nodeWidth * 0.5f,
+                    centerY - nodeHeight * 0.5f);
             }
         }
     }
@@ -143,12 +143,12 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
     public void draw(){
         validate();
         if(root != null){
-            Draw.color(Pal.accent);
-            Lines.stroke(Math.max(1.1f, zoom * 1.5f));
+            Lines.stroke(Math.max(1.1f, zoom * 1.8f));
             for(TechNode node : visible){
                 if(node.parent == null || !visible.contains(node.parent)) continue;
-                var fromActor = find("web-research-node-" + node.parent.content.name);
-                var toActor = find("web-research-node-" + node.content.name);
+                Draw.color(node.parent.content.unlocked() ? Pal.accent : Color.darkGray);
+                Button fromActor = buttons.get(node.parent);
+                Button toActor = buttons.get(node);
                 if(fromActor == null || toActor == null) continue;
                 float sx = getX(Align.left) + fromActor.getX(Align.left) + fromActor.getWidth();
                 float ex = getX(Align.left) + toActor.getX(Align.left);

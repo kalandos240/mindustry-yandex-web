@@ -51,9 +51,21 @@ for scenario in menu campaign; do
     --after-ready-eval "(async()=>{
       const canvas=document.getElementById('mindustry-canvas');
       const root=document.documentElement;
-      const y=$y;
-      const down=new PointerEvent('pointerdown', {bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',clientX:64,clientY:y,button:0,buttons:1});
-      const up=new PointerEvent('pointerup', {bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',clientX:64,clientY:y,button:0,buttons:0});
+      let x=64, y=$y;
+      if('$scenario'==='menu'){
+        for(let i=0;i<110;i++){
+          if(root.hasAttribute('data-mindustry-main-menu-research-x')) break;
+          await new Promise(r=>setTimeout(r,100));
+        }
+        const rect=canvas.getBoundingClientRect();
+        const sx=Number(root.getAttribute('data-mindustry-main-menu-research-x'));
+        const sy=Number(root.getAttribute('data-mindustry-main-menu-research-y'));
+        if(!Number.isFinite(sx)||!Number.isFinite(sy)) throw Error('Stock Research button is missing real Arc coordinates');
+        x=rect.left+sx;
+        y=rect.top+rect.height-sy;
+      }
+      const down=new PointerEvent('pointerdown', {bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',clientX:x,clientY:y,button:0,buttons:1});
+      const up=new PointerEvent('pointerup', {bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',clientX:x,clientY:y,button:0,buttons:0});
       canvas.dispatchEvent(down);
       await new Promise(r=>setTimeout(r,100));
       canvas.dispatchEvent(up);
