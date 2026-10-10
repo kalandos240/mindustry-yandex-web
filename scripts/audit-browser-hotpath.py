@@ -378,10 +378,13 @@ require(YANDEX_JS, "if(state.bannerShowing)", "do not overlap ads when sticky hi
 require(BROWSER_UI, "BrowserResearchUi.init();", "research dialog in browser UI startup")
 require(BROWSER_UI, "BrowserResearchUi::show", "menu and gameplay research actions")
 require(RESEARCH_UI, "for(TechNode node : TechTree.all)", "complete vanilla TechTree catalog")
-require(RESEARCH_UI, "BrowserCampaignResearch.canSpend(node.content)", "stock research affordability")
-require(RESEARCH_UI, "BrowserCampaignResearch.spend(node.content)", "real research purchase")
+require(RESEARCH_UI, "BrowserCampaignResearch.canSpend(content)", "stock research affordability")
+require(RESEARCH_UI, "BrowserCampaignResearch.spend(content)", "real research purchase")
 require(RESEARCH_UI, "BrowserBuildPalette.refresh()", "build palette refresh on research")
-require(RESEARCH_UI, "pageSize = 32", "mobile-friendly research paging")
+require(RESEARCH_UI, "for(TechNode root : TechTree.roots)", "vanilla Serpulo/Erekir research roots")
+require(RESEARCH_UI, "for(TechNode child : node.children)", "actual TechTree branch traversal")
+require(RESEARCH_UI, "expanded.add(node)", "interactive research tree expansion")
+require(RESEARCH_UI, "data-mindustry-research-layout','hierarchical-techtree'", "browser research hierarchy marker")
 require((SCRIPTS / "verify-browser-research-actions.sh").read_text(encoding="utf-8"),
         "new PointerEvent('pointerdown'", "live Arc research button interaction")
 
