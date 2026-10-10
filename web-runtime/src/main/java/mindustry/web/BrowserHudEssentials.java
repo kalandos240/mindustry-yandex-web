@@ -111,8 +111,17 @@ public final class BrowserHudEssentials{
         markStatusPhase("objectives");
         for(var objective : state.rules.objectives){
             if(!objective.hidden && objective.qualified()){
-                String text = objective.text();
-                if(text != null && !text.isEmpty()) return UI.formatIcons(text);
+                try{
+                    String text = objective.text();
+                    if(text != null && !text.isEmpty()) return UI.formatIcons(text);
+                }catch(IllegalArgumentException badFormat){
+                    // Some stock objective.text() implementations call Java MessageFormat
+                    // through Core.bundle.format(). TeaVM 0.15 can throw "Currency not
+                    // found: CYP" for that locale path. This is display-only: never let
+                    // objective label formatting stop the simulation.
+                    markObjectiveFallback(objective.typeName());
+                    return fallbackObjectiveText(objective);
+                }
             }
         }
         if(!state.rules.waves){
@@ -137,6 +146,60 @@ public final class BrowserHudEssentials{
         markStatusPhase("complete");
         return status;
     }
+
+    private static String fallbackObjectiveText(mindustry.game.MapObjectives.MapObjective objective){
+        // Keep the original translated vocabulary while avoiding MessageFormat.
+        // These are only used if upstream objective.text() failed at runtime.
+        if(objective instanceof mindustry.game.MapObjectives.ResearchObjective o){
+            return localized("objective.research", o.content.emoji(), o.content.localizedName);
+        }
+        if(objective instanceof mindustry.game.MapObjectives.ProduceObjective o){
+            return localized("objective.produce", o.content.emoji(), o.content.localizedName);
+        }
+        if(objective instanceof mindustry.game.MapObjectives.ItemObjective o){
+            return localized("objective.item", state.rules.defaultTeam.items().get(o.item),
+                o.amount, o.item.emoji(), o.item.localizedName);
+        }
+        if(objective instanceof mindustry.game.MapObjectives.CoreItemObjective o){
+            return localized("objective.coreitem", state.stats.coreItemCount.get(o.item),
+                o.amount, o.item.emoji(), o.item.localizedName);
+        }
+        if(objective instanceof mindustry.game.MapObjectives.BuildCountObjective o){
+            return localized("objective.build", o.count - state.stats.placedBlockCount.get(o.block, 0),
+                o.block.emoji(), o.block.localizedName);
+        }
+        if(objective instanceof mindustry.game.MapObjectives.UnitCountObjective o){
+            return localized("objective.buildunit", o.count - state.rules.defaultTeam.data().countType(o.unit),
+                o.unit.emoji(), o.unit.localizedName);
+        }
+        if(objective instanceof mindustry.game.MapObjectives.DestroyUnitsObjective o){
+            return localized("objective.destroyunits", o.count - state.stats.enemyUnitsDestroyed);
+        }
+        if(objective instanceof mindustry.game.MapObjectives.DestroyBlockObjective o){
+            return localized("objective.destroyblock", o.block.emoji(), o.block.localizedName);
+        }
+        if(objective instanceof mindustry.game.MapObjectives.DestroyBlocksObjective o){
+            return localized("objective.destroyblocks", o.progress(), o.positions.length,
+                o.block.emoji(), o.block.localizedName);
+        }
+        if(objective instanceof mindustry.game.MapObjectives.TimerObjective o && o.text != null){
+            String key = o.text.startsWith("@") ? o.text.substring(1) : o.text;
+            return o.text.startsWith("@")
+                ? state.mapLocales.getProperty(key, Core.bundle.get(key, key)) : key;
+        }
+        return objective.typeName();
+    }
+
+    private static String localized(String key, Object first, Object second, Object third){
+        return localized(key, first, second).replace("{2}", String.valueOf(third));
+    }
+
+    private static String localized(String key, Object first, Object second, Object third, Object fourth){
+        return localized(key, first, second, third).replace("{3}", String.valueOf(fourth));
+    }
+
+    @JSBody(params = {"name"}, script = "document.documentElement.setAttribute('data-mindustry-hud-objective-fallback',name);")
+    private static native void markObjectiveFallback(String name);
 
     // Avoid TeaVM's java.text.MessageFormat currency-data path on every HUD frame.
     // Stock .properties placeholders only need two numeric/text positional args.
