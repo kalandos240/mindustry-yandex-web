@@ -187,7 +187,10 @@ public final class BrowserUiRuntime{
         // Keep Back and Pause on the first row. Three 132px-wide actions do not
         // fit a narrow mobile game viewport once the portal reserves ad space.
         controls.row();
-        TextButton researchAction = controls.button(Core.bundle.get("research", "Research"), BrowserResearchUi::show)
+        // The original HudFragment uses Icon.tree for the same research
+        // action. Keep its established Web HUD hit area and input callback,
+        // but draw the native Mindustry icon instead of a duplicate text tile.
+        ImageButton researchAction = controls.button(Icon.tree, Styles.clearNonei, BrowserResearchUi::show)
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .name("web-research-hud").pad(8f).get();
         researchAction.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
