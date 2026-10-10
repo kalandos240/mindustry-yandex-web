@@ -14,6 +14,7 @@ import mindustry.game.Objectives.*;
 import mindustry.gen.*;
 import mindustry.type.*;
 import mindustry.ui.*;
+import mindustry.graphics.*;
 import org.teavm.jso.JSBody;
 
 import static mindustry.Vars.*;
@@ -34,7 +35,8 @@ public final class BrowserResearchUi{
     private static BrowserTechTreeGraph menuTree, hudTree;
     private static ScrollPane menuTreePane, hudTreePane;
     private static Table menuDetails, hudDetails;
-    private static float graphZoom = 1f;
+    private static Table menuResources, hudResources;
+    private static float graphZoom = 0.9f;
     private static float menuTreeWidth, hudTreeWidth, menuDetailsWidth, hudDetailsWidth;
     private static int visibleCount;
 
@@ -55,6 +57,7 @@ public final class BrowserResearchUi{
         activeRoot = Planets.serpulo.techTree;
         selected = activeRoot;
         expanded.add(activeRoot);
+        expandUnlocked(activeRoot);
         buildPanel(ui.menuGroup, true);
         buildPanel(ui.hudGroup, false);
         initialized = true;
@@ -63,88 +66,161 @@ public final class BrowserResearchUi{
         refresh();
     }
 
+    // Fullscreen ResearchDialog-style canvas. The original desktop dialog
+    // eagerly pulls in online/editor UI; preserve its pinned visuals with
+    // Arc Scene and the actual TechTree without instantiating that graph.
     private static void buildPanel(Group parent, boolean menu){
         Table overlay = new Table();
+        overlay.name = menu ? "web-stock-research-menu" : "web-stock-research-hud";
         overlay.setFillParent(true);
+        overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
         overlay.visible(() -> open && (menu ? state.isMenu() :
             state.isCampaign() && !state.gameOver));
-        overlay.setBackground(Tex.pane2);
 
-        float totalWidth = Math.max(270f, Math.min(mobile ? 370f : 1000f, Core.graphics.getWidth() - 24f));
-        float treeWidth = mobile ? totalWidth - 16f : totalWidth * 0.58f;
-        float detailWidth = mobile ? totalWidth - 16f : totalWidth - treeWidth - 16f;
-        float treeHeight = mobile ?
-            Math.max(185f, Math.min(340f, Core.graphics.getHeight() - 405f)) :
-            Math.max(250f, Math.min(590f, Core.graphics.getHeight() - 165f));
-        float detailHeight = mobile ?
-            Math.max(145f, Math.min(235f, Core.graphics.getHeight() - treeHeight - 165f)) :
-            treeHeight;
-
-        Table panel = new Table(Tex.pane2);
-        panel.defaults().pad(3f);
-
-        Table heading = new Table();
-        heading.add(Core.bundle.get("research", "Research")).left().growX();
-        heading.button(Core.bundle.get("back", "Back"), BrowserResearchUi::close)
-            .size(mobile ? 100f : 105f, mobile ? 49f : 43f);
-        panel.add(heading).colspan(mobile ? 1 : 2).growX().row();
-
-        Table roots = new Table();
-        roots.left();
+        Table shell = new Table();
+        shell.setFillParent(true);
+        shell.top();
+        Table roots = new Table(Tex.pane2);
+        roots.name = "web-stock-research-planet";
+        roots.defaults().pad(2f);
         for(TechNode root : TechTree.roots){
-            roots.button(root.localizedName(), () -> switchRoot(root))
+            roots.button(root.localizedName(), root.icon(), () -> switchRoot(root))
                 .checked(button -> activeRoot == root)
-                .height(mobile ? 44f : 40f).minWidth(mobile ? 124f : 145f).padRight(5f)
+                .height(mobile ? 48f : 42f).minWidth(mobile ? 115f : 160f)
                 .name("web-research-root-" + root.content.name);
         }
-        panel.add(roots).colspan(mobile ? 1 : 2).left().row();
+        shell.add(roots).height(mobile ? 52f : 46f).padTop(4f).row();
 
         BrowserTechTreeGraph tree = new BrowserTechTreeGraph();
         ScrollPane treePane = new ScrollPane(tree, Styles.smallPane);
+        treePane.name = "web-stock-research-map";
         treePane.setFadeScrollBars(false);
         treePane.setScrollingDisabled(false, false);
         treePane.setOverscroll(false, false);
+        treePane.addCaptureListener(new InputListener(){
+            @Override
+            public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY){
+                if(!open || amountY == 0f) return false;
+                changeZoom(-0.1f * Math.signum(amountY));
+                event.stop();
+                return true;
+            }
+        });
+        treePane.addCaptureListener(new ElementGestureListener(){
+            private float pinchInitialZoom = -1f;
+            @Override
+            public void zoom(InputEvent event, float initialDistance, float distance){
+                if(!open || initialDistance <= 0.1f) return;
+                if(pinchInitialZoom < 0f) pinchInitialZoom = graphZoom;
+                setZoom(pinchInitialZoom * distance / initialDistance);
+            }
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, arc.input.KeyCode button){
+                pinchInitialZoom = -1f;
+            }
+        });
+        treePane.addListener(new InputListener(){
+            @Override
+            public boolean mouseMoved(InputEvent event, float x, float y){
+                treePane.requestScroll();
+                return false;
+            }
+        });
+        shell.add(treePane).grow().pad(3f).row();
+        Table footer = new Table();
+        footer.name = "web-stock-research-footer";
+        footer.button(Core.bundle.get("back", "Back"), Icon.left,
+            BrowserResearchUi::close).size(mobile ? 128f : 155f, mobile ? 54f : 51f)
+            .name("web-research-back").padRight(5f);
+        footer.button(Core.bundle.get("database.button", "Core Database"), Icon.book, () -> {
+            close();
+            BrowserStockDatabaseUi.show();
+        }).size(mobile ? 157f : 205f, mobile ? 54f : 51f)
+            .name("web-research-database")
+            .visible(() -> menu && state.isMenu());
+        shell.add(footer).height(mobile ? 62f : 58f).padBottom(3f);
+        overlay.addChild(shell);
+
+        Table resources = new Table(Tex.pane2);
+        resources.name = "web-stock-research-items";
+        resources.top().left();
+        Table resourceHost = new Table();
+        resourceHost.setFillParent(true);
+        resourceHost.top().left();
+        resourceHost.touchable = Touchable.childrenOnly;
+        resourceHost.add(resources).left().top().pad(6f)
+            .maxWidth(mobile ? 155f : 190f);
+        overlay.addChild(resourceHost);
 
         Table details = new Table();
         details.top().left();
         ScrollPane infoPane = new ScrollPane(details, Styles.smallPane);
         infoPane.setFadeScrollBars(false);
         infoPane.setScrollingDisabled(true, false);
-
-        if(mobile){
-            panel.add(treePane).width(treeWidth).height(treeHeight).left().row();
-            panel.add(infoPane).width(detailWidth).height(detailHeight).left().row();
-        }else{
-            panel.add(treePane).width(treeWidth).height(treeHeight);
-            panel.add(infoPane).width(detailWidth).height(detailHeight);
-            panel.row();
-        }
-
-        Table actions = new Table();
-        actions.button("-", () -> changeZoom(-0.2f))
-            .size(mobile ? 52f : 60f, mobile ? 44f : 42f);
-        actions.button("+", () -> changeZoom(0.2f))
-            .size(mobile ? 52f : 60f, mobile ? 44f : 42f);
-        actions.button(Core.bundle.get("refresh", "Refresh"), BrowserResearchUi::refresh)
-            .size(mobile ? 105f : 120f, mobile ? 44f : 42f);
-        panel.add(actions).colspan(mobile ? 1 : 2).left().row();
-
-        overlay.add(panel).center();
+        Table popover = new Table();
+        popover.setFillParent(true);
+        popover.bottom().right();
+        popover.touchable = Touchable.childrenOnly;
+        popover.visible(() -> selected != null && selected != activeRoot);
+        popover.table(Tex.pane2, box -> box.add(infoPane)
+            .width(mobile ? 217f : 292f).height(mobile ? 155f : 220f).pad(6f))
+            .padRight(9f).padBottom(mobile ? 68f : 72f);
+        overlay.addChild(popover);
         parent.addChild(overlay);
 
         if(menu){
             menuTree = tree;
             menuTreePane = treePane;
             menuDetails = details;
-            menuTreeWidth = treeWidth;
-            menuDetailsWidth = detailWidth;
+            menuResources = resources;
+            menuTreeWidth = Core.graphics.getWidth() - 12f;
+            menuDetailsWidth = mobile ? 217f : 292f;
         }else{
             hudTree = tree;
             hudTreePane = treePane;
             hudDetails = details;
-            hudTreeWidth = treeWidth;
-            hudDetailsWidth = detailWidth;
+            hudResources = resources;
+            hudTreeWidth = Core.graphics.getWidth() - 12f;
+            hudDetailsWidth = mobile ? 217f : 292f;
+        }
+    }
+
+    // As in stock ResearchDialog, previously unlocked branches are revealed
+    // when a planet tree is first opened. Other branches still require a tap.
+    private static void expandUnlocked(TechNode node){
+        if(node == null || node.children.size == 0 || !node.content.unlocked()) return;
+        expanded.add(node);
+        for(TechNode child : node.children){
+            if(child.content.unlocked()) expandUnlocked(child);
+        }
+    }
+
+    // Aggregate the same per-sector item inventory that stock research uses.
+    // Recomputed only on research refresh, not inside the per-frame draw loop.
+    private static void refreshResources(Table target){
+        if(target == null || activeRoot == null) return;
+        target.clear();
+        target.top().left();
+        target.add(Core.bundle.get("items", "Items")).color(Pal.accent).left().row();
+        Planet planet = activeRoot == Planets.erekir.techTree ? Planets.erekir : Planets.serpulo;
+        int shown = 0;
+        for(mindustry.type.Item item : content.items()){
+            int total = 0;
+            for(Sector sector : planet.sectors){
+                if(sector.hasBase() && !sector.isFrozen()){
+                    total += Math.max(0, sector.items().get(item));
+                }
+            }
+            if(total <= 0) continue;
+            Table line = new Table();
+            line.add(String.valueOf(total)).width(40f).right();
+            if(item.uiIcon != null) line.add(new Image(item.uiIcon)).size(15f).padLeft(3f);
+            Label name = new Label(item.localizedName);
+            name.setFontScale(0.7f);
+            line.add(name).left().padLeft(3f);
+            target.add(line).left().row();
+            if(++shown >= (mobile ? 8 : 14)) break;
         }
     }
 
@@ -178,6 +254,7 @@ public final class BrowserResearchUi{
         selected = root;
         expanded.clear();
         expanded.add(root);
+        expandUnlocked(root);
         refresh();
         focusSelected();
     }
@@ -201,6 +278,9 @@ public final class BrowserResearchUi{
         markResearchCatalog(totalNodes());
         markTree(activeRoot.name == null ? activeRoot.content.name : activeRoot.name,
             selected == null ? "" : selected.content.name, count, TechTree.roots.size);
+        markGraphZoom(graphZoom);
+        refreshResources(menuResources);
+        refreshResources(hudResources);
     }
 
     /**
@@ -229,13 +309,31 @@ public final class BrowserResearchUi{
     }
 
     private static void changeZoom(float delta){
-        graphZoom = Math.max(0.6f, Math.min(1.6f, graphZoom + delta));
+        setZoom(graphZoom + delta);
+    }
+
+    private static void setZoom(float requested){
+        // Quantize to 0.1x steps: legible text and bounded JS/GPU allocations
+        // even during rapid trackpad scrolling or two-finger pinch.
+        float next = Math.round(Math.max(0.3f, Math.min(1.4f, requested)) * 10f) / 10f;
+        if(Math.abs(graphZoom - next) < 0.049f) return;
+        graphZoom = next;
         refresh();
+        focusSelected();
     }
 
     private static void selectGraphNode(TechNode node){
+        boolean repeated = selected == node;
         selected = node;
-        if(node.children.size > 0) expanded.add(node);
+        if(node.children.size > 0){
+            // A first tap shows requirements; only a repeated tap folds an
+            // already visible branch. Keeps unlocked sibling branches intact.
+            if(repeated && node != activeRoot && expanded.contains(node)){
+                expanded.remove(node);
+            }else{
+                expanded.add(node);
+            }
+        }
         refresh();
         focusSelected();
     }
@@ -339,6 +437,10 @@ public final class BrowserResearchUi{
 
     @JSBody(params = {"shown"}, script = "document.documentElement.setAttribute('data-mindustry-research-open', shown ? 'yes' : 'no');")
     private static native void markResearchOpen(boolean shown);
+
+    @JSBody(params = {"zoom"}, script =
+        "document.documentElement.setAttribute('data-mindustry-research-tree-zoom', String(zoom));")
+    private static native void markGraphZoom(float zoom);
 
     @JSBody(params = {"root","node","count","roots"}, script = """
         const r=document.documentElement;
