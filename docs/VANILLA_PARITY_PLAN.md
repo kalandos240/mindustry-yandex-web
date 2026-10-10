@@ -7,7 +7,8 @@
 | Area | Expected parity | Acceptance / gate | Status |
 |---|---|---|---|
 | Startup, assets and rendering | Original graphics, fonts, audio, block sprites, effects and input scaling | Real desktop + touch Chrome run on the actual Yandex game viewport, no broken atlas or blank HUD | Partial |
-| Construction HUD | Vanilla `PlacementFragment` block sprites, category icons, costs, placement, rotations, context configuration | Open real map; select conveyor, drag-build conveyors, rotate, place drill, configure block; repeat on touch | PR #121 experimental |
+| In-game HUD essentials | Original corner minimap/full-map, core inventory, wave count and mission objectives | Real desktop/touch map with nonempty minimap texture, selected units/core inventory and live wave updates | Phase 1 PR: upstream `Minimap`, `MinimapFragment`, `CoreItemsDisplay` plus GameState status; CI pending |
+| Construction HUD | Vanilla `PlacementFragment` block sprites, category icons, costs, placement, rotations, context configuration | Open real map; select conveyor, drag-build conveyors, rotate, place drill, configure block; repeat on touch | Native placement active; select/place/rotate/removal and mobile tap passed CI; drag drill/config still unverified |
 | Research | Full TechTree per planet, resource costs, parent requirements, objectives and saved unlocks | In ordinary gameplay mine copper, purchase Conveyor and Mechanical Drill, unlock Junction and Router, build them, reload | PR #120 experimental; confirm live interaction |
 | Campaign navigation | Stock Serpulo/Erekir sector selection, planet progression, capture, launch and objectives | Traverse Ground Zero → Frozen Forest and Onset → Aegis manually; no CI-only staging bypass | Partial |
 | Survival and attack | Original wave timers, hostile AI, combat, cores, victory/loss, commands, logistics | Play through waves, lose/win normally, use units/build queues, no missing HUD actions | Partial |

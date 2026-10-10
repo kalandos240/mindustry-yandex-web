@@ -15,7 +15,7 @@ if "BrowserBuildPalette.build(ui.hudGroup);" not in ui:
     anchor = "        buildLocalHudControls();\n"
     if ui.count(anchor) != 1:
         raise SystemExit("BrowserUiRuntime build-palette insertion anchor no longer matches final local HUD overlays")
-    ui = ui.replace(anchor, anchor + "        BrowserBuildPalette.build(ui.hudGroup);\n        BrowserStockPlacement.install(ui.hudGroup);\n", 1)
+    ui = ui.replace(anchor, anchor + "        BrowserBuildPalette.build(ui.hudGroup);\n        BrowserStockPlacement.install(ui.hudGroup);\n        BrowserHudEssentials.install(ui.hudGroup);\n", 1)
 UI.write_text(ui, encoding="utf-8")
 
 verify = VERIFY.read_text(encoding="utf-8")
