@@ -1328,9 +1328,20 @@ old_pause_back = '''        overlay.button(Core.bundle.get("back", "Back"), Brow
 new_pause_back = '''        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 196f : 156f, mobile ? 62f : 48f).padTop(8f);
 '''
-if text.count(old_pause_back) != 1:
-    raise SystemExit("Campaign UI pause-overlay Back anchor no longer matches post-save UI")
-text = text.replace(old_pause_back, new_pause_back, 1)
+if text.count(old_pause_back) == 1:
+    # Legacy minimal pause panel: widen its Back action for mobile.
+    text = text.replace(old_pause_back, new_pause_back, 1)
+elif 'dialog.name = "web-pause-dialog"' in text and (
+    'dialog.button(Core.bundle.get("quit", "Quit"), Icon.exit,' in text
+    and 'BrowserUiRuntime::returnToMenuWithAd)' in text
+):
+    # The restored native Arc/Mindustry PausedDialog-style panel already
+    # provides a wider, mobile-safe two-column layout and uses the exact
+    # same campaign save + Yandex quit action. Do not replace its button
+    # with an obsolete unstyled overlay while generating campaign menus.
+    pass
+else:
+    raise SystemExit("Campaign UI pause-overlay Back anchor no longer matches known native or legacy UI")
 
 marker_anchor = '''    @JSBody(params = {"slot"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slot', slot);")
     private static native void markLocalSaveUiReady(String slot);
