@@ -85,6 +85,8 @@ run_production_menu(){
     --require 'data-mindustry-map-metadata-loaded="0"' \
     --require 'data-mindustry-local-map-ui="ready"' \
     --require 'data-mindustry-local-map-menu="builtin-selector"' \
+    --require 'data-mindustry-main-menu-stock="arc-scene"' \
+    --require 'data-mindustry-main-menu-page="home"' \
     --require 'data-mindustry-local-map-back="ready"' \
     --require 'data-mindustry-network="local-only"' > "$dom"
 
@@ -270,6 +272,7 @@ run_mobile(){
     --require 'data-mindustry-renderer-init="ready"' \
     --require 'data-mindustry-input-mode="mobile"' \
     --require 'data-mindustry-device-mode="mobile"' \
+    --require 'data-mindustry-main-menu-layout="mobile-grid"' \
     --require 'data-mindustry-stock-input="mobile"' \
     --require 'data-mindustry-gesture-detector="ready"' \
     --require 'data-mindustry-control="ready"' \
