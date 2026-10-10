@@ -154,6 +154,8 @@ public final class BrowserApplication extends WebApplicationBase{
                 BrowserRtsCommandSmoke.update();
                 // CI-only real touch selection and orders through stock MobileInput.
                 BrowserMobileRtsSmoke.update();
+                // Real Scene pointer navigation for the vanilla research tree (CI only).
+                BrowserResearchTreeSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";

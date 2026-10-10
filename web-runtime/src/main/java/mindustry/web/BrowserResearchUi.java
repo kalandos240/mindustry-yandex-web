@@ -1,14 +1,17 @@
 package mindustry.web;
 
 import arc.*;
+import arc.graphics.*;
 import arc.scene.*;
 import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
+import arc.struct.*;
 import mindustry.content.*;
-import mindustry.gen.*;
 import mindustry.content.TechTree.*;
 import mindustry.ctype.*;
+import mindustry.game.Objectives.*;
+import mindustry.gen.*;
 import mindustry.type.*;
 import mindustry.ui.*;
 import org.teavm.jso.JSBody;
@@ -16,86 +19,147 @@ import org.teavm.jso.JSBody;
 import static mindustry.Vars.*;
 
 /**
- * Accessible browser research catalog backed by the complete stock TechTree.
- * The compact Yandex campaign menu only lists a handful of storyline actions;
- * this panel exposes the actual resources, parent requirements and purchases
- * for all non-sector tech nodes, both from the menu and during active campaigns.
+ * A compact, interactive view of the actual pinned vanilla TechTree.
+ *
+ * The former 32-items-per-page catalog flattened unrelated branches and mixed
+ * Serpulo/Erekir technologies. This keeps native parent/child relationships,
+ * root selection, tech icons, sector objectives and partial item progress while
+ * using lightweight Arc Scene widgets instead of the large desktop ResearchDialog.
+ * Unlocks still go exclusively through BrowserCampaignResearch.spend().
  */
 public final class BrowserResearchUi{
-    private static final int pageSize = 32;
     private static boolean initialized, open;
-    private static int page;
-    private static Table menuItems, hudItems;
-    private static Label menuPage, hudPage;
+    private static TechNode activeRoot, selected;
+    private static final ObjectSet<TechNode> expanded = new ObjectSet<>();
+    private static BrowserTechTreeGraph menuTree, hudTree;
+    private static ScrollPane menuTreePane, hudTreePane;
+    private static Table menuDetails, hudDetails;
+    private static float graphZoom = 1f;
+    private static float menuTreeWidth, hudTreeWidth, menuDetailsWidth, hudDetailsWidth;
+    private static int visibleCount;
 
     private BrowserResearchUi(){}
 
     public static void init(){
         if(initialized) return;
         if(ui == null || ui.menuGroup == null || ui.hudGroup == null){
-            throw new IllegalStateException("Research UI requires initialized menu and HUD groups");
+            throw new IllegalStateException("Research tree requires initialized menu and HUD groups");
+        }
+        if(TechTree.all.size < 30 || TechTree.roots.size < 2 ||
+            Planets.serpulo.techTree == null || Planets.erekir.techTree == null ||
+            Blocks.conveyor.techNode == null || Blocks.junction.techNode == null ||
+            Blocks.router.techNode == null || Blocks.mechanicalDrill.techNode == null){
+            throw new IllegalStateException("Browser research tree lost vanilla technology roots");
         }
 
-        if(TechTree.all.size < 30 || Blocks.conveyor.techNode == null
-            || Blocks.junction.techNode == null || Blocks.router.techNode == null
-            || Blocks.mechanicalDrill.techNode == null){
-            throw new IllegalStateException("Browser research catalog lost starter technologies");
-        }
+        activeRoot = Planets.serpulo.techTree;
+        selected = activeRoot;
+        expanded.add(activeRoot);
         buildPanel(ui.menuGroup, true);
         buildPanel(ui.hudGroup, false);
         initialized = true;
         markResearchReady();
         markResearchCatalog(totalNodes());
+        refresh();
     }
 
     private static void buildPanel(Group parent, boolean menu){
         Table overlay = new Table();
         overlay.setFillParent(true);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> open && (menu ? state.isMenu() : state.isCampaign() && !state.gameOver));
+        overlay.visible(() -> open && (menu ? state.isMenu() :
+            state.isCampaign() && !state.gameOver));
         overlay.setBackground(Tex.pane2);
+
+        float totalWidth = Math.max(270f, Math.min(mobile ? 370f : 1000f, Core.graphics.getWidth() - 24f));
+        float treeWidth = mobile ? totalWidth - 16f : totalWidth * 0.58f;
+        float detailWidth = mobile ? totalWidth - 16f : totalWidth - treeWidth - 16f;
+        float treeHeight = mobile ?
+            Math.max(185f, Math.min(340f, Core.graphics.getHeight() - 405f)) :
+            Math.max(250f, Math.min(590f, Core.graphics.getHeight() - 165f));
+        float detailHeight = mobile ?
+            Math.max(145f, Math.min(235f, Core.graphics.getHeight() - treeHeight - 165f)) :
+            treeHeight;
 
         Table panel = new Table(Tex.pane2);
         panel.defaults().pad(3f);
-        panel.add(Core.bundle.get("research", "Research")).left();
-        panel.button(Core.bundle.get("back", "Back"), BrowserResearchUi::close)
-            .size(mobile ? 98f : 90f, mobile ? 52f : 42f);
-        panel.row();
 
-        Table items = new Table();
-        items.top().left();
-        ScrollPane pane = new ScrollPane(items, Styles.smallPane);
-        pane.setFadeScrollBars(false);
-        pane.setScrollingDisabled(true, false);
-        panel.add(pane).colspan(2)
-            .width(mobile ? 330f : 500f)
-            .height(Math.max(140f, Math.min(mobile ? 300f : 460f, Core.graphics.getHeight() - 125f)));
-        panel.row();
+        Table heading = new Table();
+        heading.add(Core.bundle.get("research", "Research")).left().growX();
+        heading.button(Core.bundle.get("back", "Back"), BrowserResearchUi::close)
+            .size(mobile ? 100f : 105f, mobile ? 49f : 43f);
+        panel.add(heading).colspan(mobile ? 1 : 2).growX().row();
 
-        Table pages = new Table();
-        pages.button("<", () -> changePage(-1)).size(64f, mobile ? 48f : 40f);
-        Label counter = new Label("");
-        pages.add(counter).minWidth(135f).center();
-        pages.button(">", () -> changePage(1)).size(64f, mobile ? 48f : 40f);
-        panel.add(pages).colspan(2);
-        overlay.add(panel).center().width(mobile ? 350f : 522f);
+        Table roots = new Table();
+        roots.left();
+        for(TechNode root : TechTree.roots){
+            roots.button(root.localizedName(), () -> switchRoot(root))
+                .checked(button -> activeRoot == root)
+                .height(mobile ? 44f : 40f).minWidth(mobile ? 124f : 145f).padRight(5f)
+                .name("web-research-root-" + root.content.name);
+        }
+        panel.add(roots).colspan(mobile ? 1 : 2).left().row();
+
+        BrowserTechTreeGraph tree = new BrowserTechTreeGraph();
+        ScrollPane treePane = new ScrollPane(tree, Styles.smallPane);
+        treePane.setFadeScrollBars(false);
+        treePane.setScrollingDisabled(false, false);
+        treePane.setOverscroll(false, false);
+
+        Table details = new Table();
+        details.top().left();
+        ScrollPane infoPane = new ScrollPane(details, Styles.smallPane);
+        infoPane.setFadeScrollBars(false);
+        infoPane.setScrollingDisabled(true, false);
+
+        if(mobile){
+            panel.add(treePane).width(treeWidth).height(treeHeight).left().row();
+            panel.add(infoPane).width(detailWidth).height(detailHeight).left().row();
+        }else{
+            panel.add(treePane).width(treeWidth).height(treeHeight);
+            panel.add(infoPane).width(detailWidth).height(detailHeight);
+            panel.row();
+        }
+
+        Table actions = new Table();
+        actions.button("-", () -> changeZoom(-0.2f))
+            .size(mobile ? 52f : 60f, mobile ? 44f : 42f);
+        actions.button("+", () -> changeZoom(0.2f))
+            .size(mobile ? 52f : 60f, mobile ? 44f : 42f);
+        actions.button(Core.bundle.get("refresh", "Refresh"), BrowserResearchUi::refresh)
+            .size(mobile ? 105f : 120f, mobile ? 44f : 42f);
+        panel.add(actions).colspan(mobile ? 1 : 2).left().row();
+
+        overlay.add(panel).center();
         parent.addChild(overlay);
 
         if(menu){
-            menuItems = items;
-            menuPage = counter;
+            menuTree = tree;
+            menuTreePane = treePane;
+            menuDetails = details;
+            menuTreeWidth = treeWidth;
+            menuDetailsWidth = detailWidth;
         }else{
-            hudItems = items;
-            hudPage = counter;
+            hudTree = tree;
+            hudTreePane = treePane;
+            hudDetails = details;
+            hudTreeWidth = treeWidth;
+            hudDetailsWidth = detailWidth;
         }
     }
 
     public static void show(){
         if(!initialized || state == null || !(state.isMenu() || state.isCampaign())) return;
-        page = 0;
+        // Opening research during Erekir gameplay selects its real technology root.
+        if(state.isCampaign() && state.rules != null && state.rules.sector != null &&
+            state.rules.sector.planet.techTree != null){
+            TechNode campaignRoot = state.rules.sector.planet.techTree;
+            if(activeRoot != campaignRoot) switchRoot(campaignRoot);
+        }
         open = true;
         refresh();
         markResearchOpen(true);
+        focusSelected();
     }
 
     public static void close(){
@@ -103,81 +167,168 @@ public final class BrowserResearchUi{
         markResearchOpen(false);
     }
 
-    public static void refresh(){
-        if(!initialized) return;
-        rebuild(menuItems, menuPage);
-        rebuild(hudItems, hudPage);
-        markResearchCatalog(TechTree.all.size);
-    }
+    // Read-only state for the opt-in real-pointer Chrome navigation gate.
+    public static boolean isOpen(){ return open; }
+    public static String activeRootContent(){ return activeRoot == null ? "" : activeRoot.content.name; }
+    public static String selectedContent(){ return selected == null ? "" : selected.content.name; }
 
-    private static boolean eligible(TechNode node){
-        return node != null && node.content != null && !(node.content instanceof SectorPreset);
+    private static void switchRoot(TechNode root){
+        if(root == null) return;
+        activeRoot = root;
+        selected = root;
+        expanded.clear();
+        expanded.add(root);
+        refresh();
+        focusSelected();
     }
 
     private static int totalNodes(){
-        int count = 0;
-        for(TechNode node : TechTree.all) if(eligible(node)) count++;
-        return count;
+        int result = 0;
+        for(TechNode node : TechTree.all){
+            if(node.content != null && !(node.content instanceof SectorPreset)) result++;
+        }
+        return result;
     }
 
-    private static void changePage(int direction){
-        int totalPages = Math.max(1, (totalNodes() + pageSize - 1) / pageSize);
-        page = Math.max(0, Math.min(totalPages - 1, page + direction));
+    public static void refresh(){
+        if(!initialized || activeRoot == null) return;
+        visibleCount = 0;
+        rebuildTree(menuTree, menuTreeWidth);
+        int count = visibleCount;
+        rebuildTree(hudTree, hudTreeWidth);
+        rebuildDetails(menuDetails, menuDetailsWidth);
+        rebuildDetails(hudDetails, hudDetailsWidth);
+        markResearchCatalog(totalNodes());
+        markTree(activeRoot.name == null ? activeRoot.content.name : activeRoot.name,
+            selected == null ? "" : selected.content.name, count, TechTree.roots.size);
+    }
+
+    /**
+     * In a spatial tech graph the top-left initial scroll position is often
+     * far from the root (its Y is centered among many child branches).
+     * Reveal selected nodes after every root switch or branch expansion so
+     * desktop and portrait users never open an apparently empty graph.
+     * The native ScrollPane still owns subsequent touch drag / wheel panning.
+     */
+    private static void focusSelected(){
+        Core.app.post(() -> {
+            if(!open || selected == null) return;
+            focusNode(menuTreePane, menuTree, selected);
+            focusNode(hudTreePane, hudTree, selected);
+        });
+    }
+
+    private static void focusNode(ScrollPane pane, BrowserTechTreeGraph graph, TechNode node){
+        if(pane == null || graph == null || node == null) return;
+        pane.validate();
+        graph.validate();
+        Element element = graph.find("web-research-node-" + node.content.name);
+        if(element == null) return;
+        pane.scrollTo(element.x, element.y, element.getWidth(), element.getHeight(), true, true);
+        pane.updateVisualScroll();
+    }
+
+    private static void changeZoom(float delta){
+        graphZoom = Math.max(0.6f, Math.min(1.6f, graphZoom + delta));
         refresh();
     }
 
-    private static String description(TechNode node){
-        StringBuilder value = new StringBuilder(node.content.localizedName);
-        if(node.content.unlocked()){
-            return value.append(" - ").append(Core.bundle.get("unlocked", "Unlocked")).toString();
-        }
-        if(node.parent != null && !node.parent.content.unlocked()){
-            value.append(" - ").append(Core.bundle.get("locked", "Locked")).append(": ")
-                .append(node.parent.content.localizedName);
-        }
-        for(int i = 0; i < node.requirements.length; i++){
-            ItemStack requirement = node.requirements[i];
-            ItemStack progress = node.finishedRequirements[i];
-            int remaining = Math.max(0, requirement.amount - progress.amount);
-            if(remaining > 0){
-                value.append("  ").append(requirement.item.localizedName).append(" ")
-                    .append(remaining);
-            }
-        }
-        return value.toString();
+    private static void selectGraphNode(TechNode node){
+        selected = node;
+        if(node.children.size > 0) expanded.add(node);
+        refresh();
+        focusSelected();
     }
 
-    private static void rebuild(Table list, Label counter){
-        if(list == null || counter == null) return;
-        list.clear();
-        int total = totalNodes();
-        int pages = Math.max(1, (total + pageSize - 1) / pageSize);
-        if(page >= pages) page = pages - 1;
-        counter.setText((page + 1) + " / " + pages);
+    private static void rebuildTree(BrowserTechTreeGraph graph, float width){
+        if(graph == null) return;
+        graph.rebuild(activeRoot, expanded, graphZoom, BrowserResearchUi::selectGraphNode);
+        visibleCount = graph.nodeCount();
+    }
 
-        int index = 0;
-        for(TechNode node : TechTree.all){
-            if(!eligible(node)) continue;
-            if(index >= (page + 1) * pageSize) break;
-            if(index++ < page * pageSize) continue;
+    private static void rebuildDetails(Table details, float width){
+        if(details == null || selected == null) return;
+        details.clear();
+        details.top().left();
+        float textWidth = Math.max(170f, width - 24f);
+        TechNode node = selected;
+        UnlockableContent content = node.content;
 
-            TextButton button = list.button(description(node), () -> {
-                if(!node.content.unlocked() && BrowserCampaignResearch.canSpend(node.content)){
-                    BrowserCampaignResearch.spend(node.content);
-                    BrowserBuildPalette.refresh();
-                    Core.app.post(BrowserResearchUi::refresh);
-                }
-            }).width(mobile ? 308f : 474f).height(mobile ? 56f : 44f).get();
-            button.getLabel().setFontScale(mobile ? 0.76f : 0.83f);
-            button.getLabel().setWrap(true);
-            // Do not poll all research sectors for 64 UI buttons each frame.
-            // Purchases are guarded by canSpend() on click, so newly mined
-            // resources become spendable immediately without rebuilding UI.
-            button.setDisabled(node.content.unlocked()
-                || node.parent != null && !node.parent.content.unlocked());
-            list.row();
+        Table title = new Table();
+        if(content.uiIcon != null) title.add(new Image(content.uiIcon)).size(38f).padRight(8f);
+        Label name = new Label(content.localizedName);
+        name.setFontScale(1f);
+        title.add(name).left().growX();
+        details.add(title).width(textWidth).left().row();
+
+        details.add(content.unlocked() ?
+                Core.bundle.get("unlocked", "Unlocked") :
+                Core.bundle.get("locked", "Locked"))
+            .left().padTop(6f).row();
+
+        if(content.description != null && !content.description.isEmpty()){
+            Label description = new Label(content.description);
+            description.setFontScale(0.83f);
+            description.setWrap(true);
+            details.add(description).width(textWidth).left().padTop(7f).row();
         }
-        list.invalidateHierarchy();
+
+        if(node.parent != null){
+            details.add(Core.bundle.get("requirement.research", "Research") +
+                ": " + node.parent.content.localizedName).left().padTop(6f).row();
+        }
+
+        for(Objective objective : node.objectives){
+            if(objective == null) continue;
+            boolean complete = objectiveComplete(objective);
+            Label label = new Label((complete ? "+ " : "- ") + objective.display());
+            label.setWrap(true);
+            label.setFontScale(0.8f);
+            details.add(label).width(textWidth).left().padTop(3f).row();
+        }
+
+        if(!(content instanceof SectorPreset)){
+            for(int i = 0; i < node.requirements.length; i++){
+                ItemStack req = node.requirements[i];
+                int completed = node.finishedRequirements[i].amount;
+                details.add(req.item.localizedName + ": " +
+                    Math.min(completed, req.amount) + " / " + req.amount)
+                    .left().padTop(4f).row();
+            }
+            if(!content.unlocked()){
+                TextButton invest = details.button(Core.bundle.get("research", "Research"), () -> {
+                    if(BrowserCampaignResearch.canSpend(content)){
+                        BrowserCampaignResearch.spend(content);
+                        BrowserBuildPalette.refresh();
+                        Core.app.post(BrowserResearchUi::refresh);
+                    }
+                }).width(mobile ? Math.min(textWidth, 200f) : Math.min(textWidth, 240f))
+                    .height(mobile ? 50f : 46f).padTop(9f).left().get();
+                // Resource counts can change while this window is open. Check
+                // spendability in the callback; disable only immutable gates.
+                boolean parentLocked = node.parent != null && !node.parent.content.unlocked();
+                boolean objectivesLocked = false;
+                for(Objective objective : node.objectives){
+                    if(!objectiveComplete(objective)) objectivesLocked = true;
+                }
+                invest.setDisabled(parentLocked || objectivesLocked);
+            }
+        }else{
+            details.add(Core.bundle.get("sectors", "Sectors")).left().padTop(7f).row();
+        }
+        details.invalidateHierarchy();
+    }
+
+    private static boolean objectiveComplete(Objective objective){
+        // The Web port uses local unlock flags, not the multiplayer-host path
+        // exposed by Objective.complete() for research and produced resources.
+        if(objective instanceof mindustry.game.Objectives.Research research){
+            return research.content != null && research.content.unlocked();
+        }
+        if(objective instanceof mindustry.game.Objectives.Produce produce){
+            return produce.content != null && produce.content.unlocked();
+        }
+        return objective.complete();
     }
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-research-catalog', 'techtree-all'); document.documentElement.setAttribute('data-mindustry-research-ui', 'ready');")
@@ -188,4 +339,14 @@ public final class BrowserResearchUi{
 
     @JSBody(params = {"shown"}, script = "document.documentElement.setAttribute('data-mindustry-research-open', shown ? 'yes' : 'no');")
     private static native void markResearchOpen(boolean shown);
+
+    @JSBody(params = {"root","node","count","roots"}, script = """
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-research-layout','hierarchical-techtree');
+        r.setAttribute('data-mindustry-research-tree-root',root);
+        r.setAttribute('data-mindustry-research-tree-selected',node);
+        r.setAttribute('data-mindustry-research-tree-visible-nodes',String(count));
+        r.setAttribute('data-mindustry-research-tree-roots',String(roots));
+        """)
+    private static native void markTree(String root, String node, int count, int roots);
 }
