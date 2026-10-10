@@ -321,6 +321,10 @@
                     const campaign = root.getAttribute('data-mindustry-campaign-state');
                     return local === 'playing' || campaign === 'playing' || campaign === 'paused';
                 };
+                const pauseActive = () =>
+                    root.getAttribute('data-mindustry-campaign-state') === 'paused'
+                    || (root.getAttribute('data-mindustry-local-map-state') === 'playing'
+                        && root.getAttribute('data-mindustry-local-map-pause-state') === 'paused');
                 const inMenu = () => !inLiveSession() &&
                     (root.getAttribute('data-mindustry-gameplay-loop') || '').indexOf('menu') >= 0;
                 const syncMenu = () => {
@@ -330,7 +334,7 @@
                     // session in which the real Arc pause button opened them.
                     // A world return/resume closes the panel just like menu exit.
                     const samePause = panel.dataset.openContext === 'pause'
-                        && panel.dataset.openLoop === loop && !menu;
+                        && panel.dataset.openLoop === loop && pauseActive() && !menu;
                     const leftContext = (panel.dataset.openContext === 'menu' && !menu)
                         || (panel.dataset.openContext === 'pause' && (menu || !samePause));
                     if(leftContext && panel.style.display !== 'none'){
@@ -351,7 +355,7 @@
                 globalThis.__mindustryOpenPauseSettings = () => {
                     // Only the Arc pause overlay calls this entry point. Reject
                     // launcher/menu invocations and stay inside the game surface.
-                    if(!inLiveSession()) return;
+                    if(!inLiveSession() || !pauseActive()) return;
                     openSettings('pause');
                 };
                 back.onclick = () => {
@@ -362,7 +366,8 @@
                 new MutationObserver(syncMenu).observe(root, {
                     attributes:true,
                     attributeFilter:['data-mindustry-gameplay-loop',
-                        'data-mindustry-local-map-state', 'data-mindustry-campaign-state']
+                        'data-mindustry-local-map-state', 'data-mindustry-campaign-state',
+                        'data-mindustry-local-map-pause-state']
                 });
                 root.setAttribute('data-mindustry-settings-ui','ready');
                 root.setAttribute('data-mindustry-settings-pause-entry','ready');
