@@ -314,15 +314,26 @@
                     root.setAttribute('data-mindustry-settings-panel','closed');
                     root.setAttribute('data-mindustry-settings-context','none');
                 };
+                const inLiveSession = () => {
+                    // gameplay-loop reports the boot/menu scheduler phase, which
+                    // can remain menu-stable while a separately loaded map plays.
+                    const local = root.getAttribute('data-mindustry-local-map-state');
+                    const campaign = root.getAttribute('data-mindustry-campaign-state');
+                    return local === 'playing' || campaign === 'playing' || campaign === 'paused';
+                };
+                const inMenu = () => !inLiveSession() &&
+                    (root.getAttribute('data-mindustry-gameplay-loop') || '').indexOf('menu') >= 0;
                 const syncMenu = () => {
                     const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
-                    const menu = loop.indexOf('menu') >= 0;
+                    const menu = inMenu();
                     // In-game settings may remain open only in the same paused
                     // session in which the real Arc pause button opened them.
                     // A world return/resume closes the panel just like menu exit.
                     const samePause = panel.dataset.openContext === 'pause'
                         && panel.dataset.openLoop === loop && !menu;
-                    if(!menu && !samePause && panel.style.display !== 'none'){
+                    const leftContext = (panel.dataset.openContext === 'menu' && !menu)
+                        || (panel.dataset.openContext === 'pause' && (menu || !samePause));
+                    if(leftContext && panel.style.display !== 'none'){
                         closeSettings();
                     }
                     launch.style.display = menu && panel.style.display === 'none' ? '' : 'none';
@@ -338,8 +349,9 @@
                 };
                 launch.onclick = () => openSettings('menu');
                 globalThis.__mindustryOpenPauseSettings = () => {
-                    const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
-                    if(loop.indexOf('menu') >= 0) return;
+                    // Only the Arc pause overlay calls this entry point. Reject
+                    // launcher/menu invocations and stay inside the game surface.
+                    if(!inLiveSession()) return;
                     openSettings('pause');
                 };
                 back.onclick = () => {
@@ -349,7 +361,8 @@
 
                 new MutationObserver(syncMenu).observe(root, {
                     attributes:true,
-                    attributeFilter:['data-mindustry-gameplay-loop']
+                    attributeFilter:['data-mindustry-gameplay-loop',
+                        'data-mindustry-local-map-state', 'data-mindustry-campaign-state']
                 });
                 root.setAttribute('data-mindustry-settings-ui','ready');
                 root.setAttribute('data-mindustry-settings-pause-entry','ready');
