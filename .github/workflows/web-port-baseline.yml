@@ -471,6 +471,9 @@ jobs:
       - name: Verify Space hotkey pause and resume never freezes the browser
         run: bash scripts/verify-browser-space-pause.sh
 
+      - name: Verify Tank Fabricator construction does not freeze Erekir browser gameplay
+        run: bash scripts/verify-browser-factory-freeze.sh
+
       # verify-browser-persistence already chains campaign cold save/resume, and
       # verify-browser-locales already chains the Yandex SDK desktop/mobile lifecycle.
 
