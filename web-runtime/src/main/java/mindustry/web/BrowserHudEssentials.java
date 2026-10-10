@@ -74,6 +74,11 @@ public final class BrowserHudEssentials{
             panel.margin(5f);
             panel.labelWrap(BrowserHudEssentials::statusText).width(mobile ? 174f : 218f).left()
                 .name("web-hud-wave-status");
+            // Same eligibility predicate as vanilla HudFragment.canSkipWave(), but
+            // no network admin branch is required in Yandex single-player mode.
+            panel.button(Icon.play, () -> {
+                if(canSkipWave()) logic.skipWave();
+            }).size(40f).disabled(b -> !canSkipWave()).name("web-hud-skip-wave");
         }).left();
         waves.update(() -> {
             if(state != null && state.isGame() && (++frameCount & 31) == 0){
@@ -88,6 +93,12 @@ public final class BrowserHudEssentials{
 
         initialized = true;
         markMounted();
+    }
+
+    private static boolean canSkipWave(){
+        return state != null && state.isPlaying() && state.rules != null &&
+            state.rules.waves && state.rules.waveSending && !net.active()
+            && state.enemies == 0 && spawner != null && !spawner.isSpawning();
     }
 
     private static String statusText(){
@@ -120,7 +131,7 @@ public final class BrowserHudEssentials{
         return wave + "\n" + enemies + "\n" + Core.bundle.format("wave.waiting", remaining);
     }
 
-    @JSBody(script = "const r=document.documentElement;r.setAttribute('data-mindustry-hud-essentials','ready');r.setAttribute('data-mindustry-hud-minimap','stock-mindustry-ui-Minimap');r.setAttribute('data-mindustry-hud-minimap-overlay','stock-MiniMapFragment');r.setAttribute('data-mindustry-hud-coreitems','stock-CoreItemsDisplay');r.setAttribute('data-mindustry-hud-status','game-state');")
+    @JSBody(script = "const r=document.documentElement;r.setAttribute('data-mindustry-hud-essentials','ready');r.setAttribute('data-mindustry-hud-minimap','stock-mindustry-ui-Minimap');r.setAttribute('data-mindustry-hud-minimap-overlay','stock-MiniMapFragment');r.setAttribute('data-mindustry-hud-coreitems','stock-CoreItemsDisplay');r.setAttribute('data-mindustry-hud-status','game-state');r.setAttribute('data-mindustry-hud-skip-wave','stock-rule-guarded');")
     private static native void markMounted();
 
     @JSBody(params = {"textured", "wave", "enemies"}, script = "const r=document.documentElement;r.setAttribute('data-mindustry-hud-minimap-texture',textured?'ready':'pending');r.setAttribute('data-mindustry-hud-live-wave',String(wave));r.setAttribute('data-mindustry-hud-live-enemies',String(enemies));")
