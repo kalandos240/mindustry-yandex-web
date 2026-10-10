@@ -1,6 +1,7 @@
 package mindustry.web;
 
 import arc.*;
+import mindustry.game.EventType.*;
 import arc.math.geom.*;
 import mindustry.ai.types.*;
 import mindustry.content.*;
@@ -26,7 +27,7 @@ import static mindustry.Vars.*;
  */
 public final class BrowserRtsCommandSmoke{
     private static boolean checked, enabled, done, shiftHeld, groupMode;
-    private static int stage, frames;
+    private static int stage, frames, moveEvents, attackEvents;
     private static Unit probe, second;
     private static float targetX, targetY, targetScreenX, targetScreenY;
 
@@ -52,6 +53,8 @@ public final class BrowserRtsCommandSmoke{
 
         if(stage == 0){
             if(!player.unit().isAdded()) return;
+            Events.run(Trigger.unitCommandPosition, () -> moveEvents++);
+            Events.run(Trigger.unitCommandAttack, () -> attackEvents++);
             probe = UnitTypes.dagger.create(player.team());
             probe.set(player.unit().x + 24f, player.unit().y + 12f);
             probe.add();
@@ -178,7 +181,9 @@ public final class BrowserRtsCommandSmoke{
                     ", expected=" + targetX + "," + targetY +
                     ", actual=" + (ai == null ? "no-CommandAI" : ai.targetPos) +
                     ", mouse=" + Core.input.mouseX() + "," + Core.input.mouseY() +
-                    ", hoveredUI=" + Core.scene.hasMouse());
+                    ", hoveredUI=" + Core.scene.hasMouse() +
+                    ", positionEvents=" + moveEvents +
+                    ", attackEvents=" + attackEvents);
             }
         }
     }
