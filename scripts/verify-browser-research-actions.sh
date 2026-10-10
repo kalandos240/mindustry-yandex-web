@@ -42,6 +42,8 @@ for scenario in menu campaign; do
     --require "$ready" \
     --require 'data-mindustry-research-ui="ready"' \
     --require 'data-mindustry-research-catalog="techtree-all"' \
+    --require 'data-mindustry-research-layout="hierarchical-techtree"' \
+    --require 'data-mindustry-research-tree-root="serpulo"' \
     --require 'data-mindustry-research-tech-nodes="' \
     --after-ready-eval "(async()=>{
       const canvas=document.getElementById('mindustry-canvas');
@@ -61,5 +63,8 @@ for scenario in menu campaign; do
     })()" \
     --after-ready-require 'data-mindustry-research-pointer-smoke="ready"' > "$dom"
   grep -Eq 'data-mindustry-research-tech-nodes="[1-9][0-9]+"' "$dom"
-  echo "Production $scenario: real canvas pointer opened full TechTree research list PASS"
+  grep -Eq 'data-mindustry-research-tree-roots="[2-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-research-tree-visible-nodes="[1-9][0-9]*"' "$dom"
+  grep -Fq 'data-mindustry-research-tree-selected="core-shard"' "$dom"
+  echo "Production $scenario: real canvas pointer opened original hierarchical Serpulo TechTree with nodes and requirements PASS"
 done
