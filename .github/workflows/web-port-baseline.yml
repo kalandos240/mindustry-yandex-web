@@ -398,6 +398,9 @@ jobs:
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
 
+      - name: Verify native RTS selection and move order through browser input
+        run: bash scripts/verify-browser-rts-command.sh
+
       - name: Verify all Serpulo TechTree sectors through Weathered Channels
         run: bash scripts/verify-browser-campaign-capture.sh
 
