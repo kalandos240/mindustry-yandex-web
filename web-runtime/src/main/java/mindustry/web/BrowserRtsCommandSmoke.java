@@ -155,7 +155,7 @@ public final class BrowserRtsCommandSmoke{
                         || !second.type.allowStance(second, UnitStance.holdFire)){
                         throw new IllegalStateException("Stock Daggers do not support Hold Fire stance");
                     }
-                    Binding.unitStanceHoldFire.value = new KeyBind.Axis(KeyCode.f);
+                    Binding.unitStanceHoldFire.value = new KeyBind.Axis(KeyCode.k);
                     dispatchStanceKey(true);
                     stage = 8;
                     frames = 0;
@@ -335,7 +335,7 @@ public final class BrowserRtsCommandSmoke{
 
     @JSBody(params = {"down"}, script = """
         window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', {
-            code:'KeyF', key:'f', bubbles:true, cancelable:true, repeat:false
+            code:'KeyK', key:'k', bubbles:true, cancelable:true, repeat:false
         }));
         """)
     private static native void dispatchStanceKey(boolean down);
@@ -420,7 +420,7 @@ public final class BrowserRtsCommandSmoke{
     @JSBody(params = {"firstId", "secondId"}, script = """
         const root = document.documentElement;
         root.setAttribute('data-mindustry-rts-stance-smoke','on-then-off');
-        root.setAttribute('data-mindustry-rts-stance-source','dom-key-f-native-placementfragment-keybind');
+        root.setAttribute('data-mindustry-rts-stance-source','dom-key-k-native-placementfragment-keybind');
         root.setAttribute('data-mindustry-rts-stance-unit-ids',String(firstId)+','+String(secondId));
         root.setAttribute('data-mindustry-rts-stance-count','2');
         """)
