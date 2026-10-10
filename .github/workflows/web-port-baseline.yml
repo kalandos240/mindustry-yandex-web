@@ -400,6 +400,9 @@ jobs:
       - name: Verify native RTS selection and move order through browser input
         run: bash scripts/verify-browser-rts-command.sh
 
+      - name: Verify native mobile RTS command button, unit tap and move order
+        run: bash scripts/verify-browser-mobile-rts.sh
+
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
 
