@@ -185,7 +185,7 @@ public final class BrowserHudEssentials{
         if(objective instanceof mindustry.game.MapObjectives.TimerObjective o && o.text != null){
             String key = o.text.startsWith("@") ? o.text.substring(1) : o.text;
             return o.text.startsWith("@")
-                ? state.mapLocales.getProperty(key, Core.bundle.get(key, key)) : key;
+                ? (state.mapLocales.containsProperty(key) ? state.mapLocales.getProperty(key) : Core.bundle.get(key, key)) : key;
         }
         return objective.typeName();
     }
