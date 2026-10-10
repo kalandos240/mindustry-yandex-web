@@ -25,16 +25,17 @@ import static mindustry.Vars.*;
  * Neither probe runs in a normal Yandex release.
  */
 public final class BrowserRtsCommandSmoke{
-    private static boolean checked, enabled, done, shiftHeld;
+    private static boolean checked, enabled, done, shiftHeld, groupMode;
     private static int stage, frames;
-    private static Unit probe;
+    private static Unit probe, second;
     private static float targetX, targetY, targetScreenX, targetScreenY;
 
     private BrowserRtsCommandSmoke(){}
 
     public static boolean requested(){
         if(!checked){
-            enabled = queryRequested();
+            groupMode = queryGroupRequested();
+            enabled = queryRequested() || groupMode;
             checked = true;
             if(enabled) markStage("requested");
         }
@@ -54,6 +55,14 @@ public final class BrowserRtsCommandSmoke{
             probe = UnitTypes.dagger.create(player.team());
             probe.set(player.unit().x + 24f, player.unit().y + 12f);
             probe.add();
+            if(groupMode){
+                second = UnitTypes.dagger.create(player.team());
+                second.set(player.unit().x + 36f, player.unit().y + 20f);
+                second.add();
+                if(!(second.controller() instanceof CommandAI) || !second.isCommandable()){
+                    throw new IllegalStateException("Stock RTS group smoke requires a second controllable Dagger");
+                }
+            }
             if(!(probe.controller() instanceof CommandAI) || !probe.isCommandable()){
                 throw new IllegalStateException("Real RTS smoke requires a stock controllable Dagger");
             }
@@ -67,7 +76,9 @@ public final class BrowserRtsCommandSmoke{
             return;
         }
 
-        if(!probe.isAdded() || !probe.isValid()) throw new IllegalStateException("RTS smoke test unit despawned");
+        if(!probe.isAdded() || !probe.isValid() || (groupMode && (!second.isAdded() || !second.isValid()))){
+            throw new IllegalStateException("RTS smoke test unit despawned");
+        }
 
         if(stage == 1){
             if(control.input.commandMode){
@@ -85,7 +96,8 @@ public final class BrowserRtsCommandSmoke{
         }
 
         if(stage == 2){
-            if(control.input.selectedUnits.contains(probe)){
+            if(control.input.selectedUnits.contains(probe) &&
+                (!groupMode || control.input.selectedUnits.contains(second))){
                 dispatchKey(false);
                 // The world can be much larger than the visible canvas.
                 // Use the actual camera center as the DOM target instead of
@@ -143,12 +155,18 @@ public final class BrowserRtsCommandSmoke{
 
         if(stage == 3){
             if(probe.controller() instanceof CommandAI ai && ai.targetPos != null
-                && ai.targetPos.dst(targetX, targetY) < 28f){
-                done = true;
-                releaseShift();
-                markCommanded(probe.id, targetX, targetY, ai.targetPos.x, ai.targetPos.y,
-                    control.input.selectedUnits.size);
-                return;
+                && ai.targetPos.dst(targetX, targetY) < 48f){
+                boolean bothCommanded = !groupMode ||
+                    (second.controller() instanceof CommandAI other &&
+                        other.targetPos != null && other.targetPos.dst(targetX, targetY) < 48f);
+                if(bothCommanded){
+                    done = true;
+                    releaseShift();
+                    markCommanded(probe.id, targetX, targetY, ai.targetPos.x, ai.targetPos.y,
+                        control.input.selectedUnits.size);
+                    if(groupMode) markGroupCommanded(probe.id, second.id, control.input.selectedUnits.size);
+                    return;
+                }
             }
             if(++frames > 180){
                 releaseShift();
@@ -177,6 +195,9 @@ public final class BrowserRtsCommandSmoke{
         }));
         """)
     private static native void dispatchShift(boolean down);
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryRtsGroupSmoke') === '1';")
+    private static native boolean queryGroupRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryRtsCommandSmoke') === '1';")
     private static native boolean queryRequested();
@@ -215,4 +236,14 @@ public final class BrowserRtsCommandSmoke{
         root.setAttribute('data-mindustry-rts-selected-count',String(count));
         """)
     private static native void markCommanded(int id, float tx, float ty, float ax, float ay, int count);
+
+    @JSBody(params = {"firstId", "secondId", "count"}, script = """
+        const root = document.documentElement;
+        root.setAttribute('data-mindustry-rts-group-smoke','commanded');
+        root.setAttribute('data-mindustry-rts-group-source','dom-key-g-and-single-right-click');
+        root.setAttribute('data-mindustry-rts-group-unit-ids',String(firstId)+','+String(secondId));
+        root.setAttribute('data-mindustry-rts-group-selected-count',String(count));
+        root.setAttribute('data-mindustry-rts-group-orders','2');
+        """)
+    private static native void markGroupCommanded(int firstId, int secondId, int count);
 }
