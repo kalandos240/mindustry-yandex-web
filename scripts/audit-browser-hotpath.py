@@ -386,6 +386,11 @@ require(RESEARCH_UI, "for(TechNode root : TechTree.roots)", "vanilla Serpulo/Ere
 require(GRAPH_UI, "for(TechNode child : node.children)", "actual TechTree branch traversal")
 require(GRAPH_UI, "Lines.line(", "connected research technology graph")
 require(GRAPH_UI, "float getPrefWidth()", "two-axis scrollable research technology map")
+require(GRAPH_UI, "ObjectMap<TechNode, Button> buttons", "cached technology actors prevent quadratic scene searches")
+require(GRAPH_UI, "buttons.get(node.parent)", "O(1) connector lookup for every frame")
+require(GRAPH_UI, "buttons.get(node)", "O(1) research graph layout lookup")
+if 'find("web-research-node-' in GRAPH_UI:
+    raise SystemExit("Graph must not perform quadratic Scene.find() during draw")
 require(RESEARCH_UI, "changeZoom(float delta)", "research graph zoom controls")
 require(RESEARCH_UI, "treePane.addCaptureListener(new InputListener()", "mouse wheel research zoom")
 require(RESEARCH_UI, "treePane.addCaptureListener(new ElementGestureListener()", "two-finger research pinch zoom")
