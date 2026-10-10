@@ -3,6 +3,7 @@ package mindustry.web;
 import arc.*;
 import arc.math.geom.*;
 import arc.scene.*;
+import arc.scene.ui.*;
 import org.teavm.jso.JSBody;
 
 import static mindustry.Vars.*;
@@ -57,17 +58,34 @@ public final class BrowserResearchTreeSmoke{
         if(element == null) return;
         Vec2 stagePoint = element.localToStageCoordinates(new Vec2(element.getWidth() * 0.5f, element.getHeight() * 0.5f));
         Element hit = Core.scene.hit(stagePoint.x, stagePoint.y, true);
-        if(hit != element && (hit == null || !hit.isDescendantOf(element))) return;
+        if(hit != element && (hit == null || !hit.isDescendantOf(element))){
+            // A spatial technology graph can put a real node outside the
+            // scroll viewport. Move only the STOCK ScrollPane camera, then
+            // try the same actual DOM pointer tap on the following frame.
+            // Never mutate the TechTree, clicked selection or unlock flags.
+            if(element.parent instanceof ScrollPane){ // No direct graph? kept for UI variants.
+                ((ScrollPane)element.parent).validate();
+            }else if(element.parent != null && element.parent.parent instanceof ScrollPane pane){
+                pane.validate();
+                element.parent.validate();
+                pane.scrollTo(element.x, element.y, element.getWidth(), element.getHeight(), true, true);
+                pane.updateVisualScroll();
+            }
+            markStage(stage, "scroll-to-" + name);
+            return;
+        }
         Vec2 projected = Core.scene.getViewport().project(stagePoint);
         tapX = projected.x;
         tapY = projected.y;
         dispatchPointer("pointerdown", tapX, tapY);
         stage = nextStage;
+        markStage(stage, "pressed-" + name);
     }
 
     private static void up(int nextStage){
         dispatchPointer("pointerup", tapX, tapY);
         stage = nextStage;
+        markStage(stage, "released");
     }
 
     private static boolean requested(){
@@ -92,6 +110,13 @@ public final class BrowserResearchTreeSmoke{
         }));
         """)
     private static native void dispatchPointer(String type, float x, float y);
+
+    @JSBody(params={"stage","detail"},script = """
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-research-tree-stage',String(stage));
+        root.setAttribute('data-mindustry-research-tree-detail',detail);
+        """)
+    private static native void markStage(int stage,String detail);
 
     @JSBody(script = """
         const root=document.documentElement;
