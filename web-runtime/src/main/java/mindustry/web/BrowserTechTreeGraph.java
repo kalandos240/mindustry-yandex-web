@@ -63,14 +63,14 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
             // Stock Mindustry ResearchDialog uses the small Styles.nodei
             // image button with a yellow border for researched technologies
             // and a red border for locked dependencies. No duplicate labels.
-            ImageButton button = node.content.uiIcon == null
+            boolean parentReady = node.parent == null || node.parent.content.unlocked();
+            ImageButton button = !parentReady || node.content.uiIcon == null
                 ? new ImageButton(Icon.lock, Styles.nodei)
                 : new ImageButton(node.content.uiIcon, Styles.nodei);
             button.name = "web-research-node-" + node.content.name;
             button.resizeImage(32f * zoom);
             button.getImage().setScaling(Scaling.fit);
             boolean unlocked = node.content.unlocked();
-            boolean parentReady = node.parent == null || node.parent.content.unlocked();
             button.getStyle().up = unlocked ? Tex.buttonOver :
                 parentReady ? Tex.button : Tex.buttonRed;
             if(!unlocked) button.getImage().setColor(parentReady ? Color.gray : Pal.gray);
