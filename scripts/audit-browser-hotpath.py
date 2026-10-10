@@ -315,10 +315,14 @@ require(CAMPAIGN_UI, "final int[] campaignUiRefreshFrame = {7};", "campaign UI r
 require(CAMPAIGN_UI, "int frame = ++campaignUiRefreshFrame[0];", "campaign UI refresh throttle")
 require(CAMPAIGN_UI, "if((frame & 7) != 0) return;", "campaign text refresh throttle")
 require(CAMPAIGN_UI, "if((frame & 31) == 0)", "campaign unlock refresh throttle")
-if CAMPAIGN_UI.count("campaignProgress.update(() -> {") != 1:
+if CAMPAIGN_UI.count("campaignUiTick.update(() -> {") != 1:
     failures.append("campaign UI: expected one consolidated Serpulo updater")
-if CAMPAIGN_UI.count("erekirProgress.update(() -> {") != 1:
+if CAMPAIGN_UI.count("erekirUiTick.update(() -> {") != 1:
     failures.append("campaign UI: expected one consolidated Erekir updater")
+require(CAMPAIGN_UI, "campaignUiTick.touchable = Touchable.disabled", "hidden campaign selector metadata keeps updating on native home")
+require(CAMPAIGN_UI, "erekirUiTick.touchable = Touchable.disabled", "hidden Erekir progression metadata keeps updating on native home")
+require(CAMPAIGN_UI, "ui.menuGroup.addChild(campaignUiTick)", "Serpulo updater is not paused by hidden Play submenu")
+require(CAMPAIGN_UI, "ui.menuGroup.addChild(erekirUiTick)", "Erekir updater is not paused by hidden Play submenu")
 
 # WebAudio saturation and decode cache are explicitly bounded on mobile.
 require(BROWSER_AUDIO, "if((++settingsPoll & 31) == 0)", "browser audio settings cadence")
