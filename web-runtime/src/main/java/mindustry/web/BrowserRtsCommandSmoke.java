@@ -92,10 +92,13 @@ public final class BrowserRtsCommandSmoke{
                 // assuming a +68 world-unit move remains on-screen at every
                 // desktop viewport/zoom. Only ordinary mouse input creates
                 // the order; this code never writes the CommandAI target.
+                // Use a meaningful travel distance: a target only ~10px from
+                // the selected Dagger can be reached and cleared by CommandAI
+                // before the next frame observes its targetPos.
                 targetX = Math.max(16f, Math.min((world.width() - 2) * tilesize,
-                    Core.camera.position.x + Math.min(24f, Core.camera.width / 8f)));
+                    Core.camera.position.x + Core.camera.width * 0.26f));
                 targetY = Math.max(16f, Math.min((world.height() - 2) * tilesize,
-                    Core.camera.position.y + Math.min(12f, Core.camera.height / 8f)));
+                    Core.camera.position.y + Core.camera.height * 0.14f));
                 Vec2 screen = Core.camera.project(new Vec2(targetX, targetY));
                 if(screen.x < 48f || screen.x > Core.graphics.getWidth() - 48f
                     || screen.y < 48f || screen.y > Core.graphics.getHeight() - 48f){
@@ -128,7 +131,15 @@ public final class BrowserRtsCommandSmoke{
             }
             if(++frames > 180){
                 releaseShift();
-                throw new IllegalStateException("DOM right-click did not set stock CommandAI move target");
+                CommandAI ai = probe.controller() instanceof CommandAI command ? command : null;
+                throw new IllegalStateException("DOM right-click did not leave an observable stock CommandAI move target" +
+                    ": commandMode=" + control.input.commandMode +
+                    ", selected=" + control.input.selectedUnits.size +
+                    ", probe=" + probe.x + "," + probe.y +
+                    ", expected=" + targetX + "," + targetY +
+                    ", actual=" + (ai == null ? "no-CommandAI" : ai.targetPos) +
+                    ", mouse=" + Core.input.mouseX() + "," + Core.input.mouseY() +
+                    ", hoveredUI=" + Core.scene.hasMouse());
             }
         }
     }
