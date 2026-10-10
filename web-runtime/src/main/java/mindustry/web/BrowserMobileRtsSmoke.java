@@ -58,7 +58,7 @@ public final class BrowserMobileRtsSmoke{
             TextButton[] found = {null};
             Vec2[] pos = {null};
             int[] buttons = {0}, matches = {0}, visibleMatches = {0}, hitMatches = {0};
-            StringBuilder samples = new StringBuilder();
+            StringBuilder samples = new StringBuilder(), hitDetails = new StringBuilder();
             String commandLabel = Core.bundle.get("command");
             Core.scene.root.forEach(actor -> {
                 if(!(actor instanceof TextButton button)) return;
@@ -69,13 +69,30 @@ public final class BrowserMobileRtsSmoke{
                 matches[0]++;
                 if(!button.visible) return;
                 visibleMatches[0]++;
-                Vec2 stagePos = button.localToStageCoordinates(new Vec2(
-                    button.getWidth() / 2f, button.getHeight() / 2f));
-                Element top = Core.scene.hit(stagePos.x, stagePos.y, true);
-                if(top == button || (top != null && top.isDescendantOf(button))){
-                    hitMatches[0]++;
-                    found[0] = button;
-                    pos[0] = stagePos;
+                // A transparent Arc actor can overlap only the middle of a
+                // mobile button. Scan several points inside the *real* button,
+                // accepting only hits on this button or its descendants.
+                float[] locations = {0.5f, 0.25f, 0.75f};
+                for(float fy : locations){
+                    for(float fx : locations){
+                        Vec2 stagePos = button.localToStageCoordinates(new Vec2(
+                            button.getWidth() * fx, button.getHeight() * fy));
+                        Element top = Core.scene.hit(stagePos.x, stagePos.y, true);
+                        if(hitDetails.length() < 650){
+                            hitDetails.append('[').append(stagePos.x).append(',')
+                                .append(stagePos.y).append(" button=")
+                                .append(button.getWidth()).append('x').append(button.getHeight())
+                                .append(" top=").append(top == null ? "none" : top.getClass().getSimpleName())
+                                .append(" parent=").append(button.parent == null ? "none" :
+                                    button.parent.getClass().getSimpleName()).append(']');
+                        }
+                        if(top == button || (top != null && top.isDescendantOf(button))){
+                            hitMatches[0]++;
+                            found[0] = button;
+                            pos[0] = stagePos;
+                            return;
+                        }
+                    }
                 }
             });
 
@@ -89,7 +106,8 @@ public final class BrowserMobileRtsSmoke{
                         ", sceneInputUiChildren=" + (control.input.uiGroup == null ? -1 :
                             control.input.uiGroup.getChildren().size) +
                         ", hudGroup=" + (ui.hudGroup == null ? "missing" : ui.hudGroup.getChildren().size) +
-                        ", samples=" + samples);
+                        ", samples=" + samples + ", hitDetails=" + hitDetails +
+                        ", scene=" + Core.scene.getWidth() + "x" + Core.scene.getHeight());
                 return;
             }
             Vec2 screen = Core.scene.getViewport().project(pos[0]);
