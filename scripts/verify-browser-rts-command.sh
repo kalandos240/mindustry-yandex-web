@@ -101,7 +101,7 @@ echo "RTS rectangle: DOM Shift + real left-button drag -> stock DesktopInput sel
 
 # Fourth independent Maze session validates original UnitStance callbacks
 # in PlacementFragment. Hold Fire is unbound by default; the CI-only smoke
-# temporarily sets its stock keybind to F, then uses actual DOM keydown/up.
+# temporarily sets its stock keybind to K, then uses actual DOM keydown/up.
 # Both Daggers must independently show on and off in stock CommandAI.stances.
 stance_profile="/tmp/mindustry-rts-stance-profile"
 stance_dom="/tmp/mindustry-rts-stance.html"
@@ -118,9 +118,9 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-local-map-loop="live"' \
   --require 'data-mindustry-hud-commands="stock-PlacementFragment"' \
   --require 'data-mindustry-rts-stance-smoke="on-then-off"' \
-  --require 'data-mindustry-rts-stance-source="dom-key-f-native-placementfragment-keybind"' \
+  --require 'data-mindustry-rts-stance-source="dom-key-k-native-placementfragment-keybind"' \
   --require 'data-mindustry-rts-stance-count="2"' \
   --require 'data-mindustry-network="local-only"' > "$stance_dom"
 
 grep -Eq 'data-mindustry-rts-stance-unit-ids="[0-9]+,[0-9]+"' "$stance_dom"
-echo "RTS stance: DOM Shift+G -> stock PlacementFragment KeyF -> two stock CommandAI Hold Fire on -> KeyF again -> both off PASS"
+echo "RTS stance: DOM Shift+G -> stock PlacementFragment KeyK -> two stock CommandAI Hold Fire on -> KeyK again -> both off PASS"
