@@ -214,6 +214,8 @@ require((WEB_JAVA / "BrowserStockDatabaseUi.java").read_text(encoding="utf-8"),
     "public static boolean isOpen()", "database overlay exposes live visibility")
 require((ROOT / "scripts/verify-browser-research-actions.sh").read_text(encoding="utf-8"),
     'data-mindustry-research-escape="passed"', "real Chrome menu and campaign Escape overlay regressions")
+require((ROOT / "scripts/verify-browser-locales.sh").read_text(encoding="utf-8"),
+    'data-mindustry-database-escape="passed"', "real Chrome native database Escape close regression")
 require(CONTROL_PAUSE, 'ui.paused.show();', "unsafe desktop Escape fragment is removed")
 FACTORY_FREEZE = (WEB_JAVA / "BrowserFactoryFreezeSmoke.java").read_text(encoding="utf-8")
 CONTROL_PATH_WEB = (ROOT / "scripts/patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")
