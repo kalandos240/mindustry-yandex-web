@@ -28,7 +28,7 @@ text = text[:start] + """            // Web: Space pause/resume belongs to Brows
 # frontend only has UI.loadSync() and a native browser-safe Pause view.
 # Accessing ui.restart/ui.paused here throws on the main RAF thread.
 escapeStart = "            if((input instanceof DesktopInput ? Core.input.keyTap(Binding.menu)"
-escapeEnd = "            if(!mobile && Core.input.keyTap(Binding.screenshot)"
+escapeEnd = "            // Web/Yandex: the desktop whole-map screenshot hotkey is omitted."
 if text.count(escapeStart) != 1 or text.count(escapeEnd) != 1:
     raise SystemExit("Pinned stock Escape/menu handler changed upstream")
 begin = text.index(escapeStart)
