@@ -1,5 +1,6 @@
 package mindustry.web;
 
+import arc.*;
 import arc.backend.web.*;
 import arc.input.*;
 import org.teavm.jso.*;
