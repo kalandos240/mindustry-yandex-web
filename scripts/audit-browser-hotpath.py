@@ -426,6 +426,13 @@ require(RESEARCH_UI, "BrowserBuildPalette.refresh()", "build palette refresh on 
 require(RESEARCH_UI, "for(TechNode root : TechTree.roots)", "vanilla Serpulo/Erekir research roots")
 require(GRAPH_UI, "for(TechNode child : node.children)", "actual TechTree branch traversal")
 require(GRAPH_UI, "Lines.line(", "connected research technology graph")
+require(GRAPH_UI, "new BranchTreeLayout()", "stock Mindustry ResearchDialog branch layout")
+require(GRAPH_UI, "TreeLocation.top", "upper research branches")
+require(GRAPH_UI, "TreeLocation.bottom", "lower research branches")
+require(GRAPH_UI, "Arrays.copyOfRange(original", "vanilla split-root placement")
+require(GRAPH_UI, "Lines.line(sx, bendY, ex, bendY)", "orthogonal top/bottom connectors")
+if "private float place(TechNode node, int depth)" in GRAPH_UI:
+    failures.append("research: obsolete left-to-right leaf layout is still present")
 require(GRAPH_UI, "Styles.nodei", "same ImageButton style as original ResearchDialog")
 require(GRAPH_UI, "Tex.buttonRed", "stock red locked research borders")
 require(GRAPH_UI, "baseNodeWidth = 46f", "icon-sized technology tree nodes")

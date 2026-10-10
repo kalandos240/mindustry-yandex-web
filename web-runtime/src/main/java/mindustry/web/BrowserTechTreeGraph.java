@@ -13,6 +13,10 @@ import mindustry.content.TechTree.*;
 import mindustry.ui.*;
 import mindustry.graphics.*;
 import mindustry.gen.*;
+import mindustry.ui.layout.*;
+import mindustry.ui.layout.TreeLayout.*;
+import mindustry.ui.layout.BranchTreeLayout.TreeLocation;
+import java.util.Arrays;
 
 /**
  * Scrollable orthogonal tech graph built from original TechNode.parent/children.
@@ -35,7 +39,7 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
     private Cons<TechNode> clicked;
     private float zoom = 1f, preferredWidth = 300f, preferredHeight = 300f;
     private float nodeWidth, nodeHeight, column, row;
-    private int leaves, maxDepth;
+    private float minX, minY, maxX, maxY;
 
     public void rebuild(TechNode root, ObjectSet<TechNode> expanded,
                         float zoom, Cons<TechNode> clicked){
@@ -47,17 +51,44 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
         coordinates.clear();
         buttons.clear();
         visible.clear();
-        leaves = 0;
-        maxDepth = 0;
         nodeWidth = baseNodeWidth * zoom;
         nodeHeight = baseNodeHeight * zoom;
         column = baseColumn * zoom;
         row = baseRow * zoom;
-
         if(root == null) return;
-        place(root, 0);
-        preferredWidth = margin * 2f + maxDepth * column + nodeWidth;
-        preferredHeight = margin * 2f + Math.max(1, leaves) * row;
+
+        // Same two-sided BranchTreeLayout used by pinned vanilla ResearchDialog:
+        // technologies branch above/below a centered root, not rightward in rows.
+        LayoutNode branchRoot = makeLayout(root, null);
+        LayoutNode[] original = branchRoot.children;
+        int split = (original.length + 1) / 2;
+        LayoutNode[] upper = Arrays.copyOfRange(original, 0, split);
+        LayoutNode[] lower = Arrays.copyOfRange(original, split, original.length);
+
+        branchRoot.children = upper;
+        BranchTreeLayout top = new BranchTreeLayout();
+        top.gapBetweenLevels = Math.max(2f, row - nodeHeight);
+        top.gapBetweenNodes = Math.max(2f, column - nodeWidth);
+        top.rootLocation = TreeLocation.top;
+        top.layout(branchRoot);
+        float previousY = branchRoot.y;
+        if(lower.length > 0){
+            branchRoot.children = lower;
+            branchRoot.cachedWidth = -1f;
+            BranchTreeLayout bottom = new BranchTreeLayout();
+            bottom.gapBetweenLevels = top.gapBetweenLevels;
+            bottom.gapBetweenNodes = top.gapBetweenNodes;
+            bottom.rootLocation = TreeLocation.bottom;
+            bottom.layout(branchRoot);
+            shift(upper, branchRoot.y - previousY);
+        }
+        branchRoot.children = original;
+        minX = minY = Float.POSITIVE_INFINITY;
+        maxX = maxY = Float.NEGATIVE_INFINITY;
+        measureLayout(branchRoot);
+        preferredWidth = margin * 2f + maxX - minX + nodeWidth;
+        preferredHeight = margin * 2f + maxY - minY + nodeHeight;
+        cacheCoordinates(branchRoot);
         for(TechNode node : visible){
             Vec2 point = coordinates.get(node);
             if(point == null) continue;
@@ -85,27 +116,51 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
         invalidateHierarchy();
     }
 
-    private float place(TechNode node, int depth){
-        if(node == null) return 0;
-        maxDepth = Math.max(maxDepth, depth);
-        visible.add(node);
-        float logicalRow;
-        if(expanded.contains(node) && node.children.size > 0){
-            float first = -1, last = -1;
-            for(TechNode child : node.children){
-                float y = place(child, depth + 1);
-                if(first < 0) first = y;
-                last = y;
-            }
-            logicalRow = (first + last) * 0.5f;
-        }else{
-            logicalRow = leaves++;
+    private static final class LayoutNode extends TreeNode<LayoutNode>{
+        final TechNode content;
+
+        LayoutNode(TechNode content, LayoutNode parent, float size){
+            this.content = content;
+            this.parent = parent;
+            width = height = size;
         }
-        // Coordinates are converted to bottom-left scene origin after all
-        // leaves are placed, ensuring the same layout on mobile and desktop.
-        coordinates.put(node, new Vec2(margin + depth * column + nodeWidth / 2f,
-            logicalRow));
-        return logicalRow;
+    }
+
+    private LayoutNode makeLayout(TechNode node, LayoutNode parent){
+        LayoutNode result = new LayoutNode(node, parent, nodeWidth);
+        visible.add(node);
+        if(expanded.contains(node) && node.children.size > 0){
+            result.children = new LayoutNode[node.children.size];
+            int i = 0;
+            for(TechNode child : node.children){
+                result.children[i++] = makeLayout(child, result);
+            }
+        }else{
+            result.children = new LayoutNode[0];
+        }
+        return result;
+    }
+
+    private void shift(LayoutNode[] children, float amount){
+        for(LayoutNode child : children){
+            child.y += amount;
+            shift(child.children, amount);
+        }
+    }
+
+    private void measureLayout(LayoutNode node){
+        minX = Math.min(minX, node.x);
+        maxX = Math.max(maxX, node.x);
+        minY = Math.min(minY, node.y);
+        maxY = Math.max(maxY, node.y);
+        for(LayoutNode child : node.children) measureLayout(child);
+    }
+
+    private void cacheCoordinates(LayoutNode node){
+        coordinates.put(node.content, new Vec2(
+            margin + node.x - minX + nodeWidth * 0.5f,
+            margin + node.y - minY + nodeHeight * 0.5f));
+        for(LayoutNode child : node.children) cacheCoordinates(child);
     }
 
     public int nodeCount(){
@@ -124,17 +179,13 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
 
     @Override
     public void layout(){
-        // Convert logical top-to-bottom row indices to scene Y positions.
-        // This is idempotent because the coordinate is set in rebuild and
-        // updated only once when new layout data has arrived.
+        // Position from the cached original Mindustry layout, O(N) on rebuild.
         for(TechNode node : visible){
             Vec2 point = coordinates.get(node);
-            if(point == null) continue;
-            float centerY = preferredHeight - margin - (point.y + 0.5f) * row;
             Button button = buttons.get(node);
-            if(button != null){
+            if(button != null && point != null){
                 button.setPosition(point.x - nodeWidth * 0.5f,
-                    centerY - nodeHeight * 0.5f);
+                    point.y - nodeHeight * 0.5f);
             }
         }
     }
@@ -150,14 +201,19 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
                 Button fromActor = buttons.get(node.parent);
                 Button toActor = buttons.get(node);
                 if(fromActor == null || toActor == null) continue;
-                float sx = getX(Align.left) + fromActor.getX(Align.left) + fromActor.getWidth();
-                float ex = getX(Align.left) + toActor.getX(Align.left);
-                float sy = getY(Align.bottom) + fromActor.getY(Align.bottom) + fromActor.getHeight() * 0.5f;
-                float ey = getY(Align.bottom) + toActor.getY(Align.bottom) + toActor.getHeight() * 0.5f;
-                float bend = (sx + ex) * 0.5f;
-                Lines.line(sx, sy, bend, sy);
-                Lines.line(bend, sy, bend, ey);
-                Lines.line(bend, ey, ex, ey);
+                float sx = getX(Align.left) + fromActor.getX() + fromActor.getWidth() * 0.5f;
+                float ex = getX(Align.left) + toActor.getX() + toActor.getWidth() * 0.5f;
+                float y1 = fromActor.getY() + fromActor.getHeight() * 0.5f;
+                float y2 = toActor.getY() + toActor.getHeight() * 0.5f;
+                boolean upwards = y2 >= y1;
+                float sy = getY(Align.bottom) + fromActor.getY() +
+                    (upwards ? fromActor.getHeight() : 0f);
+                float ey = getY(Align.bottom) + toActor.getY() +
+                    (upwards ? 0f : toActor.getHeight());
+                float bendY = (sy + ey) * 0.5f;
+                Lines.line(sx, sy, sx, bendY);
+                Lines.line(sx, bendY, ex, bendY);
+                Lines.line(ex, bendY, ex, ey);
             }
             Draw.reset();
         }
