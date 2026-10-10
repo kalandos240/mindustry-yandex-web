@@ -92,7 +92,6 @@ public final class BrowserUiRuntime{
         buildLocalHudControls();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
-        installResearchMenuEntry();
         BrowserResearchUi.init();
         BrowserStockDatabaseUi.init();
 
@@ -146,18 +145,6 @@ public final class BrowserUiRuntime{
         root.add(pane).width(mobile ? 320f : 380f).height(mobile ? 430f : 500f);
         ui.menuGroup.addChild(root);
         BrowserStockMainMenu.install(ui.menuGroup, root);
-    }
-
-    private static void installResearchMenuEntry(){
-        Table entry = new Table();
-        entry.setFillParent(true);
-        entry.top().left();
-        entry.touchable = Touchable.childrenOnly;
-        entry.visible(() -> state.isMenu());
-        entry.button(Core.bundle.get("research", "Research"), BrowserResearchUi::show)
-            .name("web-research-menu")
-            .size(mobile ? 158f : 136f, mobile ? 52f : 44f).pad(8f);
-        ui.menuGroup.addChild(entry);
     }
 
     private static void applySettingAction(int setting, int value){
