@@ -77,7 +77,11 @@ for scenario in menu campaign; do
   grep -Eq 'data-mindustry-research-tech-nodes="[1-9][0-9]+"' "$dom"
   grep -Eq 'data-mindustry-research-tree-roots="[2-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-research-tree-visible-nodes="[1-9][0-9]*"' "$dom"
-  grep -Fq 'data-mindustry-research-tree-selected="core-shard"' "$dom"
+  if [ "$scenario" = campaign ]; then
+    grep -Fq 'data-mindustry-research-tree-selected="core-shard"' "$dom"
+  else
+    grep -Fq 'data-mindustry-research-tree-selected="junction"' "$dom"
+  fi
   if [ "$scenario" = menu ]; then
     grep -Fq 'data-mindustry-research-tree-navigation="passed"' "$dom"
     grep -Fq 'data-mindustry-research-tree-navigation-source="real-dom-pointer-arc-scene"' "$dom"
