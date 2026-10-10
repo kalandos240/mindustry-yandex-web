@@ -240,6 +240,7 @@ public final class BrowserResearchUi{
         markResearchCatalog(totalNodes());
         markTree(activeRoot.name == null ? activeRoot.content.name : activeRoot.name,
             selected == null ? "" : selected.content.name, count, TechTree.roots.size);
+        markGraphZoom(graphZoom);
     }
 
     /**
@@ -395,6 +396,10 @@ public final class BrowserResearchUi{
 
     @JSBody(params = {"shown"}, script = "document.documentElement.setAttribute('data-mindustry-research-open', shown ? 'yes' : 'no');")
     private static native void markResearchOpen(boolean shown);
+
+    @JSBody(params = {"zoom"}, script =
+        "document.documentElement.setAttribute('data-mindustry-research-tree-zoom', String(zoom));")
+    private static native void markGraphZoom(float zoom);
 
     @JSBody(params = {"root","node","count","roots"}, script = """
         const r=document.documentElement;

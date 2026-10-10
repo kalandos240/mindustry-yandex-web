@@ -46,8 +46,32 @@ public final class BrowserResearchTreeSmoke{
             case 11 -> {
                 if(BrowserResearchUi.selectedContent().equals("junction")
                     && Core.scene.root.find("web-research-node-router") != null){
-                    complete = true;
                     markPassed();
+                    stage = 12;
+                }
+            }
+            // A real click on an expanded branch now collapses it. Validate
+            // that Router disappears, then reveal it again through real
+            // browser PointerEvents instead of setting expanded flags.
+            case 12 -> down("web-research-node-junction", 13);
+            case 13 -> up(14);
+            case 14 -> {
+                if(Core.scene.root.find("web-research-node-router") == null) stage = 15;
+            }
+            case 15 -> down("web-research-node-junction", 16);
+            case 16 -> up(17);
+            case 17 -> {
+                if(Core.scene.root.find("web-research-node-router") != null){
+                    Element junction = Core.scene.root.find("web-research-node-junction");
+                    if(junction == null) return;
+                    Vec2 center = junction.localToStageCoordinates(
+                        new Vec2(junction.getWidth() * 0.5f, junction.getHeight() * 0.5f));
+                    Element hit = Core.scene.hit(center.x, center.y, true);
+                    if(hit != junction && (hit == null || !hit.isDescendantOf(junction))) return;
+                    Vec2 screen = Core.scene.getViewport().project(center);
+                    markTap(screen.x, screen.y);
+                    complete = true;
+                    markCollapsePassed();
                 }
             }
         }
@@ -77,6 +101,7 @@ public final class BrowserResearchTreeSmoke{
         Vec2 projected = Core.scene.getViewport().project(stagePoint);
         tapX = projected.x;
         tapY = projected.y;
+        markTap(tapX, tapY);
         dispatchPointer("pointerdown", tapX, tapY);
         stage = nextStage;
         markStage(stage, "pressed-" + name);
@@ -110,6 +135,18 @@ public final class BrowserResearchTreeSmoke{
         }));
         """)
     private static native void dispatchPointer(String type, float x, float y);
+
+    @JSBody(params={"x","y"},script = """
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-research-pointer-x',String(x));
+        root.setAttribute('data-mindustry-research-pointer-y',String(y));
+        """)
+    private static native void markTap(float x, float y);
+
+    @JSBody(script = """
+        document.documentElement.setAttribute('data-mindustry-research-tree-collapse','passed');
+        """)
+    private static native void markCollapsePassed();
 
     @JSBody(params={"stage","detail"},script = """
         const root=document.documentElement;
