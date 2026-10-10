@@ -307,25 +307,43 @@
                 effects.onclick = () => { effectsState = !effectsState; action(3, effectsState ? 1 : 0); renderSettings(); };
                 graphics.onclick = () => { qualityState = !qualityState; action(4, qualityState ? 1 : 0); renderSettings(); };
 
+                const closeSettings = () => {
+                    panel.style.display = 'none';
+                    panel.dataset.openContext = '';
+                    panel.dataset.openLoop = '';
+                    root.setAttribute('data-mindustry-settings-panel','closed');
+                    root.setAttribute('data-mindustry-settings-context','none');
+                };
                 const syncMenu = () => {
                     const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
                     const menu = loop.indexOf('menu') >= 0;
-                    if(!menu && panel.style.display !== 'none'){
-                        panel.style.display = 'none';
-                        root.setAttribute('data-mindustry-settings-panel','closed');
+                    // In-game settings may remain open only in the same paused
+                    // session in which the real Arc pause button opened them.
+                    // A world return/resume closes the panel just like menu exit.
+                    const samePause = panel.dataset.openContext === 'pause'
+                        && panel.dataset.openLoop === loop && !menu;
+                    if(!menu && !samePause && panel.style.display !== 'none'){
+                        closeSettings();
                     }
                     launch.style.display = menu && panel.style.display === 'none' ? '' : 'none';
                 };
-
-                launch.onclick = () => {
+                const openSettings = context => {
                     renderSettings();
+                    panel.dataset.openContext = context;
+                    panel.dataset.openLoop = root.getAttribute('data-mindustry-gameplay-loop') || '';
                     panel.style.display = 'flex';
                     launch.style.display = 'none';
+                    root.setAttribute('data-mindustry-settings-context', context);
                     root.setAttribute('data-mindustry-settings-panel','open');
                 };
+                launch.onclick = () => openSettings('menu');
+                globalThis.__mindustryOpenPauseSettings = () => {
+                    const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
+                    if(loop.indexOf('menu') >= 0) return;
+                    openSettings('pause');
+                };
                 back.onclick = () => {
-                    panel.style.display = 'none';
-                    root.setAttribute('data-mindustry-settings-panel','closed');
+                    closeSettings();
                     syncMenu();
                 };
 
@@ -334,7 +352,9 @@
                     attributeFilter:['data-mindustry-gameplay-loop']
                 });
                 root.setAttribute('data-mindustry-settings-ui','ready');
+                root.setAttribute('data-mindustry-settings-pause-entry','ready');
                 root.setAttribute('data-mindustry-settings-panel','closed');
+                root.setAttribute('data-mindustry-settings-context','none');
                 syncMenu();
             };
 
