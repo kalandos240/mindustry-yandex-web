@@ -4,6 +4,7 @@ import arc.*;
 import arc.func.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
+import arc.util.*;
 import arc.math.geom.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
@@ -140,6 +141,7 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
 
     @Override
     public void draw(){
+        validate();
         if(root != null){
             Draw.color(Pal.accent);
             Lines.stroke(Math.max(1.1f, zoom * 1.5f));
@@ -148,10 +150,10 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
                 var fromActor = find("web-research-node-" + node.parent.content.name);
                 var toActor = find("web-research-node-" + node.content.name);
                 if(fromActor == null || toActor == null) continue;
-                float sx = getX() + fromActor.x + fromActor.width;
-                float ex = getX() + toActor.x;
-                float sy = getY() + fromActor.y + fromActor.height * 0.5f;
-                float ey = getY() + toActor.y + toActor.height * 0.5f;
+                float sx = getX(Align.left) + fromActor.getX(Align.left) + fromActor.getWidth();
+                float ex = getX(Align.left) + toActor.getX(Align.left);
+                float sy = getY(Align.bottom) + fromActor.getY(Align.bottom) + fromActor.getHeight() * 0.5f;
+                float ey = getY(Align.bottom) + toActor.getY(Align.bottom) + toActor.getHeight() * 0.5f;
                 float bend = (sx + ex) * 0.5f;
                 Lines.line(sx, sy, bend, sy);
                 Lines.line(bend, sy, bend, ey);
