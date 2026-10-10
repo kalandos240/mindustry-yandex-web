@@ -103,10 +103,12 @@ public final class BrowserHudEssentials{
     }
 
     private static String statusText(){
+        markStatusPhase("entry");
         if(state == null || !state.isGame() || state.rules == null) return "";
         if(state.rules.mission != null && !state.rules.mission.isEmpty()){
             return state.rules.mission;
         }
+        markStatusPhase("objectives");
         for(var objective : state.rules.objectives){
             if(!objective.hidden && objective.qualified()){
                 String text = objective.text();
@@ -121,15 +123,19 @@ public final class BrowserHudEssentials{
             return Core.bundle.get("sector.curcapture", "Sector");
         }
 
+        markStatusPhase("wave");
         String wave = state.rules.winWave > 1
             ? localized("wave.cap", state.wave, state.rules.winWave)
             : localized("wave", state.wave);
         int seconds = (int)Math.max(0, Math.ceil(state.wavetime / 60f));
         String remaining = (seconds / 60) + ":" + (seconds % 60 < 10 ? "0" : "") + (seconds % 60);
+        markStatusPhase("enemies");
         String enemies = state.enemies == 1
             ? localized("wave.enemy", state.enemies)
             : localized("wave.enemies", state.enemies);
-        return wave + "\n" + enemies + "\n" + localized("wave.waiting", remaining);
+        String status = wave + "\n" + enemies + "\n" + localized("wave.waiting", remaining);
+        markStatusPhase("complete");
+        return status;
     }
 
     // Avoid TeaVM's java.text.MessageFormat currency-data path on every HUD frame.
@@ -141,6 +147,9 @@ public final class BrowserHudEssentials{
     private static String localized(String key, Object first, Object second){
         return localized(key, first).replace("{1}", String.valueOf(second));
     }
+
+    @JSBody(params = {"phase"}, script = "document.documentElement.setAttribute('data-mindustry-hud-status-phase',phase);")
+    private static native void markStatusPhase(String phase);
 
     @JSBody(script = "const r=document.documentElement;r.setAttribute('data-mindustry-hud-essentials','ready');r.setAttribute('data-mindustry-hud-minimap','stock-mindustry-ui-Minimap');r.setAttribute('data-mindustry-hud-minimap-overlay','stock-MiniMapFragment');r.setAttribute('data-mindustry-hud-coreitems','stock-CoreItemsDisplay');r.setAttribute('data-mindustry-hud-status','game-state');r.setAttribute('data-mindustry-hud-skip-wave','stock-rule-guarded');")
     private static native void markMounted();
