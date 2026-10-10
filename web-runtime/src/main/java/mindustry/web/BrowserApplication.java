@@ -152,6 +152,8 @@ public final class BrowserApplication extends WebApplicationBase{
                 // DesktopInput/CommandAI graph. The query guard is cached and
                 // has no effect in a normal Yandex gameplay session.
                 BrowserRtsCommandSmoke.update();
+                // CI-only real touch selection and orders through stock MobileInput.
+                BrowserMobileRtsSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
