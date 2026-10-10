@@ -28,7 +28,7 @@ public final class BrowserRtsCommandSmoke{
     private static boolean checked, enabled, done, shiftHeld;
     private static int stage, frames;
     private static Unit probe;
-    private static float targetX, targetY;
+    private static float targetX, targetY, targetScreenX, targetScreenY;
 
     private BrowserRtsCommandSmoke(){}
 
@@ -106,10 +106,16 @@ public final class BrowserRtsCommandSmoke{
                         screen + ", camera=" + Core.camera.position +
                         ", size=" + Core.camera.width + "x" + Core.camera.height);
                 }
-                dispatchRightClick(screen.x, screen.y);
-                stage = 3;
+                // Dispatch move/down/up in separate real browser frames.
+                // WebInput receives the queued pointer event on the following
+                // Arc update, just like a person positioning and clicking a
+                // physical mouse. Same-tick down/up can elide the pressed edge.
+                targetScreenX = screen.x;
+                targetScreenY = screen.y;
+                dispatchRightPointer("pointermove", targetScreenX, targetScreenY);
+                stage = 6;
                 frames = 0;
-                markStage("dom-right-click");
+                markStage("dom-right-hover");
                 return;
             }
             if(++frames > 90){
@@ -117,6 +123,21 @@ public final class BrowserRtsCommandSmoke{
                 releaseShift();
                 throw new IllegalStateException("DOM KeyG did not select the stock Dagger through DesktopInput");
             }
+            return;
+        }
+
+        if(stage == 6){
+            dispatchRightPointer("pointerdown", targetScreenX, targetScreenY);
+            stage = 7;
+            markStage("dom-right-down");
+            return;
+        }
+
+        if(stage == 7){
+            dispatchRightPointer("pointerup", targetScreenX, targetScreenY);
+            stage = 3;
+            frames = 0;
+            markStage("dom-right-up");
             return;
         }
 
@@ -167,19 +188,19 @@ public final class BrowserRtsCommandSmoke{
         """)
     private static native void dispatchKey(boolean down);
 
-    @JSBody(params = {"sx", "sy"}, script = """
+    @JSBody(params = {"type", "sx", "sy"}, script = """
         const canvas = document.getElementById('mindustry-canvas');
         if(!canvas) throw new Error('RTS browser canvas is missing');
         const rect = canvas.getBoundingClientRect();
-        const common = {
+        canvas.dispatchEvent(new PointerEvent(type, {
             pointerId:1, pointerType:'mouse', isPrimary:true,
             clientX:rect.left + sx, clientY:rect.top + rect.height - sy,
-            button:2, bubbles:true, cancelable:true
-        };
-        canvas.dispatchEvent(new PointerEvent('pointerdown', {...common, buttons:2}));
-        canvas.dispatchEvent(new PointerEvent('pointerup', {...common, buttons:0}));
+            button:type === 'pointermove' ? -1 : 2,
+            buttons:type === 'pointerup' ? 0 : 2,
+            bubbles:true, cancelable:true
+        }));
         """)
-    private static native void dispatchRightClick(float sx, float sy);
+    private static native void dispatchRightPointer(String type, float sx, float sy);
 
     @JSBody(params = {"stage"}, script = "document.documentElement.setAttribute('data-mindustry-rts-command-smoke',stage);")
     private static native void markStage(String stage);
