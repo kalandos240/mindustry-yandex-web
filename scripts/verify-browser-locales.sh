@@ -74,6 +74,8 @@ run_production_menu(){
     --require 'data-mindustry-smoke-mode="production"' \
     --require 'data-mindustry-gameplay-runtime="ready"' \
     --require 'data-mindustry-gameplay-loop="menu-stable"' \
+    --require 'data-mindustry-settings-pause-entry="ready"' \
+    --after-ready-eval "(() => { const root=document.documentElement; const launch=document.getElementById('mindustry-settings-toggle'); const panel=document.getElementById('mindustry-settings-overlay'); if(!launch || !panel || launch.style.display==='none') throw new Error('Menu settings unavailable'); launch.click(); if(root.getAttribute('data-mindustry-settings-panel')!=='open') throw new Error('Settings panel failed to open'); panel.querySelectorAll('button')[4].click(); if(root.getAttribute('data-mindustry-settings-panel')!=='closed') throw new Error('Settings panel failed to close'); return 'menu-settings-pass'; })()" \
     --require 'data-mindustry-module-loop="menu-stable"' \
     --require 'data-mindustry-game-state-selftest="skipped-production"' \
     --require 'data-mindustry-map-catalog="ready"' \
