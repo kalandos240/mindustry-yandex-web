@@ -28,6 +28,9 @@ for scenario in menu campaign; do
   url="http://127.0.0.1:$PORT/index.html?lang=en"
   ready='data-mindustry-web="ready"'
   y=29
+  if [ "$scenario" = menu ]; then
+    url="$url&mindustryResearchTreeSmoke=1"
+  fi
   if [ "$scenario" = campaign ]; then
     url="$url&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1"
     ready='data-mindustry-campaign-state="playing"'
@@ -58,6 +61,15 @@ for scenario in menu campaign; do
       if(root.getAttribute('data-mindustry-research-open')!=='yes'){
         throw Error('Arc Scene research button was not clickable from $scenario');
       }
+      if('$scenario'==='menu'){
+        for(let attempt=0;attempt<160;attempt++){
+          if(root.getAttribute('data-mindustry-research-tree-navigation')==='passed') break;
+          await new Promise(r=>setTimeout(r,150));
+        }
+        if(root.getAttribute('data-mindustry-research-tree-navigation')!=='passed'){
+          throw Error('Real DOM pointer did not navigate Erekir -> Serpulo -> Conveyor -> Junction');
+        }
+      }
       root.setAttribute('data-mindustry-research-pointer-smoke','ready');
       return true;
     })()" \
@@ -66,5 +78,9 @@ for scenario in menu campaign; do
   grep -Eq 'data-mindustry-research-tree-roots="[2-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-research-tree-visible-nodes="[1-9][0-9]*"' "$dom"
   grep -Fq 'data-mindustry-research-tree-selected="core-shard"' "$dom"
-  echo "Production $scenario: real canvas pointer opened original hierarchical Serpulo TechTree with nodes and requirements PASS"
+  if [ "$scenario" = menu ]; then
+    grep -Fq 'data-mindustry-research-tree-navigation="passed"' "$dom"
+    grep -Fq 'data-mindustry-research-tree-navigation-source="real-dom-pointer-arc-scene"' "$dom"
+  fi
+  echo "Production $scenario: real pointer opened hierarchical stock TechTree; planet switch and nested branch taps PASS"
 done
