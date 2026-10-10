@@ -92,7 +92,8 @@ public final class BrowserResearchUi{
         for(TechNode root : TechTree.roots){
             roots.button(root.localizedName(), () -> switchRoot(root))
                 .checked(button -> activeRoot == root)
-                .height(mobile ? 44f : 40f).minWidth(mobile ? 124f : 145f).padRight(5f);
+                .height(mobile ? 44f : 40f).minWidth(mobile ? 124f : 145f).padRight(5f)
+                .name("web-research-root-" + root.content.name);
         }
         panel.add(roots).colspan(mobile ? 1 : 2).left().row();
 
@@ -156,6 +157,11 @@ public final class BrowserResearchUi{
         open = false;
         markResearchOpen(false);
     }
+
+    // Read-only state for the opt-in real-pointer Chrome navigation gate.
+    public static boolean isOpen(){ return open; }
+    public static String activeRootContent(){ return activeRoot == null ? "" : activeRoot.content.name; }
+    public static String selectedContent(){ return selected == null ? "" : selected.content.name; }
 
     private static void switchRoot(TechNode root){
         if(root == null) return;
@@ -222,6 +228,7 @@ public final class BrowserResearchUi{
         }
 
         Button contentButton = new Button(Styles.defaultb);
+        contentButton.name = "web-research-node-" + node.content.name;
         if(node.content.uiIcon != null){
             contentButton.add(new Image(node.content.uiIcon)).size(mobile ? 26f : 29f).padLeft(5f);
         }
