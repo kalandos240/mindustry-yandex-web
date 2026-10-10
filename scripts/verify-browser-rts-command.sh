@@ -69,3 +69,31 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
 grep -Eq 'data-mindustry-rts-group-unit-ids="[0-9]+,[0-9]+"' "$group_dom"
 grep -Eq 'data-mindustry-rts-group-selected-count="[2-9][0-9]*"' "$group_dom"
 echo "RTS group: two original allied Daggers -> DOM Shift+G -> both selected -> one right-click -> both stock CommandAI targets PASS"
+
+
+# Third independent browser game: select two genuine units with an actual
+# left-button drag rectangle, then issue their shared order with right-click.
+# This catches regressions missed by the keyboard's select-all shortcut.
+rect_profile="/tmp/mindustry-rts-rect-profile"
+rect_dom="/tmp/mindustry-rts-rect.html"
+rm -rf "$rect_profile"
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryMapSmoke=maze&mindustryRtsRectSmoke=1" \
+  --profile "$rect_profile" \
+  --port 9320 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-smoke-mode="production"' \
+  --require 'data-mindustry-input-mode="desktop"' \
+  --require 'data-mindustry-local-map-state="playing"' \
+  --require 'data-mindustry-local-map-loop="live"' \
+  --require 'data-mindustry-hud-commands="stock-PlacementFragment"' \
+  --require 'data-mindustry-rts-command-smoke="commanded"' \
+  --require 'data-mindustry-rts-rect-smoke="commanded"' \
+  --require 'data-mindustry-rts-rect-source="dom-left-button-world-drag"' \
+  --require 'data-mindustry-rts-group-orders="2"' \
+  --require 'data-mindustry-network="local-only"' > "$rect_dom"
+
+grep -Eq 'data-mindustry-rts-rect-selected-count="[2-9][0-9]*"' "$rect_dom"
+grep -Eq 'data-mindustry-rts-group-unit-ids="[0-9]+,[0-9]+"' "$rect_dom"
+echo "RTS rectangle: DOM Shift + real left-button drag -> stock DesktopInput selects two Daggers -> shared right-click order reaches both AIs PASS"
