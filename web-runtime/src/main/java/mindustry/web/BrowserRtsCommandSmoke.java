@@ -168,7 +168,10 @@ public final class BrowserRtsCommandSmoke{
                     ", mouse=" + Core.input.mouseX() + "," + Core.input.mouseY() +
                     ", hoveredUI=" + Core.scene.hasMouse() +
                     ", positionEvents=" + moveEvents +
-                    ", attackEvents=" + attackEvents);
+                    ", attackEvents=" + attackEvents +
+                    ", nativeDetectorRegistered=" + Core.input.getInputProcessors().contains(control.input.detector) +
+                    ", nativeInputRegistered=" + Core.input.getInputProcessors().contains(control.input) +
+                    ", inputProcessors=" + Core.input.getInputProcessors().size);
             }
         }
     }
