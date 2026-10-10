@@ -147,6 +147,11 @@ public final class BrowserStockDatabaseUi{
         markOpen(false);
     }
 
+    /** Escape handling uses the same visibility flag as the native Back button. */
+    public static boolean isOpen(){
+        return open;
+    }
+
     private static void rebuild(){
         if(tiles == null) return;
         tiles.clear();
