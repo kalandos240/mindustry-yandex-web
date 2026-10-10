@@ -32,6 +32,7 @@ public final class BrowserResearchUi{
     private static TechNode activeRoot, selected;
     private static final ObjectSet<TechNode> expanded = new ObjectSet<>();
     private static BrowserTechTreeGraph menuTree, hudTree;
+    private static ScrollPane menuTreePane, hudTreePane;
     private static Table menuDetails, hudDetails;
     private static float graphZoom = 1f;
     private static float menuTreeWidth, hudTreeWidth, menuDetailsWidth, hudDetailsWidth;
@@ -134,11 +135,13 @@ public final class BrowserResearchUi{
 
         if(menu){
             menuTree = tree;
+            menuTreePane = treePane;
             menuDetails = details;
             menuTreeWidth = treeWidth;
             menuDetailsWidth = detailWidth;
         }else{
             hudTree = tree;
+            hudTreePane = treePane;
             hudDetails = details;
             hudTreeWidth = treeWidth;
             hudDetailsWidth = detailWidth;
@@ -156,6 +159,7 @@ public final class BrowserResearchUi{
         open = true;
         refresh();
         markResearchOpen(true);
+        focusSelected();
     }
 
     public static void close(){
@@ -175,6 +179,7 @@ public final class BrowserResearchUi{
         expanded.clear();
         expanded.add(root);
         refresh();
+        focusSelected();
     }
 
     private static int totalNodes(){
@@ -198,6 +203,31 @@ public final class BrowserResearchUi{
             selected == null ? "" : selected.content.name, count, TechTree.roots.size);
     }
 
+    /**
+     * In a spatial tech graph the top-left initial scroll position is often
+     * far from the root (its Y is centered among many child branches).
+     * Reveal selected nodes after every root switch or branch expansion so
+     * desktop and portrait users never open an apparently empty graph.
+     * The native ScrollPane still owns subsequent touch drag / wheel panning.
+     */
+    private static void focusSelected(){
+        Core.app.post(() -> {
+            if(!open || selected == null) return;
+            focusNode(menuTreePane, menuTree, selected);
+            focusNode(hudTreePane, hudTree, selected);
+        });
+    }
+
+    private static void focusNode(ScrollPane pane, BrowserTechTreeGraph graph, TechNode node){
+        if(pane == null || graph == null || node == null) return;
+        pane.validate();
+        graph.validate();
+        Element element = graph.find("web-research-node-" + node.content.name);
+        if(element == null) return;
+        pane.scrollTo(element.x, element.y, element.getWidth(), element.getHeight(), true, true);
+        pane.updateVisualScroll();
+    }
+
     private static void changeZoom(float delta){
         graphZoom = Math.max(0.6f, Math.min(1.6f, graphZoom + delta));
         refresh();
@@ -207,6 +237,7 @@ public final class BrowserResearchUi{
         selected = node;
         if(node.children.size > 0) expanded.add(node);
         refresh();
+        focusSelected();
     }
 
     private static void rebuildTree(BrowserTechTreeGraph graph, float width){
