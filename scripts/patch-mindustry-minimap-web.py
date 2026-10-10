@@ -22,4 +22,14 @@ if text.count(old) != 1:
     raise SystemExit("Minimap Web tile-change patch no longer matches pinned upstream")
 
 MINIMAP.write_text(text.replace(old, new, 1), encoding="utf-8")
-print("Allowed stock minimap TileChangeEvent updates when lean Web UI has no editor dialog")
+# Full-screen MinimapFragment references the desktop chat fragment only to
+# avoid stealing keyboard focus. The single-player Yandex build has no chat UI.
+FRAGMENT = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "ui" / "fragments" / "MinimapFragment.java"
+fragment = FRAGMENT.read_text(encoding="utf-8")
+old_focus = "if(!ui.chatfrag.shown() && !(scene.getKeyboardFocus() instanceof TextField)){"
+new_focus = "if((ui.chatfrag == null || !ui.chatfrag.shown()) && !(scene.getKeyboardFocus() instanceof TextField)){"
+if fragment.count(old_focus) != 1:
+    raise SystemExit("MinimapFragment Web chat-focus guard no longer matches pinned upstream")
+FRAGMENT.write_text(fragment.replace(old_focus, new_focus, 1), encoding="utf-8")
+
+print("Enabled native minimap without desktop MapEditorDialog or multiplayer chat graph")
