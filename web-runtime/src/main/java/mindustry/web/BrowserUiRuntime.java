@@ -94,6 +94,7 @@ public final class BrowserUiRuntime{
         buildLocalGameOverOverlay();
         installResearchMenuEntry();
         BrowserResearchUi.init();
+        BrowserStockDatabaseUi.init();
 
         // The original MobileInput is built into a dedicated HUD WidgetGroup.
         // In the lean Web shell, additional stock and browser HUD overlays are

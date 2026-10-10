@@ -63,9 +63,9 @@ public final class BrowserStockMainMenu{
                 menu.button(Core.bundle.get("play", "Play"), Icon.play,
                     BrowserStockMainMenu::openPlay).size(tileWidth, 76f)
                     .name("web-main-play");
-                menu.button(Core.bundle.get("customgame", "Custom Game"), Icon.terrain,
-                    BrowserStockMainMenu::openPlay).size(tileWidth, 76f)
-                    .name("web-main-custom");
+                menu.button(Core.bundle.get("database", "Database"), Icon.book,
+                    BrowserStockDatabaseUi::show).size(tileWidth, 76f)
+                    .name("web-main-database");
                 menu.row();
                 menu.button(Core.bundle.get("research", "Research"), Icon.tree,
                     BrowserResearchUi::show).size(tileWidth, 76f)
@@ -93,6 +93,10 @@ public final class BrowserStockMainMenu{
                     Styles.flatToggleMenut, BrowserStockMainMenu::openPlay)
                     .name("web-main-custom");
                 menu.row();
+                menu.button(Core.bundle.get("database", "Database"), Icon.book,
+                    Styles.flatToggleMenut, BrowserStockDatabaseUi::show)
+                    .name("web-main-database");
+                menu.row();
                 menu.button(Core.bundle.get("research", "Research"), Icon.tree,
                     Styles.flatToggleMenut, BrowserResearchUi::show)
                     .name("web-main-research");
@@ -111,6 +115,7 @@ public final class BrowserStockMainMenu{
         home.update(() -> {
             if(state.isMenu() && !contentOpen && (++pointerSampleFrames & 15) == 0){
                 markPointerCenter(home.find("web-main-play"), "play");
+                markPointerCenter(home.find("web-main-database"), "database");
             }
         });
 

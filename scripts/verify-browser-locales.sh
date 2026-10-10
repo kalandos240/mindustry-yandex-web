@@ -102,6 +102,17 @@ run_production_menu(){
       await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='play','Play submenu');
       await click('back');
       await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='home','Back to home');
+      await click('database');
+      await wait(()=>root.getAttribute('data-mindustry-database-open')==='yes','Database opened');
+      await wait(()=>root.hasAttribute('data-mindustry-database-close-x'),'Database close coordinates');
+      const rect=canvas.getBoundingClientRect();
+      const dbX=rect.left+Number(root.getAttribute('data-mindustry-database-close-x'));
+      const dbY=rect.top+rect.height-Number(root.getAttribute('data-mindustry-database-close-y'));
+      for(const type of ['pointerdown','pointerup']){
+        canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:412,pointerType:'mouse',clientX:dbX,clientY:dbY,button:0,buttons:type==='pointerdown'?1:0}));
+        await new Promise(r=>setTimeout(r,100));
+      }
+      await wait(()=>root.getAttribute('data-mindustry-database-open')==='no','Database closed');
       root.setAttribute('data-mindustry-main-menu-real-pointer','passed');
       return 'native-menu-pass';
     })()" \
@@ -115,6 +126,7 @@ run_production_menu(){
     --require 'data-mindustry-local-map-ui="ready"' \
     --require 'data-mindustry-local-map-menu="builtin-selector"' \
     --require 'data-mindustry-main-menu-stock="arc-scene"' \
+    --require 'data-mindustry-stock-database="ready"' \
     --require 'data-mindustry-main-menu-page="home"' \
     --after-ready-require 'data-mindustry-main-menu-real-pointer="passed"' \
     --require 'data-mindustry-local-map-back="ready"' \
