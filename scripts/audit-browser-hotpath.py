@@ -204,6 +204,9 @@ require(GAMEPLAY, 'Pathfinder.webClock = BrowserCanvas::performanceNowMillis;', 
 CONTROL_PAUSE = (ROOT / "scripts/patch-mindustry-control-pause-web.py").read_text(encoding="utf-8")
 INPUT_BRIDGE = (WEB_JAVA / "BrowserInputBridge.java").read_text(encoding="utf-8")
 require(GAMEPLAY, "Core.input.keyTap(Binding.pause)", "single Web Space key handler")
+require(GAMEPLAY, "Core.input.keyTap(Binding.menu)", "Web Escape uses safe pause handler")
+require(CONTROL_PAUSE, 'ui.paused.show();', "unsafe desktop Escape fragment is removed")
+
 require(GAMEPLAY, "BrowserCampaignRuntime.pause()", "campaign pause clock bridge")
 require(GAMEPLAY, "BrowserCampaignRuntime.resume()", "campaign resume keyboard action")
 require(GAMEPLAY, "BrowserLocalMapRuntime.pause()", "local map pause clock bridge")

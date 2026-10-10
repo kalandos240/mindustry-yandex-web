@@ -53,6 +53,18 @@ for mode in local campaign; do
       key('keyup');
       if(Number(root.getAttribute('data-mindustry-space-transition-count'))!==2)
         throw Error('Space pause toggle should be exactly once per physical press');
+      await sleep(150);
+      const escape = type => window.dispatchEvent(new KeyboardEvent(type,{
+        code:'Escape', key:'Escape', bubbles:true,cancelable:true,repeat:false}));
+      escape('keydown');
+      await wait('paused','Escape pause');
+      escape('keyup');
+      await sleep(100);
+      escape('keydown');
+      await wait('resumed','Escape resume');
+      escape('keyup');
+      if(Number(root.getAttribute('data-mindustry-space-transition-count'))!==4)
+        throw Error('Space and Escape must produce exactly four safe pause transitions');
       await sleep(450);
       if(root.getAttribute('data-mindustry-web')==='error')throw Error('Frame died after Space resume');
       root.setAttribute('data-mindustry-space-freeze-smoke','passed');

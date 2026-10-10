@@ -24,5 +24,20 @@ text = text[:start] + """            // Web: Space pause/resume belongs to Brows
             // wedges the single-thread browser scheduler after the key press.
 
 """ + text[end:]
+# Stock DesktopInput menu Escape opens dialogs from UI.init(), but the Yandex
+# frontend only has UI.loadSync() and a native browser-safe Pause view.
+# Accessing ui.restart/ui.paused here throws on the main RAF thread.
+escapeStart = "            if((input instanceof DesktopInput ? Core.input.keyTap(Binding.menu)"
+escapeEnd = "            if(!mobile && Core.input.keyTap(Binding.screenshot)"
+if text.count(escapeStart) != 1 or text.count(escapeEnd) != 1:
+    raise SystemExit("Pinned stock Escape/menu handler changed upstream")
+begin = text.index(escapeStart)
+finish = text.index(escapeEnd, begin)
+removed = text[begin:finish]
+if "ui.paused.show();" not in removed or "ui.restart.isShown()" not in removed:
+    raise SystemExit("Stock Escape fragment handler no longer matches")
+text = text[:begin] + """            // Web: Escape shares the native browser pause/resume handler.
+
+""" + text[finish:]
 path.write_text(text, encoding="utf-8")
 print("Routed stock Space pause through Web sector pause/resume state machines")
