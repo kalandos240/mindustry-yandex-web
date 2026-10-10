@@ -97,3 +97,30 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
 grep -Eq 'data-mindustry-rts-rect-selected-count="[2-9][0-9]*"' "$rect_dom"
 grep -Eq 'data-mindustry-rts-group-unit-ids="[0-9]+,[0-9]+"' "$rect_dom"
 echo "RTS rectangle: DOM Shift + real left-button drag -> stock DesktopInput selects two Daggers -> shared right-click order reaches both AIs PASS"
+
+
+# Fourth independent Maze session validates original UnitStance callbacks
+# in PlacementFragment. Hold Fire is unbound by default; the CI-only smoke
+# temporarily sets its stock keybind to F, then uses actual DOM keydown/up.
+# Both Daggers must independently show on and off in stock CommandAI.stances.
+stance_profile="/tmp/mindustry-rts-stance-profile"
+stance_dom="/tmp/mindustry-rts-stance.html"
+rm -rf "$stance_profile"
+python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryMapSmoke=maze&mindustryRtsStanceSmoke=1" \
+  --profile "$stance_profile" \
+  --port 9321 \
+  --timeout 90 \
+  --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-smoke-mode="production"' \
+  --require 'data-mindustry-input-mode="desktop"' \
+  --require 'data-mindustry-local-map-state="playing"' \
+  --require 'data-mindustry-local-map-loop="live"' \
+  --require 'data-mindustry-hud-commands="stock-PlacementFragment"' \
+  --require 'data-mindustry-rts-stance-smoke="on-then-off"' \
+  --require 'data-mindustry-rts-stance-source="dom-key-f-native-placementfragment-keybind"' \
+  --require 'data-mindustry-rts-stance-count="2"' \
+  --require 'data-mindustry-network="local-only"' > "$stance_dom"
+
+grep -Eq 'data-mindustry-rts-stance-unit-ids="[0-9]+,[0-9]+"' "$stance_dom"
+echo "RTS stance: DOM Shift+G -> stock PlacementFragment KeyF -> two stock CommandAI Hold Fire on -> KeyF again -> both off PASS"
