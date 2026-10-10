@@ -389,7 +389,14 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
         
         // Web: one throttled updater for all Serpulo/general campaign labels.
         // This replaces per-Actor update callbacks while preserving the same state logic.
-        campaignProgress.update(() -> {
+        // MenuFragment-like Web home hides the heavy sector selector until
+        // Play is clicked. Keep campaign metadata/Continue state up-to-date
+        // in a visible, zero-size, non-interactive actor attached directly to
+        // the menu root; hidden Play child actors are not acted by Arc Scene.
+        Table campaignUiTick = new Table();
+        campaignUiTick.touchable = Touchable.disabled;
+        ui.menuGroup.addChild(campaignUiTick);
+        campaignUiTick.update(() -> {
             if(state == null || !state.isMenu()) return;
             int frame = ++campaignUiRefreshFrame[0];
             if((frame & 7) != 0) return;
@@ -1011,7 +1018,12 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
             return BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin);
         };
         erekirProgress.setDisabled(erekirProgressDisabled.get());
-        erekirProgress.update(() -> {
+        // Erekir progression gets its own zero-size update driver; Arc
+        // Element.update() replaces (rather than adds) an actor's callback.
+        Table erekirUiTick = new Table();
+        erekirUiTick.touchable = Touchable.disabled;
+        ui.menuGroup.addChild(erekirUiTick);
+        erekirUiTick.update(() -> {
             if(state == null || !state.isMenu()) return;
             if((campaignUiRefreshFrame[0] & 7) != 0) return;
             erekirProgress.setDisabled(erekirProgressDisabled.get());
