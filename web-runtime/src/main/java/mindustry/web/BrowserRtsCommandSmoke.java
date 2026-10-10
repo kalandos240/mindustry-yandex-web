@@ -185,6 +185,20 @@ public final class BrowserRtsCommandSmoke{
         }
 
         if(stage == 6){
+            // Stock DesktopInput.touchDown checks Scene.hasMouse(), which
+            // refers to the last hovered actor. After a drag this can lag
+            // the actual cursor for one or more Scene.act() frames. Wait
+            // until the normal DOM pointer-move / Scene update catches up;
+            // never inject an order or mutate Scene's hover state.
+            if(Core.scene.hasMouse()){
+                if(++frames > 90){
+                    throw new IllegalStateException(
+                        "RTS pointer hover did not leave UI after dragging selection rectangle" +
+                        ": cursor=" + Core.input.mouseX() + "," + Core.input.mouseY() +
+                        ", commandMode=" + control.input.commandMode);
+                }
+                return;
+            }
             dispatchRightPointer("pointerdown", targetScreenX, targetScreenY);
             stage = 7;
             markStage("dom-right-down");
