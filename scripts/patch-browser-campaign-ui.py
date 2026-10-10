@@ -1289,7 +1289,15 @@ new_pane = '''        // Landscape phones can be only ~320-400 logical px tall. 
         Cell<ScrollPane> mapPaneCell = root.add(pane).width(mobile ? 320f : 380f).height(mapPaneHeight);
         final float[] lastMapPaneHeight = {mapPaneHeight};
         if(mobile){
-            pane.update(() -> {
+            // The stock MenuFragment-style home hides the heavy Play menu.
+            // Arc Group.act() skips invisible children, so pane.update() is
+            // never called while the new native Home is visible. Use a
+            // non-interactive, zero-size menu-root update actor instead:
+            // resize/orientation changes must still refresh map pane sizing.
+            Table mapResizeTick = new Table();
+            mapResizeTick.touchable = Touchable.disabled;
+            mapResizeTick.update(() -> {
+                if(!state.isMenu()) return;
                 float nextHeight = Math.max(56f, Math.min(110f, Core.graphics.getHeight() - 500f));
                 if(Math.abs(nextHeight - lastMapPaneHeight[0]) > 0.5f){
                     lastMapPaneHeight[0] = nextHeight;
@@ -1298,6 +1306,7 @@ new_pane = '''        // Landscape phones can be only ~320-400 logical px tall. 
                     markCampaignUiResized(nextHeight);
                 }
             });
+            ui.menuGroup.addChild(mapResizeTick);
         }
         ui.menuGroup.addChild(root);
         markCampaignUiReady(mobile ? "mobile" : "desktop", campaignWidth, campaignHeight, mapPaneHeight);
