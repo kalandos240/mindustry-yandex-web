@@ -31,7 +31,10 @@ public final class BrowserResearchUi{
     private static boolean initialized, open;
     private static TechNode activeRoot, selected;
     private static final ObjectSet<TechNode> expanded = new ObjectSet<>();
-    private static Table menuTree, hudTree, menuDetails, hudDetails;
+    private static BrowserTechTreeGraph menuTree, hudTree;
+    private static ScrollPane menuTreePane, hudTreePane;
+    private static Table menuDetails, hudDetails;
+    private static float graphZoom = 1f;
     private static float menuTreeWidth, hudTreeWidth, menuDetailsWidth, hudDetailsWidth;
     private static int visibleCount;
 
@@ -97,11 +100,11 @@ public final class BrowserResearchUi{
         }
         panel.add(roots).colspan(mobile ? 1 : 2).left().row();
 
-        Table tree = new Table();
-        tree.top().left();
+        BrowserTechTreeGraph tree = new BrowserTechTreeGraph();
         ScrollPane treePane = new ScrollPane(tree, Styles.smallPane);
         treePane.setFadeScrollBars(false);
-        treePane.setScrollingDisabled(true, false);
+        treePane.setScrollingDisabled(false, false);
+        treePane.setOverscroll(false, false);
 
         Table details = new Table();
         details.top().left();
@@ -119,9 +122,12 @@ public final class BrowserResearchUi{
         }
 
         Table actions = new Table();
+        actions.button("-", () -> changeZoom(-0.2f))
+            .size(mobile ? 52f : 60f, mobile ? 44f : 42f);
+        actions.button("+", () -> changeZoom(0.2f))
+            .size(mobile ? 52f : 60f, mobile ? 44f : 42f);
         actions.button(Core.bundle.get("refresh", "Refresh"), BrowserResearchUi::refresh)
-            .size(mobile ? 115f : 120f, mobile ? 44f : 42f);
-        actions.add(Core.bundle.get("techtree.select", "Select a technology")).padLeft(9f).left();
+            .size(mobile ? 105f : 120f, mobile ? 44f : 42f);
         panel.add(actions).colspan(mobile ? 1 : 2).left().row();
 
         overlay.add(panel).center();
@@ -129,11 +135,13 @@ public final class BrowserResearchUi{
 
         if(menu){
             menuTree = tree;
+            menuTreePane = treePane;
             menuDetails = details;
             menuTreeWidth = treeWidth;
             menuDetailsWidth = detailWidth;
         }else{
             hudTree = tree;
+            hudTreePane = treePane;
             hudDetails = details;
             hudTreeWidth = treeWidth;
             hudDetailsWidth = detailWidth;
@@ -151,6 +159,7 @@ public final class BrowserResearchUi{
         open = true;
         refresh();
         markResearchOpen(true);
+        focusSelected();
     }
 
     public static void close(){
@@ -170,6 +179,7 @@ public final class BrowserResearchUi{
         expanded.clear();
         expanded.add(root);
         refresh();
+        focusSelected();
     }
 
     private static int totalNodes(){
@@ -193,67 +203,47 @@ public final class BrowserResearchUi{
             selected == null ? "" : selected.content.name, count, TechTree.roots.size);
     }
 
-    private static void rebuildTree(Table list, float width){
-        if(list == null) return;
-        list.clear();
-        list.top().left();
-        appendNode(list, activeRoot, width, 0);
-        list.invalidateHierarchy();
+    /**
+     * In a spatial tech graph the top-left initial scroll position is often
+     * far from the root (its Y is centered among many child branches).
+     * Reveal selected nodes after every root switch or branch expansion so
+     * desktop and portrait users never open an apparently empty graph.
+     * The native ScrollPane still owns subsequent touch drag / wheel panning.
+     */
+    private static void focusSelected(){
+        Core.app.post(() -> {
+            if(!open || selected == null) return;
+            focusNode(menuTreePane, menuTree, selected);
+            focusNode(hudTreePane, hudTree, selected);
+        });
     }
 
-    private static void appendNode(Table list, TechNode node, float width, int depth){
-        if(node == null || node.content == null || depth > 64) return;
-        visibleCount++;
-        float indent = Math.min(depth * (mobile ? 14f : 20f), mobile ? 94f : 180f);
-        float branchWidth = mobile ? 33f : 36f;
+    private static void focusNode(ScrollPane pane, BrowserTechTreeGraph graph, TechNode node){
+        if(pane == null || graph == null || node == null) return;
+        pane.validate();
+        graph.validate();
+        Element element = graph.find("web-research-node-" + node.content.name);
+        if(element == null) return;
+        pane.scrollTo(element.x, element.y, element.getWidth(), element.getHeight(), true, true);
+        pane.updateVisualScroll();
+    }
 
-        Table row = new Table();
-        row.left();
-        if(depth > 0){
-            row.add().width(indent - (mobile ? 10f : 13f));
-            row.image(Tex.whiteui).color(Color.gray).width(mobile ? 10f : 13f).height(2f);
-        }
+    private static void changeZoom(float delta){
+        graphZoom = Math.max(0.6f, Math.min(1.6f, graphZoom + delta));
+        refresh();
+    }
 
-        if(node.children.size > 0){
-            TextButton branch = new TextButton(expanded.contains(node) ? "-" : "+");
-            branch.clicked(() -> {
-                if(expanded.contains(node)) expanded.remove(node);
-                else expanded.add(node);
-                selected = node;
-                refresh();
-            });
-            row.add(branch).size(branchWidth, mobile ? 43f : 39f).padRight(3f);
-        }else{
-            row.add().width(branchWidth + 3f);
-        }
+    private static void selectGraphNode(TechNode node){
+        selected = node;
+        if(node.children.size > 0) expanded.add(node);
+        refresh();
+        focusSelected();
+    }
 
-        Button contentButton = new Button(Styles.defaultb);
-        contentButton.name = "web-research-node-" + node.content.name;
-        if(node.content.uiIcon != null){
-            contentButton.add(new Image(node.content.uiIcon)).size(mobile ? 26f : 29f).padLeft(5f);
-        }
-        Label name = new Label(node.content.localizedName);
-        name.setFontScale(mobile ? 0.76f : 0.84f);
-        contentButton.add(name).left().growX().padLeft(5f);
-        Label status = new Label(node.content.unlocked() ? "+" :
-            node.parent != null && !node.parent.content.unlocked() ? "-" : "");
-        status.setFontScale(0.8f);
-        contentButton.add(status).width(12f).padRight(5f);
-
-        contentButton.clicked(() -> {
-            selected = node;
-            if(node.children.size > 0) expanded.add(node);
-            refresh();
-        });
-        float buttonWidth = Math.max(135f, width - indent - branchWidth - 20f);
-        row.add(contentButton).width(buttonWidth).height(mobile ? 43f : 39f);
-        list.add(row).left().padBottom(3f).row();
-
-        if(expanded.contains(node)){
-            for(TechNode child : node.children){
-                appendNode(list, child, width, depth + 1);
-            }
-        }
+    private static void rebuildTree(BrowserTechTreeGraph graph, float width){
+        if(graph == null) return;
+        graph.rebuild(activeRoot, expanded, graphZoom, BrowserResearchUi::selectGraphNode);
+        visibleCount = graph.nodeCount();
     }
 
     private static void rebuildDetails(Table details, float width){

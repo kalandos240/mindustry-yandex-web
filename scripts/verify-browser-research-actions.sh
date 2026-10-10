@@ -67,7 +67,7 @@ for scenario in menu campaign; do
           await new Promise(r=>setTimeout(r,150));
         }
         if(root.getAttribute('data-mindustry-research-tree-navigation')!=='passed'){
-          throw Error('Real DOM pointer did not navigate Erekir -> Serpulo -> Conveyor -> Junction');
+          throw Error('Real DOM pointer did not navigate Erekir -> Serpulo -> Conveyor -> Junction: stage='+root.getAttribute('data-mindustry-research-tree-stage')+', detail='+root.getAttribute('data-mindustry-research-tree-detail')+', root='+root.getAttribute('data-mindustry-research-tree-root')+', selected='+root.getAttribute('data-mindustry-research-tree-selected'));
         }
       }
       root.setAttribute('data-mindustry-research-pointer-smoke','ready');
