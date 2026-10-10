@@ -51,27 +51,31 @@ public final class BrowserStockMainMenu{
             // The portal may provide a narrow iframe, so use two columns
             // and allow the whole grid to fit the game surface.
             home.center();
+            // Scale the stock tile geometry down within narrow embedded
+            // Yandex game areas; surrounding ad banners are not our viewport.
+            float tileWidth = Math.max(72f,
+                Math.min(146f, (Core.graphics.getWidth() - 34f) / 2f));
             home.table(Styles.black6, menu -> {
                 menu.name = "web-main-mobile-buttons";
                 menu.defaults().pad(5f);
-                addLogo(menu, 216f);
+                addLogo(menu, Math.min(216f, 2f * tileWidth - 14f));
                 menu.row();
                 menu.button(Core.bundle.get("play", "Play"), Icon.play,
-                    BrowserStockMainMenu::openPlay).size(146f, 76f)
+                    BrowserStockMainMenu::openPlay).size(tileWidth, 76f)
                     .name("web-main-play");
                 menu.button(Core.bundle.get("customgame", "Custom Game"), Icon.terrain,
-                    BrowserStockMainMenu::openPlay).size(146f, 76f)
+                    BrowserStockMainMenu::openPlay).size(tileWidth, 76f)
                     .name("web-main-custom");
                 menu.row();
                 menu.button(Core.bundle.get("research", "Research"), Icon.tree,
-                    BrowserResearchUi::show).size(146f, 76f)
+                    BrowserResearchUi::show).size(tileWidth, 76f)
                     .name("web-main-research");
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
-                    BrowserUiRuntime::openMenuSettings).size(146f, 76f)
+                    BrowserUiRuntime::openMenuSettings).size(tileWidth, 76f)
                     .name("web-main-settings");
                 menu.row();
                 menu.add(Version.combined()).colspan(2).padBottom(8f);
-            }).width(Math.min(320f, Core.graphics.getWidth() - 16f));
+            }).width(Math.min(2f * tileWidth + 20f, Core.graphics.getWidth() - 12f));
         }else{
             // Mirrors MenuFragment.buildDesktop(): a shaded left sidebar
             // with the original Mindustry icons and flat toggle menu style.
