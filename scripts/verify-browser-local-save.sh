@@ -103,6 +103,8 @@ run_local_save(){
     --require 'data-mindustry-local-save-state="saved"' \
     --require 'data-mindustry-local-save-slot="available"' \
     --require 'data-mindustry-local-save-ui="ready"' \
+    --require 'data-mindustry-pause-settings-entry="ready"' \
+    --require 'data-mindustry-settings-pause-entry="ready"' \
     --require 'data-mindustry-local-continue-ui="ready"' \
     --require 'data-mindustry-local-continue-slot="available"' \
     --require 'data-mindustry-local-save-flush="ready"' \
@@ -152,6 +154,8 @@ run_local_save(){
     --require 'data-mindustry-local-save-load="ready"' \
     --require 'data-mindustry-local-save-slot="available"' \
     --require 'data-mindustry-local-save-ui="ready"' \
+    --require 'data-mindustry-pause-settings-entry="ready"' \
+    --require 'data-mindustry-settings-pause-entry="ready"' \
     --require 'data-mindustry-local-continue-ui="ready"' \
     --require 'data-mindustry-local-continue-slot="available"' \
     --require 'data-mindustry-local-autosave-smoke="armed"' \

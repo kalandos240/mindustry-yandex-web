@@ -307,34 +307,72 @@
                 effects.onclick = () => { effectsState = !effectsState; action(3, effectsState ? 1 : 0); renderSettings(); };
                 graphics.onclick = () => { qualityState = !qualityState; action(4, qualityState ? 1 : 0); renderSettings(); };
 
+                const closeSettings = () => {
+                    panel.style.display = 'none';
+                    panel.dataset.openContext = '';
+                    panel.dataset.openLoop = '';
+                    root.setAttribute('data-mindustry-settings-panel','closed');
+                    root.setAttribute('data-mindustry-settings-context','none');
+                };
+                const inLiveSession = () => {
+                    // gameplay-loop reports the boot/menu scheduler phase, which
+                    // can remain menu-stable while a separately loaded map plays.
+                    const local = root.getAttribute('data-mindustry-local-map-state');
+                    const campaign = root.getAttribute('data-mindustry-campaign-state');
+                    return local === 'playing' || campaign === 'playing' || campaign === 'paused';
+                };
+                const pauseActive = () =>
+                    root.getAttribute('data-mindustry-campaign-state') === 'paused'
+                    || (root.getAttribute('data-mindustry-local-map-state') === 'playing'
+                        && root.getAttribute('data-mindustry-local-map-pause-state') === 'paused');
+                const inMenu = () => !inLiveSession() &&
+                    (root.getAttribute('data-mindustry-gameplay-loop') || '').indexOf('menu') >= 0;
                 const syncMenu = () => {
                     const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
-                    const menu = loop.indexOf('menu') >= 0;
-                    if(!menu && panel.style.display !== 'none'){
-                        panel.style.display = 'none';
-                        root.setAttribute('data-mindustry-settings-panel','closed');
+                    const menu = inMenu();
+                    // In-game settings may remain open only in the same paused
+                    // session in which the real Arc pause button opened them.
+                    // A world return/resume closes the panel just like menu exit.
+                    const samePause = panel.dataset.openContext === 'pause'
+                        && panel.dataset.openLoop === loop && pauseActive() && !menu;
+                    const leftContext = (panel.dataset.openContext === 'menu' && !menu)
+                        || (panel.dataset.openContext === 'pause' && (menu || !samePause));
+                    if(leftContext && panel.style.display !== 'none'){
+                        closeSettings();
                     }
                     launch.style.display = menu && panel.style.display === 'none' ? '' : 'none';
                 };
-
-                launch.onclick = () => {
+                const openSettings = context => {
                     renderSettings();
+                    panel.dataset.openContext = context;
+                    panel.dataset.openLoop = root.getAttribute('data-mindustry-gameplay-loop') || '';
                     panel.style.display = 'flex';
                     launch.style.display = 'none';
+                    root.setAttribute('data-mindustry-settings-context', context);
                     root.setAttribute('data-mindustry-settings-panel','open');
                 };
+                launch.onclick = () => openSettings('menu');
+                globalThis.__mindustryOpenPauseSettings = () => {
+                    // Only the Arc pause overlay calls this entry point. Reject
+                    // launcher/menu invocations and stay inside the game surface.
+                    if(!inLiveSession() || !pauseActive()) return;
+                    openSettings('pause');
+                };
                 back.onclick = () => {
-                    panel.style.display = 'none';
-                    root.setAttribute('data-mindustry-settings-panel','closed');
+                    closeSettings();
                     syncMenu();
                 };
 
                 new MutationObserver(syncMenu).observe(root, {
                     attributes:true,
-                    attributeFilter:['data-mindustry-gameplay-loop']
+                    attributeFilter:['data-mindustry-gameplay-loop',
+                        'data-mindustry-local-map-state', 'data-mindustry-campaign-state',
+                        'data-mindustry-local-map-pause-state']
                 });
                 root.setAttribute('data-mindustry-settings-ui','ready');
+                root.setAttribute('data-mindustry-settings-pause-entry','ready');
                 root.setAttribute('data-mindustry-settings-panel','closed');
+                root.setAttribute('data-mindustry-settings-context','none');
                 syncMenu();
             };
 

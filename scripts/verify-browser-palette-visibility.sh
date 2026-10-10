@@ -49,6 +49,7 @@ for mode in desktop mobile; do
     --timeout 90 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-local-map-state="playing"' \
+    --after-ready-eval "(() => { const b=document.getElementById('mindustry-settings-toggle'); if(!b || b.style.display!=='none') throw new Error('Menu settings overlaps live gameplay'); return 'live-settings-hidden'; })()" \
     --require 'data-mindustry-local-map-loop="live"' \
     --require 'data-mindustry-build-palette="ready"' \
     --require 'data-mindustry-stock-placement="ready"' \
