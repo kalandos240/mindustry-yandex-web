@@ -188,7 +188,9 @@ public final class BrowserMobileRtsSmoke{
                                 continue;
                             }
                             viable++;
-                            if(Core.scene.hasMouse(sx, screenHeight - sy)){
+                            // Scene.hasMouse accepts the Arc stage-space Y used by MobileInput.tap,
+                            // not DOM's top-origin Y. Mirroring it would accept HUD-covered taps.
+                            if(Core.scene.hasMouse(sx, sy)){
                                 covered++;
                                 continue;
                             }
@@ -251,7 +253,7 @@ public final class BrowserMobileRtsSmoke{
     private static void assertGameplayPosition(float x,float y,String what){
         if(x < 32f || x > Core.graphics.getWidth()-32f ||
            y < 32f || y > Core.graphics.getHeight()-32f ||
-           Core.scene.hasMouse(x,Core.graphics.getHeight()-y)){
+           Core.scene.hasMouse(x,y)){
             throw new IllegalStateException("Mobile RTS " + what + " outside free gameplay canvas: " +
                 x + "," + y + " / " + Core.graphics.getWidth() + "x" + Core.graphics.getHeight());
         }
