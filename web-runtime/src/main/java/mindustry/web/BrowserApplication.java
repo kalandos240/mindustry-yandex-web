@@ -148,6 +148,10 @@ public final class BrowserApplication extends WebApplicationBase{
 
                 phase = "gameplay-sync";
                 syncGameplayMarker();
+                // CI-only: verify real DOM unit selection/orders in the stock
+                // DesktopInput/CommandAI graph. The query guard is cached and
+                // has no effect in a normal Yandex gameplay session.
+                BrowserRtsCommandSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
