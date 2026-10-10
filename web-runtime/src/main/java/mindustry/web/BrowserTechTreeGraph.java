@@ -206,14 +206,14 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
                 Button fromActor = buttons.get(node.parent);
                 Button toActor = buttons.get(node);
                 if(fromActor == null || toActor == null) continue;
-                float sx = getX(Align.left) + fromActor.getX() + fromActor.getWidth() * 0.5f;
-                float ex = getX(Align.left) + toActor.getX() + toActor.getWidth() * 0.5f;
-                float y1 = fromActor.getY() + fromActor.getHeight() * 0.5f;
-                float y2 = toActor.getY() + toActor.getHeight() * 0.5f;
+                float sx = getX(Align.left) + fromActor.getX(Align.left) + fromActor.getWidth() * 0.5f;
+                float ex = getX(Align.left) + toActor.getX(Align.left) + toActor.getWidth() * 0.5f;
+                float y1 = fromActor.getY(Align.bottom) + fromActor.getHeight() * 0.5f;
+                float y2 = toActor.getY(Align.bottom) + toActor.getHeight() * 0.5f;
                 boolean upwards = y2 >= y1;
-                float sy = getY(Align.bottom) + fromActor.getY() +
+                float sy = getY(Align.bottom) + fromActor.getY(Align.bottom) +
                     (upwards ? fromActor.getHeight() : 0f);
-                float ey = getY(Align.bottom) + toActor.getY() +
+                float ey = getY(Align.bottom) + toActor.getY(Align.bottom) +
                     (upwards ? 0f : toActor.getHeight());
                 float bendY = (sy + ey) * 0.5f;
                 Lines.line(sx, sy, sx, bendY);
