@@ -123,7 +123,8 @@ public final class BrowserGameplayRuntime{
         // one Space handler here so both transitions use the same validated
         // sector pause/resume state machines as the native HUD buttons.
         if(!smokeMode && (state.isPlaying() || state.isPaused())
-        && Core.input.keyTap(Binding.pause) && !state.gameOver
+        && (Core.input.keyTap(Binding.pause) || Core.input.keyTap(Binding.menu))
+        && !state.gameOver
         && !state.rules.pauseDisabled && Core.scene != null
         && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
             if(BrowserCampaignRuntime.active()){
