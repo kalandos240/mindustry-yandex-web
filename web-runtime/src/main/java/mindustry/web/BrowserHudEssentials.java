@@ -102,21 +102,22 @@ public final class BrowserHudEssentials{
             }
         }
         if(!state.rules.waves){
-            return state.rules.attackMode
-                ? Core.bundle.get("mode.attack.name", "Attack") + " · " +
-                    Core.bundle.get("wave.enemycores", "Enemy cores") + ": " +
-                    state.teams.present.sum(t -> t.team != player.team() ? t.cores.size : 0)
-                : Core.bundle.get("sector.curcapture", "Sector");
+            if(state.rules.attackMode){
+                int cores = state.teams.present.sum(t -> t.team != player.team() ? t.cores.size : 0);
+                return Core.bundle.format(cores == 1 ? "wave.enemycore" : "wave.enemycores", cores);
+            }
+            return Core.bundle.get("sector.curcapture", "Sector");
         }
 
-        String wave = Core.bundle.get("wave", "Wave") + " " + state.wave;
-        if(state.rules.winWave > 1){
-            wave += " / " + state.rules.winWave;
-        }
+        String wave = state.rules.winWave > 1
+            ? Core.bundle.format("wave.cap", state.wave, state.rules.winWave)
+            : Core.bundle.format("wave", state.wave);
         int seconds = (int)Math.max(0, Math.ceil(state.wavetime / 60f));
-        return wave + "\n" + Core.bundle.get("wave.enemies", "Enemies") + ": " +
-            state.enemies + "\n" + Core.bundle.get("wave.waiting", "Next wave") + ": " +
-            (seconds / 60) + ":" + (seconds % 60 < 10 ? "0" : "") + (seconds % 60);
+        String remaining = (seconds / 60) + ":" + (seconds % 60 < 10 ? "0" : "") + (seconds % 60);
+        String enemies = state.enemies == 1
+            ? Core.bundle.format("wave.enemy", state.enemies)
+            : Core.bundle.format("wave.enemies", state.enemies);
+        return wave + "\n" + enemies + "\n" + Core.bundle.format("wave.waiting", remaining);
     }
 
     @JSBody(script = "const r=document.documentElement;r.setAttribute('data-mindustry-hud-essentials','ready');r.setAttribute('data-mindustry-hud-minimap','stock-mindustry-ui-Minimap');r.setAttribute('data-mindustry-hud-minimap-overlay','stock-MiniMapFragment');r.setAttribute('data-mindustry-hud-coreitems','stock-CoreItemsDisplay');r.setAttribute('data-mindustry-hud-status','game-state');")
