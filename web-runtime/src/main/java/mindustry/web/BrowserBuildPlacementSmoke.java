@@ -34,6 +34,7 @@ public final class BrowserBuildPlacementSmoke{
     private static boolean buildSoundObserved;
     private static boolean removeAfterBuild;
     private static boolean rotateAfterBuild;
+    private static boolean mobileSelectOnly;
     private static int originalRotation;
     private static boolean breakPlanObserved;
     private static int pointerButton;
@@ -120,6 +121,18 @@ public final class BrowserBuildPlacementSmoke{
             // selection marker. Report only a selection already confirmed by the
             // real InputHandler, so the existing browser smoke checks stay valid.
             markVerifiedSelection();
+
+            // A genuine browser touch on a visible vanilla construction icon
+            // must reach MobileInput before any mobile world drag can be tested.
+            // Keep this independent of the desktop mouse placement smoke.
+            if(mobileSelectOnly){
+                if(!mobile || !(control.input instanceof MobileInput)){
+                    throw new IllegalStateException("mobile-build:wrong-input");
+                }
+                completed = true;
+                markMobileTapSelected();
+                return;
+            }
 
             if(!findTarget(unit)){
                 throw new IllegalStateException("build:no-target");
@@ -516,7 +529,8 @@ public final class BrowserBuildPlacementSmoke{
             queryChecked = true;
             removeAfterBuild = removalRequested();
             rotateAfterBuild = rotateRequested();
-            enabled = requested() || removeAfterBuild || rotateAfterBuild;
+            mobileSelectOnly = mobileTapRequested();
+            enabled = requested() || removeAfterBuild || rotateAfterBuild || mobileSelectOnly;
             if(enabled) markRequested();
         }
         return enabled;
@@ -543,6 +557,12 @@ public final class BrowserBuildPlacementSmoke{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryBuildRotateSmoke') === '1';")
     private static native boolean rotateRequested();
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryMobilePaletteTapSmoke') === '1';")
+    private static native boolean mobileTapRequested();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-mobile-palette-tap', 'selected'); document.documentElement.setAttribute('data-mindustry-mobile-palette-source', 'dom-touch-pointer-to-stock-mobile-input');")
+    private static native void markMobileTapSelected();
+
     /** Stage coordinates use bottom-left origin, while DOM clientY uses top-left. */
     @JSBody(params = {"type", "sx", "sy", "button", "down"}, script = """
         const canvas = document.getElementById('mindustry-canvas');
@@ -552,7 +572,7 @@ public final class BrowserBuildPlacementSmoke{
         const clientY = rect.top + rect.height - sy;
         const event = new PointerEvent(type, {
             pointerId: 1,
-            pointerType: 'mouse',
+            pointerType: new URLSearchParams(location.search).get('mindustryMobilePaletteTapSmoke') === '1' ? 'touch' : 'mouse',
             isPrimary: true,
             clientX: clientX,
             clientY: clientY,

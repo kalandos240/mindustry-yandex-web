@@ -29,8 +29,12 @@ for mode in desktop mobile; do
   lang=en
   cdp_port=9295
   mobile_arg=""
+  mobile_query=""
+  touch_requirement='data-mindustry-stock-placement="ready"'
   if [ "$mode" = mobile ]; then
     mobile_arg="--emulate-mobile"
+    mobile_query="&mindustryMobilePaletteTapSmoke=1"
+    touch_requirement='data-mindustry-mobile-palette-tap="selected"'
     lang=ru
     cdp_port=9296
   fi
@@ -39,7 +43,7 @@ for mode in desktop mobile; do
   # and has populated actions while the stock game loop is running.
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     $mobile_arg \
-    --url "http://127.0.0.1:$PORT/index.html?lang=$lang&mindustryMapSmoke=maze" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=$lang&mindustryMapSmoke=maze$mobile_query" \
     --profile "$profile" \
     --port "$cdp_port" \
     --timeout 90 \
@@ -50,6 +54,7 @@ for mode in desktop mobile; do
     --require 'data-mindustry-stock-placement="ready"' \
     --require 'data-mindustry-stock-placement-input="ready"' \
     --require 'data-mindustry-stock-placement-source="mindustry.ui.fragments.PlacementFragment"' \
+    --require "$touch_requirement" \
     --require 'data-mindustry-build-palette-visible="yes"' \
     --require 'data-mindustry-build-palette-actions="present"' \
     --require 'data-mindustry-local-map-player="added"' \
@@ -58,6 +63,11 @@ for mode in desktop mobile; do
   grep -Eq 'data-mindustry-build-categories="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-build-blocks="[1-9][0-9]*"' "$dom"
   grep -q "data-mindustry-input-mode=\"$mode\"" "$dom"
+  if [ "$mode" = mobile ]; then
+    grep -Fq 'data-mindustry-mobile-palette-source="dom-touch-pointer-to-stock-mobile-input"' "$dom"
+    grep -Fq 'data-mindustry-build-placement-ui="vanilla-placement-fragment"' "$dom"
+    echo "Production mobile: real DOM touch selected stock Conveyor button in MobileInput PASS"
+  fi
   echo "Production $mode: labeled palette visible during live map gameplay PASS"
 done
 
