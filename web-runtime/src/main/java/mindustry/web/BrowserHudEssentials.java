@@ -31,10 +31,8 @@ public final class BrowserHudEssentials{
             throw new IllegalStateException("Vanilla Web HUD requires renderer, stock HUD and local player");
         }
 
-        // Minimap's click handler opens the *original* full-screen minimap.
-        // That fragment references chat visibility when opened, so provide its
-        // no-network local identity without constructing the online chat UI.
-        if(ui.chatfrag == null) ui.chatfrag = new ChatFragment();
+        // Minimap's click handler opens the original full-screen map. The Web
+        // patch keeps its focus handling independent of the absent chat dialog.
         if(ui.minimapfrag == null) ui.minimapfrag = new MinimapFragment();
         ui.minimapfrag.build(parent);
 
