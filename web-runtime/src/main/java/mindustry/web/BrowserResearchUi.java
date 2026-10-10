@@ -119,19 +119,29 @@ public final class BrowserResearchUi{
         });
         // Two-finger pinch zoom. A quantized zoom step prevents rebuilding
         // hundreds of buttons on every high-frequency browser touch event.
-        treePane.addListener(new ElementGestureListener(){
-            private float pinchInitialZoom = 1f;
-
-            @Override
-            public void touchDown(InputEvent event, float x, float y, int pointer, arc.input.KeyCode button){
-                if(pointer == 1) pinchInitialZoom = graphZoom;
-            }
+        treePane.addCaptureListener(new ElementGestureListener(){
+            private float pinchInitialZoom = -1f;
 
             @Override
             public void zoom(InputEvent event, float initialDistance, float distance){
-                if(open && initialDistance > 0.1f){
-                    setZoom(pinchInitialZoom * distance / initialDistance);
-                }
+                if(!open || initialDistance <= 0.1f) return;
+                if(pinchInitialZoom < 0f) pinchInitialZoom = graphZoom;
+                setZoom(pinchInitialZoom * distance / initialDistance);
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, arc.input.KeyCode button){
+                pinchInitialZoom = -1f;
+            }
+        });
+        // Arc sends wheel events to the current scroll-focus element, not
+        // necessarily the actor under the cursor. Match stock ResearchDialog:
+        // moving over the graph transfers scroll focus to this pane.
+        treePane.addListener(new InputListener(){
+            @Override
+            public boolean mouseMoved(InputEvent event, float x, float y){
+                treePane.requestScroll();
+                return false;
             }
         });
 
