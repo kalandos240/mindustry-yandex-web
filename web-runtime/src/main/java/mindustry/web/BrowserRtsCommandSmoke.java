@@ -3,6 +3,7 @@ package mindustry.web;
 import arc.*;
 import mindustry.game.EventType.*;
 import arc.math.geom.*;
+import arc.input.*;
 import mindustry.ai.types.*;
 import mindustry.content.*;
 import mindustry.gen.*;
@@ -27,7 +28,7 @@ import static mindustry.Vars.*;
  */
 public final class BrowserRtsCommandSmoke{
     private static boolean checked, enabled, done, shiftHeld;
-    private static int stage, frames, moveEvents, attackEvents;
+    private static int stage, frames, moveEvents, attackEvents, seenRightDown, uncaughtRightDown;
     private static Unit probe;
     private static float targetX, targetY, targetScreenX, targetScreenY;
 
@@ -57,6 +58,23 @@ public final class BrowserRtsCommandSmoke{
             // changing input, selection, order or AI behavior.
             Events.run(Trigger.unitCommandPosition, () -> moveEvents++);
             Events.run(Trigger.unitCommandAttack, () -> attackEvents++);
+            // Non-consuming observers bracket the Arc multiplexer. If the
+            // upstream probe receives a mouse-right event but the trailing
+            // probe does not, a prior scene/gesture processor consumed it.
+            Core.input.getInputMultiplexer().addProcessor(0, new InputProcessor(){
+                @Override
+                public boolean touchDown(int x, int y, int pointer, KeyCode button){
+                    if(button == KeyCode.mouseRight) seenRightDown++;
+                    return false;
+                }
+            });
+            Core.input.getInputMultiplexer().addProcessor(new InputProcessor(){
+                @Override
+                public boolean touchDown(int x, int y, int pointer, KeyCode button){
+                    if(button == KeyCode.mouseRight) uncaughtRightDown++;
+                    return false;
+                }
+            });
             probe = UnitTypes.dagger.create(player.team());
             probe.set(player.unit().x + 24f, player.unit().y + 12f);
             probe.add();
@@ -168,7 +186,10 @@ public final class BrowserRtsCommandSmoke{
                     ", mouse=" + Core.input.mouseX() + "," + Core.input.mouseY() +
                     ", hoveredUI=" + Core.scene.hasMouse() +
                     ", positionEvents=" + moveEvents +
-                    ", attackEvents=" + attackEvents);
+                    ", attackEvents=" + attackEvents +
+                    ", rightDownBeforeProcessors=" + seenRightDown +
+                    ", rightDownAfterProcessors=" + uncaughtRightDown +
+                    ", inputProcessors=" + Core.input.getInputProcessors().size);
             }
         }
     }
