@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.graphics.*;
+import arc.math.geom.*;
 import arc.scene.*;
 import arc.scene.event.*;
 import arc.scene.ui.*;
@@ -158,15 +159,34 @@ public final class BrowserResearchUi{
         ScrollPane infoPane = new ScrollPane(details, Styles.smallPane);
         infoPane.setFadeScrollBars(false);
         infoPane.setScrollingDisabled(true, false);
-        Table popover = new Table();
-        popover.setFillParent(true);
-        popover.bottom().right();
+        // The original ResearchDialog opens the information card beside
+        // the currently highlighted technology, not in a permanent sidebar.
+        // Track its actual Scene position through ScrollPane pan/zoom.
+        Table popover = new Table(Tex.pane2);
+        popover.name = "web-stock-research-node-info";
         popover.touchable = Touchable.childrenOnly;
+        popover.add(infoPane).grow().pad(6f);
+        final float infoWidth = mobile ? 217f : 292f;
+        final float infoHeight = mobile ? 155f : 220f;
+        popover.setSize(infoWidth, infoHeight);
         popover.visible(() -> selected != null && selected != activeRoot);
-        popover.table(Tex.pane2, box -> box.add(infoPane)
-            .width(mobile ? 217f : 292f).height(mobile ? 155f : 220f).pad(6f))
-            .padRight(9f).padBottom(mobile ? 68f : 72f);
         overlay.addChild(popover);
+        overlay.update(() -> {
+            if(!open || selected == null || selected == activeRoot) return;
+            Element node = tree.find("web-research-node-" + selected.content.name);
+            if(node == null) return;
+            Vec2 topRight = node.localToStageCoordinates(
+                new Vec2(node.getWidth(), node.getHeight()));
+            Vec2 anchor = overlay.stageToLocalCoordinates(topRight);
+            float x = anchor.x + 8f;
+            if(x + infoWidth > overlay.getWidth() - 8f){
+                x = anchor.x - node.getWidth() - infoWidth - 8f;
+            }
+            x = Math.max(6f, Math.min(x, overlay.getWidth() - infoWidth - 6f));
+            float y = Math.max(70f, Math.min(anchor.y - infoHeight * 0.5f,
+                overlay.getHeight() - infoHeight - 65f));
+            popover.setPosition(x, y);
+        });
         parent.addChild(overlay);
 
         if(menu){
