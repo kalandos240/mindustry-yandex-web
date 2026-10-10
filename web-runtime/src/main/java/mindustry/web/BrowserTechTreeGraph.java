@@ -12,6 +12,7 @@ import arc.struct.*;
 import mindustry.content.TechTree.*;
 import mindustry.ui.*;
 import mindustry.graphics.*;
+import mindustry.gen.*;
 
 /**
  * Scrollable orthogonal tech graph built from original TechNode.parent/children.
