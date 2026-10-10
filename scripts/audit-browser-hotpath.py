@@ -387,6 +387,13 @@ require(GRAPH_UI, "for(TechNode child : node.children)", "actual TechTree branch
 require(GRAPH_UI, "Lines.line(", "connected research technology graph")
 require(GRAPH_UI, "float getPrefWidth()", "two-axis scrollable research technology map")
 require(RESEARCH_UI, "changeZoom(float delta)", "research graph zoom controls")
+require(RESEARCH_UI, "treePane.addCaptureListener(new InputListener()", "mouse wheel research zoom")
+require(RESEARCH_UI, "treePane.addCaptureListener(new ElementGestureListener()", "two-finger research pinch zoom")
+require(RESEARCH_UI, "treePane.requestScroll()", "mouse wheel scroll focus on research graph")
+require(RESEARCH_UI, "markGraphZoom(graphZoom)", "observable real graph zoom for browser test")
+require(RESEARCH_UI, "expanded.remove(node)", "collapsible vanilla research branches")
+require((WEB_JAVA / "BrowserResearchTreeSmoke.java").read_text(encoding="utf-8"), "markCollapsePassed()", "real pointer collapse of research branches")
+require(RESEARCH_UI, "if(node != activeRoot", "always-visible planet root")
 require(RESEARCH_UI, "expanded.add(node)", "interactive research tree expansion")
 require(RESEARCH_UI, "data-mindustry-research-layout','hierarchical-techtree'", "browser research hierarchy marker")
 require((SCRIPTS / "verify-browser-research-actions.sh").read_text(encoding="utf-8"),

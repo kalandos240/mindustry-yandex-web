@@ -105,6 +105,45 @@ public final class BrowserResearchUi{
         treePane.setFadeScrollBars(false);
         treePane.setScrollingDisabled(false, false);
         treePane.setOverscroll(false, false);
+        // Vanilla ResearchDialog zooms with the wheel rather than moving the
+        // viewport. Restrict wheel capture to this research pane so normal
+        // menu/gameplay scrolling and nearby item details are unchanged.
+        treePane.addCaptureListener(new InputListener(){
+            @Override
+            public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY){
+                if(!open || amountY == 0f) return false;
+                changeZoom(-0.1f * Math.signum(amountY));
+                event.stop();
+                return true;
+            }
+        });
+        // Two-finger pinch zoom. A quantized zoom step prevents rebuilding
+        // hundreds of buttons on every high-frequency browser touch event.
+        treePane.addCaptureListener(new ElementGestureListener(){
+            private float pinchInitialZoom = -1f;
+
+            @Override
+            public void zoom(InputEvent event, float initialDistance, float distance){
+                if(!open || initialDistance <= 0.1f) return;
+                if(pinchInitialZoom < 0f) pinchInitialZoom = graphZoom;
+                setZoom(pinchInitialZoom * distance / initialDistance);
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, arc.input.KeyCode button){
+                pinchInitialZoom = -1f;
+            }
+        });
+        // Arc sends wheel events to the current scroll-focus element, not
+        // necessarily the actor under the cursor. Match stock ResearchDialog:
+        // moving over the graph transfers scroll focus to this pane.
+        treePane.addListener(new InputListener(){
+            @Override
+            public boolean mouseMoved(InputEvent event, float x, float y){
+                treePane.requestScroll();
+                return false;
+            }
+        });
 
         Table details = new Table();
         details.top().left();
@@ -201,6 +240,7 @@ public final class BrowserResearchUi{
         markResearchCatalog(totalNodes());
         markTree(activeRoot.name == null ? activeRoot.content.name : activeRoot.name,
             selected == null ? "" : selected.content.name, count, TechTree.roots.size);
+        markGraphZoom(graphZoom);
     }
 
     /**
@@ -229,13 +269,30 @@ public final class BrowserResearchUi{
     }
 
     private static void changeZoom(float delta){
-        graphZoom = Math.max(0.6f, Math.min(1.6f, graphZoom + delta));
+        setZoom(graphZoom + delta);
+    }
+
+    private static void setZoom(float requested){
+        // Quantize to 0.1x steps: legible text and bounded JS/GPU allocations
+        // even during rapid trackpad scrolling or two-finger pinch.
+        float next = Math.round(Math.max(0.6f, Math.min(1.6f, requested)) * 10f) / 10f;
+        if(Math.abs(graphZoom - next) < 0.049f) return;
+        graphZoom = next;
         refresh();
+        focusSelected();
     }
 
     private static void selectGraphNode(TechNode node){
         selected = node;
-        if(node.children.size > 0) expanded.add(node);
+        if(node.children.size > 0){
+            // Root always stays open. Other branches toggle between expanded
+            // and collapsed; descendants keep their expansion state for later.
+            if(node != activeRoot && expanded.contains(node)){
+                expanded.remove(node);
+            }else{
+                expanded.add(node);
+            }
+        }
         refresh();
         focusSelected();
     }
@@ -339,6 +396,10 @@ public final class BrowserResearchUi{
 
     @JSBody(params = {"shown"}, script = "document.documentElement.setAttribute('data-mindustry-research-open', shown ? 'yes' : 'no');")
     private static native void markResearchOpen(boolean shown);
+
+    @JSBody(params = {"zoom"}, script =
+        "document.documentElement.setAttribute('data-mindustry-research-tree-zoom', String(zoom));")
+    private static native void markGraphZoom(float zoom);
 
     @JSBody(params = {"root","node","count","roots"}, script = """
         const r=document.documentElement;
