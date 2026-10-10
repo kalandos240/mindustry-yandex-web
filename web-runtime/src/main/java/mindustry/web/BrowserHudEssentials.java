@@ -116,20 +116,30 @@ public final class BrowserHudEssentials{
         if(!state.rules.waves){
             if(state.rules.attackMode){
                 int cores = state.teams.present.sum(t -> t.team != player.team() ? t.cores.size : 0);
-                return Core.bundle.format(cores == 1 ? "wave.enemycore" : "wave.enemycores", cores);
+                return localized(cores == 1 ? "wave.enemycore" : "wave.enemycores", cores);
             }
             return Core.bundle.get("sector.curcapture", "Sector");
         }
 
         String wave = state.rules.winWave > 1
-            ? Core.bundle.format("wave.cap", state.wave, state.rules.winWave)
-            : Core.bundle.format("wave", state.wave);
+            ? localized("wave.cap", state.wave, state.rules.winWave)
+            : localized("wave", state.wave);
         int seconds = (int)Math.max(0, Math.ceil(state.wavetime / 60f));
         String remaining = (seconds / 60) + ":" + (seconds % 60 < 10 ? "0" : "") + (seconds % 60);
         String enemies = state.enemies == 1
-            ? Core.bundle.format("wave.enemy", state.enemies)
-            : Core.bundle.format("wave.enemies", state.enemies);
-        return wave + "\n" + enemies + "\n" + Core.bundle.format("wave.waiting", remaining);
+            ? localized("wave.enemy", state.enemies)
+            : localized("wave.enemies", state.enemies);
+        return wave + "\n" + enemies + "\n" + localized("wave.waiting", remaining);
+    }
+
+    // Avoid TeaVM's java.text.MessageFormat currency-data path on every HUD frame.
+    // Stock .properties placeholders only need two numeric/text positional args.
+    private static String localized(String key, Object value){
+        return Core.bundle.get(key, key).replace("{0}", String.valueOf(value));
+    }
+
+    private static String localized(String key, Object first, Object second){
+        return localized(key, first).replace("{1}", String.valueOf(second));
     }
 
     @JSBody(script = "const r=document.documentElement;r.setAttribute('data-mindustry-hud-essentials','ready');r.setAttribute('data-mindustry-hud-minimap','stock-mindustry-ui-Minimap');r.setAttribute('data-mindustry-hud-minimap-overlay','stock-MiniMapFragment');r.setAttribute('data-mindustry-hud-coreitems','stock-CoreItemsDisplay');r.setAttribute('data-mindustry-hud-status','game-state');r.setAttribute('data-mindustry-hud-skip-wave','stock-rule-guarded');")
