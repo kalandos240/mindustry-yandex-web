@@ -21,10 +21,14 @@ done
 # Real PointerEvents go through BrowserInputBridge -> Arc Scene, not a
 # test-only research-unlock shortcut. Verify both the menu action and the
 # in-campaign action the player must use to buy Conveyor/Junction/Router.
-for scenario in menu campaign; do
-  profile="/tmp/mindustry-research-actions-${scenario}"
-  dom="/tmp/mindustry-research-actions-${scenario}.html"
+for target in desktop-menu desktop-campaign mobile-menu; do
+  scenario="${target#*-}"
+  device="${target%%-*}"
+  profile="/tmp/mindustry-research-actions-${target}"
+  dom="/tmp/mindustry-research-actions-${target}.html"
   rm -rf "$profile"
+  browser_args=()
+  if [ "$device" = mobile ]; then browser_args+=(--emulate-mobile); fi
   url="http://127.0.0.1:$PORT/index.html?lang=en"
   ready='data-mindustry-web="ready"'
   y=29
@@ -37,7 +41,7 @@ for scenario in menu campaign; do
     y=80
   fi
 
-  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${browser_args[@]}" \
     --url "$url" \
     --profile "$profile" \
     --port 9358 \
@@ -127,5 +131,5 @@ for scenario in menu campaign; do
     grep -Fq 'data-mindustry-research-tree-navigation="passed"' "$dom"
     grep -Fq 'data-mindustry-research-tree-navigation-source="real-dom-pointer-arc-scene"' "$dom"
   fi
-  echo "Production $scenario: real pointer opened hierarchical stock TechTree; planet switch and nested branch taps PASS"
+  echo "Production $device $scenario: real pointer opened hierarchical stock TechTree; planet switch, nested branch taps and native Escape PASS"
 done
