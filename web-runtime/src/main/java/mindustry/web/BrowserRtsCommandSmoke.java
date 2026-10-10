@@ -26,16 +26,17 @@ import static mindustry.Vars.*;
  * Neither probe runs in a normal Yandex release.
  */
 public final class BrowserRtsCommandSmoke{
-    private static boolean checked, enabled, done, shiftHeld, groupMode;
+    private static boolean checked, enabled, done, shiftHeld, groupMode, rectMode;
     private static int stage, frames, moveEvents, attackEvents;
     private static Unit probe, second;
-    private static float targetX, targetY, targetScreenX, targetScreenY;
+    private static float targetX, targetY, targetScreenX, targetScreenY, dragStartX, dragStartY, dragEndX, dragEndY;
 
     private BrowserRtsCommandSmoke(){}
 
     public static boolean requested(){
         if(!checked){
-            groupMode = queryGroupRequested();
+            rectMode = queryRectRequested();
+            groupMode = queryGroupRequested() || rectMode;
             enabled = queryRequested() || groupMode;
             checked = true;
             if(enabled) markStage("requested");
@@ -56,6 +57,9 @@ public final class BrowserRtsCommandSmoke{
             Events.run(Trigger.unitCommandPosition, () -> moveEvents++);
             Events.run(Trigger.unitCommandAttack, () -> attackEvents++);
             probe = UnitTypes.dagger.create(player.team());
+            // The Maze map has walls around parts of the camera center.
+            // Place the rectangle test units beside the real player, matching
+            // the known-good group smoke spawn and avoiding instant despawn.
             probe.set(player.unit().x + 24f, player.unit().y + 12f);
             probe.add();
             if(groupMode){
@@ -85,10 +89,31 @@ public final class BrowserRtsCommandSmoke{
 
         if(stage == 1){
             if(control.input.commandMode){
-                dispatchKey(true);
-                stage = 2;
+                if(rectMode){
+                    // The rectangle is laid out around the two actual units,
+                    // inside the gameplay camera view. No selection state is
+                    // mutated; the native pointer queue must select both.
+                    Vec2 start = Core.camera.project(new Vec2(
+                        Math.min(probe.x, second.x) - 12f, Math.min(probe.y, second.y) - 12f));
+                    Vec2 end = Core.camera.project(new Vec2(
+                        Math.max(probe.x, second.x) + 12f, Math.max(probe.y, second.y) + 12f));
+                    dragStartX = start.x;
+                    dragStartY = start.y;
+                    dragEndX = end.x;
+                    dragEndY = end.y;
+                    if(dragStartX < 50f || dragEndX > Core.graphics.getWidth() - 50f
+                        || dragStartY < 50f || dragEndY > Core.graphics.getHeight() - 50f){
+                        throw new IllegalStateException("RTS group-drag test rectangle falls outside the canvas");
+                    }
+                    dispatchDragPointer("pointerdown", dragStartX, dragStartY);
+                    stage = 4;
+                    markStage("dom-rect-down");
+                }else{
+                    dispatchKey(true);
+                    stage = 2;
+                    markStage("dom-g-down");
+                }
                 frames = 0;
-                markStage("dom-g-down");
                 return;
             }
             if(++frames > 90){
@@ -98,10 +123,26 @@ public final class BrowserRtsCommandSmoke{
             return;
         }
 
+        if(stage == 4){
+            dispatchDragPointer("pointermove", dragEndX, dragEndY);
+            stage = 5;
+            markStage("dom-rect-dragged");
+            return;
+        }
+
+        if(stage == 5){
+            dispatchDragPointer("pointerup", dragEndX, dragEndY);
+            stage = 2;
+            frames = 0;
+            markStage("dom-rect-up");
+            return;
+        }
+
         if(stage == 2){
             if(control.input.selectedUnits.contains(probe) &&
                 (!groupMode || control.input.selectedUnits.contains(second))){
-                dispatchKey(false);
+                if(!rectMode) dispatchKey(false);
+                if(rectMode) markRectSelected(control.input.selectedUnits.size);
                 // The world can be much larger than the visible canvas.
                 // Use the actual camera center as the DOM target instead of
                 // assuming a +68 world-unit move remains on-screen at every
@@ -134,9 +175,11 @@ public final class BrowserRtsCommandSmoke{
                 return;
             }
             if(++frames > 90){
-                dispatchKey(false);
+                if(!rectMode) dispatchKey(false);
                 releaseShift();
-                throw new IllegalStateException("DOM KeyG did not select the stock Dagger through DesktopInput");
+                throw new IllegalStateException(rectMode
+                    ? "DOM left-button rectangle did not select both stock Daggers"
+                    : "DOM KeyG did not select the stock Dagger through DesktopInput");
             }
             return;
         }
@@ -168,6 +211,7 @@ public final class BrowserRtsCommandSmoke{
                     markCommanded(probe.id, targetX, targetY, ai.targetPos.x, ai.targetPos.y,
                         control.input.selectedUnits.size);
                     if(groupMode) markGroupCommanded(probe.id, second.id, control.input.selectedUnits.size);
+                    if(rectMode) markRectCommanded();
                     return;
                 }
             }
@@ -185,7 +229,7 @@ public final class BrowserRtsCommandSmoke{
                     ", positionEvents=" + moveEvents +
                     ", attackEvents=" + attackEvents +
                     ", nativeDetectorRegistered=" + Core.input.getInputProcessors().contains(control.input.detector) +
-                    ", nativeInputRegistered=" + Core.input.getInputProcessors().contains(control.input) +
+                    ", nativeHandlerRegistered=" + Core.input.getInputProcessors().contains(control.input) +
                     ", inputProcessors=" + Core.input.getInputProcessors().size);
             }
         }
@@ -203,6 +247,29 @@ public final class BrowserRtsCommandSmoke{
         }));
         """)
     private static native void dispatchShift(boolean down);
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryRtsRectSmoke') === '1';")
+    private static native boolean queryRectRequested();
+
+    @JSBody(params = {"type", "sx", "sy"}, script = """
+        const canvas = document.getElementById('mindustry-canvas');
+        if(!canvas) throw new Error('RTS browser canvas missing in rectangle test');
+        const rect = canvas.getBoundingClientRect();
+        canvas.dispatchEvent(new PointerEvent(type, {
+            pointerId:1, pointerType:'mouse', isPrimary:true,
+            clientX:rect.left+sx, clientY:rect.top+rect.height-sy,
+            button:type==='pointermove'?-1:0, buttons:type==='pointerup'?0:1,
+            bubbles:true, cancelable:true
+        }));
+        """)
+    private static native void dispatchDragPointer(String type, float sx, float sy);
+
+    @JSBody(params = {"selected"}, script = """
+        document.documentElement.setAttribute('data-mindustry-rts-rect-smoke','selected');
+        document.documentElement.setAttribute('data-mindustry-rts-rect-source','dom-left-button-world-drag');
+        document.documentElement.setAttribute('data-mindustry-rts-rect-selected-count',String(selected));
+        """)
+    private static native void markRectSelected(int selected);
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryRtsGroupSmoke') === '1';")
     private static native boolean queryGroupRequested();
@@ -254,4 +321,7 @@ public final class BrowserRtsCommandSmoke{
         root.setAttribute('data-mindustry-rts-group-orders','2');
         """)
     private static native void markGroupCommanded(int firstId, int secondId, int count);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-rts-rect-smoke','commanded');")
+    private static native void markRectCommanded();
 }
