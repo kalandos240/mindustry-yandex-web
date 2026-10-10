@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.scene.*;
+import arc.math.geom.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.util.*;
@@ -24,6 +25,7 @@ import static mindustry.Vars.*;
  */
 public final class BrowserStockMainMenu{
     private static boolean contentOpen;
+    private static int pointerSampleFrames;
 
     private BrowserStockMainMenu(){}
 
@@ -98,6 +100,14 @@ public final class BrowserStockMainMenu{
             }).width(230f);
         }
         parent.addChild(home);
+        // Report genuine Arc button centers in screen coordinates for a
+        // real Chromium DOM PointerEvent gate. Sampling is cheap and follows
+        // browser orientation changes without keeping stale positions.
+        home.update(() -> {
+            if(state.isMenu() && !contentOpen && (++pointerSampleFrames & 15) == 0){
+                markPointerCenter(home.find("web-main-play"), "play");
+            }
+        });
 
         // The original menu's Back action closes its Play submenu. Do not
         // reset campaign, local saves, or current research root when closing.
@@ -112,6 +122,11 @@ public final class BrowserStockMainMenu{
             .size(mobile ? 142f : 130f, mobile ? 51f : 44f)
             .name("web-main-play-back");
         parent.addChild(back);
+        back.update(() -> {
+            if(state.isMenu() && contentOpen && (++pointerSampleFrames & 15) == 0){
+                markPointerCenter(back.find("web-main-play-back"), "back");
+            }
+        });
         markReady(mobile ? "mobile-grid" : "desktop-sidebar");
         markPage("home");
     }
@@ -122,6 +137,21 @@ public final class BrowserStockMainMenu{
         menu.add(logo).width(width).height(72f).colspan(mobile ? 2 : 1)
             .padTop(10f).padBottom(14f);
     }
+
+    private static void markPointerCenter(Element button, String name){
+        if(button == null || button.getWidth() < 1f || button.getHeight() < 1f) return;
+        Vec2 center = button.localToStageCoordinates(
+            new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
+        Vec2 screen = Core.scene.getViewport().project(center);
+        markMenuHitPoint(name, screen.x, screen.y);
+    }
+
+    @JSBody(params={"name","x","y"}, script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-main-menu-'+name+'-x',String(x));
+        root.setAttribute('data-mindustry-main-menu-'+name+'-y',String(y));
+        """)
+    private static native void markMenuHitPoint(String name, float x, float y);
 
     private static void openPlay(){
         contentOpen = true;

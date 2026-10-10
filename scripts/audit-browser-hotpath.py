@@ -400,6 +400,10 @@ require(MAIN_MENU, "BrowserResearchUi::show", "working original research navigat
 require(MAIN_MENU, "BrowserUiRuntime::openMenuSettings", "working menu settings action")
 require(MAIN_MENU, "playContent.visible", "native submenu does not capture game touches")
 require(MAIN_MENU, "data-mindustry-main-menu-layout", "observable responsive menu layout")
+require(MAIN_MENU, "markPointerCenter(home.find(\"web-main-play\"), \"play\")", "real menu Play screen coordinates")
+require(MAIN_MENU, "markPointerCenter(back.find(\"web-main-play-back\"), \"back\")", "real menu Back screen coordinates")
+require((ROOT / "scripts/verify-browser-locales.sh").read_text(encoding="utf-8"), "data-mindustry-main-menu-real-pointer", "live browser menu navigation test")
+
 
 require(RESEARCH_UI, "for(TechNode node : TechTree.all)", "complete vanilla TechTree catalog")
 require(RESEARCH_UI, "BrowserCampaignResearch.canSpend(content)", "stock research affordability")
