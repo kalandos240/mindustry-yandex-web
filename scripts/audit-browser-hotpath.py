@@ -437,6 +437,11 @@ require(GRAPH_UI, "Styles.nodei", "same ImageButton style as original ResearchDi
 require(GRAPH_UI, "Tex.buttonRed", "stock red locked research borders")
 require(GRAPH_UI, "baseNodeWidth = 46f", "icon-sized technology tree nodes")
 require(RESEARCH_UI, '"web-stock-research-items"', "original research resource list")
+require(RESEARCH_UI, "ItemSeq sectorStock = sector.items()", "cache one vanilla sector read per research refresh")
+require(RESEARCH_UI, "storedResources.get(item)", "cached O(1) resource label rendering")
+require(RESEARCH_UI, "resourceCacheDirty = true", "invalidate item counts on sector changes and research spends")
+if "total += Math.max(0, sector.items().get(item))" in RESEARCH_UI:
+    failures.append("research: resource display must not rescan each sector per item")
 require(RESEARCH_UI, '"web-stock-research-footer"', "back and core database footer")
 require(RESEARCH_UI, '"web-research-database"', "real Mindustry database navigation")
 require(MAIN_MENU, 'markPointerCenter(home.find("web-main-research"), "research")', "stock existing main menu research entry")

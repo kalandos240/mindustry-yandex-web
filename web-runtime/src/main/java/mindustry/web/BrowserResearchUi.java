@@ -37,6 +37,9 @@ public final class BrowserResearchUi{
     private static ScrollPane menuTreePane, hudTreePane;
     private static Table menuDetails, hudDetails;
     private static Table menuResources, hudResources;
+    private static ItemSeq storedResources;
+    private static Planet storedPlanet;
+    private static boolean resourceCacheDirty = true;
     private static float graphZoom = 0.9f;
     private static float menuTreeWidth, hudTreeWidth, menuDetailsWidth, hudDetailsWidth;
     private static int visibleCount;
@@ -216,22 +219,39 @@ public final class BrowserResearchUi{
         }
     }
 
-    // Aggregate the same per-sector item inventory that stock research uses.
-    // Recomputed only on research refresh, not inside the per-frame draw loop.
+    // Stock ResearchDialog aggregates sector item stocks only when the
+    // inventory changes, NOT on every graph zoom or click. Reading
+    // sector.items() separately for each Item caused O(items * sectors)
+    // save-metadata loads and visible stalls on mobile Chrome.
+    private static void rebuildStoredResources(){
+        if(!open || activeRoot == null) return;
+        Planet current = activeRoot == Planets.erekir.techTree ?
+            Planets.erekir : Planets.serpulo;
+        if(!resourceCacheDirty && storedResources != null && storedPlanet == current) return;
+        if(storedResources == null) storedResources = new ItemSeq();
+        storedResources.clear();
+        for(Sector sector : current.sectors){
+            if(!sector.hasBase() || sector.isFrozen()) continue;
+            // Cache this read once per sector, like vanilla ItemSeq cache.
+            ItemSeq sectorStock = sector.items();
+            sectorStock.each((item, amount) -> {
+                if(amount > 0) storedResources.add(item, amount);
+            });
+        }
+        storedPlanet = current;
+        resourceCacheDirty = false;
+    }
+
     private static void refreshResources(Table target){
         if(target == null || activeRoot == null) return;
         target.clear();
         target.top().left();
         target.add(Core.bundle.get("items", "Items")).color(Pal.accent).left().row();
-        Planet planet = activeRoot == Planets.erekir.techTree ? Planets.erekir : Planets.serpulo;
+        if(!open) return;
+        rebuildStoredResources();
         int shown = 0;
         for(mindustry.type.Item item : content.items()){
-            int total = 0;
-            for(Sector sector : planet.sectors){
-                if(sector.hasBase() && !sector.isFrozen()){
-                    total += Math.max(0, sector.items().get(item));
-                }
-            }
+            int total = storedResources.get(item);
             if(total <= 0) continue;
             Table line = new Table();
             line.add(String.valueOf(total)).width(40f).right();
@@ -253,6 +273,7 @@ public final class BrowserResearchUi{
             if(activeRoot != campaignRoot) switchRoot(campaignRoot);
         }
         open = true;
+        resourceCacheDirty = true;
         refresh();
         markResearchOpen(true);
         focusSelected();
@@ -272,6 +293,7 @@ public final class BrowserResearchUi{
         if(root == null) return;
         activeRoot = root;
         selected = root;
+        resourceCacheDirty = true;
         expanded.clear();
         expanded.add(root);
         expandUnlocked(root);
@@ -417,6 +439,7 @@ public final class BrowserResearchUi{
                 TextButton invest = details.button(Core.bundle.get("research", "Research"), () -> {
                     if(BrowserCampaignResearch.canSpend(content)){
                         BrowserCampaignResearch.spend(content);
+                        resourceCacheDirty = true;
                         BrowserBuildPalette.refresh();
                         Core.app.post(BrowserResearchUi::refresh);
                     }
