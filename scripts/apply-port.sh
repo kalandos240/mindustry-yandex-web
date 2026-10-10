@@ -263,9 +263,6 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-placement-web.py" \
   "$MINDUSTRY_DIR/core/src/mindustry/ui/fragments/PlacementFragment.java"
 python3 "$ROOT_DIR/scripts/patch-mindustry-build-visibility-web.py" \
   "$MINDUSTRY_DIR/core/src/mindustry/world/meta/BuildVisibility.java"
-# The native MinimapRenderer gets TileChangeEvent callbacks when players build.
-# Web intentionally has no MapEditorDialog; null must mean "not editing".
-python3 "$ROOT_DIR/scripts/patch-mindustry-minimap-web.py"
 # Logic's sector captured/lost events only need to update campaign state. The stock
 # Serpulo visual mesh refresh uses ExecutorService, which is unavailable in TeaVM.
 python3 "$ROOT_DIR/scripts/patch-mindustry-planet-events-web.py"
