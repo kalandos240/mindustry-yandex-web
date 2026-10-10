@@ -93,6 +93,18 @@ public final class BrowserUiRuntime{
         installResearchMenuEntry();
         BrowserResearchUi.init();
 
+        // The original MobileInput is built into a dedicated HUD WidgetGroup.
+        // In the lean Web shell, additional stock and browser HUD overlays are
+        // installed after InputHandler.add(), and their Label/Image descendants
+        // can capture touches at the bottom-left native "@command" button.
+        // Keep only the native *mobile* input controls above those HUD widgets:
+        // the input group uses Touchable.childrenOnly, so empty world regions
+        // continue to receive real camera/build/RTS gestures unchanged.
+        // DesktopInput keeps the stock ordering.
+        if(Core.app.isMobile() && input instanceof MobileInput && input.uiGroup != null){
+            input.uiGroup.toFront();
+        }
+
         initialized = true;
         markReady();
         markLocalMapUiReady();
