@@ -176,7 +176,7 @@ public final class BrowserResearchUi{
         overlay.addChild(popover);
         overlay.update(() -> {
             if(!open || selected == null || selected == activeRoot) return;
-            Element node = tree.find("web-research-node-" + selected.content.name);
+            Element node = tree.buttonFor(selected);
             if(node == null) return;
             Vec2 topRight = node.localToStageCoordinates(
                 new Vec2(node.getWidth(), node.getHeight()));

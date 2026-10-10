@@ -166,6 +166,11 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
     public int nodeCount(){
         return visible.size;
     }
+    
+    /** Direct lookup for selected-node popovers; never scan Arc Scene on every frame. */
+    public Button buttonFor(TechNode node){
+        return buttons.get(node);
+    }
 
     @Override
     public float getPrefWidth(){
