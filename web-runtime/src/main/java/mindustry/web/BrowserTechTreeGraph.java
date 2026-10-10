@@ -105,6 +105,10 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
         return logicalRow;
     }
 
+    public int nodeCount(){
+        return visible.size;
+    }
+
     @Override
     public float getPrefWidth(){
         return preferredWidth;
