@@ -60,6 +60,7 @@ for mode in desktop mobile; do
     --require 'data-mindustry-hud-minimap-texture="ready"' \
     --require 'data-mindustry-hud-coreitems="stock-CoreItemsDisplay"' \
     --require 'data-mindustry-hud-status="game-state"' \
+    --require 'data-mindustry-hud-skip-wave="stock-rule-guarded"' \
     --require 'data-mindustry-hud-live-wave="' \
     --require "$touch_requirement" \
     --require 'data-mindustry-build-palette-visible="yes"' \
