@@ -144,6 +144,7 @@ public final class BrowserUiRuntime{
         pane.setScrollingDisabled(true, false);
         root.add(pane).width(mobile ? 320f : 380f).height(mobile ? 430f : 500f);
         ui.menuGroup.addChild(root);
+        BrowserStockMainMenu.install(ui.menuGroup, root);
     }
 
     private static void installResearchMenuEntry(){
@@ -282,6 +283,7 @@ public final class BrowserUiRuntime{
     }
 
     private static void returnToMenuWithAd(){
+        BrowserStockMainMenu.showHome();
         BrowserYandex.beginMenuFullscreenAdv();
         if(BrowserCampaignRuntime.active()){
             BrowserCampaignRuntime.returnToMenu();
@@ -422,6 +424,12 @@ public final class BrowserUiRuntime{
 
     @JSBody(params = {"slot"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slot', slot);")
     private static native void markLocalSaveUiReady(String slot);
+
+    @JSBody(script = """
+        const launch=document.getElementById('mindustry-settings-toggle');
+        if(launch && launch.style.display !== 'none') launch.click();
+        """)
+    static native void openMenuSettings();
 
     @JSBody(script = "if(globalThis.__mindustryOpenPauseSettings){globalThis.__mindustryOpenPauseSettings();}")
     private static native void openPauseSettings();
