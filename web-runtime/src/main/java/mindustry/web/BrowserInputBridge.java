@@ -43,7 +43,11 @@ public final class BrowserInputBridge{
             canvasId,
             (code, key, repeat) -> {
                 input.keyDown(BrowserKeymap.fromCode(code), repeat);
-                typeKey(input, key);
+                // Game hotkeys may auto-repeat at 30+ Hz. KeyTyped repeats
+                // belong only to focused Arc text editors, not game Space.
+                if(!repeat || (Core.scene != null && Core.scene.hasKeyboard())){
+                    typeKey(input, key);
+                }
             },
             code -> input.keyUp(BrowserKeymap.fromCode(code)),
             (pointer, x, y, button) -> input.pointerDown(pointer, x, y, BrowserKeymap.mouseButton(button)),
@@ -131,13 +135,24 @@ public final class BrowserInputBridge{
                 event.code === 'ArrowUp' || event.code === 'ArrowDown' || event.code === 'ArrowLeft' || event.code === 'ArrowRight';
         };
 
+        const isHtmlEditor = event => {
+            const t = event.target;
+            return t && (t.isContentEditable || t.tagName === 'INPUT' ||
+                t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
+        };
+
         window.addEventListener('keydown', event => {
-            downCodes.add(event.code);
-            keyDown(event.code || '', event.key || '', !!event.repeat);
+            // Portal settings/other editable DOM inputs are not Arc controls.
+            if(isHtmlEditor(event)) return;
+            const code = event.code || '';
+            const repeat = !!event.repeat || downCodes.has(code);
+            downCodes.add(code);
+            keyDown(code, event.key || '', repeat);
             if (shouldPreventKey(event)) event.preventDefault();
         }, {passive: false});
 
         window.addEventListener('keyup', event => {
+            if(isHtmlEditor(event)) return;
             downCodes.delete(event.code);
             keyUp(event.code || '');
             if (shouldPreventKey(event)) event.preventDefault();

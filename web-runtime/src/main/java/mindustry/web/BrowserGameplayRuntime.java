@@ -9,6 +9,7 @@ import mindustry.core.*;
 import mindustry.entities.*;
 import mindustry.game.*;
 import mindustry.logic.*;
+import mindustry.input.*;
 import mindustry.maps.Map;
 import mindustry.world.*;
 import org.teavm.jso.JSBody;
@@ -115,6 +116,26 @@ public final class BrowserGameplayRuntime{
 
     private static void updateFrame(){
         if(!initialized || logic == null || state == null) return;
+        // Arc keyboard events are drained before the listener update. The
+        // stock Control.update() handles Space only during playing frames and
+        // directly sets GameState.paused, bypassing the Web frozen-clock
+        // invariants. Paused frames never call Control.update() at all. Keep
+        // one Space handler here so both transitions use the same validated
+        // sector pause/resume state machines as the native HUD buttons.
+        if(!smokeMode && (state.isPlaying() || state.isPaused())
+        && Core.input.keyTap(Binding.pause) && !state.gameOver
+        && !state.rules.pauseDisabled && Core.scene != null
+        && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
+            if(BrowserCampaignRuntime.active()){
+                if(state.isPaused()) BrowserCampaignRuntime.resume();
+                else BrowserCampaignRuntime.pause();
+                markSpaceTransition(state.isPaused() ? "paused" : "resumed");
+            }else if(BrowserLocalMapRuntime.active()){
+                if(state.isPaused()) BrowserLocalMapRuntime.resume();
+                else BrowserLocalMapRuntime.pause();
+                markSpaceTransition(state.isPaused() ? "paused" : "resumed");
+            }
+        }
 
         if(state.isPlaying()){
             if(smokeMode){
@@ -179,6 +200,14 @@ public final class BrowserGameplayRuntime{
             if(state.isMenu()) BrowserLocalMapRuntime.maybeStartTestMap();
         }
     }
+
+    @JSBody(params = {"state"}, script = """
+        const root = document.documentElement;
+        root.setAttribute('data-mindustry-space-transition', state);
+        root.setAttribute('data-mindustry-space-transition-count',
+            String(Number(root.getAttribute('data-mindustry-space-transition-count') || '0') + 1));
+        """)
+    private static native void markSpaceTransition(String state);
 
     private static void runMenuModuleFrame(){
         boolean trace = smokeMode || moduleLoopFrames < 3;
