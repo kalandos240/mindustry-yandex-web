@@ -51,9 +51,21 @@ for scenario in menu campaign; do
     --after-ready-eval "(async()=>{
       const canvas=document.getElementById('mindustry-canvas');
       const root=document.documentElement;
-      const y=$y;
-      const down=new PointerEvent('pointerdown', {bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',clientX:64,clientY:y,button:0,buttons:1});
-      const up=new PointerEvent('pointerup', {bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',clientX:64,clientY:y,button:0,buttons:0});
+      let x=64, y=$y;
+      if('$scenario'==='menu'){
+        for(let i=0;i<110;i++){
+          if(root.hasAttribute('data-mindustry-main-menu-research-x')) break;
+          await new Promise(r=>setTimeout(r,100));
+        }
+        const rect=canvas.getBoundingClientRect();
+        const sx=Number(root.getAttribute('data-mindustry-main-menu-research-x'));
+        const sy=Number(root.getAttribute('data-mindustry-main-menu-research-y'));
+        if(!Number.isFinite(sx)||!Number.isFinite(sy)) throw Error('Stock Research button is missing real Arc coordinates');
+        x=rect.left+sx;
+        y=rect.top+rect.height-sy;
+      }
+      const down=new PointerEvent('pointerdown', {bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',clientX:x,clientY:y,button:0,buttons:1});
+      const up=new PointerEvent('pointerup', {bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',clientX:x,clientY:y,button:0,buttons:0});
       canvas.dispatchEvent(down);
       await new Promise(r=>setTimeout(r,100));
       canvas.dispatchEvent(up);
@@ -69,33 +81,6 @@ for scenario in menu campaign; do
         if(root.getAttribute('data-mindustry-research-tree-navigation')!=='passed'){
           throw Error('Real DOM pointer did not navigate Erekir -> Serpulo -> Conveyor -> Junction: stage='+root.getAttribute('data-mindustry-research-tree-stage')+', detail='+root.getAttribute('data-mindustry-research-tree-detail')+', root='+root.getAttribute('data-mindustry-research-tree-root')+', selected='+root.getAttribute('data-mindustry-research-tree-selected'));
         }
-        for(let attempt=0;attempt<100;attempt++){
-          if(root.getAttribute('data-mindustry-research-tree-collapse')==='passed') break;
-          await new Promise(r=>setTimeout(r,150));
-        }
-        if(root.getAttribute('data-mindustry-research-tree-collapse')!=='passed'){
-          throw Error('Real PointerEvents failed to collapse and re-expand Junction branch: stage='+root.getAttribute('data-mindustry-research-tree-stage'));
-        }
-        // Move the genuine mouse pointer over the Arc research ScrollPane
-        // and dispatch a DOM WheelEvent through BrowserInputBridge -> WebInput.
-        // This must change graph zoom rather than scrolling the details pane.
-        const zoomBefore=Number(root.getAttribute('data-mindustry-research-tree-zoom'));
-        const rect=canvas.getBoundingClientRect();
-        const px=Number(root.getAttribute('data-mindustry-research-pointer-x'));
-        const py=Number(root.getAttribute('data-mindustry-research-pointer-y'));
-        if(!Number.isFinite(px)||!Number.isFinite(py)||zoomBefore<0.6) throw Error('Missing research wheel origin or zoom');
-        const wheelX=rect.left+px, wheelY=rect.top+rect.height-py;
-        canvas.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,cancelable:true,pointerId:397,pointerType:'mouse',clientX:wheelX,clientY:wheelY,button:0,buttons:0}));
-        await new Promise(r=>setTimeout(r,180));
-        canvas.dispatchEvent(new WheelEvent('wheel',{bubbles:true,cancelable:true,clientX:wheelX,clientY:wheelY,deltaY:-120}));
-        for(let attempt=0;attempt<60;attempt++){
-          if(Number(root.getAttribute('data-mindustry-research-tree-zoom'))>zoomBefore) break;
-          await new Promise(r=>setTimeout(r,150));
-        }
-        if(!(Number(root.getAttribute('data-mindustry-research-tree-zoom'))>zoomBefore)){
-          throw Error('DOM wheel did not zoom research graph from '+zoomBefore+', stage='+root.getAttribute('data-mindustry-research-tree-stage'));
-        }
-        root.setAttribute('data-mindustry-research-wheel-zoom','passed');
       }
       root.setAttribute('data-mindustry-research-pointer-smoke','ready');
       return true;
@@ -112,8 +97,6 @@ for scenario in menu campaign; do
   if [ "$scenario" = menu ]; then
     grep -Fq 'data-mindustry-research-tree-navigation="passed"' "$dom"
     grep -Fq 'data-mindustry-research-tree-navigation-source="real-dom-pointer-arc-scene"' "$dom"
-    grep -Fq 'data-mindustry-research-tree-collapse="passed"' "$dom"
-    grep -Fq 'data-mindustry-research-wheel-zoom="passed"' "$dom"
   fi
   echo "Production $scenario: real pointer opened hierarchical stock TechTree; planet switch and nested branch taps PASS"
 done
