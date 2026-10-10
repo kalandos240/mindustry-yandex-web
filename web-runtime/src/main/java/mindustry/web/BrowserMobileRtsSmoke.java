@@ -153,47 +153,61 @@ public final class BrowserMobileRtsSmoke{
 
         if(stage == 5){
             if(control.input.selectedUnits.contains(probe)){
-                // On narrow/mobile screens the original building palette can
-                // overlap an apparently safe world destination (the previous
-                // 24%-right, 12%-up location hit UI at 390x844). Search for a
-                // genuinely touchable point using native Scene.hit. Do not
-                // move UI actors or write any stock command/selection state.
-                float[] xFractions = {0f, -0.16f, 0.16f, -0.25f, 0.25f};
-                float[] yFractions = {0.30f, 0.23f, 0.16f, 0.08f, -0.18f};
+                // A fixed world-camera offset is unreliable in portrait mode:
+                // the native construction/command HUD occupies large portions
+                // of the 390x844 game viewport. Search *screen coordinates*
+                // across the live camera projection instead, checking every
+                // candidate against the real Arc Scene before tapping it.
+                // First prefer a meaningful move, then allow a shorter move
+                // when the camera/terrain leaves less playable space.
                 boolean foundTarget = false;
-                int viable = 0, covered = 0;
+                int viable = 0, covered = 0, outside = 0, nearby = 0;
+                int screenWidth = Core.graphics.getWidth();
+                int screenHeight = Core.graphics.getHeight();
+                float[] minDistances = {65f, 24f};
                 outer:
-                for(float yf : yFractions){
-                    for(float xf : xFractions){
-                        float wx = Core.camera.position.x + Core.camera.width * xf;
-                        float wy = Core.camera.position.y + Core.camera.height * yf;
-                        if(wx < 24f || wy < 24f ||
-                            wx > (world.width()-3)*tilesize ||
-                            wy > (world.height()-3)*tilesize ||
-                            probe.dst(wx, wy) < 65f) continue;
-                        if(world.tileWorld(wx, wy) == null) continue;
-                        Vec2 projected = Core.camera.project(new Vec2(wx, wy));
-                        float sx = projected.x, sy = projected.y;
-                        if(sx < 35f || sx > Core.graphics.getWidth()-35f ||
-                           sy < 35f || sy > Core.graphics.getHeight()-35f) continue;
-                        viable++;
-                        if(Core.scene.hasMouse(sx, Core.graphics.getHeight()-sy)){
-                            covered++;
-                            continue;
+                for(float minDistance : minDistances){
+                    for(int row = 1; row <= 19; row++){
+                        for(int col = 1; col <= 13; col++){
+                            float sx = screenWidth * col / 14f;
+                            float sy = screenHeight * row / 20f;
+                            if(sx < 32f || sx > screenWidth - 32f ||
+                                sy < 32f || sy > screenHeight - 32f) continue;
+
+                            Vec2 wp = Core.camera.unproject(new Vec2(sx, sy));
+                            float wx = wp.x, wy = wp.y;
+                            if(wx < 24f || wy < 24f ||
+                                wx > (world.width() - 3) * tilesize ||
+                                wy > (world.height() - 3) * tilesize ||
+                                world.tileWorld(wx, wy) == null){
+                                outside++;
+                                continue;
+                            }
+                            if(probe.dst(wx, wy) < minDistance){
+                                nearby++;
+                                continue;
+                            }
+                            viable++;
+                            if(Core.scene.hasMouse(sx, screenHeight - sy)){
+                                covered++;
+                                continue;
+                            }
+                            orderWorldX = wx;
+                            orderWorldY = wy;
+                            targetX = sx;
+                            targetY = sy;
+                            foundTarget = true;
+                            break outer;
                         }
-                        orderWorldX = wx;
-                        orderWorldY = wy;
-                        targetX = sx;
-                        targetY = sy;
-                        foundTarget = true;
-                        break outer;
                     }
                 }
                 if(!foundTarget){
                     throw new IllegalStateException(
                         "No touchable world destination after native mobile unit selection" +
-                        ": inspected=" + viable + ", UIcovered=" + covered +
-                        ", screen=" + Core.graphics.getWidth() + "x" + Core.graphics.getHeight() +
+                        ": viable=" + viable + ", UIcovered=" + covered +
+                        ", outside=" + outside + ", nearUnit=" + nearby +
+                        ", screen=" + screenWidth + "x" + screenHeight +
+                        ", unitScreen=" + unitX + "," + unitY +
                         ", camera=" + Core.camera.position);
                 }
                 dispatchTouch("pointerdown",targetX,targetY);
