@@ -105,6 +105,7 @@ run_production_menu(){
       await click('database');
       await wait(()=>root.getAttribute('data-mindustry-database-open')==='yes','Database opened');
       await wait(()=>root.hasAttribute('data-mindustry-database-close-x'),'Database close coordinates');
+      const rect=canvas.getBoundingClientRect();
       const dbX=rect.left+Number(root.getAttribute('data-mindustry-database-close-x'));
       const dbY=rect.top+rect.height-Number(root.getAttribute('data-mindustry-database-close-y'));
       for(const type of ['pointerdown','pointerup']){
