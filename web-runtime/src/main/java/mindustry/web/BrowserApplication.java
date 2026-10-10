@@ -152,6 +152,8 @@ public final class BrowserApplication extends WebApplicationBase{
                 // DesktopInput/CommandAI graph. The query guard is cached and
                 // has no effect in a normal Yandex gameplay session.
                 BrowserRtsCommandSmoke.update();
+                // CI-only physical mouse clicks on the real hierarchical research UI.
+                BrowserResearchTreeSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
