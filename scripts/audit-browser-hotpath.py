@@ -201,6 +201,21 @@ for source, label, update_marker in [
     require(source, update_marker, label)
 require(CANVAS, 'public static native double performanceNowMillis();', "browser monotonic clock bridge")
 require(GAMEPLAY, 'Pathfinder.webClock = BrowserCanvas::performanceNowMillis;', "pathfinder clock injection")
+CONTROL_PAUSE = (ROOT / "scripts/patch-mindustry-control-pause-web.py").read_text(encoding="utf-8")
+INPUT_BRIDGE = (WEB_JAVA / "BrowserInputBridge.java").read_text(encoding="utf-8")
+require(GAMEPLAY, "Core.input.keyTap(Binding.pause)", "single Web Space key handler")
+require(GAMEPLAY, "Core.input.keyTap(Binding.menu)", "Web Escape uses safe pause handler")
+require(CONTROL_PAUSE, 'ui.paused.show();', "unsafe desktop Escape fragment is removed")
+
+require(GAMEPLAY, "BrowserCampaignRuntime.pause()", "campaign pause clock bridge")
+require(GAMEPLAY, "BrowserCampaignRuntime.resume()", "campaign resume keyboard action")
+require(GAMEPLAY, "BrowserLocalMapRuntime.pause()", "local map pause clock bridge")
+require(GAMEPLAY, "BrowserLocalMapRuntime.resume()", "local map resume keyboard action")
+require(CONTROL_PAUSE, 'state.set(state.isPaused() ? State.playing : State.paused);', "removal of unsafe desktop Space state transition")
+require(INPUT_BRIDGE, "const isHtmlEditor = event =>", "DOM input focus isolation from game shortcuts")
+require(INPUT_BRIDGE, "downCodes.has(code)", "physical keydown repeat coalescing")
+require(INPUT_BRIDGE, "if(!repeat || (Core.scene != null && Core.scene.hasKeyboard()))", "avoid keyTyped flood on held game shortcuts")
+
 require(GAMEPLAY, 'ControlPathfinder.webClock = BrowserCanvas::performanceNowMillis;', "control pathfinder clock injection")
 # The inner tile-expansion kernels must also use the injected monotonic clock.
 # This prevents BigInt-heavy wall-clock checks on the high-frequency BFS path.
