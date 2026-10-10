@@ -377,6 +377,16 @@ require(YANDEX_JS, "if(state.bannerShowing)", "do not overlap ads when sticky hi
 # Unlike the old scripted campaign UI, regular players can open all stock
 # TechTree research from the active HUD and menu using real Arc click paths.
 require(BROWSER_UI, "BrowserResearchUi.init();", "research dialog in browser UI startup")
+require(BROWSER_UI, 'dialog.name = "web-pause-dialog"', "stock Arc Scene pause dialog")
+require(BROWSER_UI, "new Table(Tex.pane2)", "original pane textures on pause and game-over dialogs")
+require(BROWSER_UI, "dialog.button(Core.bundle.get(\"resume\", \"Resume\"), Icon.play", "native Resume action/icon")
+require(BROWSER_UI, "dialog.button(Core.bundle.get(\"settings\", \"Settings\"), Icon.settings", "native settings action/icon")
+require(BROWSER_UI, "dialog.button(Core.bundle.get(\"savegame\", \"Save Game\"), Icon.save", "native save action/icon")
+require(BROWSER_UI, "BrowserResearchUi::show)", "stock campaign pause Research entry")
+require(BROWSER_UI, "BrowserUiRuntime::returnToMenuWithAd)", "Yandex-safe quit/save action")
+require(BROWSER_UI, 'dialog.name = "web-gameover-dialog"', "native styled game-over dialog")
+require(BROWSER_UI, "markStockPauseUiReady", "pause dialog diagnostics")
+
 require(BROWSER_UI, "BrowserResearchUi::show", "menu and gameplay research actions")
 require(RESEARCH_UI, "for(TechNode node : TechTree.all)", "complete vanilla TechTree catalog")
 require(RESEARCH_UI, "BrowserCampaignResearch.canSpend(content)", "stock research affordability")
