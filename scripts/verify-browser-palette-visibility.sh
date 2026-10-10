@@ -60,6 +60,10 @@ for mode in desktop mobile; do
     --require 'data-mindustry-hud-minimap-texture="ready"' \
     --require 'data-mindustry-hud-coreitems="stock-CoreItemsDisplay"' \
     --require 'data-mindustry-hud-status="game-state"' \
+    --require 'data-mindustry-hud-player-bar="stock-Bar"' \
+    --require 'data-mindustry-hud-position="player-tile"' \
+    --require 'data-mindustry-hud-guardian="stock-Bar"' \
+    --require 'data-mindustry-hud-objectives="all-qualified"' \
     --require 'data-mindustry-hud-skip-wave="stock-rule-guarded"' \
     --require 'data-mindustry-hud-live-wave="' \
     --require "$touch_requirement" \
@@ -101,6 +105,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-hud-minimap="stock-mindustry-ui-Minimap"' \
   --require 'data-mindustry-hud-coreitems="stock-CoreItemsDisplay"' \
   --require 'data-mindustry-hud-minimap-texture="ready"' \
+  --require 'data-mindustry-hud-objectives="all-qualified"' \
+  --require 'data-mindustry-hud-player-bar="stock-Bar"' \
   --require 'data-mindustry-build-palette-visible="yes"' \
   --require 'data-mindustry-build-palette-actions="research-needed"' \
   --require 'data-mindustry-ground-zero-drill-research-ui="visible"' \
