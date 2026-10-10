@@ -267,11 +267,19 @@ public final class BrowserUiRuntime{
             .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
             .padTop(8f);
         overlay.row();
+        // Reuse the existing localized portal-safe settings panel from both
+        // main menu and paused play. Do not instantiate the desktop dialog graph.
+        overlay.button(Core.bundle.get("settings", "Settings"), BrowserUiRuntime::openPauseSettings)
+            .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
+            .name("web-pause-settings")
+            .padTop(8f);
+        overlay.row();
         overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
             .padTop(8f);
         ui.hudGroup.addChild(overlay);
         markPauseUiReady();
+        markPauseSettingsUiReady();
     }
 
     private static void buildLocalGameOverOverlay(){
@@ -323,6 +331,12 @@ public final class BrowserUiRuntime{
 
     @JSBody(params = {"slot"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slot', slot);")
     private static native void markLocalSaveUiReady(String slot);
+
+    @JSBody(script = "if(globalThis.__mindustryOpenPauseSettings){globalThis.__mindustryOpenPauseSettings();}")
+    private static native void openPauseSettings();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-settings-entry','ready');")
+    private static native void markPauseSettingsUiReady();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-pause-ui', 'ready');")
     private static native void markPauseUiReady();
