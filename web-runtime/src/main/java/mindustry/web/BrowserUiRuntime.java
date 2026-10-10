@@ -7,6 +7,8 @@ import arc.scene.ui.layout.*;
 import mindustry.core.*;
 import mindustry.input.*;
 import mindustry.maps.Map;
+import mindustry.gen.*;
+import mindustry.ui.*;
 import org.teavm.jso.*;
 
 import static mindustry.Vars.*;
@@ -289,45 +291,88 @@ public final class BrowserUiRuntime{
         BrowserYandex.showMenuFullscreenAdv();
     }
 
+    /**
+     * Recreate the native PausedDialog arrangement with the pinned Mindustry
+     * icon atlas / pane styles. This is deliberately an Arc Scene dialog, not
+     * an HTML overlay: all pointer/touch handling stays with stock InputHandler.
+     * The heavyweight desktop dialog dependencies (Host/Mods/Editor) remain
+     * unreachable in the self-contained Yandex single-player client.
+     */
     private static void buildLocalPauseOverlay(){
         Table overlay = new Table();
         overlay.setFillParent(true);
+        overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
         overlay.visible(() -> (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
             && state.isPaused() && !state.gameOver);
-        overlay.add(Core.bundle.get("pause", "Paused")).padBottom(12f);
-        overlay.row();
-        overlay.button(Core.bundle.get("resume", "Resume"), BrowserUiRuntime::resumeActiveSession)
-            .size(mobile ? 180f : 156f, mobile ? 58f : 48f);
-        overlay.row();
-        overlay.button(Core.bundle.get("savegame", "Save Game"), BrowserUiRuntime::saveActiveSession)
-            .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
-            .padTop(8f);
-        overlay.row();
-        // Reuse the existing localized portal-safe settings panel from both
-        // main menu and paused play. Do not instantiate the desktop dialog graph.
-        overlay.button(Core.bundle.get("settings", "Settings"), BrowserUiRuntime::openPauseSettings)
-            .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
-            .name("web-pause-settings")
-            .padTop(8f);
-        overlay.row();
-        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
-            .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
-            .padTop(8f);
+
+        float width = mobile ? 137f : 208f;
+        float height = mobile ? 57f : 54f;
+        Table dialog = new Table(Tex.pane2);
+        dialog.name = "web-pause-dialog";
+        dialog.defaults().pad(5f);
+
+        dialog.table(title -> {
+            title.image(Icon.menu).size(30f).padRight(9f);
+            title.add(Core.bundle.get("menu", "Menu"))
+                .style(Styles.outlineLabel);
+        }).colspan(2).padTop(15f).padBottom(12f).row();
+
+        // Match the original dialog: Resume / Settings on one row. Both
+        // operations call the existing campaign/local pause state machines.
+        dialog.button(Core.bundle.get("resume", "Resume"), Icon.play,
+            BrowserUiRuntime::resumeActiveSession)
+            .size(width, height).name("web-pause-resume");
+        dialog.button(Core.bundle.get("settings", "Settings"), Icon.settings,
+            BrowserUiRuntime::openPauseSettings)
+            .size(width, height).name("web-pause-settings");
+        dialog.row();
+
+        dialog.button(Core.bundle.get("savegame", "Save Game"), Icon.save,
+            BrowserUiRuntime::saveActiveSession)
+            .size(width, height).name("web-pause-save");
+        // Original mobile PausedDialog has Research in campaign mode. Keep
+        // the very same research screen available while the sector is paused.
+        dialog.button(Core.bundle.get("research", "Research"), Icon.tree,
+            BrowserResearchUi::show)
+            .size(width, height).name("web-pause-research")
+            .visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
+        dialog.row();
+
+        dialog.button(Core.bundle.get("quit", "Quit"), Icon.exit,
+            BrowserUiRuntime::returnToMenuWithAd)
+            .width(width * 2f + 10f).height(height)
+            .colspan(2).name("web-pause-exit").padBottom(15f);
+
+        overlay.add(dialog).center();
         ui.hudGroup.addChild(overlay);
         markPauseUiReady();
         markPauseSettingsUiReady();
+        markStockPauseUiReady(mobile ? "mobile" : "desktop");
     }
 
+    /**
+     * The original game-over screen has a dedicated, modal action instead of
+     * loose, unframed text floating above the running level.
+     */
     private static void buildLocalGameOverOverlay(){
         Table overlay = new Table();
         overlay.setFillParent(true);
+        overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
         overlay.visible(() -> BrowserLocalMapRuntime.active() && state.isGame() && state.gameOver);
-        overlay.add(Core.bundle.get("gameover", "Game Over")).padBottom(12f);
-        overlay.row();
-        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
-            .size(mobile ? 180f : 156f, mobile ? 58f : 48f);
+
+        Table dialog = new Table(Tex.pane2);
+        dialog.name = "web-gameover-dialog";
+        dialog.defaults().pad(8f);
+        dialog.image(Icon.cancel).size(42f).padTop(12f).row();
+        dialog.add(Core.bundle.get("gameover", "Game Over"))
+            .style(Styles.outlineLabel).padBottom(12f).row();
+        dialog.button(Core.bundle.get("back", "Back"), Icon.exit,
+            BrowserUiRuntime::returnToMenuWithAd)
+            .size(mobile ? 240f : 300f, mobile ? 58f : 52f)
+            .name("web-gameover-back").padBottom(12f);
+        overlay.add(dialog).center();
         ui.hudGroup.addChild(overlay);
         markGameOverUiReady();
     }
@@ -383,6 +428,9 @@ public final class BrowserUiRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-settings-entry','ready');")
     private static native void markPauseSettingsUiReady();
+
+    @JSBody(params={"mode"}, script="document.documentElement.setAttribute('data-mindustry-stock-pause-dialog',mode);")
+    private static native void markStockPauseUiReady(String mode);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-pause-ui', 'ready');")
     private static native void markPauseUiReady();
