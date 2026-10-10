@@ -26,6 +26,8 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
     private static final float baseColumn = 205f, baseRow = 69f;
     private static final float margin = 23f;
     private final ObjectMap<TechNode, Vec2> coordinates = new ObjectMap<>();
+    // Lookup by the actual TechNode, not O(N) Scene.find() on every frame.
+    private final ObjectMap<TechNode, Button> buttons = new ObjectMap<>();
     private final ObjectSet<TechNode> visible = new ObjectSet<>();
     private TechNode root;
     private ObjectSet<TechNode> expanded;
@@ -42,6 +44,7 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
         this.zoom = zoom;
         clear();
         coordinates.clear();
+        buttons.clear();
         visible.clear();
         leaves = 0;
         maxDepth = 0;
@@ -79,6 +82,7 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
                 point.y - nodeHeight * 0.5f);
             button.clicked(() -> this.clicked.get(node));
             addChild(button);
+            buttons.put(node, button);
         }
         invalidateHierarchy();
     }
@@ -129,12 +133,10 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
             Vec2 point = coordinates.get(node);
             if(point == null) continue;
             float centerY = preferredHeight - margin - (point.y + 0.5f) * row;
-            for(var child : getChildren()){
-                if(("web-research-node-" + node.content.name).equals(child.name)){
-                    child.setPosition(point.x - nodeWidth * 0.5f,
-                        centerY - nodeHeight * 0.5f);
-                    break;
-                }
+            Button button = buttons.get(node);
+            if(button != null){
+                button.setPosition(point.x - nodeWidth * 0.5f,
+                    centerY - nodeHeight * 0.5f);
             }
         }
     }
@@ -147,8 +149,8 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
             Lines.stroke(Math.max(1.1f, zoom * 1.5f));
             for(TechNode node : visible){
                 if(node.parent == null || !visible.contains(node.parent)) continue;
-                var fromActor = find("web-research-node-" + node.parent.content.name);
-                var toActor = find("web-research-node-" + node.content.name);
+                Button fromActor = buttons.get(node.parent);
+                Button toActor = buttons.get(node);
                 if(fromActor == null || toActor == null) continue;
                 float sx = getX(Align.left) + fromActor.getX(Align.left) + fromActor.getWidth();
                 float ex = getX(Align.left) + toActor.getX(Align.left);
