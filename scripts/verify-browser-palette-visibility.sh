@@ -31,11 +31,6 @@ for mode in desktop mobile; do
   mobile_arg=""
   mobile_query=""
   touch_requirement='data-mindustry-stock-placement="ready"'
-  if [ "$mode" = desktop ]; then
-    grep -Fq 'data-mindustry-hud-command-toggle="desktop-native-input"' "$dom"
-  else
-    grep -Fq 'data-mindustry-hud-command-toggle="stock-mobile-input"' "$dom"
-  fi
   if [ "$mode" = mobile ]; then
     mobile_arg="--emulate-mobile"
     mobile_query="&mindustryMobilePaletteTapSmoke=1"
@@ -83,6 +78,11 @@ for mode in desktop mobile; do
   grep -Eq 'data-mindustry-build-categories="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-build-blocks="[1-9][0-9]*"' "$dom"
   grep -q "data-mindustry-input-mode=\"$mode\"" "$dom"
+  if [ "$mode" = desktop ]; then
+    grep -Fq 'data-mindustry-hud-command-toggle="desktop-native-input"' "$dom"
+  else
+    grep -Fq 'data-mindustry-hud-command-toggle="stock-mobile-input"' "$dom"
+  fi
   if [ "$mode" = mobile ]; then
     grep -Fq 'data-mindustry-mobile-palette-source="dom-touch-pointer-to-stock-mobile-input"' "$dom"
     grep -Fq 'data-mindustry-build-placement-ui="vanilla-placement-fragment"' "$dom"
