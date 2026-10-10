@@ -113,6 +113,14 @@ run_production_menu(){
         await new Promise(r=>setTimeout(r,100));
       }
       await wait(()=>root.getAttribute('data-mindustry-database-open')==='no','Database closed');
+      // Reopen from the real native menu, then close with the physical
+      // Escape hotkey. HTML/Arc fake close buttons do not satisfy this test.
+      await click('database');
+      await wait(()=>root.getAttribute('data-mindustry-database-open')==='yes','Database reopened');
+      window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
+      await wait(()=>root.getAttribute('data-mindustry-database-open')==='no','Escape closed Database');
+      window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
+      root.setAttribute('data-mindustry-database-escape','passed');
       root.setAttribute('data-mindustry-main-menu-real-pointer','passed');
       return 'native-menu-pass';
     })()" \
@@ -129,6 +137,7 @@ run_production_menu(){
     --require 'data-mindustry-stock-database="ready"' \
     --require 'data-mindustry-main-menu-page="home"' \
     --after-ready-require 'data-mindustry-main-menu-real-pointer="passed"' \
+    --after-ready-require 'data-mindustry-database-escape="passed"' \
     --require 'data-mindustry-local-map-back="ready"' \
     --require 'data-mindustry-network="local-only"' > "$dom"
 
