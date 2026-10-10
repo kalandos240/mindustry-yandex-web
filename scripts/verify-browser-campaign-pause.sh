@@ -55,6 +55,8 @@ run_pause(){
     --require "data-mindustry-stock-input=\"${input_mode}\"" \
     --require 'data-mindustry-campaign-test="groundZero"' \
     --require 'data-mindustry-campaign-pause="ready"' \
+    --require 'data-mindustry-pause-settings-entry="ready"' \
+    --require 'data-mindustry-settings-pause-entry="ready"' \
     --require 'data-mindustry-campaign-pause-smoke="ready"' \
     --require 'data-mindustry-campaign-pause-clock="frozen"' \
     --require 'data-mindustry-campaign-save-during-pause="true"' \
