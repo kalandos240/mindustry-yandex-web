@@ -395,6 +395,11 @@ jobs:
       - name: Verify visible construction palette during real desktop/mobile gameplay
         run: bash scripts/verify-browser-palette-visibility.sh
 
+      # Command input is cheap to gate; catch broken RTS mouse dispatch
+      # before spending runner time on the larger localization and campaign suites.
+      - name: Verify native RTS selection and move order through browser input
+        run: bash scripts/verify-browser-rts-command.sh
+
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
 
