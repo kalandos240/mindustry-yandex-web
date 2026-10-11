@@ -466,6 +466,9 @@ public final class BrowserResearchUi{
             for(int i = 0; i < node.requirements.length; i++){
                 ItemStack req = node.requirements[i];
                 int completed = Math.min(node.finishedRequirements[i].amount, req.amount);
+                int missing = Math.max(0, req.amount - completed);
+                // Original ResearchDialog hides already-completed ingredient rows.
+                if(missing == 0) continue;
                 // Original card uses each item's actual atlas icon beside its
                 // resource requirement, not a plain unstyled text sentence.
                 Table line = new Table();
@@ -476,7 +479,6 @@ public final class BrowserResearchUi{
                 Label ingredient = new Label(req.item.localizedName);
                 ingredient.setFontScale(0.8f);
                 line.add(ingredient).left().growX();
-                int missing = Math.max(0, req.amount - completed);
                 int available = storedResources == null ? 0 :
                     Math.max(0, storedResources.get(req.item));
                 // Pinned ResearchDialog compares available items with the
