@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.math.geom.*;
+import arc.scene.*;
 import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
@@ -170,41 +171,87 @@ public final class BrowserUiRuntime{
             && Core.settings.getBool("drawlight", !mobile);
     }
 
+    private static ImageButton findStockResearchControl(Element node){
+        if(node instanceof ImageButton button && button.getStyle().imageUp == Icon.tree) return button;
+        if(node instanceof Group group){
+            for(Element child : group.getChildren()){
+                ImageButton found = findStockResearchControl(child);
+                if(found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static void attachStockResearchHandler(ImageButton nativeButton){
+        // DesktopInput.buildPlacementUI already creates the exact original
+        // lower-right Icon.tree button. Its upstream onClick calls
+        // ui.research.show(), which is null in the lean TeaVM shell.
+        // Replace ONLY that action, keeping the original visual/style and
+        // built-in Button click listener. Never draw a second Research button.
+        for(int i = nativeButton.getListeners().size - 1; i >= 0; i--){
+            EventListener listener = nativeButton.getListeners().get(i);
+            if(listener instanceof ClickListener && listener != nativeButton.getClickListener()){
+                nativeButton.removeListener(listener);
+            }
+        }
+        nativeButton.clicked(BrowserResearchUi::show);
+        nativeButton.name = "web-research-hud";
+        nativeButton.update(() -> {
+            if(!nativeButton.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
+            Vec2 center = nativeButton.localToStageCoordinates(new Vec2(
+                nativeButton.getWidth() / 2f, nativeButton.getHeight() / 2f));
+            Vec2 screen = Core.scene.getViewport().project(center);
+            markHudResearchHitPoint(screen.x, screen.y);
+        });
+        markStockResearchBound();
+    }
+
     private static void buildLocalHudControls(){
-        // Restore the original Mindustry layout: no Web-only Back / Pause /
-        // Command / Research text tiles down the left side of live gameplay.
-        // Esc and the bottom HUD Menu open the stock-styled PausedDialog;
-        // Shift/native MobileInput owns RTS command mode.
+        // The user's native lower-right DesktopInput panel already has
+        // Research (tree), Database, Schematics and Planet Map buttons.
+        // Do not construct Web-only Back/Pause/Research/Command duplicates.
+        // Escape still opens the stock-style pause/quit/save dialog.
         Table root = new Table();
         root.setFillParent(true);
         root.touchable = Touchable.childrenOnly;
         root.visible(() -> state.isGame() && !state.gameOver);
-        root.bottom().right();
 
-        // Match the original HudFragment icon-button styling, docked next to
-        // the native PlacementFragment panel rather than covering the map.
-        Table actions = new Table(Styles.black6);
-        actions.defaults().size(mobile ? 48f : 44f).pad(2f);
-        actions.button(Icon.menu, Styles.clearNonei, () -> {
-            if(state.isPlaying()) pauseActiveSession();
-        }).name("web-native-menu").disabled(button -> state.isPaused());
-        ImageButton researchAction = actions.button(Icon.tree, Styles.clearNonei,
-            BrowserResearchUi::show).name("web-research-hud").get();
-        researchAction.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
-        // Use actual Arc Scene coordinates for desktop and touch regression
-        // tests, not hard-coded mobile or banner-dependent viewport pixels.
-        researchAction.update(() -> {
-            if(!researchAction.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
-            Vec2 center = researchAction.localToStageCoordinates(new Vec2(
-                researchAction.getWidth() / 2f, researchAction.getHeight() / 2f));
-            Vec2 screen = Core.scene.getViewport().project(center);
-            markHudResearchHitPoint(screen.x, screen.y);
-        });
-        root.add(actions).bottom().right()
-            .padRight(mobile ? 150f : 250f).padBottom(7f);
+        if(mobile){
+            // MobileInput.buildPlacementUI lacks the desktop Research button:
+            // keep one compact native-styled touch action at bottom-right.
+            root.bottom().right();
+            ImageButton research = root.button(Icon.tree, Styles.clearNonei,
+                BrowserResearchUi::show).size(48f).name("web-research-hud").get();
+            research.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
+            research.update(() -> {
+                if(!research.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
+                Vec2 center = research.localToStageCoordinates(new Vec2(
+                    research.getWidth() / 2f, research.getHeight() / 2f));
+                Vec2 screen = Core.scene.getViewport().project(center);
+                markHudResearchHitPoint(screen.x, screen.y);
+            });
+        }else{
+            // The stock PlacementFragment arrives after InputHandler.add();
+            // bind lazily, once, as soon as its original actor is in the Scene.
+            boolean[] installed = {false};
+            int[] frames = {0};
+            root.update(() -> {
+                if(installed[0] || (++frames[0] & 15) != 0) return;
+                Element inputTable = Core.scene.root.find("inputTable");
+                if(inputTable == null) return;
+                ImageButton nativeButton = findStockResearchControl(inputTable);
+                if(nativeButton != null){
+                    attachStockResearchHandler(nativeButton);
+                    installed[0] = true;
+                }
+            });
+        }
         ui.hudGroup.addChild(root);
         markCommandToggleReady(mobile ? "stock-mobile-input" : "desktop-native-input");
     }
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-stock-research-bound','yes');")
+    private static native void markStockResearchBound();
 
     private static void pauseActiveSession(){
         if(BrowserCampaignRuntime.active()){
