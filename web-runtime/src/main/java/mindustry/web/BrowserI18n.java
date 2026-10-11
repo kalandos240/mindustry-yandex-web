@@ -23,9 +23,14 @@ public final class BrowserI18n{
         Fi base = Core.files.internal("bundles/bundle");
         I18NBundle english = I18NBundle.createBundle(base, Locale.ENGLISH);
         I18NBundle russian = I18NBundle.createBundle(base, new Locale("ru"));
-        if(!"Produce 2 units.".equals(english.formatString("Produce {0} units.", 2))
-        || !"2".equals(russian.formatString("{0}", 2))){
-            throw new IllegalStateException("TeaVM-safe tutorial number formatting failed");
+        // UnitCountObjective.text() is the precise live Onset code path that
+        // used to fail with TeaVM's Currency not found: CYP while displaying
+        // "Produce a unit". Exercise the actual localized objective key.
+        String unitGoal = english.format("objective.buildunit", 1, "", "Stell");
+        String russianGoal = russian.format("objective.buildunit", 1, "", "Stell");
+        if(unitGoal == null || !unitGoal.contains("Stell") || !unitGoal.contains("1")
+        || russianGoal == null || !russianGoal.contains("1")){
+            throw new IllegalStateException("TeaVM-safe UnitCountObjective formatting failed");
         }
 
         require(english, "play", "Play");
