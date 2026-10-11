@@ -327,6 +327,17 @@ public final class BrowserResearchUi{
         focusSelected();
     }
 
+    // Match the original stacked BaseDialogs: Escape first dismisses the
+    // planet-selection popup, and only a second Escape closes Research itself.
+    // The footer's Back action still closes the research view directly.
+    public static void escape(){
+        if(rootChooserOpen){
+            rootChooserOpen = false;
+            return;
+        }
+        close();
+    }
+
     public static void close(){
         rootChooserOpen = false;
         open = false;
