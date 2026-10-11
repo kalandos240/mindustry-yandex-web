@@ -53,7 +53,7 @@ public final class BrowserStockDatabaseUi{
         overlay.setFillParent(true);
         overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> open && state.isMenu());
+        overlay.visible(() -> open && (state.isMenu() || state.isGame() && !state.gameOver));
 
         Table dialog = new Table(Tex.pane2);
         dialog.name = "web-database-dialog";
@@ -122,14 +122,18 @@ public final class BrowserStockDatabaseUi{
         overlay.add(dialog).width(width).height(height);
 
         overlay.update(() -> {
-            if(open && state.isMenu() && (++pointerFrames & 15) == 0){
+            if(open && (state.isMenu() || state.isGame()) && (++pointerFrames & 15) == 0){
                 Vec2 stage = closeButton.localToStageCoordinates(
                     new Vec2(closeButton.getWidth() * 0.5f, closeButton.getHeight() * 0.5f));
                 Vec2 screen = Core.scene.getViewport().project(stage);
                 markClosePosition(screen.x, screen.y);
             }
         });
-        ui.menuGroup.addChild(overlay);
+        // The pinned Database button is also on the native DesktopInput HUD.
+        // Mount on the root Scene so the same original dialog can open both
+        // over the menu and over an active campaign without disappearing with
+        // the menuGroup when gameplay begins.
+        Core.scene.add(overlay);
         initialized = true;
         rebuild();
         markReady();
@@ -137,7 +141,7 @@ public final class BrowserStockDatabaseUi{
 
     public static void show(){
         if(!initialized) init();
-        if(!state.isMenu()) return;
+        if(!state.isMenu() && (!state.isGame() || state.gameOver)) return;
         open = true;
         markOpen(true);
     }
