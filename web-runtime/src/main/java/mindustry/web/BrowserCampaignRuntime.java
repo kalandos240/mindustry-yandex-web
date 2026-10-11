@@ -1108,6 +1108,9 @@ public final class BrowserCampaignRuntime{
         sector.info.items.clear();
         sector.info.items.add(state.rules.defaultTeam.items());
         sector.saveInfo();
+        // Serialize the SectorInfo snapshot into the browser file cache now,
+        // before the IndexedDB flush barrier of Back / manual Save.
+        Core.settings.forceSave();
     }
 
     // SaveIO remains authoritative. Restore SectorInfo's matching checkpoint
