@@ -1338,9 +1338,25 @@ new_hud = '''        boolean[] campaignBackUiSmoke = {false};
             .size(mobile ? 148f : 116f, mobile ? 56f : 44f)
             .pad(8f);
 '''
-if text.count(old_hud) != 1:
-    raise SystemExit("Campaign UI HUD anchor no longer matches post-pause UI")
-text = text.replace(old_hud, new_hud, 1)
+if text.count(old_hud) == 1:
+    text = text.replace(old_hud, new_hud, 1)
+elif 'actions.button(Icon.menu, Styles.clearNonei' in text and text.count('        ui.hudGroup.addChild(root);') == 1:
+    # New native bottom-right HUD deliberately has no duplicate Back/Pause
+    # column. Keep the CI-only Back-path exercise attached to the same live
+    # Arc Scene actor, without adding the removed buttons back to gameplay.
+    native_hud = '''        boolean[] campaignBackUiSmoke = {false};
+        root.update(() -> {
+            if(!campaignBackUiSmoke[0] && campaignBackUiSmokeRequested()
+            && BrowserCampaignRuntime.active() && campaignCoreReady()){
+                campaignBackUiSmoke[0] = true;
+                markCampaignUiBackSmoke();
+                returnToMenuWithAd();
+            }
+        });
+        ui.hudGroup.addChild(root);'''
+    text = text.replace('        ui.hudGroup.addChild(root);', native_hud, 1)
+else:
+    raise SystemExit("Campaign UI HUD anchor matches neither legacy nor native gameplay buttons")
 
 old_pause_back = '''        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
