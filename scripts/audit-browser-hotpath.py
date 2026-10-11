@@ -212,8 +212,13 @@ require(GAMEPLAY, "else if(databaseOpen) BrowserStockDatabaseUi.hide()", "Escape
 require(GAMEPLAY, "&& !researchOpen && !databaseOpen", "Space does not pause underneath research overlay")
 require((WEB_JAVA / "BrowserStockDatabaseUi.java").read_text(encoding="utf-8"),
     "public static boolean isOpen()", "database overlay exposes live visibility")
-require((ROOT / "scripts/verify-browser-research-actions.sh").read_text(encoding="utf-8"),
+RESEARCH_BROWSER_SMOKE = (ROOT / "scripts/verify-browser-research-actions.sh").read_text(encoding="utf-8")
+require(RESEARCH_BROWSER_SMOKE,
     'data-mindustry-research-escape="passed"', "real Chrome menu and campaign Escape overlay regressions")
+require(RESEARCH_BROWSER_SMOKE,
+    "desktop-menu desktop-campaign mobile-menu", "mobile research tree must pass real Arc Scene pointer regression")
+require(RESEARCH_BROWSER_SMOKE,
+    "--emulate-mobile", "real Chrome mobile viewport is exercised for stock research interaction")
 require((ROOT / "scripts/verify-browser-locales.sh").read_text(encoding="utf-8"),
     'data-mindustry-database-escape="passed"', "real Chrome native database Escape close regression")
 require(CONTROL_PAUSE, 'ui.paused.show();', "unsafe desktop Escape fragment is removed")
