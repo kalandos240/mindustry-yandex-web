@@ -49,7 +49,13 @@ for mode in desktop mobile; do
     --timeout 90 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-local-map-state="playing"' \
-    --after-ready-eval "(() => { const b=document.getElementById('mindustry-settings-toggle'); if(!b || b.style.display!=='none') throw new Error('Menu settings overlaps live gameplay'); return 'live-settings-hidden'; })()" \
+    --after-ready-eval "(() => {
+      for(const id of ['mindustry-settings-toggle','mindustry-local-mode','mindustry-fullscreen-toggle']){
+        const b=document.getElementById(id);
+        if(b && b.style.display!=='none') throw new Error('Portal-only control '+id+' overlaps original live HUD');
+      }
+      return 'native-hud-unobstructed';
+    })()" \
     --require 'data-mindustry-local-map-loop="live"' \
     --require 'data-mindustry-build-palette="ready"' \
     --require 'data-mindustry-stock-placement="ready"' \
