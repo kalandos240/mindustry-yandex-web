@@ -233,16 +233,19 @@ public final class BrowserUiRuntime{
         }else{
             // The stock PlacementFragment arrives after InputHandler.add();
             // bind lazily, once, as soon as its original actor is in the Scene.
-            boolean[] installed = {false};
+            // PlacementFragment.rebuild() can replace inputTable after a
+            // world load or block-category rebuild; rebind to the NEW native
+            // control without leaving a dangling listener on an old actor.
+            ImageButton[] bound = {null};
             int[] frames = {0};
             root.update(() -> {
-                if(installed[0] || (++frames[0] & 15) != 0) return;
+                if((++frames[0] & 15) != 0) return;
                 Element inputTable = Core.scene.root.find("inputTable");
                 if(inputTable == null) return;
                 ImageButton nativeButton = findStockResearchControl(inputTable);
-                if(nativeButton != null){
+                if(nativeButton != null && nativeButton != bound[0]){
                     attachStockResearchHandler(nativeButton);
-                    installed[0] = true;
+                    bound[0] = nativeButton;
                 }
             });
         }
