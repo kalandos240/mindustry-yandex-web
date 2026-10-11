@@ -1113,9 +1113,76 @@ public final class BrowserCampaignRuntime{
         Core.settings.forceSave();
     }
 
-    // SaveIO remains authoritative. Restore SectorInfo's matching checkpoint
-    // only if the loaded core is completely empty; never add resources to a
-    // partially loaded inventory and accidentally duplicate legitimate spending.
+    // The browser uses a virtual file system flushed to IndexedDB. SectorInfo
+    // alone is a Core.settings JSON record, not part of the sector .msav. Keep
+    // a tiny companion checkpoint beside the *same* SaveIO file so resource
+    // recovery survives even if settings hydration drops the SectorInfo cache.
+    // Stamp planet, sector, wave, tick and save byte count: never apply a
+    // snapshot belonging to an older/different save.
+    private static void writeCoreItemCheckpoint(Sector sector){
+        if(sector == null || sector.save == null || sector.save.file == null
+            || state.rules == null || state.rules.defaultTeam.core() == null) return;
+        StringBuilder rows = new StringBuilder("items-v1|")
+            .append(sector.planet.name).append('|').append(sector.id).append('|')
+            .append(state.wave).append('|').append(Math.round(state.tick * 1000d))
+            .append('|').append(sector.save.file.length()).append('\n');
+        for(Item item : content.items()){
+            int amount = state.rules.defaultTeam.items().get(item);
+            if(amount > 0) rows.append(item.id).append(':').append(amount).append('\n');
+        }
+        sector.save.file.sibling(sector.save.file.name() + ".items")
+            .writeString(rows.toString());
+    }
+
+    private static boolean restoreCoreItemCheckpoint(Sector sector){
+        if(sector.save == null || sector.save.file == null) return false;
+        Fi checkpoint = sector.save.file.sibling(sector.save.file.name() + ".items");
+        if(!checkpoint.exists()) return false; // prior release or new sector
+        try{
+            String[] rows = checkpoint.readString().split("\\n");
+            if(rows.length == 0) return false;
+            String[] header = rows[0].split("\\|");
+            if(header.length != 6 || !"items-v1".equals(header[0])
+                || !sector.planet.name.equals(header[1])
+                || Integer.parseInt(header[2]) != sector.id
+                || Integer.parseInt(header[3]) != state.wave
+                || Long.parseLong(header[4]) != Math.round(state.tick * 1000d)
+                || Long.parseLong(header[5]) != sector.save.file.length()) return false;
+
+            // Validate the *whole* snapshot before changing a single item.
+            // One malformed row must never half-restore a live core.
+            int[] restored = new int[content.items().size];
+            int total = 0;
+            for(int i = 1; i < rows.length; i++){
+                if(rows[i].isEmpty()) continue;
+                int delimiter = rows[i].indexOf(':');
+                if(delimiter <= 0) return false;
+                int id = Integer.parseInt(rows[i].substring(0, delimiter));
+                int amount = Integer.parseInt(rows[i].substring(delimiter + 1));
+                if(id < 0 || id >= restored.length || amount <= 0
+                    || amount > state.rules.defaultTeam.core().storageCapacity
+                    || restored[id] != 0) return false;
+                restored[id] = amount;
+                total += amount;
+            }
+            if(total <= 0) return false;
+            var live = state.rules.defaultTeam.items();
+            for(Item item : content.items()){
+                if(restored[item.id] > 0) live.set(item, restored[item.id]);
+            }
+            sector.info.items.clear();
+            sector.info.items.add(live);
+            sector.saveInfo();
+            return true;
+        }catch(Exception malformed){
+            // Corrupt or stale auxiliary data must never block loading a
+            // healthy SaveIO world; the stock SectorInfo remains fallback.
+            return false;
+        }
+    }
+
+    // SaveIO remains authoritative. Restore a matching checkpoint only if
+    // the loaded core is *entirely* empty; never top up partial inventories.
     private static void recoverEmptySectorInventory(Sector sector){
         if(sector == null || state.rules == null || state.rules.defaultTeam.core() == null) return;
         var stored = sector.info.items;
@@ -1125,7 +1192,10 @@ public final class BrowserCampaignRuntime{
             liveTotal += live.get(item);
             savedTotal += Math.max(0, stored.get(item));
         }
-        if(liveTotal == 0 && savedTotal > 0){
+        if(liveTotal != 0) return;
+        if(restoreCoreItemCheckpoint(sector)) return;
+        // Backwards-compatible fallback for saves written by older ports.
+        if(savedTotal > 0){
             for(Item item : content.items()){
                 int count = stored.get(item);
                 if(count > 0) live.set(item, count);
@@ -1136,6 +1206,7 @@ public final class BrowserCampaignRuntime{
     private static void writeCurrentSectorSave(){
         snapshotSectorInventory(current);
         control.saves.saveSector(current);
+        writeCoreItemCheckpoint(current);
     }
 
     private static void saveCampaignCheckpoint(){
