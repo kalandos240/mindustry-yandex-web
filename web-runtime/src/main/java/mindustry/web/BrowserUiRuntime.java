@@ -171,33 +171,28 @@ public final class BrowserUiRuntime{
     }
 
     private static void buildLocalHudControls(){
-        Table controls = new Table();
-        controls.setFillParent(true);
-        // The campaign UI patch turns the same lightweight HUD controls into the
-        // campaign Back surface. Keep this table active for either local-map or campaign
-        // play; otherwise the campaign Back button and its CI/UI action never receive
-        // Scene updates while a sector is running.
-        controls.visible(() -> BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active());
-        controls.top().left();
-        controls.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
-            .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
-            .pad(8f);
-        controls.button(Core.bundle.get("pause", "Pause"), BrowserUiRuntime::pauseActiveSession)
-            .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
-            .pad(8f);
-        // Keep Back and Pause on the first row. Three 132px-wide actions do not
-        // fit a narrow mobile game viewport once the portal reserves ad space.
-        controls.row();
-        // The original HudFragment uses Icon.tree for the same research
-        // action. Keep its established Web HUD hit area and input callback,
-        // but draw the native Mindustry icon instead of a duplicate text tile.
-        ImageButton researchAction = controls.button(Icon.tree, Styles.clearNonei, BrowserResearchUi::show)
-            .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
-            .name("web-research-hud").pad(8f).get();
+        // Restore the original Mindustry layout: no Web-only Back / Pause /
+        // Command / Research text tiles down the left side of live gameplay.
+        // Esc and the bottom HUD Menu open the stock-styled PausedDialog;
+        // Shift/native MobileInput owns RTS command mode.
+        Table root = new Table();
+        root.setFillParent(true);
+        root.touchable = Touchable.childrenOnly;
+        root.visible(() -> state.isGame() && !state.gameOver);
+        root.bottom().right();
+
+        // Match the original HudFragment icon-button styling, docked next to
+        // the native PlacementFragment panel rather than covering the map.
+        Table actions = new Table(Styles.black6);
+        actions.defaults().size(mobile ? 48f : 44f).pad(2f);
+        actions.button(Icon.menu, Styles.clearNonei, () -> {
+            if(state.isPlaying()) pauseActiveSession();
+        }).name("web-native-menu").disabled(button -> state.isPaused());
+        ImageButton researchAction = actions.button(Icon.tree, Styles.clearNonei,
+            BrowserResearchUi::show).name("web-research-hud").get();
         researchAction.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
-        // Read the real Arc Scene hit target rather than assuming desktop pixels:
-        // the HUD shifts under mobile scaling and portal-controlled iframe sizes.
-        // Chrome click/touch tests use the exact same existing Research button.
+        // Use actual Arc Scene coordinates for desktop and touch regression
+        // tests, not hard-coded mobile or banner-dependent viewport pixels.
         researchAction.update(() -> {
             if(!researchAction.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
             Vec2 center = researchAction.localToStageCoordinates(new Vec2(
@@ -205,33 +200,10 @@ public final class BrowserUiRuntime{
             Vec2 screen = Core.scene.getViewport().project(center);
             markHudResearchHitPoint(screen.x, screen.y);
         });
-
-        // The native PlacementFragment already contains the full RTS command/
-        // stance table, but desktop users otherwise need to discover a keybind.
-        // Provide a mouse-accessible entry into the *existing* InputHandler
-        // commandMode. MobileInput ships its own dedicated command button.
-        TextButton commandAction = controls.button(Core.bundle.get("command", "Command"), () -> {
-            if(!state.isPlaying() || control == null || control.input == null) return;
-            // Vanilla defaults to "hold Shift for commands". A click-to-toggle
-            // control cannot operate while DesktopInput overwrites commandMode
-            // every frame from the held key. Clicking this explicit browser
-            // command button opts into the stock toggle preference, preserving
-            // the normal keyboard binding and all original RTS logic.
-            if(Core.settings.getBool("commandmodehold", true)){
-                Core.settings.put("commandmodehold", false);
-                markCommandInputMode("toggle");
-            }
-            control.input.block = null;
-            control.input.commandMode = !control.input.commandMode;
-            markCommandToggleState(control.input.commandMode ? "on" : "off");
-        }).size(116f, 44f).name("web-command-mode-hud").pad(8f).get();
-        commandAction.visible(() -> !mobile && state.isPlaying() && !state.gameOver);
-        commandAction.update(() -> {
-            commandAction.setChecked(control != null && control.input != null && control.input.commandMode);
-        });
+        root.add(actions).bottom().right()
+            .padRight(mobile ? 150f : 250f).padBottom(7f);
+        ui.hudGroup.addChild(root);
         markCommandToggleReady(mobile ? "stock-mobile-input" : "desktop-native-input");
-
-        ui.hudGroup.addChild(controls);
     }
 
     private static void pauseActiveSession(){
