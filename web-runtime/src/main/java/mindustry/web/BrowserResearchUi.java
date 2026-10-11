@@ -442,12 +442,41 @@ public final class BrowserResearchUi{
         }
 
         if(!(content instanceof SectorPreset)){
+            // Vanilla ResearchDialog shows a cost-weighted research percentage
+            // once any resources were invested in a technology. The pinned
+            // Item.cost weights matter: not all ingredients count equally.
+            float weightedRequired = 0f, weightedFinished = 0f;
             for(int i = 0; i < node.requirements.length; i++){
                 ItemStack req = node.requirements[i];
-                int completed = node.finishedRequirements[i].amount;
-                details.add(req.item.localizedName + ": " +
-                    Math.min(completed, req.amount) + " / " + req.amount)
-                    .left().padTop(4f).row();
+                weightedRequired += req.item.cost * req.amount;
+                weightedFinished += req.item.cost *
+                    Math.min(node.finishedRequirements[i].amount, req.amount);
+            }
+            if(!content.unlocked() && weightedRequired > 0f && weightedFinished > 0f){
+                int percent = Math.min(99, (int)(100f * weightedFinished / weightedRequired));
+                Label progress = new Label(Core.bundle.format("research.progress", percent));
+                progress.setColor(Pal.accent);
+                progress.setFontScale(0.85f);
+                details.add(progress).left().padTop(7f).row();
+            }
+            for(int i = 0; i < node.requirements.length; i++){
+                ItemStack req = node.requirements[i];
+                int completed = Math.min(node.finishedRequirements[i].amount, req.amount);
+                // Original card uses each item's actual atlas icon beside its
+                // resource requirement, not a plain unstyled text sentence.
+                Table line = new Table();
+                line.left();
+                if(req.item.uiIcon != null){
+                    line.add(new Image(req.item.uiIcon)).size(20f).padRight(6f);
+                }
+                Label ingredient = new Label(req.item.localizedName);
+                ingredient.setFontScale(0.8f);
+                line.add(ingredient).left().growX();
+                Label count = new Label(completed + " / " + req.amount);
+                count.setFontScale(0.8f);
+                count.setColor(completed >= req.amount ? Pal.accent : Color.lightGray);
+                line.add(count).right().padLeft(5f);
+                details.add(line).width(textWidth).left().padTop(4f).row();
             }
             if(!content.unlocked()){
                 TextButton invest = details.button(Core.bundle.get("research", "Research"), () -> {
