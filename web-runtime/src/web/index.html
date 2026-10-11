@@ -397,7 +397,9 @@
                 };
                 const sync = () => {
                     const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
-                    const menu = loop.indexOf('menu') >= 0;
+                    const playing = ['playing','paused'].includes(root.getAttribute('data-mindustry-campaign-state')) ||
+                        ['playing','paused'].includes(root.getAttribute('data-mindustry-local-map-state'));
+                    const menu = loop.indexOf('menu') >= 0 && !playing;
                     const settingsOpen = root.getAttribute('data-mindustry-settings-panel') === 'open';
                     button.style.display = menu && !settingsOpen ? '' : 'none';
                 };
@@ -414,7 +416,8 @@
                 };
                 new MutationObserver(sync).observe(root, {
                     attributes:true,
-                    attributeFilter:['data-mindustry-gameplay-loop', 'data-mindustry-settings-panel']
+                    attributeFilter:['data-mindustry-gameplay-loop', 'data-mindustry-settings-panel',
+                        'data-mindustry-campaign-state', 'data-mindustry-local-map-state']
                 });
 
                 render();
