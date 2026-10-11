@@ -240,6 +240,22 @@
         if(!surface) throw new Error('Missing portal game surface for fullscreen control');
         surface.appendChild(button);
         state.fullscreenButton = button;
+        // Fullscreen is a platform option, not a gameplay HUD button. Keep
+        // this portal-specific control in the menu instead of covering the
+        // original Mindustry canvas while the player builds/fights.
+        const syncGameplayVisibility = () => {
+            const root = document.documentElement;
+            const campaign = root.getAttribute('data-mindustry-campaign-state');
+            const local = root.getAttribute('data-mindustry-local-map-state');
+            const active = ['playing','paused'].includes(campaign) ||
+                ['playing','paused'].includes(local);
+            button.style.display = active ? 'none' : '';
+        };
+        new MutationObserver(syncGameplayVisibility).observe(document.documentElement, {
+            attributes:true,
+            attributeFilter:['data-mindustry-campaign-state', 'data-mindustry-local-map-state']
+        });
+        syncGameplayVisibility();
         mark('data-yandex-fullscreen-control', 'ready');
         syncFullscreenState();
         document.addEventListener('fullscreenchange', syncFullscreenState, {passive:true});
