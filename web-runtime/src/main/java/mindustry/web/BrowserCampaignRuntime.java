@@ -536,6 +536,7 @@ public final class BrowserCampaignRuntime{
         player.set(state.rules.defaultTeam.core());
         Core.camera.position.set(state.rules.defaultTeam.core());
 
+        recoverEmptySectorInventory(sector);
         state.set(mindustry.core.GameState.State.playing);
         if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != sector){
             throw new IllegalStateException("c:resume-play:" + preset.name);
@@ -658,7 +659,7 @@ public final class BrowserCampaignRuntime{
 
         int savedWave = state.wave;
         long savedTickMillis = Math.round(state.tick * 1000d);
-        control.saves.saveSector(current);
+        writeCurrentSectorSave();
         if(current.save == null || current.save.file == null || !current.save.file.exists()
         || current.save.file.length() < 128 || current.save.meta == null){
             throw new IllegalStateException("c:back-save");
@@ -1096,7 +1097,39 @@ public final class BrowserCampaignRuntime{
         objective.done();
     }
 
+    // Preserve the stock live core inventory in SectorInfo as well as SaveIO's
+    // building data. Sector.items() otherwise switches to SectorInfo.items as
+    // soon as logic.reset() returns to the menu, where stale totals looked like
+    // all resources had vanished even though the world save existed.
+    private static void snapshotSectorInventory(Sector sector){
+        if(sector == null || state.rules == null || state.rules.defaultTeam.core() == null) return;
+        sector.info.items.clear();
+        sector.info.items.add(state.rules.defaultTeam.items());
+        sector.saveInfo();
+    }
+
+    // SaveIO remains authoritative. Restore SectorInfo's matching checkpoint
+    // only if the loaded core is completely empty; never add resources to a
+    // partially loaded inventory and accidentally duplicate legitimate spending.
+    private static void recoverEmptySectorInventory(Sector sector){
+        if(sector == null || state.rules == null || state.rules.defaultTeam.core() == null) return;
+        var stored = sector.info.items;
+        var live = state.rules.defaultTeam.items();
+        int liveTotal = 0, savedTotal = 0;
+        for(Item item : content.items()){
+            liveTotal += live.get(item);
+            savedTotal += Math.max(0, stored.get(item));
+        }
+        if(liveTotal == 0 && savedTotal > 0){
+            for(Item item : content.items()){
+                int count = stored.get(item);
+                if(count > 0) live.set(item, count);
+            }
+        }
+    }
+
     private static void writeCurrentSectorSave(){
+        snapshotSectorInventory(current);
         control.saves.saveSector(current);
     }
 
