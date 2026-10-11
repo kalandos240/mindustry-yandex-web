@@ -425,6 +425,9 @@ require(YANDEX_JS, "if(state.bannerShowing)", "do not overlap ads when sticky hi
 # TechTree research from the active HUD and menu using real Arc click paths.
 require(BROWSER_UI, "BrowserResearchUi.init();", "research dialog in browser UI startup")
 require(BROWSER_UI, "findStockResearchControl(inputTable)", "bind exactly the existing DesktopInput Research tree button")
+require(BROWSER_UI, 'inputTable instanceof Table nativeTable', "mobile research icon mounts within native PlacementFragment")
+require(BROWSER_UI, 'nativeTable.button(Icon.tree, Styles.clearNonei', "no floating research button beneath mobile build palette")
+require(BROWSER_UI, 'nativeTable.invalidateHierarchy()', "mobile research column can relayout after addition")
 require(BROWSER_UI, "nativeButton.clicked(BrowserResearchUi::show)", "original research icon opens browser TechTree, not missing desktop dialog")
 require(BROWSER_UI, 'nativeButton.name = "web-research-hud"', "existing native button exports real Arc pointer coordinates")
 require(BROWSER_UI, "if(mobile){", "keep a single native-style mobile research button")
