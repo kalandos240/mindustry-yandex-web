@@ -424,9 +424,10 @@ require(YANDEX_JS, "if(state.bannerShowing)", "do not overlap ads when sticky hi
 # Unlike the old scripted campaign UI, regular players can open all stock
 # TechTree research from the active HUD and menu using real Arc click paths.
 require(BROWSER_UI, "BrowserResearchUi.init();", "research dialog in browser UI startup")
-require(BROWSER_UI, 'root.bottom().right()', "original lower-right research navigation")
-require(BROWSER_UI, 'actions.button(Icon.menu, Styles.clearNonei', "native Mindustry pause/menu icon")
-require(BROWSER_UI, 'actions.button(Icon.tree, Styles.clearNonei', "native research icon instead of text sidebar")
+require(BROWSER_UI, "findStockResearchControl(inputTable)", "bind exactly the existing DesktopInput Research tree button")
+require(BROWSER_UI, "nativeButton.clicked(BrowserResearchUi::show)", "original research icon opens browser TechTree, not missing desktop dialog")
+require(BROWSER_UI, 'nativeButton.name = "web-research-hud"', "existing native button exports real Arc pointer coordinates")
+require(BROWSER_UI, "if(mobile){", "keep a single native-style mobile research button")
 if 'controls.top().left()' in BROWSER_UI or '"web-command-mode-hud"' in BROWSER_UI:
     failures.append("stock UI: intrusive left-hand Back/Pause/Command overlay remains")
 CAMPAIGN_RUNTIME = (WEB_JAVA / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
