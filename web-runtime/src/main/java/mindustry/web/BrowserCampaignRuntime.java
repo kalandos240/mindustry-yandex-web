@@ -1130,8 +1130,11 @@ public final class BrowserCampaignRuntime{
             int amount = state.rules.defaultTeam.items().get(item);
             if(amount > 0) rows.append(item.id).append(':').append(amount).append('\n');
         }
+        // Arc Fi.writeString() calls Fi.writer() and attempts java.io.File,
+        // which BrowserFi deliberately does not expose on TeaVM. writeBytes()
+        // routes through BrowserFi.PersistentOutputStream -> IndexedDB.
         sector.save.file.sibling(sector.save.file.name() + ".items")
-            .writeString(rows.toString());
+            .writeBytes(rows.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8), false);
     }
 
     private static boolean restoreCoreItemCheckpoint(Sector sector){
