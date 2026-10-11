@@ -117,12 +117,40 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-hud-player-bar="stock-Bar"' \
   --require 'data-mindustry-build-palette-visible="yes"' \
   --require 'data-mindustry-build-palette-actions="research-needed"' \
-  --require 'data-mindustry-ground-zero-drill-research-ui="visible"' \
+  --require 'data-mindustry-hud-research-x="' \
+  --require 'data-mindustry-hud-research-y="' \
   --require 'data-mindustry-research-ui="ready"' \
   --require 'data-mindustry-research-catalog="techtree-all"' \
   --require 'data-mindustry-research-tech-nodes="' \
-  --require 'data-mindustry-network="local-only"' > "$dom"
+  --require 'data-mindustry-network="local-only"' \
+  --after-ready-eval "(async()=>{
+    const root=document.documentElement;
+    const canvas=document.getElementById('mindustry-canvas');
+    const rect=canvas.getBoundingClientRect();
+    const sx=Number(root.getAttribute('data-mindustry-hud-research-x'));
+    const sy=Number(root.getAttribute('data-mindustry-hud-research-y'));
+    if(!Number.isFinite(sx)||!Number.isFinite(sy)) throw Error('Stock campaign research HUD hit point missing');
+    const x=rect.left+sx, y=rect.top+rect.height-sy;
+    for(const type of ['pointerdown','pointerup']){
+      canvas.dispatchEvent(new PointerEvent(type,{
+        bubbles:true,cancelable:true,pointerId:509,pointerType:'mouse',
+        clientX:x,clientY:y,button:0,buttons:type==='pointerdown'?1:0}));
+      await new Promise(r=>setTimeout(r,120));
+    }
+    for(let i=0;i<80;i++){
+      if(root.getAttribute('data-mindustry-research-open')==='yes' &&
+         root.getAttribute('data-mindustry-research-tree-selected')==='mechanical-drill') break;
+      await new Promise(r=>setTimeout(r,100));
+    }
+    if(root.getAttribute('data-mindustry-research-open')!=='yes' ||
+       root.getAttribute('data-mindustry-research-tree-selected')!=='mechanical-drill'){
+      throw Error('Ground Zero native Research button did not focus Mechanical Drill TechTree');
+    }
+    root.setAttribute('data-mindustry-ground-zero-native-research-smoke','passed');
+    return true;
+  })()" \
+  --after-ready-require 'data-mindustry-ground-zero-native-research-smoke="passed"' > "$dom"
 grep -Fq 'data-mindustry-build-categories="0"' "$dom"
 grep -Fq 'data-mindustry-build-blocks="0"' "$dom"
 grep -Eq 'data-mindustry-research-tech-nodes="[1-9][0-9]+"' "$dom"
-echo "Production Ground Zero: real full-tree research UI available in active campaign, starter drill guidance preserved PASS"
+echo "Production Ground Zero: native research HUD button opens real Mechanical Drill TechTree; no duplicate quick-buy UI PASS"
