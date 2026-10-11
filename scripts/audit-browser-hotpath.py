@@ -205,6 +205,17 @@ CONTROL_PAUSE = (ROOT / "scripts/patch-mindustry-control-pause-web.py").read_tex
 INPUT_BRIDGE = (WEB_JAVA / "BrowserInputBridge.java").read_text(encoding="utf-8")
 require(GAMEPLAY, "Core.input.keyTap(Binding.pause)", "single Web Space key handler")
 require(GAMEPLAY, "Core.input.keyTap(Binding.menu)", "Web Escape uses safe pause handler")
+require(GAMEPLAY, "boolean researchOpen = BrowserResearchUi.isOpen()", "research overlay traps Escape without pausing gameplay")
+require(GAMEPLAY, "boolean databaseOpen = BrowserStockDatabaseUi.isOpen()", "stock database traps Escape")
+require(GAMEPLAY, "if(researchOpen) BrowserResearchUi.close()", "Escape closes stock research overlay")
+require(GAMEPLAY, "else if(databaseOpen) BrowserStockDatabaseUi.hide()", "Escape closes stock database")
+require(GAMEPLAY, "&& !researchOpen && !databaseOpen", "Space does not pause underneath research overlay")
+require((WEB_JAVA / "BrowserStockDatabaseUi.java").read_text(encoding="utf-8"),
+    "public static boolean isOpen()", "database overlay exposes live visibility")
+require((ROOT / "scripts/verify-browser-research-actions.sh").read_text(encoding="utf-8"),
+    'data-mindustry-research-escape="passed"', "real Chrome menu and campaign Escape overlay regressions")
+require((ROOT / "scripts/verify-browser-locales.sh").read_text(encoding="utf-8"),
+    'data-mindustry-database-escape="passed"', "real Chrome native database Escape close regression")
 require(CONTROL_PAUSE, 'ui.paused.show();', "unsafe desktop Escape fragment is removed")
 FACTORY_FREEZE = (WEB_JAVA / "BrowserFactoryFreezeSmoke.java").read_text(encoding="utf-8")
 CONTROL_PATH_WEB = (ROOT / "scripts/patch-mindustry-control-pathfinder-web.py").read_text(encoding="utf-8")

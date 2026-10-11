@@ -122,8 +122,20 @@ public final class BrowserGameplayRuntime{
         // invariants. Paused frames never call Control.update() at all. Keep
         // one Space handler here so both transitions use the same validated
         // sector pause/resume state machines as the native HUD buttons.
+        // Web Research/Database are lightweight Scene overlays, not desktop BaseDialogs.
+        // Give Escape to the visible overlay first; the same physical press
+        // must never also pause the campaign underneath it. Likewise, Space
+        // cannot pause through an open modal research panel.
+        boolean menuTapped = !smokeMode && Core.input != null && Core.input.keyTap(Binding.menu);
+        boolean researchOpen = BrowserResearchUi.isOpen();
+        boolean databaseOpen = BrowserStockDatabaseUi.isOpen();
+        if(menuTapped && Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
+            if(researchOpen) BrowserResearchUi.close();
+            else if(databaseOpen) BrowserStockDatabaseUi.hide();
+        }
         if(!smokeMode && (state.isPlaying() || state.isPaused())
-        && (Core.input.keyTap(Binding.pause) || Core.input.keyTap(Binding.menu))
+        && !researchOpen && !databaseOpen
+        && (Core.input.keyTap(Binding.pause) || menuTapped)
         && !state.gameOver
         && !state.rules.pauseDisabled && Core.scene != null
         && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){

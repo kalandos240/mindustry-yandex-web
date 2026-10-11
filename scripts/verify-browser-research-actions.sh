@@ -82,10 +82,39 @@ for scenario in menu campaign; do
           throw Error('Real DOM pointer did not navigate Erekir -> Serpulo -> Conveyor -> Junction: stage='+root.getAttribute('data-mindustry-research-tree-stage')+', detail='+root.getAttribute('data-mindustry-research-tree-detail')+', root='+root.getAttribute('data-mindustry-research-tree-root')+', selected='+root.getAttribute('data-mindustry-research-tree-selected'));
         }
       }
+      // Vanilla ResearchDialog traps game hotkeys and Escape closes the
+      // overlay (not the underlying sector's simulation).
+      const sendKey=(type,code,key)=>window.dispatchEvent(
+        new KeyboardEvent(type,{code,key,bubbles:true,cancelable:true,repeat:false}));
+      const transitionsBefore=Number(root.getAttribute('data-mindustry-space-transition-count') || 0);
+      if('$scenario'==='campaign'){
+        sendKey('keydown','Space',' ');
+        await new Promise(r=>setTimeout(r,250));
+        sendKey('keyup','Space',' ');
+        if(root.getAttribute('data-mindustry-campaign-state')!=='playing' ||
+           Number(root.getAttribute('data-mindustry-space-transition-count') || 0)!==transitionsBefore){
+          throw Error('Space paused campaign through visible stock ResearchDialog');
+        }
+      }
+      sendKey('keydown','Escape','Escape');
+      for(let attempt=0;attempt<40;attempt++){
+        if(root.getAttribute('data-mindustry-research-open')==='no') break;
+        await new Promise(r=>setTimeout(r,100));
+      }
+      sendKey('keyup','Escape','Escape');
+      if(root.getAttribute('data-mindustry-research-open')!=='no'){
+        throw Error('Escape failed to close the original ResearchDialog overlay');
+      }
+      if('$scenario'==='campaign' && (root.getAttribute('data-mindustry-campaign-state')!=='playing' ||
+         Number(root.getAttribute('data-mindustry-space-transition-count') || 0)!==transitionsBefore)){
+        throw Error('Escape closed Research but also paused the campaign');
+      }
+      root.setAttribute('data-mindustry-research-escape','passed');
       root.setAttribute('data-mindustry-research-pointer-smoke','ready');
       return true;
     })()" \
-    --after-ready-require 'data-mindustry-research-pointer-smoke="ready"' > "$dom"
+    --after-ready-require 'data-mindustry-research-pointer-smoke="ready"' \
+    --after-ready-require 'data-mindustry-research-escape="passed"' > "$dom"
   grep -Eq 'data-mindustry-research-tech-nodes="[1-9][0-9]+"' "$dom"
   grep -Eq 'data-mindustry-research-tree-roots="[2-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-research-tree-visible-nodes="[1-9][0-9]*"' "$dom"
