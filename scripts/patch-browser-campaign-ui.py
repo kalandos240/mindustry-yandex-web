@@ -1340,21 +1340,35 @@ new_hud = '''        boolean[] campaignBackUiSmoke = {false};
 '''
 if text.count(old_hud) == 1:
     text = text.replace(old_hud, new_hud, 1)
-elif 'actions.button(Icon.menu, Styles.clearNonei' in text and text.count('        ui.hudGroup.addChild(root);') == 1:
-    # New native bottom-right HUD deliberately has no duplicate Back/Pause
-    # column. Keep the CI-only Back-path exercise attached to the same live
-    # Arc Scene actor, without adding the removed buttons back to gameplay.
-    native_hud = '''        boolean[] campaignBackUiSmoke = {false};
-        root.update(() -> {
-            if(!campaignBackUiSmoke[0] && campaignBackUiSmokeRequested()
-            && BrowserCampaignRuntime.active() && campaignCoreReady()){
-                campaignBackUiSmoke[0] = true;
-                markCampaignUiBackSmoke();
-                returnToMenuWithAd();
-            }
-        });
-        ui.hudGroup.addChild(root);'''
-    text = text.replace('        ui.hudGroup.addChild(root);', native_hud, 1)
+elif 'findStockResearchControl(inputTable)' in text and '    private static void buildLocalHudControls(){' in text:
+    # The existing DesktopInput lower-right Icon.tree is wired to Research.
+    # Do not add a second menu/tree button, and do not overwrite the live
+    # root.update callback that binds the real native button.
+    begin = text.index('    private static void buildLocalHudControls(){')
+    finish = text.index('    private static void pauseActiveSession(){', begin)
+    hud = text[begin:finish]
+    if hud.count('        ui.hudGroup.addChild(root);') != 1:
+        raise SystemExit("Stock HUD smoke cannot find the native HUD mount")
+    smoke_tick = '''        // CI-only action is independent of the real HUD: do not mutate
+        // DesktopInput's button, its listeners, or the Scene update callback.
+        if(campaignBackUiSmokeRequested()){
+            boolean[] campaignBackUiSmoke = {false};
+            Table campaignBackSmokeTick = new Table();
+            campaignBackSmokeTick.setFillParent(true);
+            campaignBackSmokeTick.touchable = Touchable.disabled;
+            campaignBackSmokeTick.update(() -> {
+                if(!campaignBackUiSmoke[0] && BrowserCampaignRuntime.active() && campaignCoreReady()){
+                    campaignBackUiSmoke[0] = true;
+                    markCampaignUiBackSmoke();
+                    returnToMenuWithAd();
+                }
+            });
+            ui.hudGroup.addChild(campaignBackSmokeTick);
+        }
+'''
+    hud = hud.replace('        ui.hudGroup.addChild(root);',
+        '        ui.hudGroup.addChild(root);\n' + smoke_tick, 1)
+    text = text[:begin] + hud + text[finish:]
 else:
     raise SystemExit("Campaign UI HUD anchor matches neither legacy nor native gameplay buttons")
 
