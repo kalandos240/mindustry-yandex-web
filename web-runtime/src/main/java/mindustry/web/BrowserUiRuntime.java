@@ -1,6 +1,7 @@
 package mindustry.web;
 
 import arc.*;
+import arc.math.geom.*;
 import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
@@ -34,6 +35,7 @@ public final class BrowserUiRuntime{
     private static boolean initialized;
     private static TextButton localContinueButton;
     private static int drillResearchUiFrames;
+    private static int hudResearchPointerFrames;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
@@ -194,6 +196,16 @@ public final class BrowserUiRuntime{
             .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
             .name("web-research-hud").pad(8f).get();
         researchAction.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
+        // Read the real Arc Scene hit target rather than assuming desktop pixels:
+        // the HUD shifts under mobile scaling and portal-controlled iframe sizes.
+        // Chrome click/touch tests use the exact same existing Research button.
+        researchAction.update(() -> {
+            if(!researchAction.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
+            Vec2 center = researchAction.localToStageCoordinates(new Vec2(
+                researchAction.getWidth() / 2f, researchAction.getHeight() / 2f));
+            Vec2 screen = Core.scene.getViewport().project(center);
+            markHudResearchHitPoint(screen.x, screen.y);
+        });
 
         // The native PlacementFragment already contains the full RTS command/
         // stance table, but desktop users otherwise need to discover a keybind.
@@ -430,6 +442,13 @@ public final class BrowserUiRuntime{
 
     @JSBody(params={"mode"}, script="document.documentElement.setAttribute('data-mindustry-stock-pause-dialog',mode);")
     private static native void markStockPauseUiReady(String mode);
+
+    @JSBody(params = {"x", "y"}, script = """
+        const root = document.documentElement;
+        root.setAttribute('data-mindustry-hud-research-x', String(x));
+        root.setAttribute('data-mindustry-hud-research-y', String(y));
+        """)
+    private static native void markHudResearchHitPoint(float x, float y);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-pause-ui', 'ready');")
     private static native void markPauseUiReady();

@@ -21,7 +21,7 @@ done
 # Real PointerEvents go through BrowserInputBridge -> Arc Scene, not a
 # test-only research-unlock shortcut. Verify both the menu action and the
 # in-campaign action the player must use to buy Conveyor/Junction/Router.
-for target in desktop-menu desktop-campaign mobile-menu; do
+for target in desktop-menu desktop-campaign mobile-menu mobile-campaign; do
   scenario="${target#*-}"
   device="${target%%-*}"
   profile="/tmp/mindustry-research-actions-${target}"
@@ -56,18 +56,22 @@ for target in desktop-menu desktop-campaign mobile-menu; do
       const canvas=document.getElementById('mindustry-canvas');
       const root=document.documentElement;
       let x=64, y=$y;
-      if('$scenario'==='menu'){
-        for(let i=0;i<110;i++){
-          if(root.hasAttribute('data-mindustry-main-menu-research-x')) break;
-          await new Promise(r=>setTimeout(r,100));
-        }
-        const rect=canvas.getBoundingClientRect();
-        const sx=Number(root.getAttribute('data-mindustry-main-menu-research-x'));
-        const sy=Number(root.getAttribute('data-mindustry-main-menu-research-y'));
-        if(!Number.isFinite(sx)||!Number.isFinite(sy)) throw Error('Stock Research button is missing real Arc coordinates');
-        x=rect.left+sx;
-        y=rect.top+rect.height-sy;
+      const locationPrefix='$scenario'==='menu'?
+        'data-mindustry-main-menu-research' : 'data-mindustry-hud-research';
+      for(let i=0;i<110;i++){
+        if(root.hasAttribute(locationPrefix+'-x') && root.hasAttribute(locationPrefix+'-y')) break;
+        await new Promise(r=>setTimeout(r,100));
       }
+      if(!root.hasAttribute(locationPrefix+'-x') || !root.hasAttribute(locationPrefix+'-y')){
+        throw Error('Existing '+('$scenario'==='menu'?'main menu':'campaign HUD')+
+          ' Research button has no real Arc Scene pointer coordinates on $device');
+      }
+      const rect=canvas.getBoundingClientRect();
+      const sx=Number(root.getAttribute(locationPrefix+'-x'));
+      const sy=Number(root.getAttribute(locationPrefix+'-y'));
+      if(!Number.isFinite(sx)||!Number.isFinite(sy)) throw Error('Research hit point contains invalid coordinates');
+      x=rect.left+sx;
+      y=rect.top+rect.height-sy;
       // Mobile emulation must exercise actual touch-pointer routing, not a
       // desktop mouse routed through the mobile viewport.
       const pointerType='$device'==='mobile'?'touch':'mouse';
