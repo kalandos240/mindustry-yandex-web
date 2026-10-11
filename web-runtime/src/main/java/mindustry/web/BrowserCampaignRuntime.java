@@ -1193,7 +1193,14 @@ public final class BrowserCampaignRuntime{
             savedTotal += Math.max(0, stored.get(item));
         }
         if(liveTotal != 0) return;
-        if(restoreCoreItemCheckpoint(sector)) return;
+        // A mismatched/invalid sidecar must NOT revive stale SectorInfo.items:
+        // a player may have legitimately spent every item and saved again.
+        // Legacy saves with no sidecar can still use the original fallback.
+        if(sector.save != null && sector.save.file != null &&
+            sector.save.file.sibling(sector.save.file.name() + ".items").exists()){
+            restoreCoreItemCheckpoint(sector);
+            return;
+        }
         // Backwards-compatible fallback for saves written by older ports.
         if(savedTotal > 0){
             for(Item item : content.items()){
