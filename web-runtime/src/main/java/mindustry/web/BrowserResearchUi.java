@@ -30,7 +30,7 @@ import static mindustry.Vars.*;
  * Unlocks still go exclusively through BrowserCampaignResearch.spend().
  */
 public final class BrowserResearchUi{
-    private static boolean initialized, open;
+    private static boolean initialized, open, rootChooserOpen;
     private static TechNode activeRoot, selected;
     private static final ObjectSet<TechNode> expanded = new ObjectSet<>();
     private static BrowserTechTreeGraph menuTree, hudTree;
@@ -85,16 +85,46 @@ public final class BrowserResearchUi{
         Table shell = new Table();
         shell.setFillParent(true);
         shell.top();
-        Table roots = new Table(Tex.pane2);
-        roots.name = "web-stock-research-planet";
-        roots.defaults().pad(2f);
+        // Pinned ResearchDialog shows one current-tree title; tapping it
+        // opens a separate TechTree selector. Persistent side-by-side planet
+        // tabs were a Web-specific deviation from the original interface.
+        Table titleBar = new Table();
+        TextButton currentTree = titleBar.button(activeRoot.localizedName(), Icon.tree, () -> {
+            rootChooserOpen = true;
+        }).height(mobile ? 50f : 44f).minWidth(mobile ? 205f : 275f)
+            .name("web-research-choose-tree").get();
+        currentTree.update(() -> {
+            if(activeRoot != null) currentTree.setText(activeRoot.localizedName());
+        });
+        shell.add(titleBar).height(mobile ? 54f : 48f).padTop(4f).row();
+
+        // Lightweight Scene selector: keep the real pinned roots and icons,
+        // but avoid eagerly constructing desktop BaseDialog/online UI.
+        Table chooser = new Table();
+        chooser.name = "web-stock-research-planet";
+        chooser.setFillParent(true);
+        chooser.setBackground(Styles.black6);
+        chooser.touchable = Touchable.enabled;
+        chooser.visible(() -> open && rootChooserOpen && (menu ? state.isMenu() :
+            state.isCampaign() && !state.gameOver));
+        Table options = new Table(Tex.pane2);
+        options.defaults().pad(5f);
+        options.add(Core.bundle.get("techtree.select", "Select Tech Tree"))
+            .color(Pal.accent).pad(9f).row();
         for(TechNode root : TechTree.roots){
-            roots.button(root.localizedName(), root.icon(), () -> switchRoot(root))
-                .checked(button -> activeRoot == root)
-                .height(mobile ? 48f : 42f).minWidth(mobile ? 115f : 160f)
-                .name("web-research-root-" + root.content.name);
+            options.button(root.localizedName(), root.icon(), Styles.flatTogglet,
+                mobile ? 30f : 32f, () -> {
+                    switchRoot(root);
+                    rootChooserOpen = false;
+                }).checked(button -> activeRoot == root)
+                .height(mobile ? 52f : 56f).width(mobile ? 240f : 310f)
+                .name("web-research-root-" + root.content.name).row();
         }
-        shell.add(roots).height(mobile ? 52f : 46f).padTop(4f).row();
+        options.button(Core.bundle.get("back", "Back"), Icon.left, () -> {
+            rootChooserOpen = false;
+        }).height(mobile ? 48f : 50f).width(mobile ? 180f : 240f)
+            .name("web-research-root-back").padTop(8f).row();
+        chooser.add(options).center();
 
         BrowserTechTreeGraph tree = new BrowserTechTreeGraph();
         ScrollPane treePane = new ScrollPane(tree, Styles.smallPane);
@@ -190,6 +220,9 @@ public final class BrowserResearchUi{
                 overlay.getHeight() - infoHeight - 65f));
             popover.setPosition(x, y);
         });
+        // Draw selector last, above research details and resource panels.
+        // Hidden chooser does not capture any canvas touch or scroll events.
+        overlay.addChild(chooser);
         parent.addChild(overlay);
 
         if(menu){
@@ -265,6 +298,7 @@ public final class BrowserResearchUi{
     }
 
     public static void show(){
+        rootChooserOpen = false;
         if(!initialized || state == null || !(state.isMenu() || state.isCampaign())) return;
         // Opening research during Erekir gameplay selects its real technology root.
         if(state.isCampaign() && state.rules != null && state.rules.sector != null &&
@@ -293,7 +327,19 @@ public final class BrowserResearchUi{
         focusSelected();
     }
 
+    // Match the original stacked BaseDialogs: Escape first dismisses the
+    // planet-selection popup, and only a second Escape closes Research itself.
+    // The footer's Back action still closes the research view directly.
+    public static void escape(){
+        if(rootChooserOpen){
+            rootChooserOpen = false;
+            return;
+        }
+        close();
+    }
+
     public static void close(){
+        rootChooserOpen = false;
         open = false;
         markResearchOpen(false);
     }
@@ -305,6 +351,7 @@ public final class BrowserResearchUi{
 
     private static void switchRoot(TechNode root){
         if(root == null) return;
+        rootChooserOpen = false;
         activeRoot = root;
         selected = root;
         resourceCacheDirty = true;
