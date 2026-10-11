@@ -433,6 +433,13 @@ require(BROWSER_UI, 'dialog.name = "web-gameover-dialog"', "native styled game-o
 require(BROWSER_UI, "markStockPauseUiReady", "pause dialog diagnostics")
 
 require(BROWSER_UI, "BrowserResearchUi::show", "menu and gameplay research actions")
+require(RESEARCH_UI, "selected = drill;", "Ground Zero Mechanical Drill tutorial selects stock ResearchDialog node")
+require(RESEARCH_UI, "expanded.add(ancestor);", "original TechTree ancestors expand for tutorial")
+require(RESEARCH_UI, "SectorPresets.groundZero.sector", "tutorial only focuses real Ground Zero")
+if "TextButton drillResearch =" in BROWSER_UI or "drillResearchUiFrames" in BROWSER_UI:
+    failures.append("research: obsolete one-click Mechanical Drill HUD purchase must be removed")
+require((ROOT / "scripts/verify-browser-research-actions.sh").read_text(encoding="utf-8"),
+    'data-mindustry-research-tree-selected="mechanical-drill"', "real browser campaign research drills into stock tutorial TechNode")
 MAIN_MENU = (WEB_JAVA / "BrowserStockMainMenu.java").read_text(encoding="utf-8")
 require(BROWSER_UI, "BrowserStockMainMenu.install(ui.menuGroup, root)", "stock menu boot wiring")
 require(BROWSER_UI, "BrowserStockMainMenu.showHome()", "reset menu chrome after gameplay")

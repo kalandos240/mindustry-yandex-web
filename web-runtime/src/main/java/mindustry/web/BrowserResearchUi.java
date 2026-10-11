@@ -272,6 +272,20 @@ public final class BrowserResearchUi{
             TechNode campaignRoot = state.rules.sector.planet.techTree;
             if(activeRoot != campaignRoot) switchRoot(campaignRoot);
         }
+        // Ground Zero's original tutorial asks for Mechanical Drill. Do not
+        // create a second one-click research purchase in the game HUD: guide
+        // the player to the real TechTree node when the existing Research
+        // button opens. Purchases still use the standard research dialog,
+        // with its true requirements and partial research progress.
+        if(state.isCampaign() && state.rules != null
+            && state.rules.sector == SectorPresets.groundZero.sector
+            && !Blocks.mechanicalDrill.unlocked() && Blocks.mechanicalDrill.techNode != null){
+            TechNode drill = Blocks.mechanicalDrill.techNode;
+            for(TechNode ancestor = drill.parent; ancestor != null; ancestor = ancestor.parent){
+                expanded.add(ancestor);
+            }
+            selected = drill;
+        }
         open = true;
         resourceCacheDirty = true;
         refresh();

@@ -84,6 +84,10 @@ for target in desktop-menu desktop-campaign mobile-menu mobile-campaign; do
       if(root.getAttribute('data-mindustry-research-open')!=='yes'){
         throw Error('Arc Scene research button was not clickable from $scenario');
       }
+      if('$scenario'==='campaign' &&
+         root.getAttribute('data-mindustry-research-tree-selected')!=='mechanical-drill'){
+        throw Error('Ground Zero research must select the real Mechanical Drill TechNode, not use a separate direct-buy button');
+      }
       if('$scenario'==='menu'){
         for(let attempt=0;attempt<160;attempt++){
           if(root.getAttribute('data-mindustry-research-tree-navigation')==='passed') break;
@@ -130,7 +134,7 @@ for target in desktop-menu desktop-campaign mobile-menu mobile-campaign; do
   grep -Eq 'data-mindustry-research-tree-roots="[2-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-research-tree-visible-nodes="[1-9][0-9]*"' "$dom"
   if [ "$scenario" = campaign ]; then
-    grep -Fq 'data-mindustry-research-tree-selected="core-shard"' "$dom"
+    grep -Fq 'data-mindustry-research-tree-selected="mechanical-drill"' "$dom"
   else
     grep -Fq 'data-mindustry-research-tree-selected="junction"' "$dom"
   fi
