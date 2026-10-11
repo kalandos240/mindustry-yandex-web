@@ -425,6 +425,11 @@ require(YANDEX_JS, "if(state.bannerShowing)", "do not overlap ads when sticky hi
 # TechTree research from the active HUD and menu using real Arc click paths.
 require(BROWSER_UI, "BrowserResearchUi.init();", "research dialog in browser UI startup")
 require(BROWSER_UI, "findStockResearchControl(inputTable)", "bind exactly the existing DesktopInput Research tree button")
+require(BROWSER_UI, "findStockDatabaseControl(inputTable)", "bind the existing lower-right Database book button")
+require(BROWSER_UI, "button.clicked(BrowserStockDatabaseUi::show)", "native book opens real ContentLoader database")
+require(DATABASE_UI, "Core.scene.add(overlay);", "stock Database overlays menu AND gameplay")
+require(DATABASE_UI, "state.isMenu() || state.isGame()", "original Database remains accessible during campaign")
+require(RESEARCH_BROWSER_SMOKE, 'data-mindustry-native-database-campaign', "Chrome clicks original book icon and Escape-closes database during campaign")
 require(BROWSER_UI, "nativeButton.clicked(BrowserResearchUi::show)", "original research icon opens browser TechTree, not missing desktop dialog")
 require(BROWSER_UI, 'nativeButton.name = "web-research-hud"', "existing native button exports real Arc pointer coordinates")
 require(BROWSER_UI, "if(mobile){", "keep a single native-style mobile research button")
