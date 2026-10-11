@@ -537,6 +537,7 @@ public final class BrowserCampaignRuntime{
         Core.camera.position.set(state.rules.defaultTeam.core());
 
         recoverEmptySectorInventory(sector);
+        markSectorInventory("resume");
         state.set(mindustry.core.GameState.State.playing);
         if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != sector){
             throw new IllegalStateException("c:resume-play:" + preset.name);
@@ -671,6 +672,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("c:back-meta");
         }
 
+        markSectorInventory("back");
         markBackAutoSaved(savedWave, savedTickMillis, current.save.file.length());
         flushCampaignStorage();
 
@@ -1139,7 +1141,14 @@ public final class BrowserCampaignRuntime{
         }
 
         diagPhase("sector-checkpoint");
+        // Deterministic cross-process save regression: verify actual core
+        // inventory, not merely SaveIO wave/tick or ZIP byte length.
+        if(saveSmoke && current.preset == SectorPresets.groundZero){
+            state.rules.defaultTeam.items().set(Items.copper, 137);
+            state.rules.defaultTeam.items().set(Items.lead, 73);
+        }
         writeCurrentSectorSave();
+        markSectorInventory("checkpoint");
         if(current.save == null || current.save.file == null || !current.save.file.exists()
         || current.save.file.length() < 128 || current.save.meta == null){
             throw new IllegalStateException("c:checkpoint-save");
@@ -2197,6 +2206,14 @@ public final class BrowserCampaignRuntime{
         setRuntimeDomAttribute("data-mindustry-campaign-frames", String.valueOf(frames));
         setRuntimeDomAttribute("data-mindustry-campaign-update-id", String.valueOf(updateId));
         setRuntimeDomAttribute("data-mindustry-campaign-wave", String.valueOf(wave));
+    }
+
+    private static void markSectorInventory(String phase){
+        if(state.rules == null || state.rules.defaultTeam.core() == null) return;
+        var items = state.rules.defaultTeam.items();
+        setRuntimeDomAttribute("data-mindustry-campaign-" + phase + "-copper", String.valueOf(items.get(Items.copper)));
+        setRuntimeDomAttribute("data-mindustry-campaign-" + phase + "-lead", String.valueOf(items.get(Items.lead)));
+        setRuntimeDomAttribute("data-mindustry-campaign-" + phase + "-beryllium", String.valueOf(items.get(Items.beryllium)));
     }
 
     private static void markCheckpoint(int wave, long tickMillis, long bytes){
