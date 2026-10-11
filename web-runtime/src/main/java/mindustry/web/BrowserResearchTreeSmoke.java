@@ -25,42 +25,48 @@ public final class BrowserResearchTreeSmoke{
         if(++frames > 600) throw new IllegalStateException("Research tree real-pointer navigation stalled: stage=" + stage +
             ", root=" + BrowserResearchUi.activeRootContent() + ", selected=" + BrowserResearchUi.selectedContent());
 
+        // The native ResearchDialog title opens a separate root selector.
+        // Verify both the title and actual planet buttons by canvas pointer.
         switch(stage){
-            case 0 -> down("web-research-root-core-bastion", 1);
+            case 0 -> down("web-research-choose-tree", 1);
             case 1 -> up(2);
-            case 2 -> {
-                if(BrowserResearchUi.activeRootContent().equals("core-bastion")) stage = 3;
-            }
-            case 3 -> down("web-research-root-core-shard", 4);
+            case 2 -> stage = 3;
+            case 3 -> down("web-research-root-core-bastion", 4);
             case 4 -> up(5);
             case 5 -> {
-                if(BrowserResearchUi.activeRootContent().equals("core-shard")) stage = 6;
+                if(BrowserResearchUi.activeRootContent().equals("core-bastion")) stage = 6;
             }
-            case 6 -> down("web-research-node-conveyor", 7);
+            case 6 -> down("web-research-choose-tree", 7);
             case 7 -> up(8);
-            case 8 -> {
-                if(BrowserResearchUi.selectedContent().equals("conveyor")) stage = 9;
-            }
-            case 9 -> down("web-research-node-junction", 10);
+            case 8 -> stage = 9;
+            case 9 -> down("web-research-root-core-shard", 10);
             case 10 -> up(11);
             case 11 -> {
-                if(BrowserResearchUi.selectedContent().equals("junction")
-                    && Core.scene.root.find("web-research-node-router") != null){
-                    markPassed();
-                    stage = 12;
-                }
+                if(BrowserResearchUi.activeRootContent().equals("core-shard")) stage = 12;
             }
-            // A real click on an expanded branch now collapses it. Validate
-            // that Router disappears, then reveal it again through real
-            // browser PointerEvents instead of setting expanded flags.
-            case 12 -> down("web-research-node-junction", 13);
+            case 12 -> down("web-research-node-conveyor", 13);
             case 13 -> up(14);
             case 14 -> {
-                if(Core.scene.root.find("web-research-node-router") == null) stage = 15;
+                if(BrowserResearchUi.selectedContent().equals("conveyor")) stage = 15;
             }
             case 15 -> down("web-research-node-junction", 16);
             case 16 -> up(17);
             case 17 -> {
+                if(BrowserResearchUi.selectedContent().equals("junction")
+                    && Core.scene.root.find("web-research-node-router") != null){
+                    markPassed();
+                    stage = 18;
+                }
+            }
+            // Expand/collapse remains actual Arc Scene input, no debug node flags.
+            case 18 -> down("web-research-node-junction", 19);
+            case 19 -> up(20);
+            case 20 -> {
+                if(Core.scene.root.find("web-research-node-router") == null) stage = 21;
+            }
+            case 21 -> down("web-research-node-junction", 22);
+            case 22 -> up(23);
+            case 23 -> {
                 if(Core.scene.root.find("web-research-node-router") != null){
                     Element junction = Core.scene.root.find("web-research-node-junction");
                     if(junction == null) return;
