@@ -36,6 +36,7 @@ public final class BrowserUiRuntime{
     private static boolean initialized;
     private static TextButton localContinueButton;
     private static int hudResearchPointerFrames;
+    private static int hudDatabasePointerFrames;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
@@ -182,6 +183,39 @@ public final class BrowserUiRuntime{
         return null;
     }
 
+    private static ImageButton findStockDatabaseControl(Element node){
+        if(node instanceof ImageButton button && button.getStyle().imageUp == Icon.book) return button;
+        if(node instanceof Group group){
+            for(Element child : group.getChildren()){
+                ImageButton found = findStockDatabaseControl(child);
+                if(found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static void attachStockDatabaseHandler(ImageButton button){
+        // The original lower-right Database button would dereference
+        // ui.database, which is deliberately absent from lightweight UI.init().
+        // Reuse that same stock ImageButton and show our real ContentLoader
+        // database rather than drawing a new overlay button.
+        for(int i = button.getListeners().size - 1; i >= 0; i--){
+            EventListener listener = button.getListeners().get(i);
+            if(listener instanceof ClickListener && listener != button.getClickListener()){
+                button.removeListener(listener);
+            }
+        }
+        button.clicked(BrowserStockDatabaseUi::show);
+        button.name = "web-stock-database-hud";
+        button.update(() -> {
+            if(!button.visible || Core.scene == null || (++hudDatabasePointerFrames & 15) != 0) return;
+            Vec2 center = button.localToStageCoordinates(new Vec2(
+                button.getWidth() / 2f, button.getHeight() / 2f));
+            Vec2 screen = Core.scene.getViewport().project(center);
+            markHudDatabaseHitPoint(screen.x, screen.y);
+        });
+    }
+
     private static void attachStockResearchHandler(ImageButton nativeButton){
         // DesktopInput.buildPlacementUI already creates the exact original
         // lower-right Icon.tree button. Its upstream onClick calls
@@ -237,6 +271,7 @@ public final class BrowserUiRuntime{
             // world load or block-category rebuild; rebind to the NEW native
             // control without leaving a dangling listener on an old actor.
             ImageButton[] bound = {null};
+            ImageButton[] databaseBound = {null};
             int[] frames = {0};
             root.update(() -> {
                 if((++frames[0] & 15) != 0) return;
@@ -247,6 +282,11 @@ public final class BrowserUiRuntime{
                     attachStockResearchHandler(nativeButton);
                     bound[0] = nativeButton;
                 }
+                ImageButton database = findStockDatabaseControl(inputTable);
+                if(database != null && database != databaseBound[0]){
+                    attachStockDatabaseHandler(database);
+                    databaseBound[0] = database;
+                }
             });
         }
         ui.hudGroup.addChild(root);
@@ -255,6 +295,13 @@ public final class BrowserUiRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-stock-research-bound','yes');")
     private static native void markStockResearchBound();
+
+    @JSBody(params = {"x", "y"}, script = """
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-hud-database-x', String(x));
+        root.setAttribute('data-mindustry-hud-database-y', String(y));
+        """)
+    private static native void markHudDatabaseHitPoint(float x, float y);
 
     private static void pauseActiveSession(){
         if(BrowserCampaignRuntime.active()){
