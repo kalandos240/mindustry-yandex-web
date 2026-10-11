@@ -303,7 +303,12 @@ new_run = '''    /**
             double maintenanceStartMs = webNowMillis();
 
             var fullClusters = clustersToUpdate.iterator();
-            while(fullClusters.hasNext && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs){
+            int fullClusterSteps = 0;
+            // One complete portal-cluster rebuild per 30Hz iteration. A large
+            // Erekir Tank Fabricator can invalidate several clusters at once:
+            // the whole Web renderer shares this thread with the path worker.
+            while(fullClusters.hasNext && fullClusterSteps++ < 1
+                && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs){
                 int cluster = fullClusters.next();
                 updateClustersComplete(cluster);
                 clustersToInnerUpdate.remove(cluster);
@@ -312,7 +317,9 @@ new_run = '''    /**
 
             if(webNowMillis() - maintenanceStartMs < maintenanceBudgetMs){
                 var innerClusters = clustersToInnerUpdate.iterator();
-                while(innerClusters.hasNext && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs){
+                int innerClusterSteps = 0;
+                while(innerClusters.hasNext && innerClusterSteps++ < 2
+                    && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs){
                     int cluster = innerClusters.next();
                     updateClustersInner(cluster);
                     innerClusters.remove();
@@ -434,8 +441,8 @@ for required in (
     "int requestChecks = Math.min(32, requestCount);",
     "int fieldChecks = Math.min(8, fieldCount);",
     "double maintenanceBudgetMs = Core.app != null && Core.app.isMobile() ? 1d : 2d;",
-    "while(fullClusters.hasNext && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs)",
-    "while(innerClusters.hasNext && webNowMillis() - maintenanceStartMs < maintenanceBudgetMs)",
+    "while(fullClusters.hasNext && fullClusterSteps++ < 1",
+    "while(innerClusters.hasNext && innerClusterSteps++ < 2",
     "webInvalidSweepPending",
     "double frameBudgetMs = Core.app != null && Core.app.isMobile() ? 2d : 3d;",
     "while(visited < fieldCount && webNowMillis() - frameStartMs < frameBudgetMs)",

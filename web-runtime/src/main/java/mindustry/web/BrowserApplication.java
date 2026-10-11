@@ -156,6 +156,8 @@ public final class BrowserApplication extends WebApplicationBase{
                 BrowserMobileRtsSmoke.update();
                 // Real Scene pointer navigation for the vanilla research tree (CI only).
                 BrowserResearchTreeSmoke.update();
+                // Only when explicitly requested by the Erekir stress gate.
+                BrowserFactoryFreezeSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
