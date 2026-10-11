@@ -217,18 +217,28 @@ public final class BrowserUiRuntime{
         root.visible(() -> state.isGame() && !state.gameOver);
 
         if(mobile){
-            // MobileInput.buildPlacementUI lacks the desktop Research button:
-            // keep one compact native-styled touch action at bottom-right.
-            root.bottom().right();
-            ImageButton research = root.button(Icon.tree, Styles.clearNonei,
-                BrowserResearchUi::show).size(48f).name("web-research-hud").get();
-            research.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
-            research.update(() -> {
-                if(!research.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
-                Vec2 center = research.localToStageCoordinates(new Vec2(
-                    research.getWidth() / 2f, research.getHeight() / 2f));
-                Vec2 screen = Core.scene.getViewport().project(center);
-                markHudResearchHitPoint(screen.x, screen.y);
+            // A free-floating bottom-right button is underneath MobileInput's
+            // real PlacementFragment touch panel. Mount our single missing
+            // Research action INTO that native inputTable instead, next to its
+            // existing hammer/rotate controls. This also respects Yandex
+            // banners, portrait widths, and Arc Scene's actual hit-testing.
+            int[] frames = {0};
+            root.update(() -> {
+                if((++frames[0] & 15) != 0 || Core.scene == null) return;
+                Element inputTable = Core.scene.root.find("inputTable");
+                if(!(inputTable instanceof Table nativeTable)) return;
+                if(nativeTable.find("web-research-hud") != null) return;
+                ImageButton research = nativeTable.button(Icon.tree, Styles.clearNonei,
+                    BrowserResearchUi::show).size(48f).name("web-research-hud").get();
+                research.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
+                research.update(() -> {
+                    if(!research.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
+                    Vec2 center = research.localToStageCoordinates(new Vec2(
+                        research.getWidth() / 2f, research.getHeight() / 2f));
+                    Vec2 screen = Core.scene.getViewport().project(center);
+                    markHudResearchHitPoint(screen.x, screen.y);
+                });
+                nativeTable.invalidateHierarchy();
             });
         }else{
             // The stock PlacementFragment arrives after InputHandler.add();
