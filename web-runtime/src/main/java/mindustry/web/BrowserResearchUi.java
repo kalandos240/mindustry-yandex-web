@@ -436,13 +436,21 @@ public final class BrowserResearchUi{
                 ": " + node.parent.content.localizedName).left().padTop(6f).row();
         }
 
+        // Stock ResearchDialog shows campaign objectives with real completion
+        // icons, rather than prefixing plain text with "+" and "-".
         for(Objective objective : node.objectives){
             if(objective == null) continue;
             boolean complete = objectiveComplete(objective);
-            Label label = new Label((complete ? "+ " : "- ") + objective.display());
+            Table objectiveRow = new Table();
+            objectiveRow.left();
+            Label label = new Label(objective.display());
             label.setWrap(true);
             label.setFontScale(0.8f);
-            details.add(label).width(textWidth).left().padTop(3f).row();
+            label.setColor(complete ? Color.lightGray : Color.scarlet);
+            objectiveRow.add(label).width(textWidth - 23f).left();
+            objectiveRow.add(new Image(complete ? Icon.ok : Icon.cancel))
+                .size(18f).padLeft(5f);
+            details.add(objectiveRow).width(textWidth).left().padTop(3f).row();
         }
 
         if(!(content instanceof SectorPreset)){
