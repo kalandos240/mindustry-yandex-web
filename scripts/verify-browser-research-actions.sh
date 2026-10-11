@@ -68,8 +68,11 @@ for target in desktop-menu desktop-campaign mobile-menu; do
         x=rect.left+sx;
         y=rect.top+rect.height-sy;
       }
-      const down=new PointerEvent('pointerdown', {bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',clientX:x,clientY:y,button:0,buttons:1});
-      const up=new PointerEvent('pointerup', {bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',clientX:x,clientY:y,button:0,buttons:0});
+      // Mobile emulation must exercise actual touch-pointer routing, not a
+      // desktop mouse routed through the mobile viewport.
+      const pointerType='$device'==='mobile'?'touch':'mouse';
+      const down=new PointerEvent('pointerdown', {bubbles:true,cancelable:true,pointerId:1,pointerType,clientX:x,clientY:y,button:0,buttons:1,isPrimary:true});
+      const up=new PointerEvent('pointerup', {bubbles:true,cancelable:true,pointerId:1,pointerType,clientX:x,clientY:y,button:0,buttons:0,isPrimary:true});
       canvas.dispatchEvent(down);
       await new Promise(r=>setTimeout(r,100));
       canvas.dispatchEvent(up);
