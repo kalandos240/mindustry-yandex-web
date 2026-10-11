@@ -493,7 +493,7 @@ require(RESEARCH_UI, "new Label(Math.min(available, missing) +", "original resea
 require(RESEARCH_UI, "if(missing == 0) continue", "hide fully invested original resource rows")
 require(RESEARCH_UI, "invest.setDisabled(parentLocked || objectivesLocked || !spendable)", "stock unavailable research button is disabled")
 require(RESEARCH_UI, "Color.scarlet", "red missing-resource labels matching original research card")
-require(RESEARCH_UI, "new Label(completed +", "per-resource partial investment labels")
+require(RESEARCH_UI, "new Label(Math.min(available, missing) +", "vanilla available-versus-remaining resource labels")
 require(RESEARCH_UI, "ItemSeq sectorStock = sector.items()", "cache one vanilla sector read per research refresh")
 require(RESEARCH_UI, "storedResources.get(item)", "cached O(1) resource label rendering")
 require(RESEARCH_UI, "resourceCacheDirty = true", "invalidate item counts on sector changes and research spends")
