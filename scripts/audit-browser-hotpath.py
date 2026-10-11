@@ -216,7 +216,9 @@ RESEARCH_BROWSER_SMOKE = (ROOT / "scripts/verify-browser-research-actions.sh").r
 require(RESEARCH_BROWSER_SMOKE,
     'data-mindustry-research-escape="passed"', "real Chrome menu and campaign Escape overlay regressions")
 require(RESEARCH_BROWSER_SMOKE,
-    "desktop-menu desktop-campaign mobile-menu", "mobile research tree must pass real Arc Scene pointer regression")
+    "desktop-menu desktop-campaign mobile-menu mobile-campaign", "real mobile campaign Research HUD touch must be tested")
+require(BROWSER_UI, "markHudResearchHitPoint(screen.x, screen.y)", "campaign HUD Research button exports exact Arc Scene hit point")
+require(RESEARCH_BROWSER_SMOKE, "data-mindustry-hud-research", "campaign research input targets existing native HUD control")
 require(RESEARCH_BROWSER_SMOKE,
     "--emulate-mobile", "real Chrome mobile viewport is exercised for stock research interaction")
 require((ROOT / "scripts/verify-browser-locales.sh").read_text(encoding="utf-8"),
