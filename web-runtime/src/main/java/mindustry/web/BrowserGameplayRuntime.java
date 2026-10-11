@@ -130,7 +130,7 @@ public final class BrowserGameplayRuntime{
         boolean researchOpen = BrowserResearchUi.isOpen();
         boolean databaseOpen = BrowserStockDatabaseUi.isOpen();
         if(menuTapped && Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
-            if(researchOpen) BrowserResearchUi.close();
+            if(researchOpen) BrowserResearchUi.escape();
             else if(databaseOpen) BrowserStockDatabaseUi.hide();
         }
         if(!smokeMode && (state.isPlaying() || state.isPaused())
