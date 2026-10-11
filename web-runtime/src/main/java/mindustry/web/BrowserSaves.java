@@ -30,7 +30,10 @@ public final class BrowserSaves extends Saves{
         slots.clear();
 
         Vars.saveDirectory.walk(file -> {
-            if(file.name().contains("backup")) return;
+            // Sidecar .items checkpoints are NOT Mindustry SaveIO archives.
+            // Only index real .msav slots; do not send companion inventory
+            // files through the SaveIO metadata decompressor.
+            if(file.name().contains("backup") || !saveExtension.equals(file.extension())) return;
 
             try{
                 // Stock Saves.load() first inflates metadata for isSaveValid(file) and
