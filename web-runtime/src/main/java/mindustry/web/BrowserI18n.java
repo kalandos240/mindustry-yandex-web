@@ -13,9 +13,20 @@ public final class BrowserI18n{
     private BrowserI18n(){}
 
     public static void loadAndVerify(){
+        // Arc defaults to java.text.MessageFormat. In TeaVM this reaches the
+        // incomplete Currency/CLDR table (notably the obsolete CYP entry),
+        // throwing from live Erekir tutorial objective text after unit production.
+        // Both pinned EN/RU bundles exclusively use simple {0}, {1} placeholders.
+        // The original text/content is unchanged; only its browser formatter is
+        // switched to Arc's built-in lightweight placeholder implementation.
+        I18NBundle.setSimpleFormatter(true);
         Fi base = Core.files.internal("bundles/bundle");
         I18NBundle english = I18NBundle.createBundle(base, Locale.ENGLISH);
         I18NBundle russian = I18NBundle.createBundle(base, new Locale("ru"));
+        if(!"Produce 2 units.".equals(english.formatString("Produce {0} units.", 2))
+        || !"2".equals(russian.formatString("{0}", 2))){
+            throw new IllegalStateException("TeaVM-safe tutorial number formatting failed");
+        }
 
         require(english, "play", "Play");
         require(english, "campaign", null);
