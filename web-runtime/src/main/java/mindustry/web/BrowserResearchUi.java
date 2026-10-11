@@ -329,6 +329,10 @@ public final class BrowserResearchUi{
         rebuildTree(menuTree, menuTreeWidth);
         int count = visibleCount;
         rebuildTree(hudTree, hudTreeWidth);
+        // The original dialog displays inventory available NOW / remaining
+        // research cost. Load one cached planet stock snapshot before building
+        // either desktop or mobile requirement card.
+        rebuildStoredResources();
         rebuildDetails(menuDetails, menuDetailsWidth);
         rebuildDetails(hudDetails, hudDetailsWidth);
         markResearchCatalog(totalNodes());
@@ -462,6 +466,9 @@ public final class BrowserResearchUi{
             for(int i = 0; i < node.requirements.length; i++){
                 ItemStack req = node.requirements[i];
                 int completed = Math.min(node.finishedRequirements[i].amount, req.amount);
+                int missing = Math.max(0, req.amount - completed);
+                // Original ResearchDialog hides already-completed ingredient rows.
+                if(missing == 0) continue;
                 // Original card uses each item's actual atlas icon beside its
                 // resource requirement, not a plain unstyled text sentence.
                 Table line = new Table();
@@ -472,9 +479,14 @@ public final class BrowserResearchUi{
                 Label ingredient = new Label(req.item.localizedName);
                 ingredient.setFontScale(0.8f);
                 line.add(ingredient).left().growX();
-                Label count = new Label(completed + " / " + req.amount);
+                int available = storedResources == null ? 0 :
+                    Math.max(0, storedResources.get(req.item));
+                // Pinned ResearchDialog compares available items with the
+                // remaining (not original) cost after partial investments.
+                Label count = new Label(Math.min(available, missing) + " / " + missing);
                 count.setFontScale(0.8f);
-                count.setColor(completed >= req.amount ? Pal.accent : Color.lightGray);
+                count.setColor(missing == 0 ? Pal.accent :
+                    available > 0 ? Color.lightGray : Color.scarlet);
                 line.add(count).right().padLeft(5f);
                 details.add(line).width(textWidth).left().padTop(4f).row();
             }
@@ -488,14 +500,24 @@ public final class BrowserResearchUi{
                     }
                 }).width(mobile ? Math.min(textWidth, 200f) : Math.min(textWidth, 240f))
                     .height(mobile ? 50f : 46f).padTop(9f).left().get();
-                // Resource counts can change while this window is open. Check
-                // spendability in the callback; disable only immutable gates.
+                // Mirror the original disabled research button state without
+                // querying every Sector.items() on every UI frame. The same
+                // cached stock snapshot drives the resource count labels.
+                // The callback still checks actual resources before spending.
                 boolean parentLocked = node.parent != null && !node.parent.content.unlocked();
                 boolean objectivesLocked = false;
                 for(Objective objective : node.objectives){
                     if(!objectiveComplete(objective)) objectivesLocked = true;
                 }
-                invest.setDisabled(parentLocked || objectivesLocked);
+                boolean spendable = node.requirements.length == 0;
+                for(int i = 0; i < node.requirements.length; i++){
+                    ItemStack req = node.requirements[i];
+                    if(node.finishedRequirements[i].amount < req.amount &&
+                        storedResources != null && storedResources.get(req.item) > 0){
+                        spendable = true;
+                    }
+                }
+                invest.setDisabled(parentLocked || objectivesLocked || !spendable);
             }
         }else{
             details.add(Core.bundle.get("sectors", "Sectors")).left().padTop(7f).row();
