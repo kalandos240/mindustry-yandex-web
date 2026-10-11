@@ -493,6 +493,10 @@ require(RESEARCH_UI, "new Label(Math.min(available, missing) +", "original resea
 require(RESEARCH_UI, "if(missing == 0) continue", "hide fully invested original resource rows")
 require(RESEARCH_UI, "invest.setDisabled(parentLocked || objectivesLocked || !spendable)", "stock unavailable research button is disabled")
 require(RESEARCH_UI, "Color.scarlet", "red missing-resource labels matching original research card")
+require(RESEARCH_UI, "objectiveRow.add(new Image(complete ? Icon.ok : Icon.cancel))", "vanilla objective completion/cancel icons")
+require(RESEARCH_UI, "label.setColor(complete ? Color.lightGray : Color.scarlet)", "native objective completion colors")
+if 'new Label((complete ? "+ " : "- ") + objective.display())' in RESEARCH_UI:
+    failures.append("research: obsolete +/- textual objective markers must be replaced by native icons")
 require(RESEARCH_UI, "new Label(Math.min(available, missing) +", "vanilla available-versus-remaining resource labels")
 require(RESEARCH_UI, "ItemSeq sectorStock = sector.items()", "cache one vanilla sector read per research refresh")
 require(RESEARCH_UI, "storedResources.get(item)", "cached O(1) resource label rendering")
