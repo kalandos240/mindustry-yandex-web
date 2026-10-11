@@ -67,6 +67,8 @@ run_campaign_cold_restart(){
     --require 'data-mindustry-campaign-sector-id="170"' \
     --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-checkpoint="ready"' \
+    --require 'data-mindustry-campaign-checkpoint-copper="137"' \
+    --require 'data-mindustry-campaign-checkpoint-lead="73"' \
     --require 'data-mindustry-campaign-save-flush="ready"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$save_dom"
@@ -129,6 +131,8 @@ run_campaign_cold_restart(){
     --require 'data-mindustry-campaign-test="groundZero"' \
     --require 'data-mindustry-campaign-resume-smoke="requested"' \
     --require 'data-mindustry-campaign-resume="ready"' \
+    --require 'data-mindustry-campaign-resume-copper="137"' \
+    --require 'data-mindustry-campaign-resume-lead="73"' \
     --require 'data-mindustry-campaign-resume-source="indexed-sector-save"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-sector-id="170"' \
@@ -167,6 +171,17 @@ run_campaign_cold_restart(){
     echo "Campaign cold-restart byte-length mismatch ($label): saved=$saved_bytes resumed=$resume_bytes" >&2
     exit 1
   fi
+  # The world can have identical wave/tick/size while every item is lost.
+  # Compare the *actual* saved and restored core inventory across processes.
+  for item in copper lead; do
+    local before after
+    before="$(attr "$save_dom" "data-mindustry-campaign-checkpoint-$item")"
+    after="$(attr "$resume_dom" "data-mindustry-campaign-resume-$item")"
+    if [ "$before" != "$after" ] || [ "$before" -le 0 ]; then
+      echo "Campaign cold-restart lost $item ($label): checkpoint=$before resumed=$after" >&2
+      exit 1
+    fi
+  done
 
   if grep -q 'data-mindustry-campaign-generator=' "$resume_dom"; then
     echo "Campaign resume ($label) unexpectedly regenerated Ground Zero instead of loading the persisted sector save." >&2

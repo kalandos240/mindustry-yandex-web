@@ -13,9 +13,25 @@ public final class BrowserI18n{
     private BrowserI18n(){}
 
     public static void loadAndVerify(){
+        // Arc defaults to java.text.MessageFormat. In TeaVM this reaches the
+        // incomplete Currency/CLDR table (notably the obsolete CYP entry),
+        // throwing from live Erekir tutorial objective text after unit production.
+        // Both pinned EN/RU bundles exclusively use simple {0}, {1} placeholders.
+        // The original text/content is unchanged; only its browser formatter is
+        // switched to Arc's built-in lightweight placeholder implementation.
+        I18NBundle.setSimpleFormatter(true);
         Fi base = Core.files.internal("bundles/bundle");
         I18NBundle english = I18NBundle.createBundle(base, Locale.ENGLISH);
         I18NBundle russian = I18NBundle.createBundle(base, new Locale("ru"));
+        // UnitCountObjective.text() is the precise live Onset code path that
+        // used to fail with TeaVM's Currency not found: CYP while displaying
+        // "Produce a unit". Exercise the actual localized objective key.
+        String unitGoal = english.format("objective.buildunit", 1, "", "Stell");
+        String russianGoal = russian.format("objective.buildunit", 1, "", "Stell");
+        if(unitGoal == null || !unitGoal.contains("Stell") || !unitGoal.contains("1")
+        || russianGoal == null || !russianGoal.contains("1")){
+            throw new IllegalStateException("TeaVM-safe UnitCountObjective formatting failed");
+        }
 
         require(english, "play", "Play");
         require(english, "campaign", null);

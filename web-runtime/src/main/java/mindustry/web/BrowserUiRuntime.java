@@ -2,6 +2,7 @@ package mindustry.web;
 
 import arc.*;
 import arc.math.geom.*;
+import arc.scene.*;
 import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
@@ -170,69 +171,100 @@ public final class BrowserUiRuntime{
             && Core.settings.getBool("drawlight", !mobile);
     }
 
-    private static void buildLocalHudControls(){
-        Table controls = new Table();
-        controls.setFillParent(true);
-        // The campaign UI patch turns the same lightweight HUD controls into the
-        // campaign Back surface. Keep this table active for either local-map or campaign
-        // play; otherwise the campaign Back button and its CI/UI action never receive
-        // Scene updates while a sector is running.
-        controls.visible(() -> BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active());
-        controls.top().left();
-        controls.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
-            .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
-            .pad(8f);
-        controls.button(Core.bundle.get("pause", "Pause"), BrowserUiRuntime::pauseActiveSession)
-            .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
-            .pad(8f);
-        // Keep Back and Pause on the first row. Three 132px-wide actions do not
-        // fit a narrow mobile game viewport once the portal reserves ad space.
-        controls.row();
-        // The original HudFragment uses Icon.tree for the same research
-        // action. Keep its established Web HUD hit area and input callback,
-        // but draw the native Mindustry icon instead of a duplicate text tile.
-        ImageButton researchAction = controls.button(Icon.tree, Styles.clearNonei, BrowserResearchUi::show)
-            .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
-            .name("web-research-hud").pad(8f).get();
-        researchAction.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
-        // Read the real Arc Scene hit target rather than assuming desktop pixels:
-        // the HUD shifts under mobile scaling and portal-controlled iframe sizes.
-        // Chrome click/touch tests use the exact same existing Research button.
-        researchAction.update(() -> {
-            if(!researchAction.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
-            Vec2 center = researchAction.localToStageCoordinates(new Vec2(
-                researchAction.getWidth() / 2f, researchAction.getHeight() / 2f));
+    private static ImageButton findStockResearchControl(Element node){
+        if(node instanceof ImageButton button && button.getStyle().imageUp == Icon.tree) return button;
+        if(node instanceof Group group){
+            for(Element child : group.getChildren()){
+                ImageButton found = findStockResearchControl(child);
+                if(found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static void attachStockResearchHandler(ImageButton nativeButton){
+        // DesktopInput.buildPlacementUI already creates the exact original
+        // lower-right Icon.tree button. Its upstream onClick calls
+        // ui.research.show(), which is null in the lean TeaVM shell.
+        // Replace ONLY that action, keeping the original visual/style and
+        // built-in Button click listener. Never draw a second Research button.
+        for(int i = nativeButton.getListeners().size - 1; i >= 0; i--){
+            EventListener listener = nativeButton.getListeners().get(i);
+            if(listener instanceof ClickListener && listener != nativeButton.getClickListener()){
+                nativeButton.removeListener(listener);
+            }
+        }
+        nativeButton.clicked(BrowserResearchUi::show);
+        nativeButton.name = "web-research-hud";
+        nativeButton.update(() -> {
+            if(!nativeButton.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
+            Vec2 center = nativeButton.localToStageCoordinates(new Vec2(
+                nativeButton.getWidth() / 2f, nativeButton.getHeight() / 2f));
             Vec2 screen = Core.scene.getViewport().project(center);
             markHudResearchHitPoint(screen.x, screen.y);
         });
-
-        // The native PlacementFragment already contains the full RTS command/
-        // stance table, but desktop users otherwise need to discover a keybind.
-        // Provide a mouse-accessible entry into the *existing* InputHandler
-        // commandMode. MobileInput ships its own dedicated command button.
-        TextButton commandAction = controls.button(Core.bundle.get("command", "Command"), () -> {
-            if(!state.isPlaying() || control == null || control.input == null) return;
-            // Vanilla defaults to "hold Shift for commands". A click-to-toggle
-            // control cannot operate while DesktopInput overwrites commandMode
-            // every frame from the held key. Clicking this explicit browser
-            // command button opts into the stock toggle preference, preserving
-            // the normal keyboard binding and all original RTS logic.
-            if(Core.settings.getBool("commandmodehold", true)){
-                Core.settings.put("commandmodehold", false);
-                markCommandInputMode("toggle");
-            }
-            control.input.block = null;
-            control.input.commandMode = !control.input.commandMode;
-            markCommandToggleState(control.input.commandMode ? "on" : "off");
-        }).size(116f, 44f).name("web-command-mode-hud").pad(8f).get();
-        commandAction.visible(() -> !mobile && state.isPlaying() && !state.gameOver);
-        commandAction.update(() -> {
-            commandAction.setChecked(control != null && control.input != null && control.input.commandMode);
-        });
-        markCommandToggleReady(mobile ? "stock-mobile-input" : "desktop-native-input");
-
-        ui.hudGroup.addChild(controls);
+        markStockResearchBound();
     }
+
+    private static void buildLocalHudControls(){
+        // The user's native lower-right DesktopInput panel already has
+        // Research (tree), Database, Schematics and Planet Map buttons.
+        // Do not construct Web-only Back/Pause/Research/Command duplicates.
+        // Escape still opens the stock-style pause/quit/save dialog.
+        Table root = new Table();
+        root.setFillParent(true);
+        root.touchable = Touchable.childrenOnly;
+        root.visible(() -> state.isGame() && !state.gameOver);
+
+        if(mobile){
+            // A free-floating bottom-right button is underneath MobileInput's
+            // real PlacementFragment touch panel. Mount our single missing
+            // Research action INTO that native inputTable instead, next to its
+            // existing hammer/rotate controls. This also respects Yandex
+            // banners, portrait widths, and Arc Scene's actual hit-testing.
+            int[] frames = {0};
+            root.update(() -> {
+                if((++frames[0] & 15) != 0 || Core.scene == null) return;
+                Element inputTable = Core.scene.root.find("inputTable");
+                if(!(inputTable instanceof Table nativeTable)) return;
+                if(nativeTable.find("web-research-hud") != null) return;
+                ImageButton research = nativeTable.button(Icon.tree, Styles.clearNonei,
+                    BrowserResearchUi::show).size(48f).name("web-research-hud").get();
+                research.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
+                research.update(() -> {
+                    if(!research.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
+                    Vec2 center = research.localToStageCoordinates(new Vec2(
+                        research.getWidth() / 2f, research.getHeight() / 2f));
+                    Vec2 screen = Core.scene.getViewport().project(center);
+                    markHudResearchHitPoint(screen.x, screen.y);
+                });
+                nativeTable.invalidateHierarchy();
+            });
+        }else{
+            // The stock PlacementFragment arrives after InputHandler.add();
+            // bind lazily, once, as soon as its original actor is in the Scene.
+            // PlacementFragment.rebuild() can replace inputTable after a
+            // world load or block-category rebuild; rebind to the NEW native
+            // control without leaving a dangling listener on an old actor.
+            ImageButton[] bound = {null};
+            int[] frames = {0};
+            root.update(() -> {
+                if((++frames[0] & 15) != 0) return;
+                Element inputTable = Core.scene.root.find("inputTable");
+                if(inputTable == null) return;
+                ImageButton nativeButton = findStockResearchControl(inputTable);
+                if(nativeButton != null && nativeButton != bound[0]){
+                    attachStockResearchHandler(nativeButton);
+                    bound[0] = nativeButton;
+                }
+            });
+        }
+        ui.hudGroup.addChild(root);
+        markCommandToggleReady(mobile ? "stock-mobile-input" : "desktop-native-input");
+    }
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-stock-research-bound','yes');")
+    private static native void markStockResearchBound();
 
     private static void pauseActiveSession(){
         if(BrowserCampaignRuntime.active()){
