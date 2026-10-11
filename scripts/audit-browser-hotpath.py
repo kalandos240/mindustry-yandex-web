@@ -207,7 +207,9 @@ require(GAMEPLAY, "Core.input.keyTap(Binding.pause)", "single Web Space key hand
 require(GAMEPLAY, "Core.input.keyTap(Binding.menu)", "Web Escape uses safe pause handler")
 require(GAMEPLAY, "boolean researchOpen = BrowserResearchUi.isOpen()", "research overlay traps Escape without pausing gameplay")
 require(GAMEPLAY, "boolean databaseOpen = BrowserStockDatabaseUi.isOpen()", "stock database traps Escape")
-require(GAMEPLAY, "if(researchOpen) BrowserResearchUi.close()", "Escape closes stock research overlay")
+require(GAMEPLAY, "if(researchOpen) BrowserResearchUi.escape()", "Escape first closes vanilla planet chooser, then research overlay")
+require(RESEARCH_UI, "public static void escape()", "native stacked modal research Escape handler")
+require(RESEARCH_UI, "if(rootChooserOpen){", "first Escape closes the planet selector, not the whole TechTree")
 require(GAMEPLAY, "else if(databaseOpen) BrowserStockDatabaseUi.hide()", "Escape closes stock database")
 require(GAMEPLAY, "&& !researchOpen && !databaseOpen", "Space does not pause underneath research overlay")
 require((WEB_JAVA / "BrowserStockDatabaseUi.java").read_text(encoding="utf-8"),
