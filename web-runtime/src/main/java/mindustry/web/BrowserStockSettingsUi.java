@@ -153,7 +153,7 @@ public final class BrowserStockSettingsUi{
         graphics.sliderPref("unitlaseropacity", 100, 0, 100, 5, i -> i + "%");
         graphics.sliderPref("bridgeopacity", 100, 0, 100, 5, i -> i + "%");
         graphics.checkPref("effects", true);
-        graphics.checkPref("drawlight", !mobile);
+        graphics.checkPref("drawlight", false);
         graphics.checkPref("destroyedblocks", true);
         graphics.checkPref("blockstatus", false);
         graphics.checkPref("coreitems", true);
@@ -167,8 +167,8 @@ public final class BrowserStockSettingsUi{
         graphics.checkPref("indicators", true);
         graphics.checkPref("showotherbuildplans", true);
         graphics.checkPref("showweather", true);
-        graphics.checkPref("animatedwater", !mobile);
-        graphics.checkPref("animatedshields", !mobile);
+        graphics.checkPref("animatedwater", false);
+        graphics.checkPref("animatedshields", false);
         graphics.checkPref("skipcoreanimation", false);
         graphics.checkPref("hidedisplays", false);
         mark("closed", "none", "main");
