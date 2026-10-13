@@ -110,6 +110,21 @@ run_production_menu(){
         await clickSettings('back');
         await wait(()=>root.getAttribute('data-mindustry-settings-page')==='main','category back');
       }
+      // Use genuine canvas PointerEvents on the original Arc Scene settings
+      // widget. A translated HTML panel or mere DOM marker cannot pass.
+      await clickSettings('language');
+      await wait(()=>root.getAttribute('data-mindustry-settings-page')==='language','language settings');
+      await clickSettings('lang-ru');
+      await wait(()=>root.getAttribute('data-mindustry-settings-language-choice')==='ru','Russian selected');
+      await clickSettings('back');
+      await wait(()=>root.getAttribute('data-mindustry-settings-page')==='main','language back');
+      await clickSettings('language');
+      await wait(()=>root.getAttribute('data-mindustry-settings-language-choice')==='ru','language selection retained');
+      await clickSettings('lang-auto');
+      await wait(()=>root.getAttribute('data-mindustry-settings-language-choice')==='default','Yandex auto restored');
+      await clickSettings('back');
+      await wait(()=>root.getAttribute('data-mindustry-settings-page')==='main','language category back');
+      root.setAttribute('data-mindustry-settings-language-pointer','passed');
       await clickSettings('back');
       await wait(()=>root.getAttribute('data-mindustry-settings-panel')==='closed','settings close');
       if(root.getAttribute('data-mindustry-main-menu-page')!=='home')throw Error('Native home did not open');
@@ -154,6 +169,7 @@ run_production_menu(){
     --require 'data-mindustry-stock-database="ready"' \
     --require 'data-mindustry-main-menu-page="home"' \
     --after-ready-require 'data-mindustry-main-menu-real-pointer="passed"' \
+    --after-ready-require 'data-mindustry-settings-language-pointer="passed"' \
     --after-ready-require 'data-mindustry-database-escape="passed"' \
     --require 'data-mindustry-local-map-back="ready"' \
     --require 'data-mindustry-network="local-only"' > "$dom"
