@@ -270,6 +270,9 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-planet-events-web.py"
 # The browser has no NetServer/NetClient gameplay role. Keep stock Logic server
 # bookkeeping null-safe and expose the incremental single-thread Web transition paths.
 python3 "$ROOT_DIR/scripts/patch-mindustry-logic-web.py"
+# The vanilla processor's pencil action targets UI.logic (uninitialized in
+# our lightweight UI.loadSync shell). Route to the pinned LCanvas Scene pane.
+python3 "$ROOT_DIR/scripts/patch-mindustry-logic-ui-web.py"
 
 # Re-enable the already-proven stock local survival wave timer/spawn lifecycle on top
 # of the lean Web playing-core path. WaveSpawner stays local-only and avoids generated
