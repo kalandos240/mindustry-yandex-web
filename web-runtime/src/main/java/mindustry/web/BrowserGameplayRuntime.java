@@ -130,6 +130,7 @@ public final class BrowserGameplayRuntime{
         boolean researchOpen = BrowserResearchUi.isOpen();
         boolean databaseOpen = BrowserStockDatabaseUi.isOpen();
         boolean schematicsOpen = BrowserStockSchematicsUi.isOpen();
+        boolean logicEditorOpen = mindustry.logic.BrowserStockLogicUi.isOpen();
         if(menuTapped && Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
             if(researchOpen) BrowserResearchUi.escape();
             else if(databaseOpen) BrowserStockDatabaseUi.hide();
