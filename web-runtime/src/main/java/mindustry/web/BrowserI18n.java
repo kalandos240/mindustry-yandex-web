@@ -67,7 +67,8 @@ public final class BrowserI18n{
         Locale chosen = useRussian ? new Locale("ru") : Locale.ENGLISH;
         Locale.setDefault(chosen);
         Core.bundle = useRussian ? russian : english;
-        if(Core.settings != null) Core.settings.put("locale", useRussian ? "ru" : "en");
+        // Do not freeze the Yandex auto-detected locale into an explicit choice.
+        // Only a user selection in Settings stores "en" or "ru".
         markLocale(useRussian ? "ru" : "en");
     }
 
