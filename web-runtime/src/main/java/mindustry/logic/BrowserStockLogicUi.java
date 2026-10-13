@@ -35,7 +35,7 @@ public final class BrowserStockLogicUi{
     private static TextArea codeArea;
     private static Label status;
     private static LogicBuild editing;
-    private static boolean open, selecting, textMode, variablesMode, forceEditor;
+    private static boolean open, selecting, textMode, variablesMode, forceEditor, pausedHere;
     private static String originalCode;
 
     private BrowserStockLogicUi(){}
@@ -217,6 +217,18 @@ public final class BrowserStockLogicUi{
         markVariablesOpen(false);
         status.setText("");
         open = true;
+        // Vanilla LogicDialog.shouldPause freezes the underlying local world.
+        // Use our validated browser campaign/local-map pause state machines,
+        // so a processor cannot execute against half-edited instructions.
+        pausedHere = false;
+        if(state.isPlaying() && !state.rules.pauseDisabled){
+            if(mindustry.web.BrowserCampaignRuntime.active()){
+                mindustry.web.BrowserCampaignRuntime.pause();
+            }else if(mindustry.web.BrowserLocalMapRuntime.active()){
+                mindustry.web.BrowserLocalMapRuntime.pause();
+            }
+            pausedHere = state.isPaused();
+        }
         Core.scene.setKeyboardFocus(overlay);
         markOpen(true, canvas.statements.getChildren().size);
     }
@@ -317,6 +329,14 @@ public final class BrowserStockLogicUi{
     private static void cancel(){
         open = false;
         editing = null;
+        if(pausedHere && state.isPaused() && !state.gameOver){
+            if(mindustry.web.BrowserCampaignRuntime.active()){
+                mindustry.web.BrowserCampaignRuntime.resume();
+            }else if(mindustry.web.BrowserLocalMapRuntime.active()){
+                mindustry.web.BrowserLocalMapRuntime.resume();
+            }
+        }
+        pausedHere = false;
         selecting = false;
         textMode = false;
         variablesMode = false;
