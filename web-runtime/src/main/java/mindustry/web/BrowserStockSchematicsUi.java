@@ -9,6 +9,7 @@ import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.scene.style.*;
+import arc.struct.*;
 import mindustry.game.*;
 import mindustry.input.*;
 import mindustry.gen.*;
@@ -29,7 +30,8 @@ import static mindustry.Vars.*;
  */
 public final class BrowserStockSchematicsUi{
     private static final int pageSize = 30;
-    private static Table overlay, results;
+    private static Table overlay, results, filterBar;
+    private static Seq<String> tags = new Seq<>(), selectedTags = new Seq<>();
     private static Label pageLabel, status;
     private static boolean open;
     private static String search = "";
@@ -52,6 +54,15 @@ public final class BrowserStockSchematicsUi{
             schematics = new Schematics();
             schematics.loadSync();
         }
+        // Use the exact global schematic-tags store owned by vanilla
+        // SchematicsDialog, not a separate browser-local tag format.
+        tags = Core.settings.getJson("schematic-tags", Seq.class, String.class, Seq::new);
+        for(Schematic schematic : schematics.all()){
+            for(String tag : schematic.labels){
+                if(!tags.contains(tag)) tags.add(tag);
+            }
+        }
+        saveTags();
 
         overlay = new Table();
         overlay.name = "web-stock-schematics-overlay";
@@ -80,6 +91,14 @@ public final class BrowserStockSchematicsUi{
                 rebuild();
             }).growX().name("web-schematics-search");
         }).growX().row();
+
+        filterBar = new Table();
+        filterBar.left();
+        filterBar.name = "web-schematics-tags";
+        ScrollPane tagScroll = new ScrollPane(filterBar, Styles.noBarPane);
+        tagScroll.setScrollingDisabled(false, true);
+        tagScroll.setFadeScrollBars(false);
+        panel.add(tagScroll).width(width - 24f).height(46f).growX().row();
 
         results = new Table();
         results.name = "web-schematics-items";
@@ -131,8 +150,35 @@ public final class BrowserStockSchematicsUi{
         Core.scene.add(overlay);
         Events.on(InputHandler.WebSchematicSaveRequest.class, request ->
             showSave(request.schematic));
+        rebuildTagFilter();
         rebuild();
         markReady();
+    }
+
+    private static void saveTags(){
+        Core.settings.putJson("schematic-tags", String.class, tags);
+    }
+
+    private static void rebuildTagFilter(){
+        if(filterBar == null) return;
+        filterBar.clearChildren();
+        filterBar.defaults().pad(2f).height(39f);
+        filterBar.button(Core.bundle.get("all", "All"), Styles.togglet, () -> {
+            selectedTags.clear();
+            page = 0;
+            rebuildTagFilter();
+            rebuild();
+        }).checked(selectedTags.isEmpty()).minWidth(61f);
+        for(String tag : tags){
+            filterBar.button(tag, Styles.togglet, () -> {
+                if(selectedTags.contains(tag)) selectedTags.remove(tag);
+                else selectedTags.add(tag);
+                page = 0;
+                rebuildTagFilter();
+                rebuild();
+            }).checked(selectedTags.contains(tag)).minWidth(66f);
+        }
+        markTagFilter(tags.size, selectedTags.size);
     }
 
     public static void show(){
@@ -140,6 +186,7 @@ public final class BrowserStockSchematicsUi{
         if(!(state.isMenu() || state.isGame() && !state.gameOver)) return;
         pendingDelete = null;
         open = true;
+        rebuildTagFilter();
         rebuild();
         Core.scene.setKeyboardFocus(overlay);
         markOpen(true);
@@ -170,6 +217,7 @@ public final class BrowserStockSchematicsUi{
 
         for(Schematic schematic : schematics.all()){
             if(!search.isEmpty() && !schematic.name().toLowerCase(Locale.ROOT).contains(search)) continue;
+            if(selectedTags.any() && !schematic.labels.containsAll(selectedTags)) continue;
             int matchingIndex = matches++;
             if(matchingIndex < page * pageSize || matchingIndex >= (page + 1) * pageSize) continue;
 
@@ -250,6 +298,37 @@ public final class BrowserStockSchematicsUi{
         TextArea description = new TextArea(schematic.description());
         description.setPrefRows(3);
         form.add(description).width(mobile ? 270f : 490f).height(120f).row();
+
+        // Stage tag edits until Save, just like original SchematicsDialog.
+        // Cancel must not mutate the stored .msch file.
+        Seq<String> draft = schematic.labels.copy();
+        form.add("@schematic.tags").left().row();
+        Table tagList = new Table();
+        tagList.left();
+        Runnable[] refresh = {null};
+        refresh[0] = () -> {
+            tagList.clearChildren();
+            tagList.defaults().pad(2f);
+            for(String tag : draft){
+                tagList.button(tag + "  ×", () -> {
+                    draft.remove(tag);
+                    refresh[0].run();
+                }).width(mobile ? 245f : 340f).height(37f).row();
+            }
+        };
+        refresh[0].run();
+        form.add(tagList).left().row();
+        TextField tagInput = new TextField("");
+        tagInput.setMessageText("@schematic.addtag");
+        form.add(tagInput).width(mobile ? 245f : 340f).height(48f).row();
+        form.button("@schematic.addtag", () -> {
+            String value = tagInput.getText().trim();
+            if(value.isEmpty() || value.length() > 60) return;
+            if(!draft.contains(value)) draft.add(value);
+            tagInput.setText("");
+            refresh[0].run();
+        }).width(190f).height(45f).row();
+
         form.button("@ok", Icon.ok, () -> {
             String title = name.getText().trim();
             if(title.isEmpty()) return;
@@ -261,7 +340,14 @@ public final class BrowserStockSchematicsUi{
             }
             schematic.tags.put("name", title);
             schematic.tags.put("description", description.getText());
+            schematic.labels.clear();
+            schematic.labels.addAll(draft);
+            for(String tag : draft){
+                if(!tags.contains(tag)) tags.add(tag);
+            }
+            saveTags();
             schematic.save();
+            rebuildTagFilter();
             rebuild();
             status.setText(Core.bundle.get("schematic.saved", "Saved"));
             markEdited(title);
@@ -363,4 +449,7 @@ public final class BrowserStockSchematicsUi{
 
     @JSBody(params={"name"}, script = "document.documentElement.setAttribute('data-mindustry-schematics-edited',name);")
     private static native void markEdited(String name);
+
+    @JSBody(params={"count","selected"}, script = "document.documentElement.setAttribute('data-mindustry-schematics-tags',String(count));document.documentElement.setAttribute('data-mindustry-schematics-tags-selected',String(selected));")
+    private static native void markTagFilter(int count, int selected);
 }
