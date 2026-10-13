@@ -1,9 +1,11 @@
 package mindustry.web;
 
 import arc.*;
+import arc.input.*;
 import arc.graphics.g2d.*;
 import arc.math.geom.*;
 import arc.scene.*;
+import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.scene.style.*;
@@ -102,6 +104,16 @@ public final class BrowserStockSchematicsUi{
         status = panel.add("").left().width(width - 30f).get();
         panel.row();
         overlay.add(panel).width(width).height(height);
+        overlay.addListener(new InputListener(){
+            @Override
+            public boolean keyDown(InputEvent event, KeyCode key){
+                if(key == KeyCode.escape || key == KeyCode.back){
+                    hide();
+                    return true;
+                }
+                return false;
+            }
+        });
         overlay.update(() -> {
             if(!open) return;
             if(!(state.isMenu() || state.isGame() && !state.gameOver)){
@@ -126,6 +138,7 @@ public final class BrowserStockSchematicsUi{
         pendingDelete = null;
         open = true;
         rebuild();
+        Core.scene.setKeyboardFocus(overlay);
         markOpen(true);
     }
 
@@ -136,6 +149,9 @@ public final class BrowserStockSchematicsUi{
     public static void hide(){
         open = false;
         pendingDelete = null;
+        if(Core.scene != null && Core.scene.getKeyboardFocus() == overlay){
+            Core.scene.setKeyboardFocus(null);
+        }
         markOpen(false);
     }
 
