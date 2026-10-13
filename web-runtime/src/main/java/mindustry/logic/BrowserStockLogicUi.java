@@ -169,6 +169,8 @@ public final class BrowserStockLogicUi{
             }).size(actionWidth, 47f).name("web-logic-clear");
             actions.button("@ok", Icon.ok, BrowserStockLogicUi::save)
                 .size(actionWidth, 47f).name("web-logic-save");
+            actions.button("@logic.restart", Icon.refresh, () -> save(true))
+                .size(actionWidth, 47f).name("web-logic-restart");
             if(mobile) actions.row();
             actions.button("@cancel", Icon.left, BrowserStockLogicUi::cancel)
                 .size(actionWidth, 47f).name("web-logic-cancel");
@@ -296,10 +298,14 @@ public final class BrowserStockLogicUi{
     }
 
     private static void save(){
+        save(false);
+    }
+
+    private static void save(boolean restart){
         if(!open || editing == null) return;
         String code = textMode ? codeArea.getText().replace("\r\n", "\n") : canvas.save();
         if(code == null) code = "";
-        if(code.equals(originalCode)){
+        if(!restart && code.equals(originalCode)){
             cancel();
             return;
         }
