@@ -227,6 +227,28 @@ if schematics_text.count(old_preview) != 1:
     raise SystemExit("Expected one pinned Schematics.loadSync thumbnail-framebuffer startup")
 schematics_text = schematics_text.replace(old_preview, """        // Web: render compact original block icons instead of eager offscreen thumbnail FBOs.
 """, 1)
+
+# The lean Yandex launcher intentionally has no Mods manager: only the
+# built-in game and browser-local .msch files are shipped. Stock Schematics.load
+# scans mods unconditionally and dereferences null during the deferred Web UI
+# startup. Preserve upstream scanning on platforms with a Mods manager.
+old_mod_scan = """        mods.listFiles("schematics", (mod, file) -> {
+            Schematic s = loadFile(file);
+            if(s != null){
+                s.mod = mod;
+            }
+        });"""
+new_mod_scan = """        if(mods != null){
+            mods.listFiles("schematics", (mod, file) -> {
+                Schematic s = loadFile(file);
+                if(s != null){
+                    s.mod = mod;
+                }
+            });
+        }"""
+if schematics_text.count(old_mod_scan) != 1:
+    raise SystemExit("Pinned Schematics mod-scanning block changed")
+schematics_text = schematics_text.replace(old_mod_scan, new_mod_scan, 1)
 schematics_path.write_text(schematics_text, encoding="utf-8")
 
 unit_group = mindustry_root / "ai" / "UnitGroup.java"
