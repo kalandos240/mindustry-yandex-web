@@ -610,6 +610,13 @@ require(LOGIC_UI, "variable.constant", "skip stock constant variables")
 require(LOGIC_UI, 'actions.button("@variables", Icon.menu', "stock Variables category action")
 require(LOGIC_UI, "variableRows.row()", "tabular native variables display")
 require(LOGIC_UI, "data-mindustry-logic-variables-count", "variable view browser regression marker")
+require((WEB_JAVA / "BrowserLogicEditorSmoke.java").read_text(encoding="utf-8"),
+        "build.showEditDialog()", "real logic processor pencil smoke")
+require((SCRIPTS / "verify-browser-logic-editor.sh").read_text(encoding="utf-8"),
+        "new PointerEvent(type", "native LogicDialog action clicked from Chrome canvas")
+require((SCRIPTS / "verify-browser-logic-editor.sh").read_text(encoding="utf-8"),
+        "data-mindustry-local-map-state')==='playing'", "logic editor close resumes game")
+
 require(LOGIC_UI, "Core.scene.setKeyboardFocus(overlay)", "modal logic editor focus")
 require(LOGIC_UI, "data-mindustry-native-logic-canvas", "runtime diagnostic native LCanvas marker")
 require(LOGIC_UI_PATCH, "Events.fire(new WebLogicEditorRequest(this, forceEditor))", "stock processor pencil requests browser dialog")
