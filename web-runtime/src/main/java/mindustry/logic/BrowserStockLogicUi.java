@@ -160,6 +160,26 @@ public final class BrowserStockLogicUi{
             actions.button("@copy.clipboard", Icon.copy,
                 () -> Core.app.setClipboardText(textMode ? codeArea.getText() : canvas.save()))
                 .size(actionWidth, 47f).name("web-logic-copy");
+            actions.button("@load.clipboard", Icon.download, () -> {
+                String code = Core.app.getClipboardText();
+                if(code == null || code.isEmpty()){
+                    status.setText(Core.bundle.get("empty", "Clipboard is empty"));
+                    return;
+                }
+                code = code.replace("\r\n", "\n");
+                if(textMode){
+                    codeArea.setText(code);
+                }else{
+                    try{
+                        canvas.load(code);
+                        selecting = false;
+                        variablesMode = false;
+                        status.setText("");
+                    }catch(Throwable invalid){
+                        status.setText(Core.bundle.get("data.invalid", "Invalid logic code"));
+                    }
+                }
+            }).size(actionWidth, 47f).name("web-logic-paste");
             if(!mobile) actions.row();
             actions.button("@clear", Icon.trash, () -> {
                 if(selecting) selecting = false;
@@ -167,11 +187,11 @@ public final class BrowserStockLogicUi{
                 if(textMode) codeArea.setText("");
                 else canvas.clearStatements();
             }).size(actionWidth, 47f).name("web-logic-clear");
+            if(mobile) actions.row();
             actions.button("@ok", Icon.ok, BrowserStockLogicUi::save)
                 .size(actionWidth, 47f).name("web-logic-save");
             actions.button("@logic.restart", Icon.refresh, () -> save(true))
                 .size(actionWidth, 47f).name("web-logic-restart");
-            if(mobile) actions.row();
             actions.button("@cancel", Icon.left, BrowserStockLogicUi::cancel)
                 .size(actionWidth, 47f).name("web-logic-cancel");
         }).growX().row();
