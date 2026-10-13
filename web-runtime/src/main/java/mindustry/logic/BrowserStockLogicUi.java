@@ -3,6 +3,7 @@ package mindustry.logic;
 import arc.*;
 import arc.func.*;
 import arc.input.*;
+import arc.math.geom.*;
 import arc.scene.*;
 import arc.scene.event.*;
 import arc.scene.ui.*;
@@ -37,6 +38,7 @@ public final class BrowserStockLogicUi{
     private static LogicBuild editing;
     private static boolean open, selecting, textMode, variablesMode, forceEditor, pausedHere;
     private static String originalCode;
+    private static int pointerFrames;
 
     private BrowserStockLogicUi(){}
 
@@ -213,12 +215,25 @@ public final class BrowserStockLogicUi{
             }
         });
         overlay.update(() -> {
-            if(open && (!state.isGame() || state.gameOver)) cancel();
+            if(open && (!state.isGame() || state.gameOver)){
+                cancel();
+            }else if(open && (++pointerFrames & 15) == 0){
+                markPointer("variables", "web-logic-variables");
+                markPointer("close", "web-logic-close");
+            }
         });
         Core.scene.add(overlay);
         Events.on(LogicBlock.WebLogicEditorRequest.class, event ->
             show(event.build, event.forceEditor));
         markReady();
+    }
+
+    private static void markPointer(String key, String actorName){
+        Element actor = Core.scene.root.find(actorName);
+        if(actor == null || !actor.isVisible()) return;
+        Vec2 center = actor.localToStageCoordinates(new Vec2(actor.getWidth() / 2f, actor.getHeight() / 2f));
+        Core.scene.getViewport().project(center);
+        markPointerDom(key, center.x, center.y);
     }
 
     private static void show(LogicBuild building, boolean asEditor){
@@ -388,6 +403,13 @@ public final class BrowserStockLogicUi{
 
     @JSBody(params={"count"},script="document.documentElement.setAttribute('data-mindustry-logic-choices',String(count));")
     private static native void markChoices(int count);
+
+    @JSBody(params={"key","x","y"},script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-logic-'+key+'-x',String(x));
+        root.setAttribute('data-mindustry-logic-'+key+'-y',String(y));
+        """)
+    private static native void markPointerDom(String key,float x,float y);
 
     @JSBody(params={"chars"},script="document.documentElement.setAttribute('data-mindustry-logic-saved-chars',String(chars));")
     private static native void markSaved(int chars);
