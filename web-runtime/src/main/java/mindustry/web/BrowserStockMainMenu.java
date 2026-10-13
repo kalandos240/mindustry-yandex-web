@@ -79,10 +79,16 @@ public final class BrowserStockMainMenu{
         }else{
             // Mirrors MenuFragment.buildDesktop(): a shaded left sidebar
             // with the original Mindustry icons and flat toggle menu style.
-            home.left().top().marginLeft(12f).marginTop(76f);
+            // Yandex's desktop game iframe can be only 437px high even
+            // when browser chrome and ad banners occupy the other space.
+            // Keep every stock menu action visible, especially Settings.
+            home.left().top().marginLeft(12f)
+                .marginTop(Core.graphics.getHeight() < 400f ? 8f : 24f);
             home.table(Styles.black6, menu -> {
                 menu.name = "web-main-desktop-buttons";
-                menu.defaults().width(230f).height(66f);
+                float actionHeight = Math.max(39f,
+                    Math.min(52f, (Core.graphics.getHeight() - 168f) / 5f));
+                menu.defaults().width(230f).height(actionHeight);
                 addLogo(menu, 210f);
                 menu.row();
                 menu.button(Core.bundle.get("play", "Play"), Icon.play,
@@ -105,7 +111,8 @@ public final class BrowserStockMainMenu{
                     Styles.flatToggleMenut, BrowserUiRuntime::openMenuSettings)
                     .name("web-main-settings");
                 menu.row();
-                menu.add(Version.combined()).padTop(16f).padBottom(12f);
+                menu.add(Version.combined()).height(20f)
+                    .padTop(8f).padBottom(8f);
             }).width(230f);
         }
         parent.addChild(home);
@@ -117,6 +124,7 @@ public final class BrowserStockMainMenu{
                 markPointerCenter(home.find("web-main-play"), "play");
                 markPointerCenter(home.find("web-main-research"), "research");
                 markPointerCenter(home.find("web-main-database"), "database");
+                markPointerCenter(home.find("web-main-settings"), "settings");
             }
         });
 

@@ -77,12 +77,6 @@ run_production_menu(){
     --require 'data-mindustry-settings-pause-entry="ready"' \
     --after-ready-eval "(async () => {
       const root=document.documentElement, canvas=document.getElementById('mindustry-canvas');
-      const launch=document.getElementById('mindustry-settings-toggle'),panel=document.getElementById('mindustry-settings-overlay');
-      if(!launch||!panel||launch.style.display==='none') throw Error('Menu settings unavailable');
-      launch.click();
-      if(root.getAttribute('data-mindustry-settings-panel')!=='open') throw Error('Settings panel failed to open');
-      panel.querySelectorAll('button')[4].click();
-      if(root.getAttribute('data-mindustry-settings-panel')!=='closed') throw Error('Settings panel failed to close');
       const wait=async(fn,label)=>{
         for(let i=0;i<120;i++){if(fn())return;await new Promise(r=>setTimeout(r,100));}
         throw Error('Native menu pointer failed: '+label);
@@ -97,6 +91,42 @@ run_production_menu(){
           await new Promise(r=>setTimeout(r,100));
         }
       };
+      await click('settings');
+      await wait(()=>root.getAttribute('data-mindustry-settings-panel')==='open','settings open');
+      if(root.getAttribute('data-mindustry-settings-widgets')!=='stock-SettingsTable') throw Error('Stock preference widgets missing');
+      const clickSettings=async name=>{
+        await wait(()=>root.hasAttribute('data-mindustry-settings-'+name+'-x'),name+' settings coordinates');
+        const rect=canvas.getBoundingClientRect();
+        const x=rect.left+Number(root.getAttribute('data-mindustry-settings-'+name+'-x'));
+        const y=rect.top+rect.height-Number(root.getAttribute('data-mindustry-settings-'+name+'-y'));
+        for(const type of ['pointerdown','pointerup']){
+          canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:412,pointerType:'mouse',clientX:x,clientY:y,button:0,buttons:type==='pointerdown'?1:0}));
+          await new Promise(r=>setTimeout(r,100));
+        }
+      };
+      for(const page of ['game','graphics','sound']){
+        await clickSettings(page);
+        await wait(()=>root.getAttribute('data-mindustry-settings-page')===page,page+' settings');
+        await clickSettings('back');
+        await wait(()=>root.getAttribute('data-mindustry-settings-page')==='main','category back');
+      }
+      // Use genuine canvas PointerEvents on the original Arc Scene settings
+      // widget. A translated HTML panel or mere DOM marker cannot pass.
+      await clickSettings('language');
+      await wait(()=>root.getAttribute('data-mindustry-settings-page')==='language','language settings');
+      await clickSettings('lang-ru');
+      await wait(()=>root.getAttribute('data-mindustry-settings-language-choice')==='ru','Russian selected');
+      await clickSettings('back');
+      await wait(()=>root.getAttribute('data-mindustry-settings-page')==='main','language back');
+      await clickSettings('language');
+      await wait(()=>root.getAttribute('data-mindustry-settings-language-choice')==='ru','language selection retained');
+      await clickSettings('lang-auto');
+      await wait(()=>root.getAttribute('data-mindustry-settings-language-choice')==='default','Yandex auto restored');
+      await clickSettings('back');
+      await wait(()=>root.getAttribute('data-mindustry-settings-page')==='main','language category back');
+      root.setAttribute('data-mindustry-settings-language-pointer','passed');
+      await clickSettings('back');
+      await wait(()=>root.getAttribute('data-mindustry-settings-panel')==='closed','settings close');
       if(root.getAttribute('data-mindustry-main-menu-page')!=='home')throw Error('Native home did not open');
       await click('play');
       await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='play','Play submenu');
@@ -139,6 +169,7 @@ run_production_menu(){
     --require 'data-mindustry-stock-database="ready"' \
     --require 'data-mindustry-main-menu-page="home"' \
     --after-ready-require 'data-mindustry-main-menu-real-pointer="passed"' \
+    --after-ready-require 'data-mindustry-settings-language-pointer="passed"' \
     --after-ready-require 'data-mindustry-database-escape="passed"' \
     --require 'data-mindustry-local-map-back="ready"' \
     --require 'data-mindustry-network="local-only"' > "$dom"
