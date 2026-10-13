@@ -10,6 +10,7 @@ import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.scene.style.*;
 import mindustry.game.*;
+import mindustry.input.*;
 import mindustry.gen.*;
 import mindustry.ui.*;
 import org.teavm.jso.JSBody;
@@ -128,6 +129,8 @@ public final class BrowserStockSchematicsUi{
             }
         });
         Core.scene.add(overlay);
+        Events.on(InputHandler.WebSchematicSaveRequest.class, request ->
+            showSave(request.schematic));
         rebuild();
         markReady();
     }
@@ -232,6 +235,44 @@ public final class BrowserStockSchematicsUi{
         markUsed(schematic.name());
     }
 
+    private static void showSave(Schematic schematic){
+        if(schematic == null || schematic.tiles.isEmpty()) return;
+        show();
+        results.clearChildren();
+        status.setText("");
+        Table form = new Table(Tex.button);
+        form.defaults().pad(6f);
+        form.add("@schematic.add").row();
+        TextField name = new TextField("");
+        name.setMessageText("@name");
+        form.add(name).width(mobile ? 290f : 520f).height(55f).row();
+        form.button("@ok", Icon.ok, () -> {
+            String chosen = name.getText().trim();
+            if(chosen.isEmpty()){
+                status.setText(Core.bundle.get("name", "Name") + ": " +
+                    Core.bundle.get("none", "None"));
+                return;
+            }
+            for(Schematic existing : schematics.all()){
+                if(existing.name().equals(chosen)){
+                    status.setText(Core.bundle.get("schematic.replace", "Name already in use"));
+                    return;
+                }
+            }
+            schematic.tags.put("name", chosen);
+            schematic.tags.put("description", "");
+            schematics.add(schematic);
+            Core.settings.forceSave();
+            rebuild();
+            status.setText(Core.bundle.get("schematic.saved", "Schematic saved"));
+            markSaved(chosen);
+        }).width(200f).height(55f);
+        form.button("@cancel", Icon.cancel, BrowserStockSchematicsUi::rebuild)
+            .width(200f).height(55f).row();
+        results.add(form).pad(12f);
+        Core.scene.setKeyboardFocus(name);
+    }
+
     private static void showImport(){
         // Native Arc text field accepts pasted base64 .msch payloads. This
         // also works without Navigator clipboard permission in iframes.
@@ -279,4 +320,7 @@ public final class BrowserStockSchematicsUi{
 
     @JSBody(params={"name"}, script = "document.documentElement.setAttribute('data-mindustry-schematics-imported',name);")
     private static native void markImported(String name);
+
+    @JSBody(params={"name"}, script = "document.documentElement.setAttribute('data-mindustry-schematics-saved',name);")
+    private static native void markSaved(String name);
 }
