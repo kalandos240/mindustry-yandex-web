@@ -27,14 +27,25 @@ if source.count(old_class) != 1:
     raise SystemExit("Expected exactly one LogicBuild declaration")
 source = source.replace(old_class, new_class, 1)
 
+# Preserve the stock pencil entry but keep the heavyweight desktop LogicDialog
+# unreachable in TeaVM; the browser scene embeds the original LCanvas instead.
 old_edit = """        public void showEditDialog(boolean forceEditor){
-            ui.logic.show(code, executor, privileged, code -> {"""
+            ui.logic.show(code, executor, privileged, code -> {
+                boolean prev = state.rules.editor;
+                //this is a hack to allow configuration to work correctly in the editor for privileged processors
+                if(forceEditor) state.rules.editor = true;
+                byte[] bytes = compress(code, relativeConnections());
+                if(bytes.length > maxCompressedLen){
+                    ui.showErrorMessage(Core.bundle.format("logic.error.toolong", maxCompressedLen, bytes.length));
+                }else{
+                    configure(bytes);
+                    state.rules.editor = prev;
+                }
+            });
+        }"""
 new_edit = """        public void showEditDialog(boolean forceEditor){
-            if(ui.logic == null){
-                Events.fire(new WebLogicEditorRequest(this, forceEditor));
-                return;
-            }
-            ui.logic.show(code, executor, privileged, code -> {"""
+            Events.fire(new WebLogicEditorRequest(this, forceEditor));
+        }"""
 if source.count(old_edit) != 1:
     raise SystemExit("LogicBuild original showEditDialog anchor changed")
 source = source.replace(old_edit, new_edit, 1)
