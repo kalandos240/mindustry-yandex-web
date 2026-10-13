@@ -9,7 +9,7 @@ if not RUNTIME.is_file():
 
 text = RUNTIME.read_text(encoding="utf-8")
 if all(marker in text for marker in (
-    "private static final double periodicSaveIntervalTicks = 180.0 * 60.0;",
+    'Core.settings.getInt("saveinterval", 60)',
     "private static void maybePeriodicSave()",
     "private static native boolean periodicSaveSmokeRequested();",
     "private static native void markPeriodicSaved(",
@@ -22,7 +22,6 @@ old_fields = '''    private static boolean saveSmokeArmed;
     private static int frames;
 '''
 new_fields = '''    private static boolean saveSmokeArmed;
-    private static final double periodicSaveIntervalTicks = 180.0 * 60.0;
     private static double periodicSaveTick;
     private static boolean periodicSaveSmokeDone;
     private static Map current;
@@ -107,7 +106,7 @@ new_helper = '''    /**
         boolean smoke = periodicSaveSmokeRequested();
         if(smoke){
             if(periodicSaveSmokeDone || frames < 3) return;
-        }else if(state.tick - periodicSaveTick < periodicSaveIntervalTicks){
+        }else if(state.tick - periodicSaveTick < Math.max(10, Core.settings.getInt("saveinterval", 60)) * 60.0){
             return;
         }
 
