@@ -287,6 +287,22 @@ public final class BrowserUiRuntime{
                 if((++frames[0] & 15) != 0 || Core.scene == null) return;
                 Element inputTable = Core.scene.root.find("inputTable");
                 if(!(inputTable instanceof Table nativeTable)) return;
+                // MobileInput exposes the same original placement group but
+                // omits DesktopInput's paste shortcut. Keep the schematic
+                // action INSIDE that native touch toolbar, never floating
+                // over the world/Yandex banner area.
+                if(nativeTable.find("web-stock-schematics-hud") == null){
+                    ImageButton schem = nativeTable.button(Icon.paste, Styles.clearNonei,
+                        BrowserStockSchematicsUi::show)
+                        .size(48f).name("web-stock-schematics-hud").get();
+                    schem.update(() -> {
+                        if(!schem.visible || Core.scene == null || (++hudSchematicsPointerFrames & 15) != 0) return;
+                        Vec2 center = schem.localToStageCoordinates(new Vec2(schem.getWidth()/2f, schem.getHeight()/2f));
+                        Vec2 screen = Core.scene.getViewport().project(center);
+                        markHudSchematicsHitPoint(screen.x, screen.y);
+                    });
+                    nativeTable.invalidateHierarchy();
+                }
                 if(nativeTable.find("web-research-hud") != null) return;
                 ImageButton research = nativeTable.button(Icon.tree, Styles.clearNonei,
                     BrowserResearchUi::show).size(48f).name("web-research-hud").get();
