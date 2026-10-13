@@ -3,6 +3,8 @@ package mindustry.web;
 import arc.*;
 import arc.input.*;
 import arc.input.KeyBind.*;
+import arc.struct.*;
+import java.util.Locale;
 import arc.util.*;
 import arc.math.geom.*;
 import arc.scene.*;
@@ -29,6 +31,10 @@ public final class BrowserStockSettingsUi{
     private static KeyBind capturing;
     private static boolean captureAxisSecond;
     private static KeyCode captureAxisFirst;
+    private static int controlsPageIndex;
+    private static final int controlsPageSize = 9;
+    private static String controlsFilter = "";
+    private static Table controlsRows;
 
     private BrowserStockSettingsUi(){}
 
@@ -81,20 +87,27 @@ public final class BrowserStockSettingsUi{
                     if(captureAxisSecond){
                         capturing.value = new Axis(captureAxisFirst, key);
                         capturing.save();
+                        String bindingName = capturing.name;
+                        String bindingValue = bindingLabel(capturing);
                         capturing = null;
                         captureAxisSecond = false;
                         Core.settings.forceSave();
                         showPage("controls");
+                        markCapture("saved", bindingName, bindingValue);
                     }else if(capturing.defaultValue instanceof Axis && !key.axis){
                         captureAxisFirst = key;
                         captureAxisSecond = true;
                         showCapturePage();
+                        markCapture("waiting", capturing.name, "second");
                     }else{
                         capturing.value = new Axis(key);
                         capturing.save();
+                        String bindingName = capturing.name;
+                        String bindingValue = bindingLabel(capturing);
                         capturing = null;
                         Core.settings.forceSave();
                         showPage("controls");
+                        markCapture("saved", bindingName, bindingValue);
                     }
                     return true;
                 }
@@ -119,6 +132,11 @@ public final class BrowserStockSettingsUi{
                 hitPoint("sound");
                 hitPoint("language");
                 if(!mobile) hitPoint("controls");
+            }else if("controls".equals(page)){
+                hitPoint("controls-rebind");
+                hitPoint("controls-resetkey");
+                hitPoint("controls-next");
+                hitPoint("controls-previous");
             }else if("language".equals(page)){
                 hitPoint("lang-auto");
                 hitPoint("lang-en");
@@ -225,43 +243,130 @@ public final class BrowserStockSettingsUi{
             () -> showPage(name)).marginLeft(8f).name("web-settings-" + name).row();
     }
 
+
     private static void buildControlsPage(){
-        // Same KeyBind registry and Axis values as the original KeybindDialog.
-        // Rebuilding happens only on opening/reset/rebinding, never per frame.
-        Table table = new Table(Tex.button);
-        table.defaults().pad(3f);
-        String category = null;
+        // The original KeybindDialog reads the same registry. Build only the
+        // current filtered page, rather than one Scene actor tree for every
+        // binding at once (90+ bindings cost too much in TeaVM/mobile).
+        mindustry.input.Binding.init();
+        Table root = new Table(Tex.button);
+        root.top();
+        root.defaults().pad(4f);
+        root.add("@keybind.title").left().padBottom(6f).row();
+        root.table(bar -> {
+            bar.image(Icon.zoom).size(20f).padRight(5f);
+            bar.field(controlsFilter, value -> {
+                controlsFilter = value == null ? "" : value.toLowerCase(Locale.ROOT).trim();
+                controlsPageIndex = 0;
+                rebuildControlsRows();
+            }).growX().name("web-settings-controls-search");
+        }).growX().row();
+        controlsRows = new Table();
+        controlsRows.top();
+        root.add(controlsRows).growX().row();
+        pages.add(root);
+        rebuildControlsRows();
+    }
+
+    private static void rebuildControlsRows(){
+        if(controlsRows == null) return;
+        controlsRows.clearChildren();
+        controlsRows.defaults().pad(3f);
+        Seq<KeyBind> matches = new Seq<>();
         for(KeyBind bind : KeyBind.all){
+            String label = Core.bundle.get("keybind." + bind.name + ".name",
+                Strings.capitalize(bind.name));
+            if(controlsFilter.isEmpty()
+                || label.toLowerCase(Locale.ROOT).contains(controlsFilter)
+                || bind.name.toLowerCase(Locale.ROOT).contains(controlsFilter)){
+                matches.add(bind);
+            }
+        }
+        int pagesCount = Math.max(1, (matches.size + controlsPageSize - 1) / controlsPageSize);
+        controlsPageIndex = Math.max(0, Math.min(controlsPageIndex, pagesCount - 1));
+        int start = controlsPageIndex * controlsPageSize;
+        String category = null;
+        for(int i = start; i < Math.min(matches.size, start + controlsPageSize); i++){
+            KeyBind bind = matches.get(i);
             if(bind.category != null && !bind.category.equals(category)){
                 category = bind.category;
-                table.add(Core.bundle.get("category." + category + ".name", category))
-                    .colspan(3).left().padTop(12f).row();
+                controlsRows.add(Core.bundle.get("category." + category + ".name", category))
+                    .colspan(3).left().padTop(8f).row();
             }
-            table.add(Core.bundle.get("keybind." + bind.name + ".name",
-                Strings.capitalize(bind.name))).width(mobile ? 110f : 210f).left();
-            String value = bind.value.key != null ? bind.value.key.getName()
-                : bind.value.min.getName() + " / " + bind.value.max.getName();
-            table.button(value, () -> {
+            String name = Core.bundle.get("keybind." + bind.name + ".name",
+                Strings.capitalize(bind.name));
+            // Keep every entry addressable by its original KeyBind name.
+            controlsRows.add(name).width(mobile ? 98f : 190f).left();
+            String value = bindingLabel(bind);
+            var key = controlsRows.button(value, () -> {
                 capturing = bind;
                 captureAxisSecond = false;
                 showPage("capture");
                 Core.scene.setKeyboardFocus(overlay);
-            }).width(mobile ? 110f : 170f).height(43f);
-            table.button("@settings.resetKey", () -> {
+                markCapture("waiting", bind.name, "first");
+            }).width(mobile ? 96f : 145f).height(43f);
+            if(i == start) key.name("web-settings-controls-rebind");
+            var reset = controlsRows.button("@settings.resetKey", () -> {
                 bind.resetToDefault();
                 Core.settings.forceSave();
-                showPage("controls");
-            }).width(mobile ? 85f : 130f).height(43f)
-                .disabled(b -> bind.isDefault()).row();
+                markCapture("reset", bind.name, bindingLabel(bind));
+                rebuildControlsRows();
+            }).width(mobile ? 80f : 125f).height(43f)
+                .disabled(b -> bind.isDefault());
+            if(i == start) reset.name("web-settings-controls-resetkey");
+            reset.row();
         }
-        table.button("@settings.reset", Icon.refresh, () -> {
+
+        if(matches.isEmpty()){
+            controlsRows.add(Core.bundle.get("none.found", "No results")).colspan(3).pad(12f).row();
+        }
+        controlsRows.table(pager -> {
+            pager.button(Icon.left, () -> {
+                controlsPageIndex--;
+                rebuildControlsRows();
+            }).size(45f).name("web-settings-controls-previous")
+                .disabled(b -> controlsPageIndex <= 0);
+            pager.add((controlsPageIndex + 1) + " / " + pagesCount)
+                .width(82f);
+            pager.button(Icon.right, () -> {
+                controlsPageIndex++;
+                rebuildControlsRows();
+            }).size(45f).name("web-settings-controls-next")
+                .disabled(b -> controlsPageIndex + 1 >= pagesCount);
+        }).colspan(3).padTop(8f).row();
+        controlsRows.button("@settings.reset", Icon.refresh, () -> {
             KeyBind.resetAll();
             Core.settings.forceSave();
-            showPage("controls");
-        }).colspan(3).height(52f).width(220f).padTop(12f);
-        pages.add(table);
+            markCapture("reset-all", "all", "");
+            rebuildControlsRows();
+        }).colspan(3).height(46f).width(200f).padTop(8f);
         markControlsReady(KeyBind.all.size);
+        markControlsPage(matches.size, controlsPageIndex + 1, pagesCount);
     }
+
+    private static String bindingLabel(KeyBind bind){
+        Axis value = bind.value;
+        if(value == null) return "-";
+        if(value.key != null) return value.key.getName();
+        return (value.min == null ? "-" : value.min.getName()) + " / "
+            + (value.max == null ? "-" : value.max.getName());
+    }
+
+    @JSBody(params={"matches", "page", "total"}, script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-settings-controls-matches',String(matches));
+        root.setAttribute('data-mindustry-settings-controls-page',String(page));
+        root.setAttribute('data-mindustry-settings-controls-pages',String(total));
+        """)
+    private static native void markControlsPage(int matches, int page, int total);
+
+    @JSBody(params={"status", "name", "value"}, script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-settings-controls-status',status);
+        root.setAttribute('data-mindustry-settings-controls-binding',name);
+        root.setAttribute('data-mindustry-settings-controls-value',value);
+        """)
+    private static native void markCapture(String status, String name, String value);
 
     private static void showCapturePage(){
         pages.clearChildren();

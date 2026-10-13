@@ -125,6 +125,32 @@ run_production_menu(){
       await clickSettings('back');
       await wait(()=>root.getAttribute('data-mindustry-settings-page')==='main','language category back');
       root.setAttribute('data-mindustry-settings-language-pointer','passed');
+
+      // Original KeyBind registry, rebind dialog and per-key reset must work
+      // via the same physical canvas/keyboard path as normal gameplay.
+      await clickSettings('controls');
+      await wait(()=>root.getAttribute('data-mindustry-settings-page')==='controls','native controls page');
+      const bindCount=Number(root.getAttribute('data-mindustry-settings-native-keybinds')||'0');
+      if(bindCount<60)throw Error('Original KeyBind registry unexpectedly empty: '+bindCount);
+      if(root.getAttribute('data-mindustry-settings-controls-page')!=='1')throw Error('Native controls pagination missing');
+      await clickSettings('controls-rebind');
+      await wait(()=>root.getAttribute('data-mindustry-settings-page')==='capture','native rebind capture');
+      const keyboard=async(code,key)=>{
+        window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code,key}));
+        await new Promise(r=>setTimeout(r,120));
+        window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code,key}));
+        await new Promise(r=>setTimeout(r,120));
+      };
+      await keyboard('F7','F7');
+      await wait(()=>root.getAttribute('data-mindustry-settings-controls-value')==='second','native two-key axis capture');
+      await keyboard('F8','F8');
+      await wait(()=>root.getAttribute('data-mindustry-settings-controls-status')==='saved','native KeyBind save');
+      if(root.getAttribute('data-mindustry-settings-controls-binding')!=='move_x')throw Error('Wrong KeyBind captured');
+      await clickSettings('controls-resetkey');
+      await wait(()=>root.getAttribute('data-mindustry-settings-controls-status')==='reset','native KeyBind reset');
+      root.setAttribute('data-mindustry-settings-controls-pointer','passed');
+      await clickSettings('back');
+      await wait(()=>root.getAttribute('data-mindustry-settings-page')==='main','controls category back');
       await clickSettings('back');
       await wait(()=>root.getAttribute('data-mindustry-settings-panel')==='closed','settings close');
       if(root.getAttribute('data-mindustry-main-menu-page')!=='home')throw Error('Native home did not open');
@@ -170,6 +196,7 @@ run_production_menu(){
     --require 'data-mindustry-main-menu-page="home"' \
     --after-ready-require 'data-mindustry-main-menu-real-pointer="passed"' \
     --after-ready-require 'data-mindustry-settings-language-pointer="passed"' \
+    --after-ready-require 'data-mindustry-settings-controls-pointer="passed"' \
     --after-ready-require 'data-mindustry-database-escape="passed"' \
     --require 'data-mindustry-local-map-back="ready"' \
     --require 'data-mindustry-network="local-only"' > "$dom"

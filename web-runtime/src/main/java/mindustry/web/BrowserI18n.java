@@ -67,8 +67,14 @@ public final class BrowserI18n{
         Locale chosen = useRussian ? new Locale("ru") : Locale.ENGLISH;
         Locale.setDefault(chosen);
         Core.bundle = useRussian ? russian : english;
-        // Do not freeze the Yandex auto-detected locale into an explicit choice.
-        // Only a user selection in Settings stores "en" or "ru".
+        // Keep the stock Mindustry setting defined even on the first launch.
+        // Some original UI and player flows use Core.settings.getString("locale")
+        // without a fallback. "default" is the original automatic preference:
+        // unlike writing detected en/ru, it continues to honor the Yandex SDK
+        // on each cold restart unless the player makes an explicit selection.
+        if(Core.settings != null && !Core.settings.has("locale")){
+            Core.settings.put("locale", "default");
+        }
         markLocale(useRussian ? "ru" : "en");
     }
 
