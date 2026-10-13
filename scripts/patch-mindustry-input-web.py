@@ -162,6 +162,14 @@ for old, new, label, expected in visibility_replacements:
     if count != expected:
         raise SystemExit(f"Expected {expected} pinned DesktopInput {label} checks, found {count}")
     desktop_text = desktop_text.replace(old, new)
+# Browser UI.loadSync() omits the heavyweight SchematicsDialog. Preserve
+# the original shortcut in BrowserGameplayRuntime rather than dereferencing
+# the desktop-only ui.schematics in DesktopInput's stock update.
+old_schematic_toggle = "if(Core.input.keyTap(Binding.schematicMenu)) ui.schematics.toggle();"
+new_schematic_toggle = "if(Core.input.keyTap(Binding.schematicMenu) && ui.schematics != null) ui.schematics.toggle();"
+if desktop_text.count(old_schematic_toggle) != 1:
+    raise SystemExit("Stock DesktopInput schematic hotkey anchor changed")
+desktop_text = desktop_text.replace(old_schematic_toggle, new_schematic_toggle, 1)
 desktop_path.write_text(desktop_text, encoding="utf-8")
 
 # Stock InputHandler and Control make more gameplay code reachable than the earlier
