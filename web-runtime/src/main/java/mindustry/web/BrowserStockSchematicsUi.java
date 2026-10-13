@@ -143,7 +143,10 @@ public final class BrowserStockSchematicsUi{
         if(results == null || schematics == null) return;
         results.clearChildren();
         results.defaults().pad(4f);
-        int index = 0, visible = 0;
+        int visible = 0;
+        int columns = mobile || Core.graphics.getWidth() < 560f ? 1 : 2;
+        float tileWidth = columns == 1
+            ? Math.max(190f, Math.min(390f, Core.graphics.getWidth() - 50f)) : 340f;
         matches = 0;
 
         for(Schematic schematic : schematics.all()){
@@ -188,8 +191,8 @@ public final class BrowserStockSchematicsUi{
                     }).size(38f);
                 }
             }).growX();
-            results.add(tile).width(mobile ? 206f : 340f).top();
-            if(++visible % (mobile ? 2 : 2) == 0) results.row();
+            results.add(tile).width(tileWidth).top();
+            if(++visible % columns == 0) results.row();
         }
         if(matches == 0){
             results.add(search.isEmpty() ? Core.bundle.get("none", "None")
