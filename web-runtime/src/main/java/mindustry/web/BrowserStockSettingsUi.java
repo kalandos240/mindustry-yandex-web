@@ -169,7 +169,7 @@ public final class BrowserStockSettingsUi{
             category(menu, "game", Icon.settings);
             category(menu, "graphics", Icon.image);
             category(menu, "sound", Icon.volumeUp);
-            category(menu, "language", Icon.book);
+            category(menu, "language", Icon.chat);
             pages.add(menu);
         }else if("language".equals(page)){
             buildLanguagePage();
@@ -183,10 +183,7 @@ public final class BrowserStockSettingsUi{
     }
 
     private static void category(Table menu, String name, Drawable icon){
-        // The browser release has exactly two packaged bundles.
-        String label = "language".equals(name)
-            ? (russianUi() ? "Язык" : "Language") : "@settings." + name;
-        menu.button(label, icon, Styles.flatt, iconMed,
+        menu.button("@settings." + name, icon, Styles.flatt, iconMed,
             () -> showPage(name)).marginLeft(8f).name("web-settings-" + name).row();
     }
 
@@ -199,7 +196,7 @@ public final class BrowserStockSettingsUi{
         // Do not reload paused gameplay: unsaved sector state could be lost.
         Table selector = new Table(Tex.button);
         selector.defaults().pad(5f);
-        selector.add(russianUi() ? "Язык" : "Language").padBottom(8f).row();
+        selector.add("@settings.language").padBottom(8f).row();
         languageChoice(selector, "auto", "default",
             russianUi() ? "Автоматически (Яндекс)" : "Automatic (Yandex)");
         languageChoice(selector, "en", "en", "English");
@@ -228,6 +225,9 @@ public final class BrowserStockSettingsUi{
         Table row = new Table();
         row.button(label, () -> {
             Core.settings.put("locale", code);
+            // Match LanguageDialog: expose explicit player language immediately,
+            // while visible UI strings switch after a safe restart.
+            if(player != null && !"default".equals(code)) player.locale = code;
             Core.settings.forceSave();
             showPage("language");
         }).width(mobile ? 224f : 282f).height(56f).name("web-settings-lang-" + name);
