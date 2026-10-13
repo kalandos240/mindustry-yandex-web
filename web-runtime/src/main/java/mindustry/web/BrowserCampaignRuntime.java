@@ -1414,7 +1414,7 @@ public final class BrowserCampaignRuntime{
         try{
             renderer.update();
         }catch(Throwable error){
-            throw new IllegalStateException("campaign-frame: renderer.update", error);
+            throw new IllegalStateException("campaign-frame: renderer.update at " + renderer.webRenderStage, error);
         }
         diagPhase("renderer-ready");
 
