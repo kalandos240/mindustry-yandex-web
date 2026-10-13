@@ -555,6 +555,26 @@ require(RESEARCH_UI, "data-mindustry-research-layout','hierarchical-techtree'", 
 require((SCRIPTS / "verify-browser-research-actions.sh").read_text(encoding="utf-8"),
         "new PointerEvent('pointerdown'", "live Arc research button interaction")
 
+# The original Schematics registry and placement path must back the Arc
+# dialog: no Web-only fake schematics, duplicate floating HUD buttons, or
+# hotkey dereference of the intentionally absent desktop SchematicsDialog.
+SCHEMATICS_UI = (WEB_JAVA / "BrowserStockSchematicsUi.java").read_text(encoding="utf-8")
+require(SCHEMATICS_UI, "schematics = new Schematics();", "stock schematic registry initialization")
+require(SCHEMATICS_UI, "schematics.loadSync();", "persisted stock .msch library loading")
+require(SCHEMATICS_UI, "schematics.all()", "real local schematic listing")
+require(SCHEMATICS_UI, "schematics.add(schematic)", "real imported schematic persistence")
+require(SCHEMATICS_UI, "Schematics.readBase64(raw)", "original .msch clipboard importer")
+require(SCHEMATICS_UI, "schematics.writeBase64(schematic)", "original .msch clipboard exporter")
+require(SCHEMATICS_UI, "control.input.useSchematic(schematic)", "stock build-plan placement entry")
+require(BROWSER_UI, "findStockSchematicsControl(inputTable)", "existing DesktopInput Icon.paste binding")
+require(BROWSER_UI, "nativeTable.button(Icon.paste, Styles.clearNonei", "native MobileInput schematic action")
+require((WEB_JAVA / "BrowserGameplayRuntime.java").read_text(encoding="utf-8"),
+        "BrowserStockSchematicsUi.isOpen()", "schematic overlay traps gameplay hotkeys")
+require((SCRIPTS / "patch-mindustry-input-web.py").read_text(encoding="utf-8"),
+        "ui.schematics != null", "browser stock schematic-menu hotkey null guard")
+require((SCRIPTS / "verify-browser-research-actions.sh").read_text(encoding="utf-8"),
+        "data-mindustry-native-schematics-pointer", "real desktop/mobile schematic pointer smoke")
+
 require(YANDEX_JS, "adInFlight: false", "Yandex fullscreen ad re-entry guard")
 require(YANDEX_JS, "if(state.adInFlight)", "Yandex fullscreen ad re-entry guard")
 require(YANDEX_JS, "state.adWaitingForResume = true", "Yandex ad/platform resume race")
