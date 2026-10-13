@@ -61,11 +61,18 @@ for mode in desktop mobile; do
       const surface = document.getElementById('mindustry-game-surface');
       const canvas = document.getElementById('mindustry-canvas');
       if(!surface || !canvas || !surface.contains(canvas)) throw new Error('Game surface hierarchy missing');
-      for(const id of ['mindustry-settings-toggle','mindustry-settings-overlay','mindustry-local-mode']){
-        const control = document.getElementById(id);
-        if(!control || !surface.contains(control) || getComputedStyle(control).position !== 'absolute'){
-          throw new Error('Portal control escaped into banner area: ' + id);
+      // Stock Arc Scene Settings replaces the old DOM Settings button.
+      // The removed button/overlay must never reappear outside the game UI.
+      for(const id of ['mindustry-settings-toggle','mindustry-settings-overlay']){
+        const control=document.getElementById(id);
+        if(control && getComputedStyle(control).display !== 'none'){
+          throw new Error('Obsolete HTML Settings control visible: ' + id);
         }
+      }
+      const modeControl=document.getElementById('mindustry-local-mode');
+      if(!modeControl || !surface.contains(modeControl) ||
+         getComputedStyle(modeControl).position !== 'absolute'){
+        throw new Error('Custom game mode control escaped reserved game surface');
       }
       const fullscreen = document.getElementById('mindustry-fullscreen-toggle');
       if(fullscreen && (!surface.contains(fullscreen) || getComputedStyle(fullscreen).position !== 'absolute')){
