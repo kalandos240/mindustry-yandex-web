@@ -86,11 +86,7 @@ public final class BrowserUiRuntime{
         }
 
         buildLocalMapMenu();
-        installSettingsUi(settingsAction,
-            Core.settings.getInt("sfxvol", 100),
-            Core.settings.getInt("musicvol", 100),
-            Core.settings.getBool("effects", true),
-            qualityVisuals());
+        BrowserStockSettingsUi.init();
         installLocalModeUi(settingsAction, BrowserLocalMapRuntime.customModeCode());
         buildLocalHudControls();
         buildLocalPauseOverlay();
@@ -164,12 +160,6 @@ public final class BrowserUiRuntime{
             case 5 -> Core.settings.put("localgamemode", value == 1 ? 1 : 0);
         }
         Core.settings.forceSave();
-    }
-
-    private static boolean qualityVisuals(){
-        return Core.settings.getBool("animatedwater", !mobile)
-            && Core.settings.getBool("animatedshields", !mobile)
-            && Core.settings.getBool("drawlight", !mobile);
     }
 
     private static ImageButton findStockResearchControl(Element node){
@@ -462,9 +452,6 @@ public final class BrowserUiRuntime{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
     private static native void markReady();
 
-    @JSBody(params = {"action", "sfx", "music", "effects", "quality"}, script = "globalThis.__mindustryInstallSettings(action,sfx,music,effects,quality);")
-    private static native void installSettingsUi(SettingsAction action, int sfx, int music, boolean effects, boolean quality);
-
     @JSBody(params = {"action", "mode"}, script = "globalThis.__mindustryInstallLocalMode(action,mode);")
     private static native void installLocalModeUi(SettingsAction action, int mode);
 
@@ -477,14 +464,13 @@ public final class BrowserUiRuntime{
     @JSBody(params = {"slot"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slot', slot);")
     private static native void markLocalSaveUiReady(String slot);
 
-    @JSBody(script = """
-        const launch=document.getElementById('mindustry-settings-toggle');
-        if(launch && launch.style.display !== 'none') launch.click();
-        """)
-    static native void openMenuSettings();
+    static void openMenuSettings(){
+        BrowserStockSettingsUi.showMenu();
+    }
 
-    @JSBody(script = "if(globalThis.__mindustryOpenPauseSettings){globalThis.__mindustryOpenPauseSettings();}")
-    private static native void openPauseSettings();
+    private static void openPauseSettings(){
+        BrowserStockSettingsUi.showPause();
+    }
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-settings-entry','ready');")
     private static native void markPauseSettingsUiReady();
