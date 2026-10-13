@@ -116,6 +116,7 @@ public final class BrowserGameplayRuntime{
 
     private static void updateFrame(){
         if(!initialized || logic == null || state == null) return;
+        BrowserLogicEditorSmoke.update();
         // Arc keyboard events are drained before the listener update. The
         // stock Control.update() handles Space only during playing frames and
         // directly sets GameState.paused, bypassing the Web frozen-clock
