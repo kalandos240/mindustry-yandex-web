@@ -37,6 +37,7 @@ public final class BrowserUiRuntime{
     private static TextButton localContinueButton;
     private static int hudResearchPointerFrames;
     private static int hudDatabasePointerFrames;
+    private static int hudSchematicsPointerFrames;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
@@ -93,6 +94,7 @@ public final class BrowserUiRuntime{
         buildLocalGameOverOverlay();
         BrowserResearchUi.init();
         BrowserStockDatabaseUi.init();
+        BrowserStockSchematicsUi.init();
 
         // The original MobileInput is built into a dedicated HUD WidgetGroup.
         // In the lean Web shell, additional stock and browser HUD overlays are
@@ -184,6 +186,40 @@ public final class BrowserUiRuntime{
         return null;
     }
 
+    private static ImageButton findStockSchematicsControl(Element node){
+        if(node instanceof ImageButton button && button.getStyle().imageUp == Icon.paste) return button;
+        if(node instanceof Group group){
+            for(Element child : group.getChildren()){
+                ImageButton found = findStockSchematicsControl(child);
+                if(found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static void attachStockSchematicsHandler(ImageButton button){
+        // DesktopInput.buildPlacementUI already owns the vanilla Icon.paste
+        // schematic button. Only redirect its action away from ui.schematics,
+        // which is absent from UI.loadSync(), keeping its visual and position.
+        for(int i = button.getListeners().size - 1; i >= 0; i--){
+            EventListener listener = button.getListeners().get(i);
+            if(listener instanceof ClickListener && listener != button.getClickListener()){
+                button.removeListener(listener);
+            }
+        }
+        button.clicked(BrowserStockSchematicsUi::show);
+        button.name = "web-stock-schematics-hud";
+        button.update(() -> {
+            if(!button.visible || Core.scene == null || (++hudSchematicsPointerFrames & 15) != 0) return;
+            Vec2 center = button.localToStageCoordinates(new Vec2(button.getWidth()/2f, button.getHeight()/2f));
+            Vec2 screen = Core.scene.getViewport().project(center);
+            markHudSchematicsHitPoint(screen.x, screen.y);
+        });
+    }
+
+    @JSBody(params={"x", "y"}, script="document.documentElement.setAttribute('data-mindustry-hud-schematics-x',String(x));document.documentElement.setAttribute('data-mindustry-hud-schematics-y',String(y));")
+    private static native void markHudSchematicsHitPoint(float x, float y);
+
     private static void attachStockDatabaseHandler(ImageButton button){
         // The original lower-right Database button would dereference
         // ui.database, which is deliberately absent from lightweight UI.init().
@@ -272,6 +308,7 @@ public final class BrowserUiRuntime{
             // control without leaving a dangling listener on an old actor.
             ImageButton[] bound = {null};
             ImageButton[] databaseBound = {null};
+            ImageButton[] schematicsBound = {null};
             int[] frames = {0};
             root.update(() -> {
                 if((++frames[0] & 15) != 0) return;
@@ -286,6 +323,11 @@ public final class BrowserUiRuntime{
                 if(database != null && database != databaseBound[0]){
                     attachStockDatabaseHandler(database);
                     databaseBound[0] = database;
+                }
+                ImageButton schematicsButton = findStockSchematicsControl(inputTable);
+                if(schematicsButton != null && schematicsButton != schematicsBound[0]){
+                    attachStockSchematicsHandler(schematicsButton);
+                    schematicsBound[0] = schematicsButton;
                 }
             });
         }
