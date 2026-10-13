@@ -79,10 +79,13 @@ public final class BrowserStockMainMenu{
         }else{
             // Mirrors MenuFragment.buildDesktop(): a shaded left sidebar
             // with the original Mindustry icons and flat toggle menu style.
-            home.left().top().marginLeft(12f).marginTop(76f);
+            float menuTop = Core.scene.getHeight() < 600f ? 12f : 76f;
+            float buttonHeight = Math.max(32f, Math.min(66f,
+                (Core.scene.getHeight() - menuTop - 156f) / 5f));
+            home.left().top().marginLeft(12f).marginTop(menuTop);
             home.table(Styles.black6, menu -> {
                 menu.name = "web-main-desktop-buttons";
-                menu.defaults().width(230f).height(66f);
+                menu.defaults().width(230f).height(buttonHeight);
                 addLogo(menu, 210f);
                 menu.row();
                 menu.button(Core.bundle.get("play", "Play"), Icon.play,
@@ -105,7 +108,7 @@ public final class BrowserStockMainMenu{
                     Styles.flatToggleMenut, BrowserUiRuntime::openMenuSettings)
                     .name("web-main-settings");
                 menu.row();
-                menu.add(Version.combined()).padTop(16f).padBottom(12f);
+                menu.add(Version.combined()).height(32f).padTop(16f).padBottom(12f);
             }).width(230f);
         }
         parent.addChild(home);
