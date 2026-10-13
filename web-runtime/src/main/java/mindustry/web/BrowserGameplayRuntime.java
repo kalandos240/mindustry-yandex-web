@@ -143,7 +143,7 @@ public final class BrowserGameplayRuntime{
             else BrowserStockSchematicsUi.show();
         }
         if(!smokeMode && (state.isPlaying() || state.isPaused())
-        && !researchOpen && !databaseOpen && !schematicsOpen
+        && !researchOpen && !databaseOpen && !schematicsOpen && !logicEditorOpen
         && (Core.input.keyTap(Binding.pause) || menuTapped)
         && !state.gameOver
         && !state.rules.pauseDisabled && Core.scene != null
