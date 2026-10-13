@@ -70,6 +70,37 @@ new_overlay = """            group.setFillParent(true);
 if old_overlay not in input_text:
     raise SystemExit("InputHandler Web overlay-marker fallback patch no longer matches pinned upstream")
 input_text = input_text.replace(old_overlay, new_overlay, 1)
+# Browser UI.loadSync() intentionally does not create the desktop
+# SchematicsDialog. Preserve stock schematic selection/Save button semantics
+# by firing a typed request to the Arc Scene browser schematic panel.
+old_save_request = """    protected void showSchematicSave(){
+        if(lastSchematic == null) return;
+
+        var last = lastSchematic;
+
+        ui.showTextInput"""
+new_save_request = """    public static class WebSchematicSaveRequest{
+        public final Schematic schematic;
+
+        public WebSchematicSaveRequest(Schematic schematic){
+            this.schematic = schematic;
+        }
+    }
+
+    protected void showSchematicSave(){
+        if(lastSchematic == null) return;
+
+        var last = lastSchematic;
+        if(ui.schematics == null){
+            Events.fire(new WebSchematicSaveRequest(last));
+            return;
+        }
+
+        ui.showTextInput"""
+if input_text.count(old_save_request) != 1:
+    raise SystemExit("Schematic Save request source anchor no longer matches pinned InputHandler")
+input_text = input_text.replace(old_save_request, new_save_request, 1)
+
 input_path.write_text(input_text, encoding="utf-8")
 
 mobile_text = mobile_path.read_text(encoding="utf-8")
