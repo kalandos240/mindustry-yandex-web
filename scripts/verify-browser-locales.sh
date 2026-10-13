@@ -112,6 +112,8 @@ run_production_menu(){
       }
       await clickSettings('back');
       await wait(()=>root.getAttribute('data-mindustry-settings-panel')==='closed','settings close');
+      // Native Dialog.hide() keeps its modal hit area during the stock 400ms fade.
+      await new Promise(r=>setTimeout(r,600));
       if(root.getAttribute('data-mindustry-main-menu-page')!=='home')throw Error('Native home did not open');
       await click('play');
       await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='play','Play submenu');
