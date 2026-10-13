@@ -9,7 +9,7 @@ path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
 
 old_field = "    private int glErrors;\n"
-new_field = "    private int glErrors, webSettingsPoll, webBloomIntensity = 6, webBloomBlur = 1;\n    private boolean webDrawHitboxes;\n"
+new_field = "    private int glErrors, webSettingsPoll, webBloomIntensity = 6, webBloomBlur = 1;\n    private boolean webDrawHitboxes;\n    public String webRenderStage = \"not-started\";\n"
 if old_field not in text:
     raise SystemExit("Renderer glErrors field no longer matches pinned upstream")
 text = text.replace(old_field, new_field, 1)
@@ -85,6 +85,26 @@ if text.count(preview_calls) != 2:
 text = text.replace(preview_calls, "")
 if "MapPreviewLoader.checkPreviews()" in text:
     raise SystemExit("Renderer Web patch retained map-preview polling")
+
+# Lightweight diagnostics pinpoint which original stock renderer stage faults
+# during the Ground Zero campaign boot. This also distinguishes a minimap
+# exception from a graphics/bloom/framebuffer exception in headless Chrome.
+diagnostic_stages = [
+    ("        PerfCounter.render.begin();", '        webRenderStage = "preferences";\n        PerfCounter.render.begin();'),
+    ("            minimap.update();", '            webRenderStage = "minimap";\n            minimap.update();'),
+    ("                pixelator.drawPixelate();", '                webRenderStage = "pixelate";\n                pixelator.drawPixelate();'),
+    ("                draw();", '                webRenderStage = "draw";\n                draw();'),
+    ("        Events.fire(Trigger.preDraw);", '        webRenderStage = "preDraw";\n        Events.fire(Trigger.preDraw);'),
+    ("        blocks.checkChanges();", '        webRenderStage = "blocks.checkChanges";\n        blocks.checkChanges();'),
+    ("        control.input.drawCommanded();", '        webRenderStage = "drawCommanded";\n        control.input.drawCommanded();'),
+    ("        blocks.drawBlocks();", '        webRenderStage = "blocks.drawBlocks";\n        blocks.drawBlocks();'),
+    ("        Groups.draw.draw(Drawc::draw);", '        webRenderStage = "Groups.draw";\n        Groups.draw.draw(Drawc::draw);'),
+    ("        Draw.flush();", '        webRenderStage = "Draw.flush";\n        Draw.flush();'),
+]
+for old, new in diagnostic_stages:
+    if text.count(old) != 1:
+        raise SystemExit(f"Pinned Renderer stage marker changed: {old!r}, found {text.count(old)}")
+    text = text.replace(old, new, 1)
 
 path.write_text(text, encoding="utf-8")
 
