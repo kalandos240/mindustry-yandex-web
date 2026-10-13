@@ -309,6 +309,33 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     @Override
+    public void post(Runnable runnable){
+        // Preserve posted work's original exception site in the DOM before
+        // WebApplicationBase wraps it as a generic "post" failure. The class
+        // name and first stack frame make WebGL init failures diagnosable in
+        // headless Chrome without capturing per-frame JavaScript traces.
+        super.post(() -> {
+            try{
+                runnable.run();
+            }catch(RuntimeException | Error failure){
+                StackTraceElement[] stack = failure.getStackTrace();
+                String first = stack.length == 0 ? "" : stack[0].toString();
+                markPostedTaskFailure(runnable.getClass().getName(),
+                    failure.getClass().getName(), first);
+                throw failure;
+            }
+        });
+    }
+
+    @JSBody(params={"task","kind","site"}, script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-post-task',task);
+        root.setAttribute('data-mindustry-post-exception',kind);
+        root.setAttribute('data-mindustry-post-site',site);
+        """)
+    private static native void markPostedTaskFailure(String task, String kind, String site);
+
+    @Override
     public String getClipboardText(){
         return clipboard;
     }

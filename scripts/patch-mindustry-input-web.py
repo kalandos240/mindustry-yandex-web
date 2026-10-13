@@ -70,6 +70,37 @@ new_overlay = """            group.setFillParent(true);
 if old_overlay not in input_text:
     raise SystemExit("InputHandler Web overlay-marker fallback patch no longer matches pinned upstream")
 input_text = input_text.replace(old_overlay, new_overlay, 1)
+# Browser UI.loadSync() intentionally does not create the desktop
+# SchematicsDialog. Preserve stock schematic selection/Save button semantics
+# by firing a typed request to the Arc Scene browser schematic panel.
+old_save_request = """    protected void showSchematicSave(){
+        if(lastSchematic == null) return;
+
+        var last = lastSchematic;
+
+        ui.showTextInput"""
+new_save_request = """    public static class WebSchematicSaveRequest{
+        public final Schematic schematic;
+
+        public WebSchematicSaveRequest(Schematic schematic){
+            this.schematic = schematic;
+        }
+    }
+
+    protected void showSchematicSave(){
+        if(lastSchematic == null) return;
+
+        var last = lastSchematic;
+        if(ui.schematics == null){
+            Events.fire(new WebSchematicSaveRequest(last));
+            return;
+        }
+
+        ui.showTextInput"""
+if input_text.count(old_save_request) != 1:
+    raise SystemExit("Schematic Save request source anchor no longer matches pinned InputHandler")
+input_text = input_text.replace(old_save_request, new_save_request, 1)
+
 input_path.write_text(input_text, encoding="utf-8")
 
 mobile_text = mobile_path.read_text(encoding="utf-8")
@@ -162,6 +193,14 @@ for old, new, label, expected in visibility_replacements:
     if count != expected:
         raise SystemExit(f"Expected {expected} pinned DesktopInput {label} checks, found {count}")
     desktop_text = desktop_text.replace(old, new)
+# Browser UI.loadSync() omits the heavyweight SchematicsDialog. Preserve
+# the original shortcut in BrowserGameplayRuntime rather than dereferencing
+# the desktop-only ui.schematics in DesktopInput's stock update.
+old_schematic_toggle = "if(Core.input.keyTap(Binding.schematicMenu)) ui.schematics.toggle();"
+new_schematic_toggle = "if(Core.input.keyTap(Binding.schematicMenu) && ui.schematics != null) ui.schematics.toggle();"
+if desktop_text.count(old_schematic_toggle) != 1:
+    raise SystemExit("Stock DesktopInput schematic hotkey anchor changed")
+desktop_text = desktop_text.replace(old_schematic_toggle, new_schematic_toggle, 1)
 desktop_path.write_text(desktop_text, encoding="utf-8")
 
 # Stock InputHandler and Control make more gameplay code reachable than the earlier
@@ -170,6 +209,48 @@ desktop_path.write_text(desktop_text, encoding="utf-8")
 # prunes the desktop whole-map screenshot hotkey before TeaVM, so Renderer screenshot
 # encoding intentionally remains unreachable instead of retaining PNG/Deflater code.
 mindustry_root = input_path.parent.parent
+
+# Schematics.loadSync() schedules a thumbnail FrameBuffer on the first frame.
+# The full desktop GL/Renderer setup backs that job; the lightweight Yandex
+# WebGL path has no compatible offscreen preview context at this stage.
+# The native browser Schematics panel intentionally displays original block
+# icon previews instead. Keep all stock .msch IO and build-plan logic intact,
+# but do not enqueue an unused offscreen FrameBuffer startup job (which
+# otherwise throws at frame-post #1 and prevents all menus from opening).
+schematics_path = mindustry_root / "game" / "Schematics.java"
+schematics_text = schematics_path.read_text(encoding="utf-8")
+old_preview = """        if(shadowBuffer == null && !headless){
+            Core.app.post(() -> shadowBuffer = new FrameBuffer(maxSchematicSize + padding + 8, maxSchematicSize + padding + 8));
+        }
+"""
+if schematics_text.count(old_preview) != 1:
+    raise SystemExit("Expected one pinned Schematics.loadSync thumbnail-framebuffer startup")
+schematics_text = schematics_text.replace(old_preview, """        // Web: render compact original block icons instead of eager offscreen thumbnail FBOs.
+""", 1)
+
+# The lean Yandex launcher intentionally has no Mods manager: only the
+# built-in game and browser-local .msch files are shipped. Stock Schematics.load
+# scans mods unconditionally and dereferences null during the deferred Web UI
+# startup. Preserve upstream scanning on platforms with a Mods manager.
+old_mod_scan = """        mods.listFiles("schematics", (mod, file) -> {
+            Schematic s = loadFile(file);
+            if(s != null){
+                s.mod = mod;
+            }
+        });"""
+new_mod_scan = """        if(mods != null){
+            mods.listFiles("schematics", (mod, file) -> {
+                Schematic s = loadFile(file);
+                if(s != null){
+                    s.mod = mod;
+                }
+            });
+        }"""
+if schematics_text.count(old_mod_scan) != 1:
+    raise SystemExit("Pinned Schematics mod-scanning block changed")
+schematics_text = schematics_text.replace(old_mod_scan, new_mod_scan, 1)
+schematics_path.write_text(schematics_text, encoding="utf-8")
+
 unit_group = mindustry_root / "ai" / "UnitGroup.java"
 building_comp = mindustry_root / "entities" / "comp" / "BuildingComp.java"
 sound_control = mindustry_root / "audio" / "SoundControl.java"

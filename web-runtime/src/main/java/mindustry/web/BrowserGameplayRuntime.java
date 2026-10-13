@@ -129,12 +129,20 @@ public final class BrowserGameplayRuntime{
         boolean menuTapped = !smokeMode && Core.input != null && Core.input.keyTap(Binding.menu);
         boolean researchOpen = BrowserResearchUi.isOpen();
         boolean databaseOpen = BrowserStockDatabaseUi.isOpen();
+        boolean schematicsOpen = BrowserStockSchematicsUi.isOpen();
         if(menuTapped && Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
             if(researchOpen) BrowserResearchUi.escape();
             else if(databaseOpen) BrowserStockDatabaseUi.hide();
+            else if(schematicsOpen) BrowserStockSchematicsUi.hide();
+        }
+        if(!smokeMode && state.isGame() && !researchOpen && !databaseOpen
+        && Core.input.keyTap(Binding.schematicMenu)
+        && Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
+            if(schematicsOpen) BrowserStockSchematicsUi.hide();
+            else BrowserStockSchematicsUi.show();
         }
         if(!smokeMode && (state.isPlaying() || state.isPaused())
-        && !researchOpen && !databaseOpen
+        && !researchOpen && !databaseOpen && !schematicsOpen
         && (Core.input.keyTap(Binding.pause) || menuTapped)
         && !state.gameOver
         && !state.rules.pauseDisabled && Core.scene != null

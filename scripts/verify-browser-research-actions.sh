@@ -48,6 +48,7 @@ for target in desktop-menu desktop-campaign mobile-menu mobile-campaign; do
     --timeout 120 \
     --require "$ready" \
     --require 'data-mindustry-research-ui="ready"' \
+    --require 'data-mindustry-stock-schematics="ready"' \
     --require 'data-mindustry-research-catalog="techtree-all"' \
     --require 'data-mindustry-research-layout="hierarchical-techtree"' \
     --require 'data-mindustry-research-tree-root="serpulo"' \
@@ -159,6 +160,57 @@ for target in desktop-menu desktop-campaign mobile-menu mobile-campaign; do
           throw Error('Escape must close original Database without pausing the campaign');
         }
         root.setAttribute('data-mindustry-native-database-campaign','passed');
+      }
+      if('$scenario'==='campaign'){
+        // Navigate the original lower-right paste icon using the same real
+        // PointerEvents as the stock Research/Database controls above.
+        const prefix='data-mindustry-hud-schematics';
+        for(let attempt=0;attempt<100;attempt++){
+          if(root.hasAttribute(prefix+'-x'))break;
+          await new Promise(r=>setTimeout(r,100));
+        }
+        if(!root.hasAttribute(prefix+'-x'))throw Error('Native schematic icon not bound to campaign HUD on $device');
+        const rect=canvas.getBoundingClientRect();
+        const px=rect.left+Number(root.getAttribute(prefix+'-x'));
+        const py=rect.top+rect.height-Number(root.getAttribute(prefix+'-y'));
+        const pointerType='$device'==='mobile'?'touch':'mouse';
+        for(const type of ['pointerdown','pointerup']){
+          canvas.dispatchEvent(new PointerEvent(type,
+            {bubbles:true,cancelable:true,pointerId:71,pointerType,
+             clientX:px,clientY:py,button:0,buttons:type==='pointerdown'?1:0,isPrimary:true}));
+          await new Promise(r=>setTimeout(r,100));
+        }
+        for(let attempt=0;attempt<60;attempt++){
+          if(root.getAttribute('data-mindustry-schematics-open')==='yes')break;
+          await new Promise(r=>setTimeout(r,100));
+        }
+        if(root.getAttribute('data-mindustry-schematics-open')!=='yes'){
+          throw Error('Original schematic paste icon failed to open native library on $device');
+        }
+        for(let attempt=0;attempt<50;attempt++){
+          if(root.hasAttribute('data-mindustry-schematics-close-x'))break;
+          await new Promise(r=>setTimeout(r,100));
+        }
+        const closeX=rect.left+Number(root.getAttribute('data-mindustry-schematics-close-x'));
+        const closeY=rect.top+rect.height-Number(root.getAttribute('data-mindustry-schematics-close-y'));
+        if(!Number.isFinite(closeX)||!Number.isFinite(closeY)){
+          throw Error('Schematic Arc Scene native Close target not found');
+        }
+        for(const type of ['pointerdown','pointerup']){
+          canvas.dispatchEvent(new PointerEvent(type,
+            {bubbles:true,cancelable:true,pointerId:72,pointerType,
+             clientX:closeX,clientY:closeY,button:0,buttons:type==='pointerdown'?1:0,isPrimary:true}));
+          await new Promise(r=>setTimeout(r,110));
+        }
+        for(let attempt=0;attempt<40;attempt++){
+          if(root.getAttribute('data-mindustry-schematics-open')==='no')break;
+          await new Promise(r=>setTimeout(r,100));
+        }
+        if(root.getAttribute('data-mindustry-schematics-open')!=='no' ||
+           root.getAttribute('data-mindustry-campaign-state')!=='playing'){
+          throw Error('Schematic Close must return to the active campaign without pausing on $device');
+        }
+        root.setAttribute('data-mindustry-native-schematics-pointer','passed');
       }
       root.setAttribute('data-mindustry-research-escape','passed');
       root.setAttribute('data-mindustry-research-pointer-smoke','ready');
