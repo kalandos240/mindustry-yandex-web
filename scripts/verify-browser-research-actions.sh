@@ -124,6 +124,42 @@ for target in desktop-menu desktop-campaign mobile-menu mobile-campaign; do
          Number(root.getAttribute('data-mindustry-space-transition-count') || 0)!==transitionsBefore)){
         throw Error('Escape closed Research but also paused the campaign');
       }
+      if('$scenario'==='campaign' && '$device'==='desktop'){
+        // The *existing* lower-right book icon must work in a running
+        // campaign too, not dereference absent UI.database desktop dialogs.
+        for(let attempt=0;attempt<100;attempt++){
+          if(root.hasAttribute('data-mindustry-hud-database-x')) break;
+          await new Promise(r=>setTimeout(r,100));
+        }
+        const dbx=Number(root.getAttribute('data-mindustry-hud-database-x'));
+        const dby=Number(root.getAttribute('data-mindustry-hud-database-y'));
+        if(!Number.isFinite(dbx)||!Number.isFinite(dby)) throw Error('Native book icon missing in campaign');
+        const dbRect=canvas.getBoundingClientRect();
+        const px=dbRect.left+dbx, py=dbRect.top+dbRect.height-dby;
+        canvas.dispatchEvent(new PointerEvent('pointerdown',
+          {bubbles:true,cancelable:true,pointerId:49,pointerType:'mouse',clientX:px,clientY:py,buttons:1,button:0}));
+        await new Promise(r=>setTimeout(r,110));
+        canvas.dispatchEvent(new PointerEvent('pointerup',
+          {bubbles:true,cancelable:true,pointerId:49,pointerType:'mouse',clientX:px,clientY:py,buttons:0,button:0}));
+        for(let attempt=0;attempt<60;attempt++){
+          if(root.getAttribute('data-mindustry-database-open')==='yes') break;
+          await new Promise(r=>setTimeout(r,100));
+        }
+        if(root.getAttribute('data-mindustry-database-open')!=='yes'){
+          throw Error('Original in-game Database book icon did not open ContentLoader Database');
+        }
+        sendKey('keydown','Escape','Escape');
+        for(let attempt=0;attempt<30;attempt++){
+          if(root.getAttribute('data-mindustry-database-open')==='no') break;
+          await new Promise(r=>setTimeout(r,100));
+        }
+        sendKey('keyup','Escape','Escape');
+        if(root.getAttribute('data-mindustry-database-open')!=='no' ||
+           root.getAttribute('data-mindustry-campaign-state')!=='playing'){
+          throw Error('Escape must close original Database without pausing the campaign');
+        }
+        root.setAttribute('data-mindustry-native-database-campaign','passed');
+      }
       root.setAttribute('data-mindustry-research-escape','passed');
       root.setAttribute('data-mindustry-research-pointer-smoke','ready');
       return true;
@@ -135,6 +171,9 @@ for target in desktop-menu desktop-campaign mobile-menu mobile-campaign; do
   grep -Eq 'data-mindustry-research-tree-visible-nodes="[1-9][0-9]*"' "$dom"
   if [ "$scenario" = campaign ]; then
     grep -Fq 'data-mindustry-research-tree-selected="mechanical-drill"' "$dom"
+    if [ "$device" = desktop ]; then
+      grep -Fq 'data-mindustry-native-database-campaign="passed"' "$dom"
+    fi
   else
     grep -Fq 'data-mindustry-research-tree-selected="junction"' "$dom"
   fi
