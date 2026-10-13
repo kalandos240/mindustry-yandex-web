@@ -99,7 +99,7 @@ diagnostic_stages = [
     ("        control.input.drawCommanded();", '        webRenderStage = "drawCommanded";\n        control.input.drawCommanded();'),
     ("        blocks.drawBlocks();", '        webRenderStage = "blocks.drawBlocks";\n        blocks.drawBlocks();'),
     ("        Groups.draw.draw(Drawc::draw);", '        webRenderStage = "Groups.draw";\n        Groups.draw.draw(Drawc::draw);'),
-    ("        Draw.flush();", '        webRenderStage = "Draw.flush";\n        Draw.flush();'),
+    ("        Draw.flush();\n        Draw.sort(false);", '        webRenderStage = "Draw.flush";\n        Draw.flush();\n        Draw.sort(false);'),
 ]
 for old, new in diagnostic_stages:
     if text.count(old) != 1:
