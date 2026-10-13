@@ -209,6 +209,26 @@ desktop_path.write_text(desktop_text, encoding="utf-8")
 # prunes the desktop whole-map screenshot hotkey before TeaVM, so Renderer screenshot
 # encoding intentionally remains unreachable instead of retaining PNG/Deflater code.
 mindustry_root = input_path.parent.parent
+
+# Schematics.loadSync() schedules a thumbnail FrameBuffer on the first frame.
+# The full desktop GL/Renderer setup backs that job; the lightweight Yandex
+# WebGL path has no compatible offscreen preview context at this stage.
+# The native browser Schematics panel intentionally displays original block
+# icon previews instead. Keep all stock .msch IO and build-plan logic intact,
+# but do not enqueue an unused offscreen FrameBuffer startup job (which
+# otherwise throws at frame-post #1 and prevents all menus from opening).
+schematics_path = mindustry_root / "game" / "Schematics.java"
+schematics_text = schematics_path.read_text(encoding="utf-8")
+old_preview = """        if(shadowBuffer == null && !headless){
+            Core.app.post(() -> shadowBuffer = new FrameBuffer(maxSchematicSize + padding + 8, maxSchematicSize + padding + 8));
+        }
+"""
+if schematics_text.count(old_preview) != 1:
+    raise SystemExit("Expected one pinned Schematics.loadSync thumbnail-framebuffer startup")
+schematics_text = schematics_text.replace(old_preview, """        // Web: render compact original block icons instead of eager offscreen thumbnail FBOs.
+""", 1)
+schematics_path.write_text(schematics_text, encoding="utf-8")
+
 unit_group = mindustry_root / "ai" / "UnitGroup.java"
 building_comp = mindustry_root / "entities" / "comp" / "BuildingComp.java"
 sound_control = mindustry_root / "audio" / "SoundControl.java"
