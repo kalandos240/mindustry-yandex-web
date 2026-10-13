@@ -197,6 +197,7 @@ public final class BrowserStockSchematicsUi{
                     Core.app.setClipboardText(schematics.writeBase64(schematic));
                     status.setText(Core.bundle.get("copied", "Copied"));
                 }).size(38f);
+                actions.button(Icon.pencil, () -> showEdit(schematic)).size(38f);
                 if(schematic.mod == null){
                     actions.button(Icon.trash, () -> {
                         if(pendingDelete == schematic){
@@ -233,6 +234,42 @@ public final class BrowserStockSchematicsUi{
         control.input.useSchematic(schematic);
         hide();
         markUsed(schematic.name());
+    }
+
+    private static void showEdit(Schematic schematic){
+        if(schematic == null) return;
+        results.clearChildren();
+        status.setText("");
+        Table form = new Table(Tex.button);
+        form.defaults().pad(5f);
+        form.add("@schematic.edit").row();
+        form.add("@name").left().row();
+        TextField name = new TextField(schematic.name());
+        form.add(name).width(mobile ? 270f : 490f).height(51f).row();
+        form.add("@editor.description").left().row();
+        TextArea description = new TextArea(schematic.description());
+        description.setPrefRows(3);
+        form.add(description).width(mobile ? 270f : 490f).height(120f).row();
+        form.button("@ok", Icon.ok, () -> {
+            String title = name.getText().trim();
+            if(title.isEmpty()) return;
+            for(Schematic existing : schematics.all()){
+                if(existing != schematic && existing.name().equals(title)){
+                    status.setText(Core.bundle.get("schematic.replace", "Name already in use"));
+                    return;
+                }
+            }
+            schematic.tags.put("name", title);
+            schematic.tags.put("description", description.getText());
+            schematic.save();
+            rebuild();
+            status.setText(Core.bundle.get("schematic.saved", "Saved"));
+            markEdited(title);
+        }).size(200f, 51f);
+        form.button("@cancel", Icon.cancel, BrowserStockSchematicsUi::rebuild)
+            .size(200f, 51f).row();
+        results.add(form).pad(10f);
+        Core.scene.setKeyboardFocus(name);
     }
 
     private static void showSave(Schematic schematic){
@@ -323,4 +360,7 @@ public final class BrowserStockSchematicsUi{
 
     @JSBody(params={"name"}, script = "document.documentElement.setAttribute('data-mindustry-schematics-saved',name);")
     private static native void markSaved(String name);
+
+    @JSBody(params={"name"}, script = "document.documentElement.setAttribute('data-mindustry-schematics-edited',name);")
+    private static native void markEdited(String name);
 }
