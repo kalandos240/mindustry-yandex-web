@@ -567,6 +567,8 @@ require(SCHEMATICS_UI, "Events.on(InputHandler.WebSchematicSaveRequest.class", "
 require((SCRIPTS / "patch-mindustry-input-web.py").read_text(encoding="utf-8"),
         "Events.fire(new WebSchematicSaveRequest(last))", "original schematic Save action routes to browser UI")
 require(SCHEMATICS_UI, 'schematic.tags.put("name", chosen)', "original schematic names persisted with .msch")
+require(SCHEMATICS_UI, 'schematic.tags.put("description", description.getText())', "native schematic description editor")
+require(SCHEMATICS_UI, "schematic.save();", "original .msch save after native edits")
 require(SCHEMATICS_UI, "Schematics.readBase64(raw)", "original .msch clipboard importer")
 require(SCHEMATICS_UI, "schematics.writeBase64(schematic)", "original .msch clipboard exporter")
 require(SCHEMATICS_UI, "control.input.useSchematic(schematic)", "stock build-plan placement entry")
