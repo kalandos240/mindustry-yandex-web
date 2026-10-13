@@ -563,6 +563,10 @@ require(SCHEMATICS_UI, "schematics = new Schematics();", "stock schematic regist
 require(SCHEMATICS_UI, "schematics.loadSync();", "persisted stock .msch library loading")
 require(SCHEMATICS_UI, "schematics.all()", "real local schematic listing")
 require(SCHEMATICS_UI, "schematics.add(schematic)", "real imported schematic persistence")
+require(SCHEMATICS_UI, "Events.on(InputHandler.WebSchematicSaveRequest.class", "native selected-schematic save dialog")
+require((SCRIPTS / "patch-mindustry-input-web.py").read_text(encoding="utf-8"),
+        "Events.fire(new WebSchematicSaveRequest(last))", "original schematic Save action routes to browser UI")
+require(SCHEMATICS_UI, 'schematic.tags.put("name", chosen)', "original schematic names persisted with .msch")
 require(SCHEMATICS_UI, "Schematics.readBase64(raw)", "original .msch clipboard importer")
 require(SCHEMATICS_UI, "schematics.writeBase64(schematic)", "original .msch clipboard exporter")
 require(SCHEMATICS_UI, "control.input.useSchematic(schematic)", "stock build-plan placement entry")
