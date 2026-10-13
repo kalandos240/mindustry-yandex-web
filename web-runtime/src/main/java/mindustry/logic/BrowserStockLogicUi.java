@@ -29,12 +29,13 @@ public final class BrowserStockLogicUi{
     private static Table overlay, pane, chooser;
     private static Stack editorArea;
     private static ScrollPane chooserScroll;
-    private static TextField chooserSearch;
+    private static TextField chooserSearch, variableSearch;
+    private static Table variableRows;
     private static LCanvas canvas;
     private static TextArea codeArea;
     private static Label status;
     private static LogicBuild editing;
-    private static boolean open, selecting, textMode, forceEditor;
+    private static boolean open, selecting, textMode, variablesMode, forceEditor;
     private static String originalCode;
 
     private BrowserStockLogicUi(){}
@@ -63,7 +64,7 @@ public final class BrowserStockLogicUi{
 
         canvas = new LCanvas();
         canvas.privileged = false;
-        canvas.visible(() -> !selecting && !textMode);
+        canvas.visible(() -> !selecting && !textMode && !variablesMode);
         chooser = new Table();
         chooser.top().left();
         chooserScroll = new ScrollPane(chooser, Styles.smallPane);
@@ -81,10 +82,28 @@ public final class BrowserStockLogicUi{
         codeArea.setPrefRows(12);
         codeArea.visible(() -> textMode);
 
+        // The original LogicDialog "Variables" action reads the active
+        // LExecutor.vars array. Keep the values live while the processor runs;
+        // do not replace the processor with a Web-only simulation.
+        variableRows = new Table();
+        variableRows.top().left();
+        ScrollPane variableScroll = new ScrollPane(variableRows, Styles.smallPane);
+        variableScroll.setScrollingDisabled(true, false);
+        variableScroll.setFadeScrollBars(false);
+        Table variablePage = new Table();
+        variablePage.top();
+        variableSearch = new TextField("");
+        variableSearch.setMessageText("@players.search");
+        variableSearch.changed(BrowserStockLogicUi::rebuildVariables);
+        variablePage.add(variableSearch).growX().height(49f).pad(4f).row();
+        variablePage.add(variableScroll).grow();
+        variablePage.visible(() -> variablesMode);
+
         editorArea = new Stack();
         editorArea.add(canvas);
         editorArea.add(chooserPage);
         editorArea.add(codeArea);
+        editorArea.add(variablePage);
         pane.add(editorArea).width(width - 20f)
             .height(Math.max(85f, height - (mobile ? 225f : 145f))).grow().row();
 
@@ -92,6 +111,7 @@ public final class BrowserStockLogicUi{
             actions.defaults().pad(3f);
             actions.button("@add", Icon.add, () -> {
                 if(textMode) return;
+                variablesMode = false;
                 selecting = !selecting;
                 if(selecting){
                     chooserSearch.setText("");
@@ -101,6 +121,7 @@ public final class BrowserStockLogicUi{
             }).size(mobile ? 104f : 108f, 47f).name("web-logic-add");
             actions.button("@edit", Icon.pencil, () -> {
                 if(selecting) selecting = false;
+                if(variablesMode) variablesMode = false;
                 if(textMode){
                     try{
                         canvas.load(codeArea.getText().replace("\r\n", "\n"));
@@ -115,12 +136,32 @@ public final class BrowserStockLogicUi{
                     Core.scene.setKeyboardFocus(codeArea);
                 }
             }).size(mobile ? 104f : 108f, 47f).name("web-logic-source");
+            actions.button("@variables", Icon.menu, () -> {
+                if(editing == null || !open) return;
+                if(textMode){
+                    try{
+                        canvas.load(codeArea.getText().replace("\r\n", "\n"));
+                        textMode = false;
+                    }catch(Throwable problem){
+                        status.setText(Core.bundle.get("data.invalid", "Invalid logic code"));
+                        return;
+                    }
+                }
+                selecting = false;
+                variablesMode = !variablesMode;
+                if(variablesMode){
+                    variableSearch.setText("");
+                    rebuildVariables();
+                }
+                markVariablesOpen(variablesMode);
+            }).size(mobile ? 104f : 108f, 47f).name("web-logic-variables");
             actions.button("@copy.clipboard", Icon.copy,
                 () -> Core.app.setClipboardText(textMode ? codeArea.getText() : canvas.save()))
                 .size(mobile ? 104f : 126f, 47f).name("web-logic-copy");
-            if(mobile) actions.row();
+            actions.row();
             actions.button("@clear", Icon.trash, () -> {
                 if(selecting) selecting = false;
+                if(variablesMode) variablesMode = false;
                 if(textMode) codeArea.setText("");
                 else canvas.clearStatements();
             }).size(mobile ? 104f : 108f, 47f).name("web-logic-clear");
@@ -139,6 +180,7 @@ public final class BrowserStockLogicUi{
                 if(key == KeyCode.escape || key == KeyCode.back){
                     if(selecting){selecting = false;}
                     else if(textMode){textMode = false;}
+                    else if(variablesMode){variablesMode = false;markVariablesOpen(false);}
                     else cancel();
                     return true;
                 }
@@ -171,6 +213,8 @@ public final class BrowserStockLogicUi{
         }
         selecting = false;
         textMode = false;
+        variablesMode = false;
+        markVariablesOpen(false);
         status.setText("");
         open = true;
         Core.scene.setKeyboardFocus(overlay);
@@ -203,6 +247,37 @@ public final class BrowserStockLogicUi{
         }
         if(found == 0) chooser.add("@none.found");
         markChoices(found);
+    }
+
+    private static void rebuildVariables(){
+        if(variableRows == null) return;
+        variableRows.clearChildren();
+        variableRows.defaults().pad(3f);
+        if(editing == null || editing.executor == null) return;
+        String filter = variableSearch == null ? "" : variableSearch.getText().trim().toLowerCase(Locale.ROOT);
+        int count = 0;
+        for(LVar variable : editing.executor.vars){
+            if(variable == null || variable.constant ||
+                !variable.name.toLowerCase(Locale.ROOT).contains(filter)) continue;
+            variableRows.add(variable.name).left().width(mobile ? 95f : 195f);
+            Label value = variableRows.add("").left().growX().get();
+            value.update(() -> {
+                if(open && variablesMode && editing != null){
+                    String shown = variable.isobj
+                        ? (variable.objval == null ? "null" : String.valueOf(variable.objval))
+                        : (Math.abs(variable.numval - Math.rint(variable.numval)) < 0.00001d
+                            ? Long.toString(Math.round(variable.numval))
+                            : Double.toString(variable.numval));
+                    value.setText(shown.length() > 120 ? shown.substring(0, 117) + "..." : shown);
+                }
+            });
+            variableRows.row();
+            count++;
+        }
+        if(count == 0){
+            variableRows.add(Core.bundle.get("none.found", "No results"));
+        }
+        markVariableCount(count);
     }
 
     private static void save(){
@@ -244,6 +319,8 @@ public final class BrowserStockLogicUi{
         editing = null;
         selecting = false;
         textMode = false;
+        variablesMode = false;
+        markVariablesOpen(false);
         if(Core.scene != null && Core.scene.getKeyboardFocus() == overlay){
             Core.scene.setKeyboardFocus(null);
         }
@@ -265,4 +342,10 @@ public final class BrowserStockLogicUi{
 
     @JSBody(params={"chars"},script="document.documentElement.setAttribute('data-mindustry-logic-saved-chars',String(chars));")
     private static native void markSaved(int chars);
+
+    @JSBody(params={"open"},script="document.documentElement.setAttribute('data-mindustry-logic-variables-open',open?'yes':'no');")
+    private static native void markVariablesOpen(boolean open);
+
+    @JSBody(params={"count"},script="document.documentElement.setAttribute('data-mindustry-logic-variables-count',String(count));")
+    private static native void markVariableCount(int count);
 }
