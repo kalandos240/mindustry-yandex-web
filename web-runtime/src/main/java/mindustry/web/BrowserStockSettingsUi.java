@@ -4,6 +4,7 @@ import arc.*;
 import arc.input.*;
 import arc.math.geom.*;
 import arc.scene.*;
+import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.style.*;
 import arc.scene.ui.layout.*;
@@ -17,8 +18,9 @@ import static mindustry.Vars.*;
 
 /** Browser settings using the pinned game's actual preference widgets. */
 public final class BrowserStockSettingsUi{
-    private static BaseDialog dialog;
-    private static Table pages;
+    private static Table overlay, pages;
+    private static ScrollPane pageScroll;
+    private static boolean open;
     private static SettingsTable game, graphics, sound;
     private static String page = "main", context;
     private static boolean campaign;
@@ -26,25 +28,57 @@ public final class BrowserStockSettingsUi{
     private BrowserStockSettingsUi(){}
 
     public static void init(){
-        if(dialog != null) return;
-        dialog = new BaseDialog("@settings");
-        dialog.name = "web-stock-settings";
+        if(overlay != null) return;
+
+        // BaseDialog's stock desktop lifecycle depends on UI.init() creating
+        // the full dialog graph. This browser uses UI.loadSync() instead.
+        // Mount a native Scene pane exactly like the working Database overlay;
+        // its inner settings widgets remain the pinned SettingsTable controls.
+        overlay = new Table();
+        overlay.name = "web-stock-settings";
+        overlay.setFillParent(true);
+        overlay.setBackground(Styles.black6);
+        overlay.touchable = Touchable.enabled;
+        overlay.visible(() -> open && (state.isMenu() || state.isPaused()));
+
+        float width = Math.max(180f,
+            Math.min(mobile ? 510f : 700f, Core.graphics.getWidth() - 16f));
+        float height = Math.max(180f,
+            Math.min(mobile ? 610f : 720f, Core.graphics.getHeight() - 16f));
+        Table panel = new Table(Tex.pane2);
+        panel.defaults().pad(5f);
+        panel.add(Core.bundle.get("settings", "Settings"))
+            .style(Styles.outlineLabel).padTop(12f).row();
+
         pages = new Table();
         pages.top().margin(14f);
-        dialog.cont.pane(pages).grow().top();
-        dialog.buttons.button("@back", Icon.left, BrowserStockSettingsUi::back).size(210f, 64f).name("web-settings-back");
-        dialog.keyDown(key -> {
-            if(key == KeyCode.escape || key == KeyCode.back) back();
+        pageScroll = new ScrollPane(pages, Styles.smallPane);
+        pageScroll.setFadeScrollBars(false);
+        pageScroll.setScrollingDisabled(true, false);
+        panel.add(pageScroll).width(width - 24f)
+            .height(Math.max(75f, height - 118f)).grow().row();
+        panel.button(Core.bundle.get("back", "Back"), Icon.left,
+            BrowserStockSettingsUi::back)
+            .size(Math.min(210f, width - 34f), 57f)
+            .name("web-settings-back").padBottom(8f);
+        overlay.add(panel).width(width).height(height);
+
+        overlay.addListener(new InputListener(){
+            @Override
+            public boolean keyDown(InputEvent event, KeyCode key){
+                if(key == KeyCode.escape || key == KeyCode.back){
+                    back();
+                    return true;
+                }
+                return false;
+            }
         });
-        dialog.hidden(() -> {
-            Core.settings.forceSave();
-            mark("closed", "none", page);
-        });
-        dialog.update(() -> {
-            if(!dialog.isShown()) return;
+        overlay.update(() -> {
+            if(!open) return;
             if("menu".equals(context) ? !state.isMenu()
                 : !state.isPaused() || state.gameOver || campaign != BrowserCampaignRuntime.active()){
-                dialog.hide();
+                hide();
+                return;
             }
             hitPoint("back");
             if("main".equals(page)){
@@ -59,6 +93,7 @@ public final class BrowserStockSettingsUi{
                 if(state.isMenu()) hitPoint("lang-restart");
             }
         });
+        Core.scene.add(overlay);
         game = new SettingsTable();
         graphics = new SettingsTable();
         sound = new SettingsTable();
@@ -120,7 +155,8 @@ public final class BrowserStockSettingsUi{
         context = origin;
         campaign = BrowserCampaignRuntime.active();
         showPage("main");
-        dialog.show();
+        open = true;
+        Core.scene.setKeyboardFocus(overlay);
         mark("open", context, page);
     }
 
@@ -142,8 +178,8 @@ public final class BrowserStockSettingsUi{
             table.rebuild();
             pages.add(table);
         }
-        if(dialog.isShown()) dialog.updateScrollFocus();
-        mark(dialog.isShown() ? "open" : "closed", context == null ? "none" : context, page);
+        if(pageScroll != null) pageScroll.setScrollY(0f);
+        mark(open ? "open" : "closed", context == null ? "none" : context, page);
     }
 
     private static void category(Table menu, String name, Drawable icon){
@@ -221,11 +257,18 @@ public final class BrowserStockSettingsUi{
     private static void back(){
         Core.settings.forceSave();
         if(!"main".equals(page)) showPage("main");
-        else dialog.hide();
+        else hide();
+    }
+
+    private static void hide(){
+        open = false;
+        Core.settings.forceSave();
+        if(Core.scene.getKeyboardFocus() == overlay) Core.scene.setKeyboardFocus(null);
+        mark("closed", "none", page);
     }
 
     private static void hitPoint(String name){
-        Element button = dialog.find("web-settings-" + name);
+        Element button = overlay.find("web-settings-" + name);
         if(button == null || button.getWidth() <= 0f) return;
         Vec2 point = button.localToStageCoordinates(new Vec2(button.getWidth()/2f, button.getHeight()/2f));
         Core.scene.getViewport().project(point);
