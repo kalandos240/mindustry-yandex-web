@@ -49,7 +49,6 @@ public final class BrowserLocalMapRuntime{
     private static long pauseUpdateId;
     private static int pausedFrames;
     private static boolean saveSmokeArmed;
-    private static final double periodicSaveIntervalTicks = 180.0 * 60.0;
     private static double periodicSaveTick;
     private static boolean periodicSaveSmokeDone;
     private static Map current;
@@ -695,14 +694,14 @@ public final class BrowserLocalMapRuntime{
         }
     }
 
-    /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
+    /** Respect the stock save interval in active simulation ticks. */
     private static void maybePeriodicSave(){
         if(!active || current == null || !state.isPlaying() || state.gameOver) return;
 
         boolean smoke = periodicSaveSmoke;
         if(smoke){
             if(periodicSaveSmokeDone || frames < 3) return;
-        }else if(state.tick - periodicSaveTick < periodicSaveIntervalTicks){
+        }else if(state.tick - periodicSaveTick < Math.max(10, Core.settings.getInt("saveinterval", 60)) * 60.0){
             return;
         }
 

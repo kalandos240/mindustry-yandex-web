@@ -79,6 +79,16 @@ public final class BrowserHudEssentials{
         items.add(ui.hudfrag.coreItems).name("web-hud-core-items");
         parent.addChild(items);
 
+        Table fps = new Table();
+        fps.name = "web-hud-fps-root";
+        fps.setFillParent(true);
+        fps.top().left().margin(4f);
+        fps.touchable = Touchable.disabled;
+        fps.visible(() -> state.isGame() && ui.hudfrag.shown && Core.settings.getBool("fps"));
+        fps.label(() -> Core.bundle.format("fps", Core.graphics.getFramesPerSecond()))
+            .left().style(Styles.outlineLabel).name("web-hud-fps");
+        parent.addChild(fps);
+
         // Original guardian health feedback, independent of the core-items
         // visibility setting and using the actual boss unit health.
         Table bosses = new Table();
