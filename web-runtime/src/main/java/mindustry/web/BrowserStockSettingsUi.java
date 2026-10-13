@@ -4,6 +4,7 @@ import arc.*;
 import arc.input.*;
 import arc.math.geom.*;
 import arc.scene.*;
+import arc.scene.ui.*;
 import arc.scene.style.*;
 import arc.scene.ui.layout.*;
 import mindustry.gen.*;
@@ -50,6 +51,12 @@ public final class BrowserStockSettingsUi{
                 hitPoint("game");
                 hitPoint("graphics");
                 hitPoint("sound");
+                hitPoint("language");
+            }else if("language".equals(page)){
+                hitPoint("lang-auto");
+                hitPoint("lang-en");
+                hitPoint("lang-ru");
+                if(state.isMenu()) hitPoint("lang-restart");
             }
         });
         game = new SettingsTable();
@@ -126,7 +133,10 @@ public final class BrowserStockSettingsUi{
             category(menu, "game", Icon.settings);
             category(menu, "graphics", Icon.image);
             category(menu, "sound", Icon.volumeUp);
+            category(menu, "language", Icon.book);
             pages.add(menu);
+        }else if("language".equals(page)){
+            buildLanguagePage();
         }else{
             SettingsTable table = "game".equals(page) ? game : "graphics".equals(page) ? graphics : sound;
             table.rebuild();
@@ -137,9 +147,76 @@ public final class BrowserStockSettingsUi{
     }
 
     private static void category(Table menu, String name, Drawable icon){
-        menu.button("@settings." + name, icon, Styles.flatt, iconMed,
+        // The browser release has exactly two packaged bundles.
+        String label = "language".equals(name)
+            ? (russianUi() ? "Язык" : "Language") : "@settings." + name;
+        menu.button(label, icon, Styles.flatt, iconMed,
             () -> showPage(name)).marginLeft(8f).name("web-settings-" + name).row();
     }
+
+    private static boolean russianUi(){
+        return "ru".equals(Core.bundle.getLocale().getLanguage());
+    }
+
+    private static void buildLanguagePage(){
+        // This screen uses actual Arc Scene widgets, not an HTML panel.
+        // Do not reload paused gameplay: unsaved sector state could be lost.
+        Table selector = new Table(Tex.button);
+        selector.defaults().pad(5f);
+        selector.add(russianUi() ? "Язык" : "Language").padBottom(8f).row();
+        languageChoice(selector, "auto", "default",
+            russianUi() ? "Автоматически (Яндекс)" : "Automatic (Yandex)");
+        languageChoice(selector, "en", "en", "English");
+        languageChoice(selector, "ru", "ru", "Русский");
+
+        Label message = new Label(russianUi()
+            ? "Язык изменится после перезапуска игры."
+            : "The language changes after restarting the game.");
+        message.setWrap(true);
+        selector.add(message).width(mobile ? 260f : 320f).padTop(10f).row();
+
+        // An immediate restart is safe from the menu only. From Pause, the
+        // preference persists and applies on the next ordinary launch.
+        if(state.isMenu()){
+            selector.button(russianUi() ? "Перезапустить и применить" : "Restart and apply",
+                BrowserStockSettingsUi::restartLanguage)
+                .width(mobile ? 260f : 320f).height(56f)
+                .name("web-settings-lang-restart").padTop(6f).row();
+        }
+        pages.add(selector);
+        markLanguageChoice(Core.settings.getString("locale", "default"));
+    }
+
+    private static void languageChoice(Table selector, String name, String code, String label){
+        boolean selected = code.equals(Core.settings.getString("locale", "default"));
+        Table row = new Table();
+        row.button(label, () -> {
+            Core.settings.put("locale", code);
+            Core.settings.forceSave();
+            showPage("language");
+        }).width(mobile ? 224f : 282f).height(56f).name("web-settings-lang-" + name);
+        if(selected) row.image(Icon.ok).size(23f).padLeft(4f);
+        selector.add(row).row();
+    }
+
+    private static void restartLanguage(){
+        if(!state.isMenu()) return;
+        Core.settings.forceSave();
+        reloadWithoutLocaleOverride();
+    }
+
+    @JSBody(script = """
+        // Remove the CI-only ?lang override when applying the user's choice.
+        const url = new URL(location.href);
+        url.searchParams.delete('lang');
+        location.replace(url.href);
+        """)
+    private static native void reloadWithoutLocaleOverride();
+
+    @JSBody(params={"choice"}, script = """
+        document.documentElement.setAttribute('data-mindustry-settings-language-choice',choice);
+        """)
+    private static native void markLanguageChoice(String choice);
 
     private static void back(){
         Core.settings.forceSave();
