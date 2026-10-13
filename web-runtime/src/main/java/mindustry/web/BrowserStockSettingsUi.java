@@ -172,6 +172,7 @@ public final class BrowserStockSettingsUi{
         graphics.checkPref("skipcoreanimation", false);
         graphics.checkPref("hidedisplays", false);
         mark("closed", "none", "main");
+        markMusicPreference(Core.settings.getInt("musicvol", 100));
         ready();
     }
 
@@ -389,6 +390,11 @@ public final class BrowserStockSettingsUi{
         root.setAttribute('data-mindustry-settings-page',page);
         """)
     private static native void mark(String state, String context, String page);
+
+    @JSBody(params={"value"}, script="""
+        document.documentElement.setAttribute('data-mindustry-settings-music-value',String(value));
+        """)
+    private static native void markMusicPreference(int value);
 
     @JSBody(script="""
         const root=document.documentElement;
