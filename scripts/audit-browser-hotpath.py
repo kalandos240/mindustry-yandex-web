@@ -602,7 +602,7 @@ require(LOGIC_UI, "editing.configure(compressed)", "vanilla processor configurat
 require(LOGIC_UI, "Core.scene.setKeyboardFocus(overlay)", "modal logic editor focus")
 require(LOGIC_UI, "data-mindustry-native-logic-canvas", "runtime diagnostic native LCanvas marker")
 require(LOGIC_UI_PATCH, "Events.fire(new WebLogicEditorRequest(this, forceEditor))", "stock processor pencil requests browser dialog")
-require(LOGIC_UI_PATCH, "if(ui.logic == null)", "guard omitted desktop LogicDialog")
+require(LOGIC_UI_PATCH, "new_edit = \"\"\"        public void showEditDialog(boolean forceEditor)", "browser entry for stock pencil button")
 require(APPLY_PORT, "patch-mindustry-logic-ui-web.py", "logic processor Web overlay applied")
 require(BROWSER_UI, "mindustry.logic.BrowserStockLogicUi.init()", "logic editor live Arc Scene startup")
 require((WEB_JAVA / "BrowserGameplayRuntime.java").read_text(encoding="utf-8"),
