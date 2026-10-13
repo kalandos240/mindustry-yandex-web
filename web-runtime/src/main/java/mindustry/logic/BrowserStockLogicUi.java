@@ -29,6 +29,7 @@ public final class BrowserStockLogicUi{
     private static Table overlay, pane, chooser;
     private static Stack editorArea;
     private static ScrollPane chooserScroll;
+    private static TextField chooserSearch;
     private static LCanvas canvas;
     private static TextArea codeArea;
     private static Label status;
@@ -68,14 +69,21 @@ public final class BrowserStockLogicUi{
         chooserScroll = new ScrollPane(chooser, Styles.smallPane);
         chooserScroll.setScrollingDisabled(true, false);
         chooserScroll.setFadeScrollBars(false);
-        chooserScroll.visible(() -> selecting);
+        Table chooserPage = new Table();
+        chooserPage.top();
+        chooserSearch = new TextField("");
+        chooserSearch.setMessageText("@players.search");
+        chooserSearch.changed(() -> rebuildChooser(chooserSearch.getText()));
+        chooserPage.add(chooserSearch).growX().height(49f).pad(4f).row();
+        chooserPage.add(chooserScroll).grow();
+        chooserPage.visible(() -> selecting);
         codeArea = new TextArea("");
         codeArea.setPrefRows(12);
         codeArea.visible(() -> textMode);
 
         editorArea = new Stack();
         editorArea.add(canvas);
-        editorArea.add(chooserScroll);
+        editorArea.add(chooserPage);
         editorArea.add(codeArea);
         pane.add(editorArea).width(width - 20f)
             .height(Math.max(85f, height - (mobile ? 225f : 145f))).grow().row();
@@ -85,7 +93,11 @@ public final class BrowserStockLogicUi{
             actions.button("@add", Icon.add, () -> {
                 if(textMode) return;
                 selecting = !selecting;
-                if(selecting) rebuildChooser("");
+                if(selecting){
+                    chooserSearch.setText("");
+                    rebuildChooser("");
+                    Core.scene.setKeyboardFocus(chooserSearch);
+                }
             }).size(mobile ? 104f : 108f, 47f).name("web-logic-add");
             actions.button("@edit", Icon.pencil, () -> {
                 if(selecting) selecting = false;
@@ -169,12 +181,6 @@ public final class BrowserStockLogicUi{
         chooser.clearChildren();
         chooser.top().left();
         chooser.defaults().pad(3f);
-        chooser.table(bar -> {
-            bar.image(Icon.zoom).padRight(4f);
-            TextField input = bar.field(search, BrowserStockLogicUi::rebuildChooser)
-                .width(mobile ? 250f : 500f).get();
-            input.setMessageText("@players.search");
-        }).left().row();
         String filter = search == null ? "" : search.toLowerCase(Locale.ROOT);
         int found = 0;
         for(Prov<LStatement> factory : LogicIO.allStatements){
