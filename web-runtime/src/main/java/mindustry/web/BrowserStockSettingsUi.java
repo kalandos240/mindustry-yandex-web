@@ -2,6 +2,8 @@ package mindustry.web;
 
 import arc.*;
 import arc.input.*;
+import arc.input.KeyBind.*;
+import arc.util.*;
 import arc.math.geom.*;
 import arc.scene.*;
 import arc.scene.event.*;
@@ -24,6 +26,9 @@ public final class BrowserStockSettingsUi{
     private static SettingsTable game, graphics, sound;
     private static String page = "main", context;
     private static boolean campaign;
+    private static KeyBind capturing;
+    private static boolean captureAxisSecond;
+    private static KeyCode captureAxisFirst;
 
     private BrowserStockSettingsUi(){}
 
@@ -66,6 +71,33 @@ public final class BrowserStockSettingsUi{
         overlay.addListener(new InputListener(){
             @Override
             public boolean keyDown(InputEvent event, KeyCode key){
+                if(capturing != null){
+                    if(key == KeyCode.escape){
+                        capturing = null;
+                        captureAxisSecond = false;
+                        showPage("controls");
+                        return true;
+                    }
+                    if(captureAxisSecond){
+                        capturing.value = new Axis(captureAxisFirst, key);
+                        capturing.save();
+                        capturing = null;
+                        captureAxisSecond = false;
+                        Core.settings.forceSave();
+                        showPage("controls");
+                    }else if(capturing.defaultValue instanceof Axis && !key.axis){
+                        captureAxisFirst = key;
+                        captureAxisSecond = true;
+                        showCapturePage();
+                    }else{
+                        capturing.value = new Axis(key);
+                        capturing.save();
+                        capturing = null;
+                        Core.settings.forceSave();
+                        showPage("controls");
+                    }
+                    return true;
+                }
                 if(key == KeyCode.escape || key == KeyCode.back){
                     back();
                     return true;
@@ -86,6 +118,7 @@ public final class BrowserStockSettingsUi{
                 hitPoint("graphics");
                 hitPoint("sound");
                 hitPoint("language");
+                if(!mobile) hitPoint("controls");
             }else if("language".equals(page)){
                 hitPoint("lang-auto");
                 hitPoint("lang-en");
@@ -171,9 +204,14 @@ public final class BrowserStockSettingsUi{
             category(menu, "graphics", Icon.image);
             category(menu, "sound", Icon.volumeUp);
             category(menu, "language", Icon.chat);
+            if(!mobile) category(menu, "controls", Icon.move);
             pages.add(menu);
         }else if("language".equals(page)){
             buildLanguagePage();
+        }else if("controls".equals(page)){
+            buildControlsPage();
+        }else if("capture".equals(page)){
+            showCapturePage();
         }else{
             SettingsTable table = "game".equals(page) ? game : "graphics".equals(page) ? graphics : sound;
             table.rebuild();
@@ -187,6 +225,62 @@ public final class BrowserStockSettingsUi{
         menu.button("@settings." + name, icon, Styles.flatt, iconMed,
             () -> showPage(name)).marginLeft(8f).name("web-settings-" + name).row();
     }
+
+    private static void buildControlsPage(){
+        // Same KeyBind registry and Axis values as the original KeybindDialog.
+        // Rebuilding happens only on opening/reset/rebinding, never per frame.
+        Table table = new Table(Tex.button);
+        table.defaults().pad(3f);
+        String category = null;
+        for(KeyBind bind : KeyBind.all){
+            if(bind.category != null && !bind.category.equals(category)){
+                category = bind.category;
+                table.add(Core.bundle.get("category." + category + ".name", category))
+                    .colspan(3).left().padTop(12f).row();
+            }
+            table.add(Core.bundle.get("keybind." + bind.name + ".name",
+                Strings.capitalize(bind.name))).width(mobile ? 110f : 210f).left();
+            String value = bind.value.key != null ? bind.value.key.getName()
+                : bind.value.min.getName() + " / " + bind.value.max.getName();
+            table.button(value, () -> {
+                capturing = bind;
+                captureAxisSecond = false;
+                showPage("capture");
+                Core.scene.setKeyboardFocus(overlay);
+            }).width(mobile ? 110f : 170f).height(43f);
+            table.button("@settings.resetKey", () -> {
+                bind.resetToDefault();
+                Core.settings.forceSave();
+                showPage("controls");
+            }).width(mobile ? 85f : 130f).height(43f)
+                .disabled(b -> bind.isDefault()).row();
+        }
+        table.button("@settings.reset", Icon.refresh, () -> {
+            KeyBind.resetAll();
+            Core.settings.forceSave();
+            showPage("controls");
+        }).colspan(3).height(52f).width(220f).padTop(12f);
+        pages.add(table);
+        markControlsReady(KeyBind.all.size);
+    }
+
+    private static void showCapturePage(){
+        pages.clearChildren();
+        Table prompt = new Table(Tex.button);
+        prompt.add(captureAxisSecond ? "@keybind.press.axis" : "@keybind.press")
+            .pad(30f).row();
+        prompt.button("@back", () -> {
+            capturing = null;
+            captureAxisSecond = false;
+            showPage("controls");
+        }).size(180f, 54f);
+        pages.add(prompt);
+    }
+
+    @JSBody(params={"count"}, script="""
+        document.documentElement.setAttribute('data-mindustry-settings-native-keybinds',String(count));
+        """)
+    private static native void markControlsReady(int count);
 
     private static boolean russianUi(){
         return "ru".equals(Core.bundle.getLocale().getLanguage());
@@ -257,12 +351,18 @@ public final class BrowserStockSettingsUi{
 
     private static void back(){
         Core.settings.forceSave();
-        if(!"main".equals(page)) showPage("main");
+        if(capturing != null){
+            capturing = null;
+            captureAxisSecond = false;
+            showPage("controls");
+        }else if(!"main".equals(page)) showPage("main");
         else hide();
     }
 
     private static void hide(){
         open = false;
+        capturing = null;
+        captureAxisSecond = false;
         Core.settings.forceSave();
         if(Core.scene.getKeyboardFocus() == overlay) Core.scene.setKeyboardFocus(null);
         mark("closed", "none", page);
