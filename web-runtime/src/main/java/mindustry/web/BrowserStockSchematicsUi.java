@@ -37,6 +37,7 @@ public final class BrowserStockSchematicsUi{
     private static String search = "";
     private static int page, matches, pointerFrames;
     private static Schematic pendingDelete;
+    private static String pendingTagDelete;
     private static Element closeButton;
 
     private BrowserStockSchematicsUi(){}
@@ -178,6 +179,8 @@ public final class BrowserStockSchematicsUi{
                 rebuild();
             }).checked(selectedTags.contains(tag)).minWidth(66f);
         }
+        filterBar.button(Icon.pencilSmall, BrowserStockSchematicsUi::manageTags)
+            .size(38f).name("web-schematics-edit-tags");
         markTagFilter(tags.size, selectedTags.size);
     }
 
@@ -282,6 +285,86 @@ public final class BrowserStockSchematicsUi{
         control.input.useSchematic(schematic);
         hide();
         markUsed(schematic.name());
+    }
+
+    private static void manageTags(){
+        if(results == null) return;
+        results.clearChildren();
+        Table manager = new Table(Tex.button);
+        manager.left();
+        manager.defaults().pad(3f);
+        manager.add("@schematic.edittags").left().padBottom(8f).row();
+        for(String tag : tags){
+            Table row = new Table();
+            row.defaults().pad(2f);
+            TextField rename = new TextField(tag);
+            row.add(rename).width(mobile ? 130f : 220f).height(43f);
+            row.button(Icon.ok, () -> {
+                String renamed = rename.getText().trim();
+                if(renamed.isEmpty() || renamed.length() > 60) return;
+                if(renamed.equals(tag)) return;
+                if(tags.contains(renamed)){
+                    status.setText(Core.bundle.get("schematic.tagexists", "Tag already exists"));
+                    return;
+                }
+                for(Schematic schematic : schematics.all()){
+                    if(schematic.labels.contains(tag)){
+                        schematic.labels.replace(tag, renamed);
+                        schematic.save();
+                    }
+                }
+                tags.replace(tag, renamed);
+                selectedTags.replace(tag, renamed);
+                saveTags();
+                pendingTagDelete = null;
+                rebuildTagFilter();
+                manageTags();
+            }).size(40f);
+            row.button(Icon.upOpen, () -> {
+                int index = tags.indexOf(tag);
+                if(index > 0){
+                    tags.swap(index, index - 1);
+                    saveTags();
+                    rebuildTagFilter();
+                    manageTags();
+                }
+            }).size(40f);
+            row.button(Icon.downOpen, () -> {
+                int index = tags.indexOf(tag);
+                if(index < tags.size - 1){
+                    tags.swap(index, index + 1);
+                    saveTags();
+                    rebuildTagFilter();
+                    manageTags();
+                }
+            }).size(40f);
+            row.button(Icon.trash, () -> {
+                if(!tag.equals(pendingTagDelete)){
+                    pendingTagDelete = tag;
+                    status.setText(Core.bundle.get("schematic.tagdelconfirm",
+                        "Press delete again to remove this tag from all schematics"));
+                    return;
+                }
+                for(Schematic schematic : schematics.all()){
+                    if(schematic.labels.remove(tag)) schematic.save();
+                }
+                tags.remove(tag);
+                selectedTags.remove(tag);
+                pendingTagDelete = null;
+                page = 0;
+                saveTags();
+                rebuildTagFilter();
+                manageTags();
+                status.setText("");
+            }).size(40f);
+            manager.add(row).left().row();
+        }
+        manager.button("@back", Icon.left, () -> {
+            pendingTagDelete = null;
+            rebuildTagFilter();
+            rebuild();
+        }).size(190f, 47f).padTop(8f).row();
+        results.add(manager).pad(7f).left();
     }
 
     private static void showEdit(Schematic schematic){
