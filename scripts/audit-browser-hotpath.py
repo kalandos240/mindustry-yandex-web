@@ -569,6 +569,13 @@ require((SCRIPTS / "patch-mindustry-input-web.py").read_text(encoding="utf-8"),
 require(SCHEMATICS_UI, 'schematic.tags.put("name", chosen)', "original schematic names persisted with .msch")
 require(SCHEMATICS_UI, 'schematic.tags.put("description", description.getText())', "native schematic description editor")
 require(SCHEMATICS_UI, "schematic.save();", "original .msch save after native edits")
+require(SCHEMATICS_UI, 'Core.settings.getJson("schematic-tags", Seq.class, String.class, Seq::new)', "original schematic tag persistence format")
+require(SCHEMATICS_UI, 'Core.settings.putJson("schematic-tags", String.class, tags)', "original tag store writer")
+require(SCHEMATICS_UI, 'schematic.labels.containsAll(selectedTags)', "stock multiple-tag filter")
+require(SCHEMATICS_UI, 'Seq<String> draft = schematic.labels.copy()', "non-destructive tag editing before Save")
+require(SCHEMATICS_UI, 'schematic.labels.addAll(draft)', "persist schematic label edits only on Save")
+require(SCHEMATICS_UI, 'data-mindustry-schematics-tags-selected', "diagnostic native tag selection")
+
 require(SCHEMATICS_UI, "Schematics.readBase64(raw)", "original .msch clipboard importer")
 require(SCHEMATICS_UI, "schematics.writeBase64(schematic)", "original .msch clipboard exporter")
 require(SCHEMATICS_UI, "control.input.useSchematic(schematic)", "stock build-plan placement entry")
