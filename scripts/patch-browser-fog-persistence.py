@@ -80,7 +80,7 @@ if text.count(old_after_fog) != 1:
     raise SystemExit("Fog persistence frame hook anchor no longer matches optimized fog runtime")
 text = text.replace(old_after_fog, new_after_fog, 1)
 
-old_helper = '''    /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
+old_helper = '''    /** Respect the stock save interval in active simulation ticks. */
     private static void maybePeriodicSave(){
 '''
 new_helper = '''    /**
@@ -145,7 +145,7 @@ new_helper = '''    /**
         }
     }
 
-    /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
+    /** Respect the stock save interval in active simulation ticks. */
     private static void maybePeriodicSave(){
 '''
 if text.count(old_helper) != 1:
