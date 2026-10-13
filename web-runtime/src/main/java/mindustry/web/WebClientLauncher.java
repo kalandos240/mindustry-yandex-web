@@ -319,7 +319,9 @@ public final class WebClientLauncher extends ClientLauncher{
         if(player == null){
             player = Player.create();
             player.name = Core.settings.getString("name", "");
-            player.locale = Core.settings.getString("locale", "en");
+            // Player.locale is a concrete active language, not the persisted
+            // "default" mode used for Yandex SDK auto-detection.
+            player.locale = Core.bundle.getLocale().getLanguage();
             player.color.set(Core.settings.getInt("color-0", playerColors[8].rgba()));
         }
 
