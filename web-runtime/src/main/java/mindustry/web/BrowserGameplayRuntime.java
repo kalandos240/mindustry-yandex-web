@@ -116,6 +116,7 @@ public final class BrowserGameplayRuntime{
 
     private static void updateFrame(){
         if(!initialized || logic == null || state == null) return;
+        BrowserLogicEditorSmoke.update();
         // Arc keyboard events are drained before the listener update. The
         // stock Control.update() handles Space only during playing frames and
         // directly sets GameState.paused, bypassing the Web frozen-clock
@@ -130,6 +131,7 @@ public final class BrowserGameplayRuntime{
         boolean researchOpen = BrowserResearchUi.isOpen();
         boolean databaseOpen = BrowserStockDatabaseUi.isOpen();
         boolean schematicsOpen = BrowserStockSchematicsUi.isOpen();
+        boolean logicEditorOpen = mindustry.logic.BrowserStockLogicUi.isOpen();
         if(menuTapped && Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
             if(researchOpen) BrowserResearchUi.escape();
             else if(databaseOpen) BrowserStockDatabaseUi.hide();
@@ -142,7 +144,7 @@ public final class BrowserGameplayRuntime{
             else BrowserStockSchematicsUi.show();
         }
         if(!smokeMode && (state.isPlaying() || state.isPaused())
-        && !researchOpen && !databaseOpen && !schematicsOpen
+        && !researchOpen && !databaseOpen && !schematicsOpen && !logicEditorOpen
         && (Core.input.keyTap(Binding.pause) || menuTapped)
         && !state.gameOver
         && !state.rules.pauseDisabled && Core.scene != null

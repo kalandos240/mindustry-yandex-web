@@ -75,6 +75,8 @@ run_production_menu(){
     --require 'data-mindustry-gameplay-runtime="ready"' \
     --require 'data-mindustry-gameplay-loop="menu-stable"' \
     --require 'data-mindustry-settings-pause-entry="ready"' \
+    --require 'data-mindustry-native-logic="ready"' \
+    --require 'data-mindustry-native-logic-canvas="mindustry.logic.LCanvas"' \
     --after-ready-eval "(async () => {
       const root=document.documentElement, canvas=document.getElementById('mindustry-canvas');
       const wait=async(fn,label)=>{

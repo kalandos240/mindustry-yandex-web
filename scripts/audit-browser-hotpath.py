@@ -588,6 +588,44 @@ require((SCRIPTS / "patch-mindustry-input-web.py").read_text(encoding="utf-8"),
 require((SCRIPTS / "verify-browser-research-actions.sh").read_text(encoding="utf-8"),
         "data-mindustry-native-schematics-pointer", "real desktop/mobile schematic pointer smoke")
 
+# Native processor logic editor is the original LCanvas, never a new HTML
+# textarea pretending to reproduce draggable instruction widgets.
+LOGIC_UI = (ROOT / "web-runtime/src/main/java/mindustry/logic/BrowserStockLogicUi.java").read_text(encoding="utf-8")
+LOGIC_UI_PATCH = (SCRIPTS / "patch-mindustry-logic-ui-web.py").read_text(encoding="utf-8")
+require(LOGIC_UI, "new LCanvas()", "original processor visual instruction canvas")
+require(LOGIC_UI, "canvas.load(originalCode)", "stock serialized logic assembly import")
+require(LOGIC_UI, "canvas.save()", "stock instruction widgets write LAssembler output")
+require(LOGIC_UI, "LogicIO.allStatements", "vanilla statement chooser registry")
+require(LOGIC_UI, "editing.relativeConnections()", "preserve logic processor links")
+require(LOGIC_UI, "LogicBlock.compress(code,", "upstream processor compressed config format")
+require(LOGIC_UI, "editing.configure(compressed)", "vanilla processor configuration apply")
+require(LOGIC_UI, "mindustry.web.BrowserCampaignRuntime.pause()", "browser vanilla logic modal campaign pause")
+require(LOGIC_UI, "mindustry.web.BrowserLocalMapRuntime.resume()", "logic dialog resumes only its paused session")
+require(LOGIC_UI, 'name("web-logic-paste")', "vanilla load from logic clipboard")
+require(LOGIC_UI, 'name("web-logic-restart")', "vanilla restart logic program")
+require(LOGIC_UI, 'save(true)', "original restart even for unchanged code")
+
+require(LOGIC_UI, "for(LVar variable : editing.executor.vars)", "native live LExecutor variable inspector")
+require(LOGIC_UI, "variable.constant", "skip stock constant variables")
+require(LOGIC_UI, 'actions.button("@variables", Icon.menu', "stock Variables category action")
+require(LOGIC_UI, "variableRows.row()", "tabular native variables display")
+require(LOGIC_UI, "data-mindustry-logic-variables-count", "variable view browser regression marker")
+require((WEB_JAVA / "BrowserLogicEditorSmoke.java").read_text(encoding="utf-8"),
+        "build.showEditDialog()", "real logic processor pencil smoke")
+require((SCRIPTS / "verify-browser-logic-editor.sh").read_text(encoding="utf-8"),
+        "new PointerEvent(type", "native LogicDialog action clicked from Chrome canvas")
+require((SCRIPTS / "verify-browser-logic-editor.sh").read_text(encoding="utf-8"),
+        "data-mindustry-local-map-state')==='playing'", "logic editor close resumes game")
+
+require(LOGIC_UI, "Core.scene.setKeyboardFocus(overlay)", "modal logic editor focus")
+require(LOGIC_UI, "data-mindustry-native-logic-canvas", "runtime diagnostic native LCanvas marker")
+require(LOGIC_UI_PATCH, "Events.fire(new WebLogicEditorRequest(this, forceEditor))", "stock processor pencil requests browser dialog")
+require(LOGIC_UI_PATCH, "new_edit = \"\"\"        public void showEditDialog(boolean forceEditor)", "browser entry for stock pencil button")
+require(APPLY_PORT, "patch-mindustry-logic-ui-web.py", "logic processor Web overlay applied")
+require(BROWSER_UI, "mindustry.logic.BrowserStockLogicUi.init()", "logic editor live Arc Scene startup")
+require((WEB_JAVA / "BrowserGameplayRuntime.java").read_text(encoding="utf-8"),
+        "!schematicsOpen && !logicEditorOpen", "logic editor blocks underlying pause input")
+
 require(YANDEX_JS, "adInFlight: false", "Yandex fullscreen ad re-entry guard")
 require(YANDEX_JS, "if(state.adInFlight)", "Yandex fullscreen ad re-entry guard")
 require(YANDEX_JS, "state.adWaitingForResume = true", "Yandex ad/platform resume race")

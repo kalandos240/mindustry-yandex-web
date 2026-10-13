@@ -95,6 +95,7 @@ public final class BrowserUiRuntime{
         BrowserResearchUi.init();
         BrowserStockDatabaseUi.init();
         BrowserStockSchematicsUi.init();
+        mindustry.logic.BrowserStockLogicUi.init();
 
         // The original MobileInput is built into a dedicated HUD WidgetGroup.
         // In the lean Web shell, additional stock and browser HUD overlays are
