@@ -230,7 +230,7 @@ public final class BrowserStockLogicUi{
 
     private static void markPointer(String key, String actorName){
         Element actor = Core.scene.root.find(actorName);
-        if(actor == null || !actor.isVisible()) return;
+        if(actor == null || !actor.visible) return;
         Vec2 center = actor.localToStageCoordinates(new Vec2(actor.getWidth() / 2f, actor.getHeight() / 2f));
         Core.scene.getViewport().project(center);
         markPointerDom(key, center.x, center.y);
