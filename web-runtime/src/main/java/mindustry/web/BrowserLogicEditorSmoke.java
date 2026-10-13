@@ -12,13 +12,13 @@ import static mindustry.Vars.*;
  * A real LogicBuild pencil action opens the original LCanvas.
  */
 public final class BrowserLogicEditorSmoke{
-    private static boolean triggered;
+    private static boolean triggered, checked, enabled;
     private static int attempts;
 
     private BrowserLogicEditorSmoke(){}
 
     public static void update(){
-        if(triggered || !requested() || !BrowserLocalMapRuntime.active()
+        if(triggered || !enabled() || !BrowserLocalMapRuntime.active()
             || state == null || !state.isPlaying()) return;
 
         if(++attempts < 4) return;
@@ -45,6 +45,14 @@ public final class BrowserLogicEditorSmoke{
             }
         }
         throw new IllegalStateException("No suitable tile near test core for native LogicBuild editor");
+    }
+
+    private static boolean enabled(){
+        if(!checked){
+            checked = true;
+            enabled = requested();
+        }
+        return enabled;
     }
 
     @JSBody(script="return new URLSearchParams(location.search).get('mindustryLogicEditorSmoke') === '1';")
