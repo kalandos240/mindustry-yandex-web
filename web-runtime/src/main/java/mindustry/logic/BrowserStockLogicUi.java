@@ -107,6 +107,7 @@ public final class BrowserStockLogicUi{
         pane.add(editorArea).width(width - 20f)
             .height(Math.max(85f, height - (mobile ? 225f : 145f))).grow().row();
 
+        float actionWidth = Math.max(62f, Math.min(106f, (width - 40f) / (mobile ? 3f : 5f)));
         pane.table(actions -> {
             actions.defaults().pad(3f);
             actions.button("@add", Icon.add, () -> {
@@ -118,7 +119,7 @@ public final class BrowserStockLogicUi{
                     rebuildChooser("");
                     Core.scene.setKeyboardFocus(chooserSearch);
                 }
-            }).size(mobile ? 104f : 108f, 47f).name("web-logic-add");
+            }).size(actionWidth, 47f).name("web-logic-add");
             actions.button("@edit", Icon.pencil, () -> {
                 if(selecting) selecting = false;
                 if(variablesMode) variablesMode = false;
@@ -135,7 +136,7 @@ public final class BrowserStockLogicUi{
                     textMode = true;
                     Core.scene.setKeyboardFocus(codeArea);
                 }
-            }).size(mobile ? 104f : 108f, 47f).name("web-logic-source");
+            }).size(actionWidth, 47f).name("web-logic-source");
             actions.button("@variables", Icon.menu, () -> {
                 if(editing == null || !open) return;
                 if(textMode){
@@ -154,21 +155,23 @@ public final class BrowserStockLogicUi{
                     rebuildVariables();
                 }
                 markVariablesOpen(variablesMode);
-            }).size(mobile ? 104f : 108f, 47f).name("web-logic-variables");
+            }).size(actionWidth, 47f).name("web-logic-variables");
+            if(mobile) actions.row();
             actions.button("@copy.clipboard", Icon.copy,
                 () -> Core.app.setClipboardText(textMode ? codeArea.getText() : canvas.save()))
-                .size(mobile ? 104f : 126f, 47f).name("web-logic-copy");
-            actions.row();
+                .size(actionWidth, 47f).name("web-logic-copy");
+            if(!mobile) actions.row();
             actions.button("@clear", Icon.trash, () -> {
                 if(selecting) selecting = false;
                 if(variablesMode) variablesMode = false;
                 if(textMode) codeArea.setText("");
                 else canvas.clearStatements();
-            }).size(mobile ? 104f : 108f, 47f).name("web-logic-clear");
+            }).size(actionWidth, 47f).name("web-logic-clear");
             actions.button("@ok", Icon.ok, BrowserStockLogicUi::save)
-                .size(mobile ? 104f : 108f, 47f).name("web-logic-save");
+                .size(actionWidth, 47f).name("web-logic-save");
+            if(mobile) actions.row();
             actions.button("@cancel", Icon.left, BrowserStockLogicUi::cancel)
-                .size(mobile ? 104f : 108f, 47f).name("web-logic-cancel");
+                .size(actionWidth, 47f).name("web-logic-cancel");
         }).growX().row();
 
         status = pane.add("").left().width(width - 20f).get();
