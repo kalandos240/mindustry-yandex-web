@@ -2,7 +2,7 @@ name: Web port baseline
 
 on:
   push:
-    branches: [main]
+    branches: [main, full-vanilla-port-100mb]
   pull_request:
   workflow_dispatch:
 
@@ -187,7 +187,7 @@ jobs:
       - name: Remove TeaVM runtime documentation link
         run: python3 scripts/sanitize-teavm-runtime-links.py
 
-      - name: Validate staged browser smoke package
+      - name: Verify exact 100 MB Yandex unpacked size budget\n        run: |\n          python3 scripts/test_yandex_size_budget.py\n          python3 scripts/yandex_size_budget.py\n\n      - name: Upload Yandex size-budget report\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: yandex-size-budget\n          path: |\n            work/release/mindustry-yandex-size-budget.txt\n            work/release/mindustry-yandex-size-budget.json\n          if-no-files-found: warn\n\n      - name: Validate staged browser smoke package
         run: |
           test -s web-runtime/build/web/index.html
           test -s web-runtime/build/web/mindustry.js
