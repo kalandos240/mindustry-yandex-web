@@ -75,8 +75,11 @@ public final class BrowserStockMainMenu{
                     .name("web-main-settings");
                 menu.row();
                 menu.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
-                    BrowserVanillaDialogs::openSchematics).size(2f * tileWidth + 10f, 64f)
-                    .colspan(2).name("web-main-schematics");
+                    BrowserVanillaDialogs::openSchematics).size(tileWidth, 64f)
+                    .name("web-main-schematics");
+                menu.button(Core.bundle.get("settings.controls", "Controls"), Icon.move,
+                    BrowserVanillaDialogs::openControls).size(tileWidth, 64f)
+                    .name("web-main-controls");
                 menu.row();
                 menu.add(Version.combined()).colspan(2).padBottom(8f);
             }).width(Math.min(2f * tileWidth + 20f, Core.graphics.getWidth() - 12f));
@@ -113,6 +116,10 @@ public final class BrowserStockMainMenu{
                     Styles.flatToggleMenut, BrowserVanillaDialogs::openSchematics)
                     .name("web-main-schematics");
                 menu.row();
+                menu.button(Core.bundle.get("settings.controls", "Controls"), Icon.move,
+                    Styles.flatToggleMenut, BrowserVanillaDialogs::openControls)
+                    .name("web-main-controls");
+                menu.row();
                 menu.add(Version.combined()).padTop(16f).padBottom(12f);
             }).width(230f);
         }
@@ -126,6 +133,7 @@ public final class BrowserStockMainMenu{
                 markPointerCenter(home.find("web-main-research"), "research");
                 markPointerCenter(home.find("web-main-database"), "database");
                 markPointerCenter(home.find("web-main-schematics"), "schematics");
+                markPointerCenter(home.find("web-main-controls"), "controls");
             }
         });
 
