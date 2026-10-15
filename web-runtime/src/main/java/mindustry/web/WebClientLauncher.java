@@ -296,6 +296,10 @@ public final class WebClientLauncher extends ClientLauncher{
         BrowserGameplayRuntime.init();
         markUiSyncPhase("gameplay-runtime-ready");
 
+        markUiSyncPhase("vanilla-local-dialogs");
+        BrowserVanillaDialogs.install();
+        markUiSyncPhase("vanilla-local-dialogs-ready");
+
         uiSyncLoaded = true;
         markUiSyncReady();
         markUiSyncPhase("ready");
@@ -399,6 +403,11 @@ public final class WebClientLauncher extends ClientLauncher{
     public boolean hasLocalUiRuntime(){ return BrowserUiRuntime.initialized(); }
     public boolean hasGameplayRuntime(){ return BrowserGameplayRuntime.initialized(); }
     public InputHandler inputRuntime(){ return gameplayInput; }
+
+    @Override
+    public void showFileChooser(mindustry.ui.FileChooser.FileChooserParams params){
+        BrowserFileChooser.show(params);
+    }
 
     @Override
     public NetProvider getNet(){ return netProvider; }
