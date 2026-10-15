@@ -64,6 +64,10 @@ public final class BrowserStockDatabaseUi{
         dialog.table(header -> {
             header.add(Core.bundle.get("database", "Database"))
                 .style(Styles.outlineLabel).growX().left();
+            header.button(Core.bundle.get("all", "All"), Icon.book,
+                BrowserStockDatabaseUi::openVanilla)
+                .height(mobile ? 52f : 43f)
+                .name("web-database-open-vanilla");
             closeButton = header.button(Icon.cancel, BrowserStockDatabaseUi::hide)
                 .size(mobile ? 52f : 43f).name("web-database-back").get();
         }).growX().row();
@@ -116,6 +120,11 @@ public final class BrowserStockDatabaseUi{
 
         dialog.table(details -> {
             detailTitle = details.add("").growX().left().get();
+            details.button(Icon.info, () -> {
+                if(selected != null && ui.content != null) ui.content.show(selected);
+            }).size(mobile ? 48f : 40f)
+                .disabled(b -> selected == null || ui.content == null)
+                .name("web-database-stock-content-info");
             details.row();
             detailText = details.add("").width(width - 30f).left().wrap().get();
         }).growX().row();
@@ -149,6 +158,11 @@ public final class BrowserStockDatabaseUi{
     public static void hide(){
         open = false;
         markOpen(false);
+    }
+
+    private static void openVanilla(){
+        hide();
+        BrowserVanillaDialogs.openDatabase();
     }
 
     /** Escape handling uses the same visibility flag as the native Back button. */
