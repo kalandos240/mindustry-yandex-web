@@ -381,7 +381,7 @@ public final class BrowserUiRuntime{
             BrowserUiRuntime::resumeActiveSession)
             .size(width, height).name("web-pause-resume");
         dialog.button(Core.bundle.get("settings", "Settings"), Icon.settings,
-            BrowserUiRuntime::openPauseSettings)
+            BrowserVanillaDialogs::openSettings)
             .size(width, height).name("web-pause-settings");
         dialog.row();
 
