@@ -74,6 +74,10 @@ public final class BrowserStockMainMenu{
                     BrowserUiRuntime::openMenuSettings).size(tileWidth, 76f)
                     .name("web-main-settings");
                 menu.row();
+                menu.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
+                    BrowserVanillaDialogs::openSchematics).size(2f * tileWidth + 10f, 64f)
+                    .colspan(2).name("web-main-schematics");
+                menu.row();
                 menu.add(Version.combined()).colspan(2).padBottom(8f);
             }).width(Math.min(2f * tileWidth + 20f, Core.graphics.getWidth() - 12f));
         }else{
@@ -104,6 +108,10 @@ public final class BrowserStockMainMenu{
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
                     Styles.flatToggleMenut, BrowserUiRuntime::openMenuSettings)
                     .name("web-main-settings");
+                menu.row();
+                menu.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
+                    Styles.flatToggleMenut, BrowserVanillaDialogs::openSchematics)
+                    .name("web-main-schematics");
                 menu.row();
                 menu.add(Version.combined()).padTop(16f).padBottom(12f);
             }).width(230f);
