@@ -40,6 +40,9 @@ public final class BrowserVanillaDialogs{
         // Stock dialog reuses the original sound/game/graphics/data/preferences UI.
         // Unsupported desktop menu actions are patched in the temporary build tree.
         ui.settings = new SettingsMenuDialog();
+        // Save-slot management reuses native LoadDialog but redirects its load action
+        // to the already validated browser-local Continue state machine.
+        ui.load = new BrowserVanillaSavesDialog();
 
         if(schematics == null){
             schematics = new Schematics();
@@ -63,6 +66,12 @@ public final class BrowserVanillaDialogs{
         // filtering and the exact ContentInfoDialog stat popup.
         ui.database.show();
         markDatabaseOpened();
+    }
+
+    public static void openSaves(){
+        if(!initialized || state == null || !state.isMenu() && !state.isGame()) return;
+        ui.load.show();
+        markSavesOpened();
     }
 
     public static void openSettings(){
@@ -94,11 +103,15 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-keybinds', 'stock-KeybindDialog');
         r.setAttribute('data-mindustry-vanilla-settings', 'stock-SettingsMenuDialog');
         r.setAttribute('data-mindustry-vanilla-language', 'stock-LanguageDialog');
+        r.setAttribute('data-mindustry-vanilla-saves', 'stock-LoadDialog-browser-safe');
         """)
     private static native void markInstalled();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-database-open','yes');")
     private static native void markDatabaseOpened();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-saves-open','yes');")
+    private static native void markSavesOpened();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-settings-open','yes');")
     private static native void markSettingsOpened();
