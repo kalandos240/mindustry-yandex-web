@@ -134,6 +134,7 @@ public final class BrowserStockMainMenu{
                 markPointerCenter(home.find("web-main-database"), "database");
                 markPointerCenter(home.find("web-main-schematics"), "schematics");
                 markPointerCenter(home.find("web-main-controls"), "controls");
+                markPointerCenter(home.find("web-main-settings"), "settings");
             }
         });
 
