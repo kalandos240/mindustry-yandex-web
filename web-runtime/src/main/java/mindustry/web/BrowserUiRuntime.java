@@ -404,6 +404,12 @@ public final class BrowserUiRuntime{
             .size(width, height).name("web-pause-controls");
         dialog.row();
 
+        dialog.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
+            BrowserVanillaDialogs::openSaves)
+            .width(width * 2f + 10f).height(height)
+            .colspan(2).name("web-pause-saves");
+        dialog.row();
+
         dialog.button(Core.bundle.get("quit", "Quit"), Icon.exit,
             BrowserUiRuntime::returnToMenuWithAd)
             .width(width * 2f + 10f).height(height)
