@@ -22,6 +22,7 @@ for device in desktop mobile; do
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-vanilla-dialogs="ready"' \
     --require 'data-mindustry-vanilla-schematics="stock-SchematicsDialog"' \
+    --require 'data-mindustry-vanilla-keybinds="stock-KeybindDialog"' \
     --after-ready-eval "(async () => {
       const root=document.documentElement,canvas=document.getElementById('mindustry-canvas');
       const wait=async(fn,label)=>{for(let i=0;i<140;i++){if(fn())return;await new Promise(r=>setTimeout(r,100));}throw Error(label);};
@@ -31,6 +32,13 @@ for device in desktop mobile; do
           await new Promise(r=>setTimeout(r,100));
         }
       };
+      await wait(()=>root.hasAttribute('data-mindustry-main-menu-controls-x'),'controls coordinates');
+      await click(Number(root.getAttribute('data-mindustry-main-menu-controls-x')),Number(root.getAttribute('data-mindustry-main-menu-controls-y')));
+      await wait(()=>root.getAttribute('data-mindustry-vanilla-controls-open')==='yes','KeybindDialog open');
+      window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
+      await new Promise(r=>setTimeout(r,250));
+      window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
+      await new Promise(r=>setTimeout(r,250));
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-schematics-x'),'schematics coordinates');
       await click(Number(root.getAttribute('data-mindustry-main-menu-schematics-x')),Number(root.getAttribute('data-mindustry-main-menu-schematics-y')));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-schematics-open')==='yes','SchematicsDialog open');
