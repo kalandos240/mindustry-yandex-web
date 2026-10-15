@@ -32,6 +32,7 @@ jobs:
       - name: Static-check release and browser test harness
         run: |
           python3 -m py_compile scripts/*.py
+          python3 scripts/test_yandex_size_budget.py
           python3 scripts/audit-campaign-consistency.py
           python3 scripts/audit-browser-hotpath.py
           for script in scripts/*.sh; do
@@ -87,6 +88,7 @@ jobs:
       - name: Static-check release and browser test harness
         run: |
           python3 -m py_compile scripts/*.py
+          python3 scripts/test_yandex_size_budget.py
           python3 scripts/audit-campaign-consistency.py
           python3 scripts/audit-browser-hotpath.py
           for script in scripts/*.sh; do
@@ -137,6 +139,7 @@ jobs:
           python3 scripts/patch-mindustry-block-reflection.py work/Mindustry/core/src/mindustry/world/Block.java
           python3 scripts/patch-mindustry-fonts-web.py work/Mindustry/core/src/mindustry/ui/Fonts.java
           python3 scripts/patch-mindustry-no-links-web.py
+          python3 scripts/patch-vanilla-schematics-web.py
           python3 scripts/patch-mindustry-external-urls-web.py
 
       - name: Verify applied local gameplay overlays
