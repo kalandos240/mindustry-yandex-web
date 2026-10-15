@@ -24,20 +24,23 @@ def replace(old: str, new: str, label: str) -> None:
 
 
 # The Web runtime deliberately avoids NetServer and the community server list.
-replace(
-    '''        game.checkPref("communityservers", true, val -> {
+# The legacy UI-runtime patch may already have removed exactly this block.
+# Accept only its explicit pinned replacement marker; never silently ignore
+# a changed upstream definition.
+old_server = """        game.checkPref("communityservers", true, val -> {
             defaultServers.clear();
             if(val){
                 JoinDialog.fetchServers();
             }
         });
 
-''',
-    '''        // Browser single-player: there is no community server discovery.
-
-''',
-    "server discovery preference",
-)
+"""
+prior_patch = "        // Web/Yandex single-player: community server discovery is unavailable."
+if old_server in src:
+    replace(old_server, "        // Browser single-player: there is no community server discovery.\n\n",
+            "server discovery preference")
+elif prior_patch not in src:
+    raise SystemExit("Vanilla settings server discovery changed unexpectedly")
 
 # Replacing the stock MobileInput while the browser is running would leave its
 # Arc input processors, HUD group and touch handlers stranded. Keyboard users
