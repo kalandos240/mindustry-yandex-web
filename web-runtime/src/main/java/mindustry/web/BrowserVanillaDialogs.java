@@ -35,6 +35,7 @@ public final class BrowserVanillaDialogs{
         // Their original widgets and stat definitions are retained.
         ui.content = new ContentInfoDialog();
         ui.database = new DatabaseDialog();
+        ui.controls = new KeybindDialog();
 
         if(schematics == null){
             schematics = new Schematics();
@@ -60,6 +61,12 @@ public final class BrowserVanillaDialogs{
         markDatabaseOpened();
     }
 
+    public static void openControls(){
+        if(!initialized || state == null || !state.isMenu() && !state.isGame()) return;
+        ui.controls.show();
+        markControlsOpened();
+    }
+
     public static void openSchematics(){
         if(!initialized || state == null || !state.isMenu() && !state.isGame()) return;
         // Native SchematicsDialog uses the browser-persistent schematicDirectory.
@@ -74,11 +81,15 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-content-info', 'stock-ContentInfoDialog');
         r.setAttribute('data-mindustry-vanilla-database', 'stock-DatabaseDialog');
         r.setAttribute('data-mindustry-vanilla-schematics', 'stock-SchematicsDialog');
+        r.setAttribute('data-mindustry-vanilla-keybinds', 'stock-KeybindDialog');
         """)
     private static native void markInstalled();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-database-open','yes');")
     private static native void markDatabaseOpened();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-controls-open','yes');")
+    private static native void markControlsOpened();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-schematics-open','yes');")
     private static native void markSchematicsOpened();
