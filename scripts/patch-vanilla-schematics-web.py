@@ -35,5 +35,30 @@ new = '''        // Web/Yandex: retain local MSCH schematics and stock loadouts 
 if text.count(old) != 1:
     raise SystemExit("Stock Schematics.load mods block no longer matches pinned v159.7")
 text = text.replace(old, new, 1)
+
+# Stock FileChooser.export uses UI.loadAnd/LoadingFragment on desktop. The lean
+# browser launcher uses the same writer on a BrowserFi synchronously, then
+# BrowserFiles starts a Blob download only once the file has received its bytes.
+chooser = ROOT / "work/Mindustry/core/src/mindustry/ui/FileChooser.java"
+chooser_text = chooser.read_text(encoding="utf-8")
+old_export = """                ui.loadAnd(() -> {
+                    try{
+                        writer.write(file);
+                    }catch(Throwable e){
+                        ui.showException(e);
+                        Log.err(e);
+                    }
+                });"""
+new_export = """                // Web: write to BrowserFi; its export directory downloads the bytes.
+                try{
+                    writer.write(file);
+                }catch(Throwable e){
+                    ui.showException(e);
+                    Log.err(e);
+                }"""
+if chooser_text.count(old_export) != 1:
+    raise SystemExit("Pinned FileChooser.export non-iOS writer changed")
+chooser.write_text(chooser_text.replace(old_export, new_export, 1), encoding="utf-8")
+
 SOURCE.write_text(text, encoding="utf-8")
 print("Stock Schematics.load: local Web schematics preserved without mandatory Mods startup")
