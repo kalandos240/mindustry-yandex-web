@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""Patch the pinned v159.7 SettingsMenuDialog for the single-player browser.
+
+Keep the original preferences, styles, sliders, language/keybind navigation,
+confirmation dialogs and settings persistence. Prune only desktop-only actions
+that require a JVM restart, filesystem, unsupported ZIP import/export or raw
+server discovery. These changes are applied only to work/Mindustry.
+"""
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+PATH = ROOT / "work/Mindustry/core/src/mindustry/ui/dialogs/SettingsMenuDialog.java"
+if not PATH.is_file():
+    raise SystemExit(f"Missing pinned SettingsMenuDialog: {PATH}")
+src = PATH.read_text(encoding="utf-8")
+
+
+def replace(old: str, new: str, label: str) -> None:
+    global src
+    found = src.count(old)
+    if found != 1:
+        raise SystemExit(f"Vanilla settings web patch requires one {label}; found {found}")
+    src = src.replace(old, new, 1)
+
+
+# The Web runtime deliberately avoids NetServer and the community server list.
+replace(
+    '''        game.checkPref("communityservers", true, val -> {
+            defaultServers.clear();
+            if(val){
+                JoinDialog.fetchServers();
+            }
+        });
+
+''',
+    '''        // Browser single-player: there is no community server discovery.
+
+''',
+    "server discovery preference",
+)
+
+# Replacing the stock MobileInput while the browser is running would leave its
+# Arc input processors, HUD group and touch handlers stranded. Keyboard users
+# select the device-appropriate input at browser startup, not by re-registering
+# an input graph from the settings dialog mid-session.
+replace(
+    '''        if(mobile){
+            game.checkPref("autotarget", true);
+            game.checkPref("keyboard", false, val -> {
+                control.setInput(val ? new DesktopInput() : new MobileInput());
+                input.setUseKeyboard(val);
+            });
+            if(Core.settings.getBool("keyboard")){
+                control.setInput(new DesktopInput());
+                input.setUseKeyboard(true);
+            }
+
+        }
+''',
+    '''        if(mobile){
+            game.checkPref("autotarget", true);
+            // Browser Web: keyboard/input mode is chosen once during launcher setup.
+        }
+''',
+    "mobile input re-registration",
+)
+
+# Fullscreen/vsync and forced orientation are owned by the hosting browser
+# iframe and Yandex platform; the browser canvas always fits its allotted area.
+start = src.index('        if(!mobile){\n            graphics.checkPref("vsync"')
+end = src.index('\n        graphics.checkPref("effects", true);', start)
+src = src[:start] + '''        // Yandex Web: hide native fullscreen/vsync/landscape controls.
+        // The host iframe and BrowserCanvas own viewport, orientation and frame rate.
+''' + src[end:]
+
+# BrowserFi serves persistent save/schematic files, but the original ZIP data
+# importer uses OS filesystem paths, ZipFi and Core.app.exit. Keep destructive
+# *confirmed* vanilla clear/reset actions; hide only unsupported desktop ZIP
+# import/export/open-folder/log-export and avoid calling Core.app.exit.
+replace(
+    '''                Core.app.exit();
+            })).marginLeft(4);''',
+    '''                // Browser: the user can reload the page to restart after clearing data.
+                ui.showInfo("@language.restart");
+            })).marginLeft(4);''',
+    "clear-data JVM exit",
+)
+
+start = src.index('            t.button("@data.export", Icon.upload, style, () -> {')
+end = src.index('\n        });\n\n        row();', start)
+src = src[:start] + '''            // Web: ZIP backup/import and OS log-folder operations are intentionally
+            // not shown until the browser file APIs support complete round-trips.
+            // Persistent local campaign/schematic/save data remains untouched.
+''' + src[end:]
+
+# The methods below are kept in upstream source, but are unreachable after their
+# button actions have been pruned. TeaVM can omit their ZIP/OS dependencies.
+PATH.write_text(src, encoding="utf-8")
+print("Vanilla SettingsMenuDialog: original Sound/Game/Graphics/Data/Language/Controls/Dev UI; browser-only actions removed")
