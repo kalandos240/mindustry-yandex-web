@@ -25,6 +25,7 @@ for device in desktop mobile; do
     --require 'data-mindustry-vanilla-keybinds="stock-KeybindDialog"' \
     --require 'data-mindustry-vanilla-settings="stock-SettingsMenuDialog"' \
     --require 'data-mindustry-vanilla-language="stock-LanguageDialog"' \
+    --require 'data-mindustry-vanilla-saves="stock-LoadDialog-browser-safe"' \
     --after-ready-eval "(async () => {
       const root=document.documentElement,canvas=document.getElementById('mindustry-canvas');
       const wait=async(fn,label)=>{for(let i=0;i<140;i++){if(fn())return;await new Promise(r=>setTimeout(r,100));}throw Error(label);};
@@ -37,6 +38,13 @@ for device in desktop mobile; do
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-settings-x'),'settings coordinates');
       await click(Number(root.getAttribute('data-mindustry-main-menu-settings-x')),Number(root.getAttribute('data-mindustry-main-menu-settings-y')));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-settings-open')==='yes','SettingsMenuDialog open');
+      window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
+      await new Promise(r=>setTimeout(r,250));
+      window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
+      await new Promise(r=>setTimeout(r,250));
+      await wait(()=>root.hasAttribute('data-mindustry-main-menu-saves-x'),'saves button coordinates');
+      await click(Number(root.getAttribute('data-mindustry-main-menu-saves-x')),Number(root.getAttribute('data-mindustry-main-menu-saves-y')));
+      await wait(()=>root.getAttribute('data-mindustry-vanilla-saves-open')==='yes','LoadDialog save manager opened');
       window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await new Promise(r=>setTimeout(r,250));
       window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
@@ -65,5 +73,5 @@ for device in desktop mobile; do
     })()" \
     --after-ready-require 'data-mindustry-vanilla-dialog-smoke="passed"' \
     > "/tmp/mindustry-vanilla-$device.html"
-  echo "Vanilla settings, keybinds, schematics and encyclopedia real canvas interaction ($device): PASS"
+  echo "Vanilla settings, saves, keybinds, schematics and encyclopedia real canvas interaction ($device): PASS"
 done
