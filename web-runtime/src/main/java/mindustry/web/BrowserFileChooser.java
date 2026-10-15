@@ -52,7 +52,14 @@ public final class BrowserFileChooser{
                     if(selected.isEmpty()){
                         if(mindustry.Vars.ui != null) mindustry.Vars.ui.showInfo("@none.found");
                     }else{
-                        params.handleChooseResult(selected.toArray(new Fi[0]));
+                        try{
+                            params.handleChooseResult(selected.toArray(new Fi[0]));
+                        }finally{
+                            // Original Mindustry import callbacks fully read each Fi before
+                            // returning. Do not accumulate duplicate uploaded files in
+                            // browser-persistent temporary storage.
+                            for(Fi file : selected) file.delete();
+                        }
                     }
                 }
             });
