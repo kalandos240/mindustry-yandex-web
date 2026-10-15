@@ -71,7 +71,7 @@ public final class BrowserStockMainMenu{
                     BrowserResearchUi::show).size(tileWidth, 76f)
                     .name("web-main-research");
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
-                    BrowserUiRuntime::openMenuSettings).size(tileWidth, 76f)
+                    BrowserVanillaDialogs::openSettings).size(tileWidth, 76f)
                     .name("web-main-settings");
                 menu.row();
                 menu.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
@@ -109,7 +109,7 @@ public final class BrowserStockMainMenu{
                     .name("web-main-research");
                 menu.row();
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
-                    Styles.flatToggleMenut, BrowserUiRuntime::openMenuSettings)
+                    Styles.flatToggleMenut, BrowserVanillaDialogs::openSettings)
                     .name("web-main-settings");
                 menu.row();
                 menu.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
