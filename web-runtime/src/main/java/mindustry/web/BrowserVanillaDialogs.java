@@ -36,6 +36,10 @@ public final class BrowserVanillaDialogs{
         ui.content = new ContentInfoDialog();
         ui.database = new DatabaseDialog();
         ui.controls = new KeybindDialog();
+        ui.language = new LanguageDialog();
+        // Stock dialog reuses the original sound/game/graphics/data/preferences UI.
+        // Unsupported desktop menu actions are patched in the temporary build tree.
+        ui.settings = new SettingsMenuDialog();
 
         if(schematics == null){
             schematics = new Schematics();
@@ -61,6 +65,12 @@ public final class BrowserVanillaDialogs{
         markDatabaseOpened();
     }
 
+    public static void openSettings(){
+        if(!initialized || state == null || !state.isMenu() && !state.isGame()) return;
+        ui.settings.show();
+        markSettingsOpened();
+    }
+
     public static void openControls(){
         if(!initialized || state == null || !state.isMenu() && !state.isGame()) return;
         ui.controls.show();
@@ -82,11 +92,16 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-database', 'stock-DatabaseDialog');
         r.setAttribute('data-mindustry-vanilla-schematics', 'stock-SchematicsDialog');
         r.setAttribute('data-mindustry-vanilla-keybinds', 'stock-KeybindDialog');
+        r.setAttribute('data-mindustry-vanilla-settings', 'stock-SettingsMenuDialog');
+        r.setAttribute('data-mindustry-vanilla-language', 'stock-LanguageDialog');
         """)
     private static native void markInstalled();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-database-open','yes');")
     private static native void markDatabaseOpened();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-settings-open','yes');")
+    private static native void markSettingsOpened();
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-controls-open','yes');")
     private static native void markControlsOpened();
