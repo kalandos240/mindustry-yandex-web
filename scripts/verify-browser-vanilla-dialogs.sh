@@ -23,6 +23,8 @@ for device in desktop mobile; do
     --require 'data-mindustry-vanilla-dialogs="ready"' \
     --require 'data-mindustry-vanilla-schematics="stock-SchematicsDialog"' \
     --require 'data-mindustry-vanilla-keybinds="stock-KeybindDialog"' \
+    --require 'data-mindustry-vanilla-settings="stock-SettingsMenuDialog"' \
+    --require 'data-mindustry-vanilla-language="stock-LanguageDialog"' \
     --after-ready-eval "(async () => {
       const root=document.documentElement,canvas=document.getElementById('mindustry-canvas');
       const wait=async(fn,label)=>{for(let i=0;i<140;i++){if(fn())return;await new Promise(r=>setTimeout(r,100));}throw Error(label);};
@@ -32,6 +34,13 @@ for device in desktop mobile; do
           await new Promise(r=>setTimeout(r,100));
         }
       };
+      await wait(()=>root.hasAttribute('data-mindustry-main-menu-settings-x'),'settings coordinates');
+      await click(Number(root.getAttribute('data-mindustry-main-menu-settings-x')),Number(root.getAttribute('data-mindustry-main-menu-settings-y')));
+      await wait(()=>root.getAttribute('data-mindustry-vanilla-settings-open')==='yes','SettingsMenuDialog open');
+      window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
+      await new Promise(r=>setTimeout(r,250));
+      window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
+      await new Promise(r=>setTimeout(r,250));
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-controls-x'),'controls coordinates');
       await click(Number(root.getAttribute('data-mindustry-main-menu-controls-x')),Number(root.getAttribute('data-mindustry-main-menu-controls-y')));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-controls-open')==='yes','KeybindDialog open');
@@ -56,5 +65,5 @@ for device in desktop mobile; do
     })()" \
     --after-ready-require 'data-mindustry-vanilla-dialog-smoke="passed"' \
     > "/tmp/mindustry-vanilla-$device.html"
-  echo "Vanilla dialogs real canvas interaction ($device): PASS"
+  echo "Vanilla settings, keybinds, schematics and encyclopedia real canvas interaction ($device): PASS"
 done
