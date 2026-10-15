@@ -81,7 +81,7 @@ public final class BrowserFileChooser{
                 for(let i=0;i<filtered.length;i++){
                     const f = filtered[i];
                     // JSBody bridges Uint8Array directly to TeaVM byte[].
-                    callback.accept(f.name, new Uint8Array(await f.arrayBuffer()), i===filtered.length-1);
+                    callback(f.name, new Uint8Array(await f.arrayBuffer()), i===filtered.length-1);
                 }
             }catch(e){
                 document.documentElement.setAttribute('data-mindustry-browser-file-error', String(e));
