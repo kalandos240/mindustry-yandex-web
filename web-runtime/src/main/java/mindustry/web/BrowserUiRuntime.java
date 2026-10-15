@@ -398,8 +398,10 @@ public final class BrowserUiRuntime{
 
         dialog.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
             BrowserVanillaDialogs::openSchematics)
-            .width(width * 2f + 10f).height(height)
-            .colspan(2).name("web-pause-schematics");
+            .size(width, height).name("web-pause-schematics");
+        dialog.button(Core.bundle.get("settings.controls", "Controls"), Icon.move,
+            BrowserVanillaDialogs::openControls)
+            .size(width, height).name("web-pause-controls");
         dialog.row();
 
         dialog.button(Core.bundle.get("quit", "Quit"), Icon.exit,
