@@ -56,4 +56,14 @@ The original UI graph must be enabled on a **single integration branch**, with i
 5. Strip genuinely unreachable code through TeaVM; never delete player-facing UI or core mechanics simply to hit an arbitrary JS-only target.
 6. Re-test runtime memory, decode latency and p95 frame time after asset changes.
 
-**Current state:** branch setup and conservative release-size guard are initial engineering work, *not* a completed full-vanilla UI re-port. All functional checkboxes above remain acceptance requirements until tested.
+## Implemented source integration snapshot (not a passing build)
+
+- Exact 100,000,000-byte unpacked package budget with reports/tests and CI artifacts.
+- Original `ContentInfoDialog`, `DatabaseDialog`, `SchematicsDialog` and `KeybindDialog` attached to existing Arc Scene (without invoking the unsupported monolithic `UI.init()`).
+- Native schematics/controls menu shortcuts and pause shortcuts; existing browser database offers a path to original planet-filtered encyclopedia and full stock statistics.
+- Browser `FileChooser` implementation converts local user-selected files to temporary `Fi` records and downloads finished native export bytes as Blob URLs. It must be checked on real Chrome and inside Yandex.
+- Browser-only pin-checked `Schematics` patch preserves local `.msch` data while keeping the desktop Mods path unreachable.
+- Original-dialog pointer smoke for desktop and mobile added to CI.
+
+**Important:** no successful TeaVM compile, desktop/mobile runtime pass or candidate ZIP byte total has yet been observed for this integration snapshot. The custom campaign/HUD UI, stock Settings, editor and real networking are still separate unfinished acceptance items; do not call this the complete vanilla port.
+
