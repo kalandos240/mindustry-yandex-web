@@ -15,7 +15,7 @@ ZIP = OUT_DIR / "mindustry-yandex-release.zip"
 SHA = OUT_DIR / "mindustry-yandex-release.zip.sha256"
 REPORT = OUT_DIR / "mindustry-yandex-release-report.txt"
 
-MAX_UNPACKED = 100 * 1024 * 1024
+MAX_UNPACKED = 100_000_000
 FIXED_DATE = (2026, 1, 1, 0, 0, 0)
 
 REQUIRED_ROOT = {
@@ -168,8 +168,8 @@ report = [
     f"Erekir campaign maps: {len(erekir_campaign)}",
     f"Campaign map bytes: {campaign_map_bytes}",
     f"Unpacked bytes: {unpacked}",
-    f"Yandex unpacked limit bytes: {MAX_UNPACKED}",
-    f"Headroom bytes: {MAX_UNPACKED - unpacked}",
+    f"Yandex unpacked limit bytes: {MAX_UNPACKED} (100 decimal MB)",
+    f"Headroom bytes: {MAX_UNPACKED - unpacked}",\n    "Size warning: below 5 MB headroom" if MAX_UNPACKED - unpacked < 5_000_000 else "Size warning: none",
     f"ZIP bytes: {compressed}",
     f"Compression ratio: {compressed / unpacked:.4f}" if unpacked else "Compression ratio: 0",
     "Archive root: verified",
