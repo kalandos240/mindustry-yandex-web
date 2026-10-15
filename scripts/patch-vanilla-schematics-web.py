@@ -21,16 +21,9 @@ old = '''        //mod-specific schematics, cannot be removed
             }
         });
 '''
-new = '''        // Web/Yandex: retain local MSCH schematics and stock loadouts without
-        // constructing the desktop Mods/Steam file dependency graph.
-        if(mods != null){
-            mods.listFiles("schematics", (mod, file) -> {
-                Schematic s = loadFile(file);
-                if(s != null){
-                    s.mod = mod;
-                }
-            });
-        }
+new = '''        // Web/Yandex: persistent local MSCH files and built-in loadouts remain
+        // available. Remove mod-specific scanning altogether so TeaVM cannot
+        // reach the desktop Mods loader/reflection/ZIP thread graph.
 '''
 if text.count(old) != 1:
     raise SystemExit("Stock Schematics.load mods block no longer matches pinned v159.7")
