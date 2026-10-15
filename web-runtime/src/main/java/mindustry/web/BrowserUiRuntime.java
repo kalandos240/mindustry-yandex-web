@@ -396,6 +396,12 @@ public final class BrowserUiRuntime{
             .visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
         dialog.row();
 
+        dialog.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
+            BrowserVanillaDialogs::openSchematics)
+            .width(width * 2f + 10f).height(height)
+            .colspan(2).name("web-pause-schematics");
+        dialog.row();
+
         dialog.button(Core.bundle.get("quit", "Quit"), Icon.exit,
             BrowserUiRuntime::returnToMenuWithAd)
             .width(width * 2f + 10f).height(height)
