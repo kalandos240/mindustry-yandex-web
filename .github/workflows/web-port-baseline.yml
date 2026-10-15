@@ -191,7 +191,22 @@ jobs:
       - name: Remove TeaVM runtime documentation link
         run: python3 scripts/sanitize-teavm-runtime-links.py
 
-      - name: Verify exact 100 MB Yandex unpacked size budget\n        run: |\n          python3 scripts/test_yandex_size_budget.py\n          python3 scripts/yandex_size_budget.py\n\n      - name: Upload Yandex size-budget report\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: yandex-size-budget\n          path: |\n            work/release/mindustry-yandex-size-budget.txt\n            work/release/mindustry-yandex-size-budget.json\n          if-no-files-found: warn\n\n      - name: Validate staged browser smoke package
+      - name: Verify exact 100 MB Yandex unpacked size budget
+        run: |
+          python3 scripts/test_yandex_size_budget.py
+          python3 scripts/yandex_size_budget.py
+
+      - name: Upload Yandex size-budget report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yandex-size-budget
+          path: |
+            work/release/mindustry-yandex-size-budget.txt
+            work/release/mindustry-yandex-size-budget.json
+          if-no-files-found: warn
+
+      - name: Validate staged browser smoke package
         run: |
           test -s web-runtime/build/web/index.html
           test -s web-runtime/build/web/mindustry.js
