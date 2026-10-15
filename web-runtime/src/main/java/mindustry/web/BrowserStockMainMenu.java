@@ -81,6 +81,10 @@ public final class BrowserStockMainMenu{
                     BrowserVanillaDialogs::openControls).size(tileWidth, 64f)
                     .name("web-main-controls");
                 menu.row();
+                menu.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
+                    BrowserVanillaDialogs::openSaves).size(tileWidth * 2f + 10f, 55f)
+                    .colspan(2).name("web-main-saves");
+                menu.row();
                 menu.add(Version.combined()).colspan(2).padBottom(8f);
             }).width(Math.min(2f * tileWidth + 20f, Core.graphics.getWidth() - 12f));
         }else{
@@ -120,6 +124,10 @@ public final class BrowserStockMainMenu{
                     Styles.flatToggleMenut, BrowserVanillaDialogs::openControls)
                     .name("web-main-controls");
                 menu.row();
+                menu.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
+                    Styles.flatToggleMenut, BrowserVanillaDialogs::openSaves)
+                    .name("web-main-saves");
+                menu.row();
                 menu.add(Version.combined()).padTop(16f).padBottom(12f);
             }).width(230f);
         }
@@ -135,6 +143,7 @@ public final class BrowserStockMainMenu{
                 markPointerCenter(home.find("web-main-schematics"), "schematics");
                 markPointerCenter(home.find("web-main-controls"), "controls");
                 markPointerCenter(home.find("web-main-settings"), "settings");
+                markPointerCenter(home.find("web-main-saves"), "saves");
             }
         });
 
