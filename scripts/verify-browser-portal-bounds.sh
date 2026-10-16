@@ -72,6 +72,11 @@ for mode in desktop mobile; do
         throw new Error('Fullscreen control escaped portal bounds');
       }
       const outerWidth = window.innerWidth, outerHeight = window.innerHeight;
+      // Real portal embeds may reserve top, left, and right advertising strips.
+      // Test a translated game region as well as a smaller one; coordinates
+      // and every original HUD/overlay control must remain inside this surface.
+      surface.style.marginLeft = '9vw';
+      surface.style.marginTop = '7vh';
       surface.style.width = '72%';
       surface.style.height = '80%';
       await new Promise((resolve,reject)=>{
@@ -82,7 +87,21 @@ for mode in desktop mobile; do
           const resizeMetrics = root.getAttribute('data-mindustry-resize-last');
           const bufferMetrics = root.getAttribute('data-mindustry-resize-buffer');
           const ratio = Number(canvas.__mindustryPixelRatio || 1);
-          const fit = canvas.clientWidth === w && canvas.clientHeight === h;
+          const gameRect = surface.getBoundingClientRect();
+          const canvasRect = canvas.getBoundingClientRect();
+          const aligned = Math.abs(gameRect.left - canvasRect.left) < 1
+            && Math.abs(gameRect.top - canvasRect.top) < 1
+            && Math.abs(gameRect.width - canvasRect.width) < 1
+            && Math.abs(gameRect.height - canvasRect.height) < 1;
+          const shifted = gameRect.left > outerWidth * 0.05
+            && gameRect.top > outerHeight * 0.04
+            && gameRect.right <= outerWidth + 1
+            && gameRect.bottom <= outerHeight + 1;
+          const insidePoint = document.elementFromPoint(
+            gameRect.left + Math.min(20, gameRect.width * 0.25),
+            gameRect.top + Math.min(20, gameRect.height * 0.25));
+          const fit = canvas.clientWidth === w && canvas.clientHeight === h
+            && aligned && shifted && insidePoint === canvas;
           const expectedBuffer = Math.max(1, Math.floor(w * ratio)) + 'x'
             + Math.max(1, Math.floor(h * ratio));
           // The Chrome harness' data-mindustry-canvas-viewport marker is sampled
