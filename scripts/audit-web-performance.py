@@ -19,7 +19,7 @@ JS_BASELINE = 23_155_354
 JS_LIMIT = 32_000_000
 JS_GZIP_BASELINE = 2_649_677
 JS_GZIP_LIMIT = 3_700_000
-YANDEX_UNPACKED_LIMIT = 100 * 1024 * 1024
+YANDEX_UNPACKED_LIMIT = 100_000_000  # Yandex requires decimal MB, not 100 MiB.
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
 # appear in the emitted JavaScript, the Web graph has regressed even if it still fits
