@@ -53,13 +53,26 @@ for device in desktop mobile; do
         'First-time vanilla Serpulo/Erekir campaign choice did not open');
       await wait(()=>root.hasAttribute('data-mindustry-planet-hit-intro-serpulo-x'),
         'Vanilla campaign portrait selector has no native hitbox');
+      await wait(()=>root.getAttribute('data-mindustry-planet-hit-intro-serpulo-exposed')==='yes',
+        'Vanilla Serpulo portrait is occluded: '
+          +root.getAttribute('data-mindustry-planet-hit-intro-serpulo-receiver'));
       await choose('intro-serpulo');
-      await new Promise(r=>setTimeout(r,220));
+      await wait(()=>root.getAttribute('data-mindustry-planet-hit-intro-serpulo-checked')==='yes',
+        'Click did not select first-run Serpulo portrait; hit='
+          +root.getAttribute('data-mindustry-planet-hit-intro-serpulo-receiver'));
       await wait(()=>root.hasAttribute('data-mindustry-planet-hit-intro-confirm-x'),
         'Vanilla campaign confirm button has no native hitbox');
+      await wait(()=>root.getAttribute('data-mindustry-planet-hit-intro-confirm-disabled')==='no',
+        'First campaign confirmation remained disabled despite Serpulo selection');
+      await wait(()=>root.getAttribute('data-mindustry-planet-hit-intro-confirm-exposed')==='yes',
+        'First campaign confirmation button is blocked by: '
+          +root.getAttribute('data-mindustry-planet-hit-intro-confirm-receiver'));
       await choose('intro-confirm');
       await wait(()=>root.getAttribute('data-mindustry-planet-first-chooser')==='closed',
-        'Vanilla first campaign chooser did not close after confirmation');
+        'Vanilla first campaign chooser did not close after confirmation; selected='
+          +root.getAttribute('data-mindustry-planet-hit-intro-serpulo-checked')
+          +', confirm disabled='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-disabled')
+          +', receiver='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-receiver'));
       await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo',
         'Original campaign Serpulo choice did not update active planet');
 
