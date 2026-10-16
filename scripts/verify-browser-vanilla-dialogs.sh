@@ -100,6 +100,7 @@ for device in desktop mobile; do
         +', visible='+root.getAttribute('data-mindustry-vanilla-modal-visible'));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-database-open')==='yes',
         'DatabaseDialog not shown: stage='+root.getAttribute('data-mindustry-vanilla-database-stage')
+        +', trace='+root.getAttribute('data-mindustry-vanilla-database-trace')
         +', visible='+root.getAttribute('data-mindustry-vanilla-modal-visible'));
       root.setAttribute('data-mindustry-vanilla-dialog-smoke','passed');
       return 'opened real stock dialogs';
