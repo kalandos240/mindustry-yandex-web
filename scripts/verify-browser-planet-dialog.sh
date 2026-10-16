@@ -68,11 +68,16 @@ for device in desktop mobile; do
         'First campaign confirmation button is blocked by: '
           +root.getAttribute('data-mindustry-planet-hit-intro-confirm-receiver'));
       await choose('intro-confirm');
+      await wait(()=>root.getAttribute('data-mindustry-planet-first-confirm')==='serpulo',
+        'Original campaign OK callback was not reached; choice='
+          +root.getAttribute('data-mindustry-planet-first-selected')
+          +', button receiver='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-receiver')
+          +', disabled='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-disabled'));
       await wait(()=>root.getAttribute('data-mindustry-planet-first-chooser')==='closed',
-        'Vanilla first campaign chooser did not close after confirmation; selected='
-          +root.getAttribute('data-mindustry-planet-hit-intro-serpulo-checked')
-          +', confirm disabled='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-disabled')
-          +', receiver='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-receiver'));
+        'Vanilla first campaign chooser did not close after confirmation; stage='
+          +root.getAttribute('data-mindustry-planet-first-stage')
+          +', native-confirm='+root.getAttribute('data-mindustry-planet-first-confirm')
+          +', selected='+root.getAttribute('data-mindustry-planet-hit-intro-serpulo-checked'));
       await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo',
         'Original campaign Serpulo choice did not update active planet');
 
