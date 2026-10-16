@@ -93,14 +93,15 @@ public final class BrowserUnitProductionSmoke{
             for(int i = 0; i < 90 && searchIndex < 61 * 61; i++, searchIndex++){
                 int x = core.tile.x + searchIndex % 61 - 30;
                 int y = core.tile.y + searchIndex / 61 - 30;
-                Tile factory = world.tile(x, y), source = world.tile(x + 2, y);
+                Tile factory = world.tile(x, y), source = world.tile(x, y + 2);
                 if(factory == null || source == null ||
                     !Build.validPlace(factoryBlock, state.rules.defaultTeam, x, y, 0, false) ||
-                    !Build.validPlace(Blocks.powerSource, state.rules.defaultTeam, x + 2, y, 0, false))
+                    !Build.validPlace(Blocks.powerSource, state.rules.defaultTeam, x, y + 2, 0, false))
                     continue;
 
-                // Factory is size 3. One-tile power source touches its east
-                // edge and participates in the real block power graph.
+                // Factory is size 3, facing EAST (rotation 0). Supply power
+                // at its NORTH edge, never in front of the unit-payload
+                // output chute; otherwise a power fixture could block spawn.
                 factory.setBlock(factoryBlock, state.rules.defaultTeam, 0);
                 source.setBlock(Blocks.powerSource, state.rules.defaultTeam, 0);
                 if(!(factory.build instanceof UnitFactory.UnitFactoryBuild build) ||
