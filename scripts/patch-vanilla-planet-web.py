@@ -96,7 +96,10 @@ text = text.replace(old_selector, new_selector, 1)
 # BaseDialog above the 3D map until the user picks Serpulo or Erekir, so
 # Chrome must click it before accessing the map's own planet selector.
 old_intro_choice = '''                    }, Styles.togglet, () -> selected[0] = planet).size(mobile ? 220f : 320f).group(group);'''
-new_intro_choice = '''                    }, Styles.togglet, () -> selected[0] = planet).size(mobile ? 220f : 320f).group(group).name("web-campaign-first-choice-" + planet.name);'''
+new_intro_choice = '''                    }, Styles.togglet, () -> {
+                        selected[0] = planet;
+                        settings.put("web-first-choice", planet.name);
+                    }).size(mobile ? 220f : 320f).group(group).name("web-campaign-first-choice-" + planet.name);'''
 if text.count(old_intro_choice) != 1:
     raise SystemExit("Pinned first-campaign vanilla choice shape changed")
 text = text.replace(old_intro_choice, new_intro_choice, 1)
@@ -106,6 +109,18 @@ new_intro_confirm = '''                }).size(300f, 64f).disabled(b -> selected
 if text.count(old_intro_confirm) != 1:
     raise SystemExit("Pinned first-campaign vanilla confirm shape changed")
 text = text.replace(old_intro_confirm, new_intro_confirm, 1)
+
+# Trace the actual first-run campaign choice and confirmation callbacks,
+# rather than assuming that pointer events reached the desired Arc controls.
+# These temporary settings are browser-local diagnostic keys.
+old_intro_ok = '''                diag.buttons.button("@ok", Icon.ok, () -> {
+                    state.planet = selected[0];'''
+new_intro_ok = '''                diag.buttons.button("@ok", Icon.ok, () -> {
+                    settings.put("web-first-ok", selected[0] == null ? "no-selection" : selected[0].name);
+                    state.planet = selected[0];'''
+if text.count(old_intro_ok) != 1:
+    raise SystemExit("Pinned campaign first-run confirm callback changed")
+text = text.replace(old_intro_ok, new_intro_ok, 1)
 
 path.write_text(text, encoding="utf-8")
 print("Pinned stock 3D PlanetDialog: minimized UI shell compatibility; full draw/camera/pick preserved")
