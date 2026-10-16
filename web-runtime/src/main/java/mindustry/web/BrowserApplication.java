@@ -161,6 +161,9 @@ public final class BrowserApplication extends WebApplicationBase{
                 // CI only: inspect every registered vanilla block/building factory
                 // on live Serpulo/Erekir without changing any game tiles.
                 BrowserBlockRegistrySmoke.update();
+                // CI-only live building semantics: true conveyor transport and
+                // ore production on the original Ground Zero world.
+                BrowserBuildingMechanicsSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
