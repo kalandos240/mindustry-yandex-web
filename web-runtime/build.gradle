@@ -67,6 +67,11 @@ tasks.register("stageWeb", Copy) {
         // does not use that JSON path, so do not invent or stage an Erekir counterpart.
         include "planets/serpulo.json"
 
+        // The real pinned PlanetDialog loads these two vanilla campaign-selector
+        // portraits. No substitute textures and no remote asset requests.
+        include "sprites/planets/serpulo.png"
+        include "sprites/planets/erekir.png"
+
         include "logicids.dat"
         include "sprites/error.png"
         include "sprites/block_colors.png"
