@@ -275,6 +275,20 @@ public final class BrowserCampaignRuntime{
             startGroundZero();
         }else if("onset".equalsIgnoreCase(requested)){
             startOnset();
+        }else if(campaignMapMatrixRequested()){
+            // CI-only full preset boot matrix: load the real packaged .msav,
+            // launch the original campaign state and advance live Logic frames.
+            // The ordinary public campaign path still requires prerequisite
+            // research/capture; only explicit isolated browser smoke profiles
+            // may bypass the unlock to verify late-game sector compatibility.
+            SectorPreset testPreset = content.sector(requested);
+            if(testPreset == null || testPreset.sector == null
+                || (testPreset.sector.planet != Planets.serpulo
+                    && testPreset.sector.planet != Planets.erekir)){
+                throw new IllegalArgumentException("Unknown Mindustry campaign matrix sector: " + requested);
+            }
+            testPreset.quietUnlock();
+            startPreset(testPreset, testPreset.sector);
         }else{
             throw new IllegalArgumentException("Unsupported browser campaign smoke sector: " + requested);
         }
@@ -2007,6 +2021,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSmoke') || '';")
     private static native String requestedSector();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignMapMatrix') === '1';")
+    private static native boolean campaignMapMatrixRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignContinueSmoke') || '';")
     private static native String requestedResumeSector();
