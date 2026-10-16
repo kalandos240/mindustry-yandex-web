@@ -20,6 +20,7 @@ for device in desktop mobile; do
     --port "$port" \
     --timeout 110 \
     "${emulation[@]}" \
+    --cdp-input-bridge \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-vanilla-planet="stock-PlanetDialog-3d"' \
     --require 'data-mindustry-main-menu-page="home"' \
@@ -29,10 +30,20 @@ for device in desktop mobile; do
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-planets-x'),'Planet menu hitpoint');
       const rect=canvas.getBoundingClientRect(), x=Number(root.getAttribute('data-mindustry-main-menu-planets-x')), y=Number(root.getAttribute('data-mindustry-main-menu-planets-y'));
       if(!(x>0&&x<rect.width&&y>0&&y<rect.height))throw Error('Planet button outside canvas '+x+','+y);
-      for(const type of ['pointerdown','pointerup']){
-        canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:740,pointerType:'mouse',button:0,buttons:type==='pointerdown'?1:0,clientX:rect.left+x,clientY:rect.top+rect.height-y}));
-        await new Promise(r=>setTimeout(r,100));
-      }
+      let nativeClickSequence=0;
+      const nativeClick=async(x,y)=>{
+        const id=String(++nativeClickSequence);
+        root.setAttribute('data-mindustry-cdp-click-ack','');
+        root.setAttribute('data-mindustry-cdp-click-request',JSON.stringify({id,x,y}));
+        await wait(()=>{
+          const ack=root.getAttribute('data-mindustry-cdp-click-ack')||'';
+          return ack===id || ack.startsWith('ERROR:');
+        },'Native Chrome mouse/touch click acknowledgment');
+        const ack=root.getAttribute('data-mindustry-cdp-click-ack');
+        if(ack!==id)throw Error('CDP native click '+id+': '+ack);
+        await new Promise(r=>setTimeout(r,140));
+      };
+      await nativeClick(rect.left+x,rect.top+rect.height-y);
       await wait(()=>root.getAttribute('data-mindustry-vanilla-planet-open')==='yes','Original PlanetDialog click/show');
       await wait(()=>root.hasAttribute('data-mindustry-planet-hit-erekir-x'),'Erekir native button');
       await wait(()=>root.hasAttribute('data-mindustry-planet-hit-serpulo-x'),'Serpulo native button');
@@ -41,10 +52,7 @@ for device in desktop mobile; do
           ty=Number(root.getAttribute('data-mindustry-planet-hit-'+target+'-y'));
         if(!(tx>0&&tx<rect.width&&ty>0&&ty<rect.height))
           throw Error('Native '+target+' planet action outside viewport '+tx+','+ty+' / '+rect.width+'x'+rect.height);
-        for(const type of ['pointerdown','pointerup']){
-          canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:741,pointerType:'mouse',button:0,buttons:type==='pointerdown'?1:0,clientX:rect.left+tx,clientY:rect.top+rect.height-ty}));
-          await new Promise(r=>setTimeout(r,100));
-        }
+        await nativeClick(rect.left+tx,rect.top+rect.height-ty);
       };
       // A fresh vanilla campaign first shows a separate Serpulo/Erekir
       // portrait chooser above PlanetDialog. It is not safe to click the
