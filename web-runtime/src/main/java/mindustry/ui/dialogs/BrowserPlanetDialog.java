@@ -29,6 +29,14 @@ public class BrowserPlanetDialog extends PlanetDialog{
     }
 
     @Override
+    public void viewPlanet(Planet planet, boolean pan){
+        // Observe the actual stock planet-selection callback. This is not
+        // called by JavaScript and does not change the upstream action.
+        markNativeChoice(planet.name);
+        super.viewPlanet(planet, pan);
+    }
+
+    @Override
     void playSelected(){
         Sector sector = selected;
         if(sector == null) return;
@@ -79,6 +87,9 @@ public class BrowserPlanetDialog extends PlanetDialog{
             markButtonPosition(marker, at.x, at.y);
         }
     }
+
+    @JSBody(params={"planet"}, script="document.documentElement.setAttribute('data-mindustry-planet-native-choice',planet);")
+    private static native void markNativeChoice(String planet);
 
     @JSBody(params={"planet"}, script="document.documentElement.setAttribute('data-mindustry-planet-viewed',planet);")
     private static native void markViewedPlanet(String planet);
