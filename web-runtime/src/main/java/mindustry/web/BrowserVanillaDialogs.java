@@ -60,9 +60,10 @@ public final class BrowserVanillaDialogs{
         try{
             ui.planet = new BrowserPlanetDialog();
             markPlanetStage("planet-constructed");
-            constructorPhase = "research";
-            ui.research = new ResearchDialog();
-            markPlanetStage("research-constructed");
+            // Upstream ResearchDialog eagerly dereferences desktop-only UI
+            // dependencies. Keep the existing fully functional TechTree until
+            // those dependencies have been adapted, without blocking 3D planets.
+            markPlanetStage("planet-ready");
         }catch(Throwable failure){
             markPlanetStage(constructorPhase + "-failed-" + failure.getClass().getName()
                 + "-at-" + Core.settings.getString("web-planet-ctor-phase", "field-initializer"));
@@ -193,7 +194,7 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-language', 'stock-LanguageDialog');
         r.setAttribute('data-mindustry-vanilla-saves', 'stock-LoadDialog-browser-safe');
         r.setAttribute('data-mindustry-vanilla-planet', 'stock-PlanetDialog-3d');
-        r.setAttribute('data-mindustry-vanilla-research', 'stock-ResearchDialog');
+        r.setAttribute('data-mindustry-vanilla-research', 'browser-TechTree-preserved');
         """)
     private static native void markInstalled();
 
