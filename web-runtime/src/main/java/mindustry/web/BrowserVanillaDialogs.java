@@ -56,13 +56,16 @@ public final class BrowserVanillaDialogs{
         // dialog graph. The original 3D planet UI and TechTree now share stock
         // navigation, while sector loading still uses BrowserCampaignRuntime.
         markPlanetStage("constructing");
+        String constructorPhase = "planet";
         try{
             ui.planet = new BrowserPlanetDialog();
             markPlanetStage("planet-constructed");
+            constructorPhase = "research";
             ui.research = new ResearchDialog();
             markPlanetStage("research-constructed");
         }catch(Throwable failure){
-            markPlanetStage("constructor-failed-" + failure.getClass().getName());
+            markPlanetStage(constructorPhase + "-failed-" + failure.getClass().getName()
+                + "-at-" + Core.settings.getString("web-planet-ctor-phase", "field-initializer"));
             StringBuilder trace = new StringBuilder(failure.toString());
             try{
                 StackTraceElement[] frames = failure.getStackTrace();
