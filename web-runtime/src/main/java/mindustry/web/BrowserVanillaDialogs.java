@@ -75,9 +75,19 @@ public final class BrowserVanillaDialogs{
     }
 
     public static void openSettings(){
-        if(!initialized || state == null || !state.isMenu() && !state.isGame()) return;
-        ui.settings.show();
-        markSettingsOpened();
+        markSettingsStage("clicked");
+        if(!initialized || state == null || !state.isMenu() && !state.isGame()){
+            markSettingsStage("not-ready");
+            return;
+        }
+        try{
+            ui.settings.show();
+            markSettingsOpened();
+            markSettingsStage("shown");
+        }catch(Throwable failure){
+            markSettingsStage("failed-" + failure.getClass().getName());
+            throw failure;
+        }
     }
 
     public static void openControls(){
@@ -112,6 +122,9 @@ public final class BrowserVanillaDialogs{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-saves-open','yes');")
     private static native void markSavesOpened();
+
+    @JSBody(params={"stage"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-settings-stage',stage);")
+    private static native void markSettingsStage(String stage);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-settings-open','yes');")
     private static native void markSettingsOpened();
