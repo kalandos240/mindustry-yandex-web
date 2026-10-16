@@ -40,7 +40,7 @@ The original UI graph must be enabled on a **single integration branch**, with i
 
 ## Native 3D campaign planet integration (experimental)
 
-The original v159.7 `PlanetDialog` is now wired behind a dedicated **Planets** action in the desktop/mobile main menus. The underlying `PlanetRenderer`, planet camera, sector selections, planet textures and original `ResearchDialog` are retained. Only three null assumptions in the original dialog are guarded in the pinned build-tree patch (`ui.minimapfrag` and the absent desktop campaign-rules editor).
+The original v159.7 `PlanetDialog` is now wired behind a dedicated **Planets** action in the desktop/mobile main menus. The underlying `PlanetRenderer`, planet camera, sector selections and original planet textures are retained. The TechTree button temporarily routes to the already tested browser research UI: the stock `ResearchDialog` constructor needs an additional desktop UI adapter before it can be enabled safely. Only three null assumptions in the original dialog are guarded in the pinned build-tree patch (`ui.minimapfrag` and the absent desktop campaign-rules editor).
 
 `BrowserPlanetDialog` overrides the upstream sector-launch action **without patching Mindustry core to reference the Web module**, leaving the core compilation standalone. A typed `BrowserPlanetBridge` dispatches named Serpulo/Erekir sectors to the existing, previously tested `BrowserCampaignRuntime` instead of desktop `Control.playSector` and its unsupported `WorldReloader` path. Procedural sectors and mid-game sector transitions are deliberately not advertised as supported until their world-generation and save contracts are verified.
 
