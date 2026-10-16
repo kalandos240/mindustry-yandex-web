@@ -100,6 +100,21 @@ text = text.replace(old_selector, new_selector, 1)
 # delivery alone cannot prove that Scene received the button input.
 old_intro_dialog = '                var diag = new BaseDialog("@campaign.select");'
 new_intro_dialog = '''                var diag = new BaseDialog("@campaign.select");
+                // Capture the actual Scene target before child actors can
+                // stop event bubbling, then unregister when chooser closes.
+                InputListener rootProbe = new InputListener(){
+                    @Override
+                    public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
+                        String target = event.targetActor == null ? "null" :
+                            event.targetActor.name == null ? event.targetActor.getClass().getSimpleName() :
+                            event.targetActor.name;
+                        settings.put("web-first-root-down", target + "@" +
+                            Math.round(event.stageX) + "," + Math.round(event.stageY));
+                        return false;
+                    }
+                };
+                scene.root.addCaptureListener(rootProbe);
+                diag.hidden(() -> scene.root.removeCaptureListener(rootProbe));
                 diag.addListener(new InputListener(){
                     @Override
                     public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
