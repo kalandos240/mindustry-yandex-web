@@ -55,8 +55,26 @@ public final class BrowserVanillaDialogs{
         // PlanetRenderer has been initialized by WebClientLauncher before this
         // dialog graph. The original 3D planet UI and TechTree now share stock
         // navigation, while sector loading still uses BrowserCampaignRuntime.
-        ui.planet = new BrowserPlanetDialog();
-        ui.research = new ResearchDialog();
+        markPlanetStage("constructing");
+        try{
+            ui.planet = new BrowserPlanetDialog();
+            markPlanetStage("planet-constructed");
+            ui.research = new ResearchDialog();
+            markPlanetStage("research-constructed");
+        }catch(Throwable failure){
+            markPlanetStage("constructor-failed-" + failure.getClass().getName());
+            StringBuilder trace = new StringBuilder(failure.toString());
+            try{
+                StackTraceElement[] frames = failure.getStackTrace();
+                for(int i = 0; i < Math.min(frames.length, 10); i++){
+                    trace.append(" | ").append(frames[i].getClassName()).append(".")
+                        .append(frames[i].getMethodName()).append(":")
+                        .append(frames[i].getLineNumber());
+                }
+            }catch(Throwable ignored){}
+            markPlanetTrace(trace.toString());
+            throw failure;
+        }
 
         initialized = true;
         markInstalled();
@@ -175,6 +193,9 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-research', 'stock-ResearchDialog');
         """)
     private static native void markInstalled();
+
+    @JSBody(params={"trace"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-planet-trace',trace);")
+    private static native void markPlanetTrace(String trace);
 
     @JSBody(params={"stage"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-planet-stage',stage);")
     private static native void markPlanetStage(String stage);
