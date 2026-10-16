@@ -90,10 +90,16 @@ public final class BrowserStockMainMenu{
         }else{
             // Mirrors MenuFragment.buildDesktop(): a shaded left sidebar
             // with the original Mindustry icons and flat toggle menu style.
-            home.left().top().marginLeft(12f).marginTop(76f);
+            // Eight desktop entries no longer fit the original four-button
+            // sidebar height on the minimum Chromium/Yandex iframe viewport.
+            // Use adaptive row/logo heights so real button hit rectangles stay
+            // within the canvas rather than silently extending off-screen.
+            float usableHeight = Math.max(320f, Core.graphics.getHeight() / Scl.scl(1f) - 100f);
+            float desktopRowHeight = Math.max(36f, Math.min(58f, (usableHeight - 114f) / 8f));
+            home.left().top().marginLeft(12f).marginTop(25f);
             home.table(Styles.black6, menu -> {
                 menu.name = "web-main-desktop-buttons";
-                menu.defaults().width(230f).height(66f);
+                menu.defaults().width(230f).height(desktopRowHeight);
                 addLogo(menu, 210f);
                 menu.row();
                 menu.button(Core.bundle.get("play", "Play"), Icon.play,
@@ -128,7 +134,7 @@ public final class BrowserStockMainMenu{
                     Styles.flatToggleMenut, BrowserVanillaDialogs::openSaves)
                     .name("web-main-saves");
                 menu.row();
-                menu.add(Version.combined()).padTop(16f).padBottom(12f);
+                menu.add(Version.combined()).padTop(5f).padBottom(5f);
             }).width(230f);
         }
         parent.addChild(home);
@@ -172,8 +178,8 @@ public final class BrowserStockMainMenu{
     private static void addLogo(Table menu, float width){
         Image logo = new Image(Core.atlas.find("logo"));
         logo.setScaling(Scaling.fit);
-        menu.add(logo).width(width).height(72f).colspan(mobile ? 2 : 1)
-            .padTop(10f).padBottom(14f);
+        menu.add(logo).width(width).height(mobile ? 72f : 55f).colspan(mobile ? 2 : 1)
+            .padTop(mobile ? 10f : 4f).padBottom(mobile ? 14f : 5f);
     }
 
     private static void markPointerCenter(Element button, String name){
