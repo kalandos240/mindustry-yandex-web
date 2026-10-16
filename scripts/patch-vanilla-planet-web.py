@@ -99,7 +99,9 @@ old_intro_choice = '''                    }, Styles.togglet, () -> selected[0] =
 new_intro_choice = '''                    }, Styles.togglet, () -> {
                         selected[0] = planet;
                         settings.put("web-first-choice", planet.name);
-                    }).size(mobile ? 220f : 320f).group(group).name("web-campaign-first-choice-" + planet.name);'''
+                    }).size(Math.min(mobile ? 220f : 320f,
+                        Math.max(110f, Core.graphics.getHeight() / Scl.scl(1f) * 0.28f)))
+                        .group(group).name("web-campaign-first-choice-" + planet.name);'''
 if text.count(old_intro_choice) != 1:
     raise SystemExit("Pinned first-campaign vanilla choice shape changed")
 text = text.replace(old_intro_choice, new_intro_choice, 1)
@@ -163,7 +165,7 @@ if text.count(old_intro_ok_container) != 1:
     raise SystemExit("Pinned first-run campaign OK footer unexpectedly changed")
 text = text.replace(old_intro_ok_container, new_intro_ok_container, 1)
 old_intro_ok_cell = '''                }).size(300f, 64f).disabled(b -> selected[0] == null).name("web-campaign-first-confirm");'''
-new_intro_ok_cell = '''                }).size(300f, 64f).colspan(2).padTop(12f)
+new_intro_ok_cell = '''                }).size(260f, 48f).colspan(2).padTop(4f)
                     .disabled(b -> selected[0] == null).name("web-campaign-first-confirm");'''
 if text.count(old_intro_ok_cell) != 1:
     raise SystemExit("Pinned first-run campaign OK button cell changed")
