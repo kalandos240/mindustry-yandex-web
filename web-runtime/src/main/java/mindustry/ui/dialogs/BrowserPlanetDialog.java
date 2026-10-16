@@ -76,11 +76,26 @@ public class BrowserPlanetDialog extends PlanetDialog{
             sampleButton("web-planet-choice-erekir", "erekir");
             sampleButton("web-planet-tech", "tech");
             markZoom(state.zoom);
+
+            // The stock first-run campaign chooser is a *second* BaseDialog
+            // above PlanetDialog. Preserve it and sample its native hitboxes
+            // separately before the test interacts with the underlying map.
+            var topDialog = Core.scene.getDialog();
+            boolean firstChooser = topDialog != null && topDialog != this
+                && topDialog.find("web-campaign-first-choice-serpulo") != null;
+            markFirstChooser(firstChooser);
+            if(firstChooser){
+                sampleButton("web-campaign-first-choice-serpulo", "intro-serpulo");
+                sampleButton("web-campaign-first-choice-erekir", "intro-erekir");
+                sampleButton("web-campaign-first-confirm", "intro-confirm");
+            }
         }
     }
 
     private void sampleButton(String name, String marker){
-        Element button = find(name);
+        Element button = name.startsWith("web-campaign-first-")
+            ? Core.scene.getDialog() == null ? null : Core.scene.getDialog().find(name)
+            : find(name);
         if(button != null && button.getWidth() > 0f && button.getHeight() > 0f){
             Vec2 at = button.localToStageCoordinates(new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
             Element receiver = Core.scene.hit(at.x, at.y, true);
@@ -97,6 +112,9 @@ public class BrowserPlanetDialog extends PlanetDialog{
             markButtonPosition(marker, at.x, at.y);
         }
     }
+
+    @JSBody(params={"shown"}, script="document.documentElement.setAttribute('data-mindustry-planet-first-chooser',shown ? 'open' : 'closed');")
+    private static native void markFirstChooser(boolean shown);
 
     @JSBody(params={"planet"}, script="document.documentElement.setAttribute('data-mindustry-planet-native-choice',planet);")
     private static native void markNativeChoice(String planet);
