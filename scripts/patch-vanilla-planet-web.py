@@ -92,5 +92,20 @@ if text.count(old_selector) != 1:
     raise SystemExit("Pinned planet selector table anchor mismatch")
 text = text.replace(old_selector, new_selector, 1)
 
+# Preserve the upstream first-time campaign chooser. It is an extra
+# BaseDialog above the 3D map until the user picks Serpulo or Erekir, so
+# Chrome must click it before accessing the map's own planet selector.
+old_intro_choice = '''                    }, Styles.togglet, () -> selected[0] = planet).size(mobile ? 220f : 320f).group(group);'''
+new_intro_choice = '''                    }, Styles.togglet, () -> selected[0] = planet).size(mobile ? 220f : 320f).group(group).name("web-campaign-first-choice-" + planet.name);'''
+if text.count(old_intro_choice) != 1:
+    raise SystemExit("Pinned first-campaign vanilla choice shape changed")
+text = text.replace(old_intro_choice, new_intro_choice, 1)
+
+old_intro_confirm = '''                }).size(300f, 64f).disabled(b -> selected[0] == null);'''
+new_intro_confirm = '''                }).size(300f, 64f).disabled(b -> selected[0] == null).name("web-campaign-first-confirm");'''
+if text.count(old_intro_confirm) != 1:
+    raise SystemExit("Pinned first-campaign vanilla confirm shape changed")
+text = text.replace(old_intro_confirm, new_intro_confirm, 1)
+
 path.write_text(text, encoding="utf-8")
 print("Pinned stock 3D PlanetDialog: minimized UI shell compatibility; full draw/camera/pick preserved")
