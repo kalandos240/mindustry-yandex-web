@@ -37,8 +37,8 @@ for scenario in serpulo-desktop erekir-mobile; do
       > "/tmp/mindustry-block-registry-$scenario.html"
     dom="/tmp/mindustry-block-registry-$scenario.html"
     grep -Eq 'data-mindustry-block-registry-total="[1-9][0-9][0-9]+"' "$dom"
-    grep -Eq 'data-mindustry-block-registry-buildings="[8-9][0-9]|[1-9][0-9][0-9]+"' "$dom"
-    grep -Eq 'data-mindustry-block-registry-subclasses="[4-9][0-9]|[1-9][0-9][0-9]+"' "$dom"
+    grep -Eq 'data-mindustry-block-registry-buildings="([8-9][0-9]|[1-9][0-9][0-9]+)"' "$dom"
+    grep -Eq 'data-mindustry-block-registry-subclasses="([4-9][0-9]|[1-9][0-9][0-9]+)"' "$dom"
     grep -Eq 'data-mindustry-block-registry-frames="[1-9][0-9]*"' "$dom"
     echo "$scenario: every registered vanilla block validated; all build-capable types constructed in browser PASS"
 done
