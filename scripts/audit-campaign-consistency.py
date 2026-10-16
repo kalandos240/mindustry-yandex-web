@@ -211,7 +211,7 @@ for preset, origin in LAUNCH_ORIGINS.items():
 # separate menu's playUnlockedPreset path. File names and Java field names may
 # differ (Erekir Caldera is named "caldera-erekir" in vanilla v159.7).
 planet_dispatch = dict(re.findall(
-    r'case "([^"]+)"\\s*->\\s*BrowserCampaignRuntime\\.(play[A-Za-z0-9]+)\\(\\);',
+    r'case "([^"]+)"\s*->\s*BrowserCampaignRuntime\.(play[A-Za-z0-9]+)\(\);',
     PLANET_BRIDGE,
 ))
 expected_planet_dispatch = {
