@@ -3,6 +3,7 @@ package mindustry.ui.dialogs;
 import mindustry.type.*;
 import arc.*;
 import arc.scene.*;
+import arc.scene.ui.*;
 import arc.math.geom.*;
 import mindustry.web.*;
 import org.teavm.jso.JSBody;
@@ -97,6 +98,9 @@ public class BrowserPlanetDialog extends PlanetDialog{
             ? Core.scene.getDialog() == null ? null : Core.scene.getDialog().find(name)
             : find(name);
         if(button != null && button.getWidth() > 0f && button.getHeight() > 0f){
+            if(button instanceof Button stockButton){
+                markButtonState(marker, stockButton.isChecked(), stockButton.isDisabled());
+            }
             Vec2 at = button.localToStageCoordinates(new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
             Element receiver = Core.scene.hit(at.x, at.y, true);
             boolean exposed = receiver == button || receiver != null
@@ -121,6 +125,13 @@ public class BrowserPlanetDialog extends PlanetDialog{
 
     @JSBody(params={"planet"}, script="document.documentElement.setAttribute('data-mindustry-planet-viewed',planet);")
     private static native void markViewedPlanet(String planet);
+
+    @JSBody(params={"target","checked","disabled"}, script="""
+        var root=document.documentElement;
+        root.setAttribute('data-mindustry-planet-hit-'+target+'-checked',checked ? 'yes' : 'no');
+        root.setAttribute('data-mindustry-planet-hit-'+target+'-disabled',disabled ? 'yes' : 'no');
+        """)
+    private static native void markButtonState(String target, boolean checked, boolean disabled);
 
     @JSBody(params={"target","receiver","exposed"}, script="""
         var root=document.documentElement;
