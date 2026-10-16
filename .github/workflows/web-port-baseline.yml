@@ -302,6 +302,19 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-planet-dialog.sh
 
+      # Run critical new real-world block and unit production tests before the
+      # long 46-map matrix. Both remain release blockers, but independent
+      # campaign/UX checks must still run and report their own conclusions.
+      - name: Exercise vanilla conveyor transfer and mechanical drill ore production
+        id: production_mechanics
+        continue-on-error: true
+        run: bash scripts/verify-browser-building-mechanics.sh
+
+      - name: Verify all original unit constructors and real Serpulo/Erekir unit factory spawning
+        id: unit_production
+        continue-on-error: true
+        run: bash scripts/verify-browser-unit-production.sh
+
       # The complete 46-map boot matrix is long but independent. Run early to
       # catch late-sector load failures before save, locale and RTS tests,
       # without skipping those checks when one campaign map is broken.
@@ -514,12 +527,6 @@ jobs:
       - name: Sweep complete vanilla block registry and building factories on both planets
         run: bash scripts/verify-browser-block-registry.sh
 
-      - name: Exercise vanilla conveyor transfer and mechanical drill ore production
-        run: bash scripts/verify-browser-building-mechanics.sh
-
-      - name: Verify all original unit constructors and real Serpulo/Erekir unit factory spawning
-        run: bash scripts/verify-browser-unit-production.sh
-
       - name: Verify Tank Fabricator construction does not freeze Erekir browser gameplay
         run: bash scripts/verify-browser-factory-freeze.sh
 
@@ -550,6 +557,15 @@ jobs:
         run: |
           if [ "${{ steps.campaign_map_matrix.outcome }}" != "success" ]; then
             echo "46-map real Chrome campaign matrix failed: release remains BLOCKED." >&2
+            exit 1
+          fi
+
+      - name: Require real building and unit production for release
+        if: always()
+        run: |
+          if [ "${{ steps.production_mechanics.outcome }}" != "success" ] || \
+             [ "${{ steps.unit_production.outcome }}" != "success" ]; then
+            echo "Original building or unit production tests failed: release remains BLOCKED." >&2
             exit 1
           fi
 
