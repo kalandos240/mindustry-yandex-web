@@ -514,6 +514,9 @@ jobs:
       - name: Sweep complete vanilla block registry and building factories on both planets
         run: bash scripts/verify-browser-block-registry.sh
 
+      - name: Exercise vanilla conveyor transfer and mechanical drill ore production
+        run: bash scripts/verify-browser-building-mechanics.sh
+
       - name: Verify Tank Fabricator construction does not freeze Erekir browser gameplay
         run: bash scripts/verify-browser-factory-freeze.sh
 
