@@ -52,6 +52,12 @@ public final class BrowserVanillaDialogs{
         }
         ui.schematics = new SchematicsDialog();
 
+        // PlanetRenderer has been initialized by WebClientLauncher before this
+        // dialog graph. The original 3D planet UI and TechTree now share stock
+        // navigation, while sector loading still uses BrowserCampaignRuntime.
+        ui.planet = new BrowserPlanetDialog();
+        ui.research = new ResearchDialog();
+
         initialized = true;
         markInstalled();
     }
@@ -69,7 +75,24 @@ public final class BrowserVanillaDialogs{
         if(ui.controls.isShown()) active.append("controls,");
         if(ui.schematics.isShown()) active.append("schematics,");
         if(ui.database.isShown()) active.append("database,");
+        if(ui.planet != null && ui.planet.isShown()) active.append("planet,");
         markDialogVisibility(active.length() == 0 ? "none" : active.toString());
+    }
+
+    public static void openPlanets(){
+        markPlanetStage("called");
+        if(!initialized || state == null || !state.isMenu() && !state.isGame()){
+            markPlanetStage("not-ready");
+            return;
+        }
+        try{
+            ui.planet.show();
+            markPlanetOpened();
+            markPlanetStage("shown");
+        }catch(Throwable failure){
+            markPlanetStage("failed-" + failure.getClass().getName());
+            throw failure;
+        }
     }
 
     public static void openDatabase(){
@@ -148,8 +171,16 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-settings', 'stock-SettingsMenuDialog');
         r.setAttribute('data-mindustry-vanilla-language', 'stock-LanguageDialog');
         r.setAttribute('data-mindustry-vanilla-saves', 'stock-LoadDialog-browser-safe');
+        r.setAttribute('data-mindustry-vanilla-planet', 'stock-PlanetDialog-3d');
+        r.setAttribute('data-mindustry-vanilla-research', 'stock-ResearchDialog');
         """)
     private static native void markInstalled();
+
+    @JSBody(params={"stage"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-planet-stage',stage);")
+    private static native void markPlanetStage(String stage);
+
+    @JSBody(script="document.documentElement.setAttribute('data-mindustry-vanilla-planet-open','yes');")
+    private static native void markPlanetOpened();
 
     @JSBody(params={"active"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-modal-visible',active);")
     private static native void markDialogVisibility(String active);
