@@ -38,6 +38,14 @@ The original UI graph must be enabled on a **single integration branch**, with i
 | Portal | SDK lifecycle, ad pause, no external resource dependency | Chrome and actual Yandex validation |
 | Size/performance | <=100,000,000 bytes unpacked and playable desktop/touch | Deterministic ZIP, detailed budget, runtime tests |
 
+## Native 3D campaign planet integration (experimental)
+
+The original v159.7 `PlanetDialog` is now wired behind a dedicated **Planets** action in the desktop/mobile main menus. The underlying `PlanetRenderer`, planet camera, sector selections, planet textures and original `ResearchDialog` are retained. Only three null assumptions in the original dialog are guarded in the pinned build-tree patch (`ui.minimapfrag` and the absent desktop campaign-rules editor).
+
+`BrowserPlanetDialog` overrides the upstream sector-launch action **without patching Mindustry core to reference the Web module**, leaving the core compilation standalone. A typed `BrowserPlanetBridge` dispatches named Serpulo/Erekir sectors to the existing, previously tested `BrowserCampaignRuntime` instead of desktop `Control.playSector` and its unsupported `WorldReloader` path. Procedural sectors and mid-game sector transitions are deliberately not advertised as supported until their world-generation and save contracts are verified.
+
+Only two original planet portraits (`sprites/planets/serpulo.png`, `erekir.png`) are added to the staged assets, totaling 297,513 source bytes. Browser tests explicitly click the native Planets button and require a **completed 3D render frame** on desktop and mobile. This test and the exact 100-million-byte package gate must pass before a public release. Full sector-launch, rotation, pinch, progress/save-state, graphics fidelity and cold-restart parity still need interactive acceptance checks.
+
 ## Build sequence / stop-the-line gates
 
 1. `bash scripts/bootstrap.sh` then `bash scripts/apply-port.sh` and the existing pinned overlay steps from `.github/workflows/web-port-baseline.yml`.
