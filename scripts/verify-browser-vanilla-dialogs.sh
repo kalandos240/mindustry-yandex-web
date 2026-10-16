@@ -36,8 +36,19 @@ for device in desktop mobile; do
         }
       };
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-settings-x'),'settings coordinates');
-      await click(Number(root.getAttribute('data-mindustry-main-menu-settings-x')),Number(root.getAttribute('data-mindustry-main-menu-settings-y')));
-      await wait(()=>root.getAttribute('data-mindustry-vanilla-settings-open')==='yes','SettingsMenuDialog open');
+      {
+        const rect=canvas.getBoundingClientRect();
+        const x=Number(root.getAttribute('data-mindustry-main-menu-settings-x'));
+        const y=Number(root.getAttribute('data-mindustry-main-menu-settings-y'));
+        if(!(x>0&&x<rect.width&&y>0&&y<rect.height))
+          throw Error('Settings button outside canvas: '+x+','+y+' / '+rect.width+'x'+rect.height);
+        await click(x,y);
+      }
+      await wait(()=>root.getAttribute('data-mindustry-vanilla-settings-open')==='yes',
+        'SettingsMenuDialog open (stage='+root.getAttribute('data-mindustry-vanilla-settings-stage')
+        +', coords='+root.getAttribute('data-mindustry-main-menu-settings-x')
+        +','+root.getAttribute('data-mindustry-main-menu-settings-y')
+        +', canvas='+canvas.width+'x'+canvas.height+')');
       window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await new Promise(r=>setTimeout(r,250));
       window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
