@@ -27,13 +27,16 @@ run_factory(){
   if [ "$mode" = mobile ]; then device_args+=(--emulate-mobile); fi
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${device_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=$sector&mindustryUnitProductionSmoke=1&mindustryProducedUnitBehaviorSmoke=1" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=$sector&mindustryUnitProductionSmoke=1&mindustryProducedUnitBehaviorSmoke=1&mindustryReconstructorSmoke=1" \
     --profile "$profile" --port 9513 --timeout 210 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require "data-mindustry-campaign-planet=\"$planet\"" \
     --require 'data-mindustry-unit-production="passed"' \
     --require 'data-mindustry-produced-unit-behavior="passed"' \
+    --require 'data-mindustry-reconstructor="passed"' \
+    --require 'data-mindustry-reconstructor-logic="stock-upgrade-and-spawn"' \
+    --require 'data-mindustry-reconstructor-source="actual-factory-produced-unit"' \
     --require "data-mindustry-produced-unit-behavior-unit=\"$unit\"" \
     --require 'data-mindustry-produced-unit-behavior-movement="stock-CommandAI-moved"' \
     --require 'data-mindustry-produced-unit-behavior-weapon="owned-projectile-hit-hostile-building"' \
@@ -48,8 +51,22 @@ run_factory(){
 
   grep -Eq 'data-mindustry-unit-production-unit-constructors="([5-9][0-9]|[1-9][0-9]{2,})"' "$dom"
   grep -Eq 'data-mindustry-unit-catalogue-recipes="([2-9][0-9]|[1-9][0-9]{2,})"' "$dom"
+  case "$planet" in
+    serpulo)
+      grep -q 'data-mindustry-reconstructor-block="additive-reconstructor"' "$dom"
+      grep -q 'data-mindustry-reconstructor-from="dagger"' "$dom"
+      grep -q 'data-mindustry-reconstructor-to="mace"' "$dom"
+      ;;
+    erekir)
+      grep -q 'data-mindustry-reconstructor-block="tank-refabricator"' "$dom"
+      grep -q 'data-mindustry-reconstructor-from="stell"' "$dom"
+      grep -q 'data-mindustry-reconstructor-to="locus"' "$dom"
+      ;;
+  esac
   grep -Eq 'data-mindustry-unit-production-factory-frames="[1-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-produced-unit-behavior-attack-frames="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-reconstructor-frames="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-reconstructor-items-consumed="[1-9][0-9]*"' "$dom"
   echo "$planet/$factory -> $unit ($mode): all vanilla unit constructors + stock UnitFactory production/spawn PASS"
 }
 
