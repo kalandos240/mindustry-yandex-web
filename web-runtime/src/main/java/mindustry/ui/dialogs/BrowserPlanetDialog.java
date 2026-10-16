@@ -92,6 +92,10 @@ public class BrowserPlanetDialog extends PlanetDialog{
             markFirstSceneDown(Core.settings.getString("web-first-scene-down", "none"));
             markFirstRootDown(Core.settings.getString("web-first-root-down", "none"));
             markInputRoute(Core.settings.getString("web-first-queue-route", "none"));
+            markQueueEvent("data-mindustry-planet-first-queue-enqueued",
+                Core.settings.getString("web-first-queue-enqueued", "none"));
+            markQueueEvent("data-mindustry-planet-first-queue-drained",
+                Core.settings.getString("web-first-queue-drained", "none"));
             if(firstChooser){
                 sampleButton("web-campaign-first-choice-serpulo", "intro-serpulo");
                 sampleButton("web-campaign-first-choice-erekir", "intro-erekir");
@@ -99,6 +103,9 @@ public class BrowserPlanetDialog extends PlanetDialog{
             }
         }
     }
+
+    @JSBody(params={"name","value"}, script="document.documentElement.setAttribute(name,value);")
+    private static native void markQueueEvent(String name, String value);
 
     private void sampleButton(String name, String marker){
         Element button = name.startsWith("web-campaign-first-")
