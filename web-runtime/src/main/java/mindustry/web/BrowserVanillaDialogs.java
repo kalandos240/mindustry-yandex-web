@@ -86,6 +86,18 @@ public final class BrowserVanillaDialogs{
             markDatabaseStage("shown");
         }catch(Throwable failure){
             markDatabaseStage("failed-" + failure.getClass().getName());
+            StringBuilder trace = new StringBuilder(failure.toString());
+            try{
+                StackTraceElement[] frames = failure.getStackTrace();
+                for(int i = 0; i < Math.min(frames.length, 8); i++){
+                    trace.append(" | ").append(frames[i].getClassName())
+                        .append(".").append(frames[i].getMethodName())
+                        .append(":").append(frames[i].getLineNumber());
+                }
+            }catch(Throwable ignored){
+                // Even on runtimes without JVM stack frames, retain exception type.
+            }
+            markDatabaseTrace(trace.toString());
             throw failure;
         }
     }
@@ -141,6 +153,9 @@ public final class BrowserVanillaDialogs{
 
     @JSBody(params={"active"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-modal-visible',active);")
     private static native void markDialogVisibility(String active);
+
+    @JSBody(params={"trace"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-database-trace',trace);")
+    private static native void markDatabaseTrace(String trace);
 
     @JSBody(params={"stage"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-database-stage',stage);")
     private static native void markDatabaseStage(String stage);
