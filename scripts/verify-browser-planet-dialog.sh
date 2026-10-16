@@ -46,6 +46,24 @@ for device in desktop mobile; do
           await new Promise(r=>setTimeout(r,100));
         }
       };
+      // The original planet selector is a ScrollPane; in short mobile
+      // viewports a planet may require a native wheel/touch-scroll before
+      // its actual button receives events. Check Arc's hit test, not pixels.
+      const expose=async target=>{
+        for(let attempt=0;attempt<12;attempt++){
+          if(root.getAttribute('data-mindustry-planet-hit-'+target+'-exposed')==='yes')return;
+          const tx=Number(root.getAttribute('data-mindustry-planet-hit-'+target+'-x'));
+          const ty=Number(root.getAttribute('data-mindustry-planet-hit-'+target+'-y'));
+          const cy=rect.top+rect.height-ty;
+          canvas.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:742,pointerType:'mouse',clientX:rect.left+tx,clientY:cy}));
+          canvas.dispatchEvent(new WheelEvent('wheel',{bubbles:true,cancelable:true,clientX:rect.left+tx,clientY:cy,deltaY:attempt<6?95:-95}));
+          await new Promise(r=>setTimeout(r,380));
+        }
+        throw Error('Native '+target+' button occluded; receiver='
+          +root.getAttribute('data-mindustry-planet-hit-'+target+'-receiver')
+          +', y='+root.getAttribute('data-mindustry-planet-hit-'+target+'-y'));
+      };
+      await expose('erekir');
       await choose('erekir');
       await wait(()=>root.getAttribute('data-mindustry-planet-native-choice')==='erekir',
         'Erekir button callback: viewed='+root.getAttribute('data-mindustry-planet-viewed')
@@ -55,6 +73,7 @@ for device in desktop mobile; do
           +', exposed='+root.getAttribute('data-mindustry-planet-hit-erekir-exposed'));
       await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='erekir',
         'Erekir view change after callback: current='+root.getAttribute('data-mindustry-planet-viewed'));
+      await expose('serpulo');
       await choose('serpulo');
       await wait(()=>root.getAttribute('data-mindustry-planet-native-choice')==='serpulo',
         'Serpulo button callback: viewed='+root.getAttribute('data-mindustry-planet-viewed')
