@@ -506,6 +506,9 @@ jobs:
       - name: Sweep complete vanilla block registry and building factories on both planets
         run: bash scripts/verify-browser-block-registry.sh
 
+      - name: Boot every Serpulo and Erekir campaign map and tick live gameplay
+        run: bash scripts/verify-browser-all-campaign-maps.sh
+
       - name: Verify Tank Fabricator construction does not freeze Erekir browser gameplay
         run: bash scripts/verify-browser-factory-freeze.sh
 
