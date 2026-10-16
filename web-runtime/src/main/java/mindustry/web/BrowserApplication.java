@@ -158,6 +158,9 @@ public final class BrowserApplication extends WebApplicationBase{
                 BrowserResearchTreeSmoke.update();
                 // Only when explicitly requested by the Erekir stress gate.
                 BrowserFactoryFreezeSmoke.update();
+                // CI only: inspect every registered vanilla block/building factory
+                // on live Serpulo/Erekir without changing any game tiles.
+                BrowserBlockRegistrySmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
