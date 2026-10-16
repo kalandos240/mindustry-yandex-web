@@ -73,29 +73,60 @@ public final class BrowserFileChooser{
         }
     }
 
+    // TeaVM 0.15 JSBody uses an ES5 parser: no arrow functions/async/await.
+    // FileReader callbacks serially deliver each validated browser-local upload.
     @JSBody(params={"extensions","multiple","callback"}, script="""
-        const input = document.createElement('input');
+        var input = document.createElement('input');
         input.type = 'file';
         input.accept = extensions;
         input.multiple = multiple;
         input.style.display = 'none';
         document.body.appendChild(input);
-        input.addEventListener('change', async () => {
-            try{
-                const files = Array.from(input.files || []);
-                const allowed = extensions.toLowerCase().split(',');
-                const filtered = files.filter(f => allowed.some(ext => f.name.toLowerCase().endsWith(ext)));
-                for(let i=0;i<filtered.length;i++){
-                    const f = filtered[i];
-                    // JSBody bridges Uint8Array directly to TeaVM byte[].
-                    callback(f.name, new Uint8Array(await f.arrayBuffer()), i===filtered.length-1);
+        input.addEventListener('change', function(){
+            var files = input.files || [];
+            var allowed = extensions.toLowerCase().split(',');
+            var filtered = [];
+            for(var i = 0; i < files.length; i++){
+                var name = files[i].name.toLowerCase();
+                for(var j = 0; j < allowed.length; j++){
+                    if(name.substr(name.length - allowed[j].length) === allowed[j] && files[i].size <= 16 * 1024 * 1024){
+                        filtered.push(files[i]);
+                        break;
+                    }
                 }
-            }catch(e){
-                document.documentElement.setAttribute('data-mindustry-browser-file-error', String(e));
-            }finally{
-                input.remove();
             }
-        }, {once:true});
+            var next = 0;
+            function loadNext(){
+                if(next >= filtered.length){
+                    if(input.parentNode) input.parentNode.removeChild(input);
+                    return;
+                }
+                var file = filtered[next];
+                var last = next === filtered.length - 1;
+                var reader = new FileReader();
+                reader.onload = function(){
+                    try{
+                        callback(file.name, new Uint8Array(reader.result), last);
+                    }catch(e){
+                        document.documentElement.setAttribute('data-mindustry-browser-file-error', String(e));
+                    }
+                    next++;
+                    loadNext();
+                };
+                reader.onerror = function(){
+                    document.documentElement.setAttribute('data-mindustry-browser-file-error', 'FileReader failed: ' + file.name);
+                    try{
+                        callback(file.name, null, last);
+                    }catch(e){
+                        document.documentElement.setAttribute('data-mindustry-browser-file-error', String(e));
+                    }
+                    next++;
+                    loadNext();
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            loadNext();
+        }, false);
         input.click();
         """)
     private static native void chooseFiles(String extensions, boolean multiple, ImportedFile callback);
