@@ -58,7 +58,7 @@ public final class BrowserReconstructorSmoke{
             }else{
                 throw new IllegalStateException("Unexpected reconstructor planet " + planet);
             }
-            if(reconstructor.upgrade(fromType) != toType)
+            if(!reconstructor.upgrades.contains(pair -> pair[0] == fromType && pair[1] == toType))
                 throw new IllegalStateException("Missing original " + planet +
                     " unit upgrade " + fromType.name + " to " + toType.name);
             // The regular campaign still requires research. Only the isolated
@@ -171,7 +171,7 @@ public final class BrowserReconstructorSmoke{
                     ": upgradedPayload=" + upgradedPayload +
                     " progress=" + build.progress + " efficiency=" + build.efficiency +
                     " power=" + build.power.status +
-                    " liquid=" + (build.liquids == null ? 0 : build.liquids.total()));
+                    " liquid=" + (build.liquids == null ? 0 : build.liquids.currentAmount()));
         }
     }
 
