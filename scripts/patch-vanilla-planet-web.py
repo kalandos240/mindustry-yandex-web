@@ -95,6 +95,26 @@ text = text.replace(old_selector, new_selector, 1)
 # Preserve the upstream first-time campaign chooser. It is an extra
 # BaseDialog above the 3D map until the user picks Serpulo or Erekir, so
 # Chrome must click it before accessing the map's own planet selector.
+
+# Capture Arc Scene touchDown without consuming any events. DOM pointer
+# delivery alone cannot prove that Scene received the button input.
+old_intro_dialog = '                var diag = new BaseDialog("@campaign.select");'
+new_intro_dialog = '''                var diag = new BaseDialog("@campaign.select");
+                diag.addListener(new InputListener(){
+                    @Override
+                    public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
+                        String target = event.targetActor == null ? "null" :
+                            event.targetActor.name == null ? event.targetActor.getClass().getSimpleName() :
+                            event.targetActor.name;
+                        settings.put("web-first-scene-down", target + "@" +
+                            Math.round(event.stageX) + "," + Math.round(event.stageY));
+                        return false;
+                    }
+                });'''
+if text.count(old_intro_dialog) != 1:
+    raise SystemExit("Pinned first-launch native dialog changed")
+text = text.replace(old_intro_dialog, new_intro_dialog, 1)
+
 old_intro_choice = '''                    }, Styles.togglet, () -> selected[0] = planet).size(mobile ? 220f : 320f).group(group);'''
 new_intro_choice = '''                    }, Styles.togglet, () -> {
                         selected[0] = planet;
@@ -170,6 +190,24 @@ new_intro_ok_cell = '''                }).size(260f, 48f).colspan(2).padTop(4f)
 if text.count(old_intro_ok_cell) != 1:
     raise SystemExit("Pinned first-run campaign OK button cell changed")
 text = text.replace(old_intro_ok_cell, new_intro_ok_cell, 1)
+
+
+# After choosing a planet the localized campaign description expands, and
+# the stock OK button at the bottom becomes inaccessible on short viewports.
+# Reorder only the same original OK button row before the description.
+ok_begin = '                diag.cont.row();\n                diag.cont.button("@ok", Icon.ok, () -> {'
+ok_end = '.disabled(b -> selected[0] == null).name("web-campaign-first-confirm");'
+if text.count(ok_begin) != 1 or text.count(ok_end) != 1:
+    raise SystemExit("Pinned first-campaign confirm relocation anchors changed")
+ok_start = text.index(ok_begin)
+ok_stop = text.index(ok_end, ok_start) + len(ok_end)
+ok_row = text[ok_start:ok_stop]
+text = text[:ok_start] + text[ok_stop:]
+description_row = ('                diag.cont.row();\n'
+                   '                diag.cont.label(() -> selected[0] == null ? "@campaign.none" : "@campaign." + selected[0].name)')
+if text.count(description_row) != 1:
+    raise SystemExit("Pinned first-campaign description anchor changed")
+text = text.replace(description_row, ok_row + '\n\n' + description_row, 1)
 
 path.write_text(text, encoding="utf-8")
 print("Pinned stock 3D PlanetDialog: minimized UI shell compatibility; full draw/camera/pick preserved")
