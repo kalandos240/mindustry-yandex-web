@@ -503,6 +503,9 @@ jobs:
       - name: Verify Space hotkey pause and resume never freezes the browser
         run: bash scripts/verify-browser-space-pause.sh
 
+      - name: Sweep complete vanilla block registry and building factories on both planets
+        run: bash scripts/verify-browser-block-registry.sh
+
       - name: Verify Tank Fabricator construction does not freeze Erekir browser gameplay
         run: bash scripts/verify-browser-factory-freeze.sh
 
