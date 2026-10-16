@@ -167,6 +167,9 @@ public final class BrowserApplication extends WebApplicationBase{
                 // Opt-in CI proof of all vanilla UnitType constructors and
                 // actual Ground Factory/Tank Fabricator stock unit spawning.
                 BrowserUnitProductionSmoke.update();
+                // CI-only acceptance of actual factory-produced unit movement,
+                // weapon-owned projectiles and damage against a hostile wall.
+                BrowserProducedUnitBehaviorSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
