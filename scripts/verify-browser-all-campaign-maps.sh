@@ -43,6 +43,9 @@ run_map(){
     --profile "$profile" --port 9501 --timeout 100 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-smoke-mode="production"' \
+    --require 'data-mindustry-campaign-assets-policy="eager"' \
+    --require 'data-mindustry-campaign-assets="ready"' \
+    --require 'data-mindustry-assets-deferred-campaign="0"' \
     --require "data-mindustry-campaign-test=\"$preset\"" \
     --require "data-mindustry-campaign-planet=\"$planet\"" \
     --require "data-mindustry-campaign-preset=\"$preset\"" \
