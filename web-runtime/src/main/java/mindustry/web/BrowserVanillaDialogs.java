@@ -61,11 +61,21 @@ public final class BrowserVanillaDialogs{
     }
 
     public static void openDatabase(){
-        if(!initialized) return;
+        markDatabaseStage("called");
+        if(!initialized){
+            markDatabaseStage("not-initialized");
+            return;
+        }
         // The original DatabaseDialog exposes per-planet tabs, category groupings,
         // filtering and the exact ContentInfoDialog stat popup.
-        ui.database.show();
-        markDatabaseOpened();
+        try{
+            ui.database.show();
+            markDatabaseOpened();
+            markDatabaseStage("shown");
+        }catch(Throwable failure){
+            markDatabaseStage("failed-" + failure.getClass().getName());
+            throw failure;
+        }
     }
 
     public static void openSaves(){
@@ -116,6 +126,9 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-saves', 'stock-LoadDialog-browser-safe');
         """)
     private static native void markInstalled();
+
+    @JSBody(params={"stage"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-database-stage',stage);")
+    private static native void markDatabaseStage(String stage);
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-vanilla-database-open','yes');")
     private static native void markDatabaseOpened();
