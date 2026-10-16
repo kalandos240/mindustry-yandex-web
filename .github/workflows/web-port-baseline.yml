@@ -295,6 +295,9 @@ jobs:
       - name: Verify native vanilla dialogs in real desktop and mobile Chrome
         run: bash scripts/verify-browser-vanilla-dialogs.sh
 
+      - name: Verify original 3D planet map in desktop and mobile Chrome
+        run: bash scripts/verify-browser-planet-dialog.sh
+
       - name: Verify HAR external-host isolation and redaction
         run: bash scripts/verify-browser-network-har.sh
 
