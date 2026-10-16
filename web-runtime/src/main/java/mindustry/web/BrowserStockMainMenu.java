@@ -82,8 +82,11 @@ public final class BrowserStockMainMenu{
                     .name("web-main-controls");
                 menu.row();
                 menu.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
-                    BrowserVanillaDialogs::openSaves).size(tileWidth * 2f + 10f, 55f)
-                    .colspan(2).name("web-main-saves");
+                    BrowserVanillaDialogs::openSaves).size(tileWidth, 55f)
+                    .name("web-main-saves");
+                menu.button(Core.bundle.get("planets", "Planets"), Icon.terrain,
+                    BrowserVanillaDialogs::openPlanets).size(tileWidth, 55f)
+                    .name("web-main-planets");
                 menu.row();
                 menu.add(Version.combined()).colspan(2).padBottom(8f);
             }).width(Math.min(2f * tileWidth + 20f, Core.graphics.getWidth() - 12f));
@@ -95,7 +98,7 @@ public final class BrowserStockMainMenu{
             // Use adaptive row/logo heights so real button hit rectangles stay
             // within the canvas rather than silently extending off-screen.
             float usableHeight = Math.max(320f, Core.graphics.getHeight() / Scl.scl(1f) - 100f);
-            float desktopRowHeight = Math.max(36f, Math.min(58f, (usableHeight - 114f) / 8f));
+            float desktopRowHeight = Math.max(32f, Math.min(54f, (usableHeight - 114f) / 9f));
             home.left().top().marginLeft(12f).marginTop(25f);
             home.table(Styles.black6, menu -> {
                 menu.name = "web-main-desktop-buttons";
@@ -109,6 +112,10 @@ public final class BrowserStockMainMenu{
                 menu.button(Core.bundle.get("customgame", "Custom Game"), Icon.terrain,
                     Styles.flatToggleMenut, BrowserStockMainMenu::openPlay)
                     .name("web-main-custom");
+                menu.row();
+                menu.button(Core.bundle.get("planets", "Planets"), Icon.terrain,
+                    Styles.flatToggleMenut, BrowserVanillaDialogs::openPlanets)
+                    .name("web-main-planets");
                 menu.row();
                 menu.button(Core.bundle.get("database", "Database"), Icon.book,
                     Styles.flatToggleMenut, BrowserStockDatabaseUi::show)
@@ -150,6 +157,7 @@ public final class BrowserStockMainMenu{
                 markPointerCenter(home.find("web-main-controls"), "controls");
                 markPointerCenter(home.find("web-main-settings"), "settings");
                 markPointerCenter(home.find("web-main-saves"), "saves");
+                markPointerCenter(home.find("web-main-planets"), "planets");
                 BrowserVanillaDialogs.sampleVisibility();
             }
         });
