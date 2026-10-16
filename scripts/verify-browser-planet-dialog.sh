@@ -46,6 +46,23 @@ for device in desktop mobile; do
           await new Promise(r=>setTimeout(r,100));
         }
       };
+      // A fresh vanilla campaign first shows a separate Serpulo/Erekir
+      // portrait chooser above PlanetDialog. It is not safe to click the
+      // planet map through that modal; choose the original Serpulo option.
+      await wait(()=>root.getAttribute('data-mindustry-planet-first-chooser')==='open',
+        'First-time vanilla Serpulo/Erekir campaign choice did not open');
+      await wait(()=>root.hasAttribute('data-mindustry-planet-hit-intro-serpulo-x'),
+        'Vanilla campaign portrait selector has no native hitbox');
+      await choose('intro-serpulo');
+      await new Promise(r=>setTimeout(r,220));
+      await wait(()=>root.hasAttribute('data-mindustry-planet-hit-intro-confirm-x'),
+        'Vanilla campaign confirm button has no native hitbox');
+      await choose('intro-confirm');
+      await wait(()=>root.getAttribute('data-mindustry-planet-first-chooser')==='closed',
+        'Vanilla first campaign chooser did not close after confirmation');
+      await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo',
+        'Original campaign Serpulo choice did not update active planet');
+
       // The original planet selector is a ScrollPane; in short mobile
       // viewports a planet may require a native wheel/touch-scroll before
       // its actual button receives events. Check Arc's hit test, not pixels.
