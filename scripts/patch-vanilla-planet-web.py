@@ -56,5 +56,17 @@ if text.count(old_planet_button) != 1:
     raise SystemExit("Pinned PlanetDialog planet buttons changed")
 text = text.replace(old_planet_button, new_planet_button, 1)
 
+# In the lean Yandex viewport the original star/planet list can exceed its
+# allotted column, placing later buttons beneath other native scene buttons.
+# Bound the *same upstream ScrollPane* to the actual Arc scaled viewport. This
+# keeps all original list content scrollable and fixes hitbox occlusion.
+old_pane = "            t.add(pane).colspan(2).row();"
+new_pane = ("            t.add(pane).colspan(2).width(228f)"
+            ".height(Math.max(112f, Math.min(216f,"
+            " Core.graphics.getHeight() / Scl.scl(1f) * 0.43f))).row();")
+if text.count(old_pane) != 1:
+    raise SystemExit(f"Pinned planet selector scroll-pane anchor changed: {text.count(old_pane)}")
+text = text.replace(old_pane, new_pane, 1)
+
 path.write_text(text, encoding="utf-8")
 print("Pinned stock 3D PlanetDialog: minimized UI shell compatibility; full draw/camera/pick preserved")
