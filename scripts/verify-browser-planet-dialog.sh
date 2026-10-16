@@ -80,7 +80,10 @@ for device in desktop mobile; do
         'Original campaign OK callback was not reached; choice='
           +root.getAttribute('data-mindustry-planet-first-selected')
           +', button receiver='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-receiver')
-          +', disabled='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-disabled'));
+          +', disabled='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-disabled')
+          +', listeners='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-listeners')
+          +', taps='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-taps')
+          +', pressed='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-pressed'));
       await wait(()=>root.getAttribute('data-mindustry-planet-first-chooser')==='closed',
         'Vanilla first campaign chooser did not close after confirmation; stage='
           +root.getAttribute('data-mindustry-planet-first-stage')
