@@ -130,17 +130,23 @@ old_intro_steps = """                    state.planet = selected[0];
                     selectSector(state.planet.getStartSector());
                     settings.put("campaignselect", true);
                     diag.hide();"""
-new_intro_steps = """                    settings.put("web-first-stage", "setting-planet");
-                    state.planet = selected[0];
-                    settings.put("web-first-stage", "looking-at-start-sector");
-                    lookAt(state.planet.getStartSector());
-                    settings.put("web-first-stage", "selecting-start-sector");
-                    selectSector(state.planet.getStartSector());
-                    settings.put("web-first-stage", "saving-campaign-selection");
-                    settings.put("campaignselect", true);
-                    settings.put("web-first-stage", "hiding-dialog");
-                    diag.hide();
-                    settings.put("web-first-stage", "dialog-hidden");"""
+new_intro_steps = """                    try{
+                        settings.put("web-first-stage", "setting-planet");
+                        state.planet = selected[0];
+                        settings.put("web-first-stage", "looking-at-start-sector");
+                        lookAt(state.planet.getStartSector());
+                        settings.put("web-first-stage", "selecting-start-sector");
+                        selectSector(state.planet.getStartSector());
+                        settings.put("web-first-stage", "saving-campaign-selection");
+                        settings.put("campaignselect", true);
+                        settings.put("web-first-stage", "hiding-dialog");
+                        diag.hide();
+                        settings.put("web-first-stage", "dialog-hidden");
+                    }catch(Throwable failure){
+                        settings.put("web-first-stage", "failed-" + failure.getClass().getName()
+                            + "-" + failure.getMessage());
+                        Log.err(failure);
+                    }"""
 if text.count(old_intro_steps) != 1:
     raise SystemExit(f"Original first-run OK operation sequence changed: {text.count(old_intro_steps)}")
 text = text.replace(old_intro_steps, new_intro_steps, 1)
