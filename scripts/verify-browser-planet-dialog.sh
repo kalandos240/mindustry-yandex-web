@@ -91,7 +91,8 @@ for device in desktop mobile; do
           +', pressed='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-pressed')
           +', click='+root.getAttribute('data-mindustry-planet-test-last-click')
           +', DOM-down='+root.getAttribute('data-mindustry-intro-dom-down')
-          +', DOM-up='+root.getAttribute('data-mindustry-intro-dom-up'));
+          +', DOM-up='+root.getAttribute('data-mindustry-intro-dom-up')
+          +', Arc-down='+root.getAttribute('data-mindustry-planet-first-scene-down'));
       await wait(()=>root.getAttribute('data-mindustry-planet-first-chooser')==='closed',
         'Vanilla first campaign chooser did not close after confirmation; stage='
           +root.getAttribute('data-mindustry-planet-first-stage')
