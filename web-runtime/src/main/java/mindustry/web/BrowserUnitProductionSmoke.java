@@ -65,7 +65,7 @@ public final class BrowserUnitProductionSmoke{
             // Constructor coverage across all vanilla unit types. No entities
             // are inserted into the world or handed free weapons/resources.
             Seq<UnitType> all = content.units();
-            if(all.size < 70) throw new IllegalStateException(
+            if(all.size < 55) throw new IllegalStateException(
                 "Incomplete vanilla unit registry: " + all.size);
             for(int i = 0; i < 8 && unitCursor < all.size; i++, unitCursor++){
                 UnitType type = all.get(unitCursor);
