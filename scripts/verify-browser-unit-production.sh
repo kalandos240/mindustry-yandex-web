@@ -33,13 +33,17 @@ run_factory(){
     --require 'data-mindustry-campaign-state="playing"' \
     --require "data-mindustry-campaign-planet=\"$planet\"" \
     --require 'data-mindustry-unit-production="passed"' \
+    --require 'data-mindustry-unit-catalogue-factories="6"' \
+    --require 'data-mindustry-unit-catalogue-reconstructors="8"' \
+    --require 'data-mindustry-unit-catalogue-assemblers="3"' \
     --require "data-mindustry-unit-production-planet=\"$planet\"" \
     --require "data-mindustry-unit-production-factory=\"$factory\"" \
     --require "data-mindustry-unit-production-unit=\"$unit\"" \
     --require 'data-mindustry-unit-production-source="stock-unit-factory-and-power"' \
     --require 'data-mindustry-network="local-only"' > "$dom"
 
-  grep -Eq 'data-mindustry-unit-production-unit-constructors="[7-9][0-9]|data-mindustry-unit-production-unit-constructors="[1-9][0-9]{2,}"' "$dom"
+  grep -Eq 'data-mindustry-unit-production-unit-constructors="([7-9][0-9]|[1-9][0-9]{2,})"' "$dom"
+  grep -Eq 'data-mindustry-unit-catalogue-recipes="([2-9][0-9]|[1-9][0-9]{2,})"' "$dom"
   grep -Eq 'data-mindustry-unit-production-factory-frames="[1-9][0-9]*"' "$dom"
   echo "$planet/$factory -> $unit ($mode): all vanilla unit constructors + stock UnitFactory production/spawn PASS"
 }
