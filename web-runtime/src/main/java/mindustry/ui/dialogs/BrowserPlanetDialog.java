@@ -104,6 +104,15 @@ public class BrowserPlanetDialog extends PlanetDialog{
         if(button != null && button.getWidth() > 0f && button.getHeight() > 0f){
             if(button instanceof Button stockButton){
                 markButtonState(marker, stockButton.isChecked(), stockButton.isDisabled());
+                int clickListeners = 0, totalTaps = 0, stillPressed = 0;
+                for(var listener : stockButton.getListeners()){
+                    if(listener instanceof arc.scene.event.ClickListener c){
+                        clickListeners++;
+                        totalTaps += c.getTapCount();
+                        if(c.isPressed()) stillPressed++;
+                    }
+                }
+                markClickListeners(marker, clickListeners, totalTaps, stillPressed);
             }
             Vec2 at = button.localToStageCoordinates(new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
             Element receiver = Core.scene.hit(at.x, at.y, true);
@@ -147,6 +156,14 @@ public class BrowserPlanetDialog extends PlanetDialog{
         root.setAttribute('data-mindustry-planet-hit-'+target+'-disabled',disabled ? 'yes' : 'no');
         """)
     private static native void markButtonState(String target, boolean checked, boolean disabled);
+
+    @JSBody(params={"target","listeners","taps","pressed"}, script="""
+        var root=document.documentElement, base='data-mindustry-planet-hit-'+target;
+        root.setAttribute(base+'-listeners',String(listeners));
+        root.setAttribute(base+'-taps',String(taps));
+        root.setAttribute(base+'-pressed',String(pressed));
+        """)
+    private static native void markClickListeners(String target, int listeners, int taps, int pressed);
 
     @JSBody(params={"target","receiver","exposed"}, script="""
         var root=document.documentElement;
