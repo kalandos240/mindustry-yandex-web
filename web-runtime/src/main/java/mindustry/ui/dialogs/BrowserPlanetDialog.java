@@ -86,7 +86,8 @@ public class BrowserPlanetDialog extends PlanetDialog{
                 && topDialog.find("web-campaign-first-choice-serpulo") != null;
             markFirstChooser(firstChooser);
             markFirstRunActions(Core.settings.getString("web-first-choice", "none"),
-                Core.settings.getString("web-first-ok", "none"));
+                Core.settings.getString("web-first-ok", "none"),
+                Core.settings.getString("web-first-stage", "none"));
             if(firstChooser){
                 sampleButton("web-campaign-first-choice-serpulo", "intro-serpulo");
                 sampleButton("web-campaign-first-choice-erekir", "intro-erekir");
@@ -119,12 +120,13 @@ public class BrowserPlanetDialog extends PlanetDialog{
         }
     }
 
-    @JSBody(params={"choice","ok"}, script="""
+    @JSBody(params={"choice","ok","phase"}, script="""
         var root=document.documentElement;
         root.setAttribute('data-mindustry-planet-first-selected',choice);
         root.setAttribute('data-mindustry-planet-first-confirm',ok);
+        root.setAttribute('data-mindustry-planet-first-stage',phase);
         """)
-    private static native void markFirstRunActions(String choice, String ok);
+    private static native void markFirstRunActions(String choice, String ok, String phase);
 
     @JSBody(params={"shown"}, script="document.documentElement.setAttribute('data-mindustry-planet-first-chooser',shown ? 'open' : 'closed');")
     private static native void markFirstChooser(boolean shown);
