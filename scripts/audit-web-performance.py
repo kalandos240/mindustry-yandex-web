@@ -8,17 +8,19 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web-runtime" / "build" / "web"
 REPORT = ROOT / "work" / "web-performance-report.txt"
 
-# Preserve the old lean-browser baseline as a diagnostic, not as an artificial
-# cap that rules out standard Mindustry gameplay. This milestone restores the
-# actual upstream PlacementFragment and campaign research UI. The 100 MiB staged
-# Yandex package cap, generated-JS forbidden networking classes, production
-# Chrome gameplay regressions and uploaded performance reports stay hard gates.
-# A 32 MB raw / 3.7 MB gzip ceiling still detects unintentional giant UI/service
-# graphs while allowing the authentic vanilla build/command HUD to be reachable.
+# The pinned real PlanetDialog + original ResearchDialog add the 3D campaign
+# scene, planet mesh/sector picking, orbit rendering and launch UI to the original
+# 32 MB gameplay bundle. This is an explicitly broader deliverable, not a silent
+# regression of the previous milestone. Preserve the previous baseline as a
+# diagnostic while enforcing strict NEW independent JavaScript ceilings.
+# These limits do not supersede the absolute Yandex 100,000,000-byte unpacked
+# package cap below, and all Chrome/RTS/campaign/portal gates remain enabled.
+# The latest measured full-planet build is 39,612,437 raw / 3,607,052 gzip,
+# leaving about 1.4 MB JS and 0.39 MB gzip headroom for the current milestone.
 JS_BASELINE = 23_155_354
-JS_LIMIT = 32_000_000
+JS_LIMIT = 41_000_000
 JS_GZIP_BASELINE = 2_649_677
-JS_GZIP_LIMIT = 3_700_000
+JS_GZIP_LIMIT = 4_000_000
 YANDEX_UNPACKED_LIMIT = 100_000_000  # Yandex requires decimal MB, not 100 MiB.
 
 # TeaVM is generated with obfuscation disabled. If any of these desktop-only classes
@@ -143,14 +145,14 @@ if len(deferred_campaign_maps) != 44:
     failed = True
 if js_bytes > JS_LIMIT:
     print(
-        f"ERROR: TeaVM JavaScript grew beyond complete-campaign performance budget: {js_bytes} > {JS_LIMIT}. "
+        f"ERROR: TeaVM JavaScript grew beyond original-3D-planet performance budget: {js_bytes} > {JS_LIMIT}. "
         "Check for accidental desktop/service reachability or unexpected gameplay graph growth.",
         file=sys.stderr,
     )
     failed = True
 if gzip_bytes > JS_GZIP_LIMIT:
     print(
-        f"ERROR: TeaVM gzip size grew beyond complete-campaign budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
+        f"ERROR: TeaVM gzip size grew beyond original-3D-planet budget: {gzip_bytes} > {JS_GZIP_LIMIT}.",
         file=sys.stderr,
     )
     failed = True
@@ -163,7 +165,7 @@ if forbidden_found:
     failed = True
 if total_bytes > YANDEX_UNPACKED_LIMIT:
     print(
-        f"ERROR: staged package exceeds Yandex unpacked 100 MiB limit: {total_bytes} > {YANDEX_UNPACKED_LIMIT}.",
+        f"ERROR: staged package exceeds Yandex unpacked 100 MB limit: {total_bytes} > {YANDEX_UNPACKED_LIMIT}.",
         file=sys.stderr,
     )
     failed = True
