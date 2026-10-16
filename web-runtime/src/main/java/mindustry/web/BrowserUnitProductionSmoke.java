@@ -29,6 +29,7 @@ public final class BrowserUnitProductionSmoke{
     private static Tile factoryTile, powerTile;
     private static UnitFactory.UnitFactoryBuild factoryBuild;
     private static boolean payloadObserved;
+    private static Unit producedUnit;
     private static String planet;
 
     private BrowserUnitProductionSmoke(){}
@@ -145,6 +146,7 @@ public final class BrowserUnitProductionSmoke{
 
             if(factoryBuild.payload != null){
                 UnitPayload payload = factoryBuild.payload;
+                producedUnit = payload.unit;
                 if(payload.unit == null || payload.unit.type != expectedType ||
                     payload.unit.team() != state.rules.defaultTeam)
                     throw new IllegalStateException("Factory produced wrong original UnitPayload");
@@ -170,6 +172,11 @@ public final class BrowserUnitProductionSmoke{
                     ", efficiency=" + factoryBuild.efficiency + ")");
             }
         }
+    }
+
+    /** CI-only observation of an actual spawned unit built by UnitFactoryBuild. */
+    public static Unit producedUnit(){
+        return completed && producedUnit != null && producedUnit.isAdded() ? producedUnit : null;
     }
 
     /** Every shipped vanilla factory and its recipe/upgrade definitions. */
