@@ -296,13 +296,16 @@ public final class BrowserCampaignRuntime{
             // The ordinary public campaign path still requires prerequisite
             // research/capture; only explicit isolated browser smoke profiles
             // may bypass the unlock to verify late-game sector compatibility.
+            diagPhase("matrix-lookup");
             SectorPreset testPreset = content.sector(requested);
             if(testPreset == null || testPreset.sector == null
                 || (testPreset.sector.planet != Planets.serpulo
                     && testPreset.sector.planet != Planets.erekir)){
                 throw new IllegalArgumentException("Unknown Mindustry campaign matrix sector: " + requested);
             }
+            diagPhase("matrix-quiet-unlock");
             testPreset.quietUnlock();
+            diagPhase("matrix-start");
             startPreset(testPreset, testPreset.sector);
         }else{
             throw new IllegalArgumentException("Unsupported browser campaign smoke sector: " + requested);
@@ -412,22 +415,27 @@ public final class BrowserCampaignRuntime{
         pausedFrames = 0;
         pauseSmokeArmed = false;
 
+        diagPhase("start-check-menu");
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("c:start-menu");
         }
+        diagPhase("start-check-network");
         if(net == null || net.active() || netServer != null || netClient != null){
             throw new IllegalStateException("c:start-net");
         }
 
+        diagPhase("start-check-sector");
         Sector sector = preset == null ? null : preset.sector;
         if(preset == null || sector == null || (sector.planet != Planets.serpulo && sector.planet != Planets.erekir)){
             throw new IllegalStateException("c:meta");
         }
+        diagPhase("start-check-sector-unlock");
         if(preset != SectorPresets.groundZero && !preset.unlocked()){
             throw new IllegalStateException("c:locked:" + preset.name);
         }
 
+        diagPhase("start-check-packaged-msav");
         Fi presetFile = Core.files.internal("maps/" + sector.planet.name + "/" + preset.name + "." + mapExtension);
         if(!presetFile.exists() || presetFile.length() < 128){
             throw new IllegalStateException("c:map:" + preset.name);
@@ -436,6 +444,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("c:maps");
         }
 
+        diagPhase("start-bind-generator");
         if(preset.generator == null || preset.generator.map == null){
             preset.generator = new FileMapGenerator(preset.name, preset);
         }
