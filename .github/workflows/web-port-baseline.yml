@@ -289,6 +289,10 @@ jobs:
       - name: Audit Yandex release package requirements
         run: bash scripts/audit-yandex-release.sh
 
+      # Fail fast on native dialog interaction before the long campaign matrices.
+      - name: Verify native vanilla dialogs in real desktop and mobile Chrome
+        run: bash scripts/verify-browser-vanilla-dialogs.sh
+
       - name: Verify HAR external-host isolation and redaction
         run: bash scripts/verify-browser-network-har.sh
 
@@ -424,9 +428,6 @@ jobs:
 
       - name: Verify English and Russian browser localization
         run: bash scripts/verify-browser-locales.sh
-
-      - name: Verify native vanilla dialogs in real desktop and mobile Chrome
-        run: bash scripts/verify-browser-vanilla-dialogs.sh
 
       - name: Verify all Serpulo TechTree sectors through Weathered Channels
         run: bash scripts/verify-browser-campaign-capture.sh
