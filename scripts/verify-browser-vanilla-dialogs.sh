@@ -49,36 +49,58 @@ for device in desktop mobile; do
         +', coords='+root.getAttribute('data-mindustry-main-menu-settings-x')
         +','+root.getAttribute('data-mindustry-main-menu-settings-y')
         +', canvas='+canvas.width+'x'+canvas.height+')');
+      await wait(()=>(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('settings'),
+        'Arc dialog never became visible: settings');
       window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await new Promise(r=>setTimeout(r,250));
       window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await new Promise(r=>setTimeout(r,250));
+      await wait(()=>!(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('settings'),
+        'Arc dialog did not close on Escape: settings');
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-saves-x'),'saves button coordinates');
       await click(Number(root.getAttribute('data-mindustry-main-menu-saves-x')),Number(root.getAttribute('data-mindustry-main-menu-saves-y')));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-saves-open')==='yes','LoadDialog save manager opened');
+      await wait(()=>(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('saves'),
+        'Arc dialog never became visible: saves');
       window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await new Promise(r=>setTimeout(r,250));
       window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await new Promise(r=>setTimeout(r,250));
+      await wait(()=>!(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('saves'),
+        'Arc dialog did not close on Escape: saves');
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-controls-x'),'controls coordinates');
       await click(Number(root.getAttribute('data-mindustry-main-menu-controls-x')),Number(root.getAttribute('data-mindustry-main-menu-controls-y')));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-controls-open')==='yes','KeybindDialog open');
+      await wait(()=>(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('controls'),
+        'Arc dialog never became visible: controls');
       window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await new Promise(r=>setTimeout(r,250));
       window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await new Promise(r=>setTimeout(r,250));
+      await wait(()=>!(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('controls'),
+        'Arc dialog did not close on Escape: controls');
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-schematics-x'),'schematics coordinates');
       await click(Number(root.getAttribute('data-mindustry-main-menu-schematics-x')),Number(root.getAttribute('data-mindustry-main-menu-schematics-y')));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-schematics-open')==='yes','SchematicsDialog open');
+      await wait(()=>(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('schematics'),
+        'Arc dialog never became visible: schematics');
       window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await new Promise(r=>setTimeout(r,250));
       window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await new Promise(r=>setTimeout(r,250));
+      await wait(()=>!(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('schematics'),
+        'Arc dialog did not close on Escape: schematics');
       await click(Number(root.getAttribute('data-mindustry-main-menu-database-x')),Number(root.getAttribute('data-mindustry-main-menu-database-y')));
       await wait(()=>root.getAttribute('data-mindustry-database-open')==='yes','database after stock dialog close');
       await wait(()=>root.hasAttribute('data-mindustry-database-vanilla-x'),'vanilla database coordinates');
       await click(Number(root.getAttribute('data-mindustry-database-vanilla-x')),Number(root.getAttribute('data-mindustry-database-vanilla-y')));
-      await wait(()=>root.getAttribute('data-mindustry-vanilla-database-open')==='yes','DatabaseDialog open');
+      await wait(()=>root.getAttribute('data-mindustry-database-vanilla-click')==='yes',
+        'Native database button missed: coords='+root.getAttribute('data-mindustry-database-vanilla-x')
+        +','+root.getAttribute('data-mindustry-database-vanilla-y')
+        +', visible='+root.getAttribute('data-mindustry-vanilla-modal-visible'));
+      await wait(()=>root.getAttribute('data-mindustry-vanilla-database-open')==='yes',
+        'DatabaseDialog not shown: stage='+root.getAttribute('data-mindustry-vanilla-database-stage')
+        +', visible='+root.getAttribute('data-mindustry-vanilla-modal-visible'));
       root.setAttribute('data-mindustry-vanilla-dialog-smoke','passed');
       return 'opened real stock dialogs';
     })()" \
