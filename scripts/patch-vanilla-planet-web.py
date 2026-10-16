@@ -145,5 +145,32 @@ if text.count(old_intro_steps) != 1:
     raise SystemExit(f"Original first-run OK operation sequence changed: {text.count(old_intro_steps)}")
 text = text.replace(old_intro_steps, new_intro_steps, 1)
 
+# The first-campaign OK handler also initializes the chosen sector. Track
+# each original step so browser CI can distinguish an unreceived pointer from
+# a Java exception during camera/sector initialization. No logic is bypassed.
+intro_callback_old = '''                diag.buttons.button("@ok", Icon.ok, () -> {
+                    state.planet = selected[0];
+                    lookAt(state.planet.getStartSector());
+                    selectSector(state.planet.getStartSector());
+                    settings.put("campaignselect", true);
+                    diag.hide();
+                }).size(300f, 64f).disabled(b -> selected[0] == null).name("web-campaign-first-confirm");'''
+intro_callback_new = '''                diag.buttons.button("@ok", Icon.ok, () -> {
+                    settings.put("web-planet-intro-step", "clicked");
+                    state.planet = selected[0];
+                    settings.put("web-planet-intro-step", "planet-selected");
+                    lookAt(state.planet.getStartSector());
+                    settings.put("web-planet-intro-step", "camera-ready");
+                    selectSector(state.planet.getStartSector());
+                    settings.put("web-planet-intro-step", "sector-ready");
+                    settings.put("campaignselect", true);
+                    settings.put("web-planet-intro-step", "saved");
+                    diag.hide();
+                    settings.put("web-planet-intro-step", "closed");
+                }).size(300f, 64f).disabled(b -> selected[0] == null).name("web-campaign-first-confirm");'''
+if text.count(intro_callback_old) != 1:
+    raise SystemExit("Pinned first-campaign OK sequence changed")
+text = text.replace(intro_callback_old, intro_callback_new, 1)
+
 path.write_text(text, encoding="utf-8")
 print("Pinned stock 3D PlanetDialog: minimized UI shell compatibility; full draw/camera/pick preserved")
