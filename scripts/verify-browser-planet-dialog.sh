@@ -95,6 +95,8 @@ for device in desktop mobile; do
           +', Arc-down='+root.getAttribute('data-mindustry-planet-first-scene-down')
           +', Arc-root='+root.getAttribute('data-mindustry-planet-first-root-down')
           +', queued='+root.getAttribute('data-mindustry-planet-first-queue-route')
+          +', enqueued='+root.getAttribute('data-mindustry-planet-first-queue-enqueued')
+          +', drained='+root.getAttribute('data-mindustry-planet-first-queue-drained')
           +', callback-down='+root.getAttribute('data-mindustry-intro-pointerdown-callback')
           +', callback-up='+root.getAttribute('data-mindustry-intro-pointerup-callback')
           +', reset='+root.getAttribute('data-mindustry-input-reset-count'));
