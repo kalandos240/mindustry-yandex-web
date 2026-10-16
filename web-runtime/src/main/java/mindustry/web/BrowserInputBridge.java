@@ -194,7 +194,17 @@ public final class BrowserInputBridge{
                     [event.target.id || event.target.tagName, event.clientX, event.clientY,
                         p[0], p[1], event.pointerType].join(','));
             }
-            pointerDown(slot, p[0], p[1], event.button | 0);
+            try{
+                pointerDown(slot, p[0], p[1], event.button | 0);
+                if(document.documentElement.getAttribute('data-mindustry-planet-first-chooser') === 'open'){
+                    document.documentElement.setAttribute('data-mindustry-intro-pointerdown-callback',
+                        'returned:' + p[0] + ',' + p[1]);
+                }
+            }catch(error){
+                document.documentElement.setAttribute('data-mindustry-intro-pointerdown-callback',
+                    'threw:' + String(error).slice(0, 200));
+                throw error;
+            }
             event.preventDefault();
         }, {passive: false});
 
@@ -221,7 +231,17 @@ public final class BrowserInputBridge{
                     [event.target.id || event.target.tagName, event.clientX, event.clientY,
                         p[0], p[1], event.pointerType].join(','));
             }
-            pointerUp(slot, p[0], p[1], event.button | 0);
+            try{
+                pointerUp(slot, p[0], p[1], event.button | 0);
+                if(document.documentElement.getAttribute('data-mindustry-planet-first-chooser') === 'open'){
+                    document.documentElement.setAttribute('data-mindustry-intro-pointerup-callback',
+                        'returned:' + p[0] + ',' + p[1]);
+                }
+            }catch(error){
+                document.documentElement.setAttribute('data-mindustry-intro-pointerup-callback',
+                    'threw:' + String(error).slice(0, 200));
+                throw error;
+            }
             if (event.pointerType !== 'mouse') pointerSlots.delete(event.pointerId);
             event.preventDefault();
         };
