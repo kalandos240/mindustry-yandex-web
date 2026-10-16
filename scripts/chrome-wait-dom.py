@@ -18,6 +18,7 @@ import struct
 import subprocess
 import sys
 import time
+import threading
 import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
@@ -190,6 +191,58 @@ def evaluate_await(ws: WebSocket, message_id: int, expression: str) -> str:
     return str(result.get("value", ""))
 
 
+
+def cdp_input_bridge(port: int, url: str, deadline: float, mobile: bool, stop: threading.Event) -> None:
+    """Replay explicitly requested pointer clicks as trusted Chrome mouse/touch events."""
+    ws = None
+    try:
+        ws = WebSocket(target_websocket(port, url, deadline))
+        message_id, last_request = 1, None
+        while not stop.is_set() and time.monotonic() < deadline:
+            request = evaluate(ws, message_id,
+                "document.documentElement.getAttribute('data-mindustry-cdp-click-request') || ''")
+            message_id += 1
+            if request and request != last_request:
+                last_request = request
+                try:
+                    data = json.loads(request)
+                    request_id = str(data["id"])
+                    x, y = float(data["x"]), float(data["y"])
+                    if not (0 <= x <= 10000 and 0 <= y <= 10000):
+                        raise ValueError("CDP click outside viewport")
+                    if mobile:
+                        cdp_command(ws, message_id, "Input.dispatchTouchEvent", {
+                            "type": "touchStart", "touchPoints": [{"x": x, "y": y, "id": 0}]})
+                        message_id += 1
+                        time.sleep(0.10)
+                        cdp_command(ws, message_id, "Input.dispatchTouchEvent", {
+                            "type": "touchEnd", "touchPoints": []})
+                        message_id += 1
+                    else:
+                        for typ, button, buttons in [
+                            ("mouseMoved", "none", 0), ("mousePressed", "left", 1),
+                            ("mouseReleased", "left", 0)]:
+                            cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
+                                "type": typ, "x": x, "y": y, "button": button,
+                                "buttons": buttons, "clickCount": 1})
+                            message_id += 1
+                            if typ == "mousePressed":
+                                time.sleep(0.10)
+                    status = request_id
+                except Exception as error:
+                    status = "ERROR: " + str(error)[:220]
+                evaluate(ws, message_id,
+                    "document.documentElement.setAttribute('data-mindustry-cdp-click-ack',"
+                    + json.dumps(status) + ")")
+                message_id += 1
+            stop.wait(0.07)
+    except Exception as error:
+        sys.stderr.write("CDP input bridge stopped: " + str(error)[:500] + "\n")
+    finally:
+        if ws is not None:
+            ws.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", required=True)
@@ -212,6 +265,8 @@ def main() -> int:
     )
     parser.add_argument("--after-ready-require", action="append", default=[])
     parser.add_argument("--chrome", default="google-chrome")
+    parser.add_argument("--cdp-input-bridge", action="store_true",
+                        help="Use trusted CDP mouse/touch clicks during after-ready eval.")
     parser.add_argument(
         "--emulate-mobile",
         action="store_true",
@@ -279,6 +334,8 @@ def main() -> int:
     ]
     process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     ws: WebSocket | None = None
+    input_bridge_stop = threading.Event()
+    input_bridge_thread = None
     last_html = ""
     polls = 0
     resize_requested = args.after_resize_width is not None
@@ -312,6 +369,14 @@ def main() -> int:
             message_id += 1
             cdp_command(ws, message_id, "Page.navigate", {"url": args.url})
             message_id += 1
+
+        if args.cdp_input_bridge:
+            input_bridge_thread = threading.Thread(
+                target=cdp_input_bridge,
+                args=(args.port, args.url, deadline, args.emulate_mobile, input_bridge_stop),
+                daemon=True,
+            )
+            input_bridge_thread.start()
 
         while time.monotonic() < deadline:
             last_html = evaluate(
@@ -477,6 +542,9 @@ def main() -> int:
             sys.stderr.write(last_html[:1000] + "\n")
         return 1
     finally:
+        input_bridge_stop.set()
+        if input_bridge_thread is not None:
+            input_bridge_thread.join(timeout=2.0)
         if ws is not None:
             ws.close()
         process.terminate()
