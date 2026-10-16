@@ -121,7 +121,7 @@ public final class BrowserProducedUnitBehaviorSmoke{
                 if(b.owner == produced) fired = true;
             });
             if(fired && (enemy.health < wallStartHealth - 0.01f ||
-                !enemy.isAdded() || enemy.dead())){
+                !enemy.isAdded())){
                 complete = true;
                 markPassed(planet, produced.type.name, frames, stageFrames,
                     initialX, initialY, produced.x, produced.y);
