@@ -129,7 +129,10 @@
             // maps in the background after main() begins. Full progression CI keeps all maps
             // eager to make deterministic multi-sector smoke independent of background timing.
             const params = new URLSearchParams(location.search);
-            const forceCampaignEager = params.get('mindustryCampaignProgressSmoke') === '1';
+            // Full 46-sector map CI must preload ALL stock .msav files before
+            // any Java sector boot. Normal Yandex launches still defer 44 maps.
+            const forceCampaignEager = params.get('mindustryCampaignProgressSmoke') === '1' ||
+                params.get('mindustryCampaignMapMatrix') === '1';
             const isAudio = path => path.startsWith('sounds/') || path.startsWith('music/');
             const isCampaignMap = path => path.startsWith('maps/serpulo/') || path.startsWith('maps/erekir/');
             const isStartupCampaignMap = path =>
