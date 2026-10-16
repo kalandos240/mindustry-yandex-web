@@ -151,5 +151,23 @@ if text.count(old_intro_steps) != 1:
     raise SystemExit(f"Original first-run OK operation sequence changed: {text.count(old_intro_steps)}")
 text = text.replace(old_intro_steps, new_intro_steps, 1)
 
+# TeaVM's Arc input correctly clicks the intro campaign portrait (inside
+# dialog.cont), but native desktop footer buttons in dialog.buttons never
+# receive a completed ClickListener click on the small browser viewport.
+# Keep the same original OK button and its untouched sector-selection lambda;
+# mount it as a final row in the already interactive dialog.cont table.
+old_intro_ok_container = '''                diag.buttons.button("@ok", Icon.ok, () -> {'''
+new_intro_ok_container = '''                diag.cont.row();
+                diag.cont.button("@ok", Icon.ok, () -> {'''
+if text.count(old_intro_ok_container) != 1:
+    raise SystemExit("Pinned first-run campaign OK footer unexpectedly changed")
+text = text.replace(old_intro_ok_container, new_intro_ok_container, 1)
+old_intro_ok_cell = '''                }).size(300f, 64f).disabled(b -> selected[0] == null).name("web-campaign-first-confirm");'''
+new_intro_ok_cell = '''                }).size(300f, 64f).colspan(2).padTop(12f)
+                    .disabled(b -> selected[0] == null).name("web-campaign-first-confirm");'''
+if text.count(old_intro_ok_cell) != 1:
+    raise SystemExit("Pinned first-run campaign OK button cell changed")
+text = text.replace(old_intro_ok_cell, new_intro_ok_cell, 1)
+
 path.write_text(text, encoding="utf-8")
 print("Pinned stock 3D PlanetDialog: minimized UI shell compatibility; full draw/camera/pick preserved")
