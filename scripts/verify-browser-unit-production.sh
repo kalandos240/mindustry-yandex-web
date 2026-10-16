@@ -27,12 +27,16 @@ run_factory(){
   if [ "$mode" = mobile ]; then device_args+=(--emulate-mobile); fi
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${device_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=$sector&mindustryUnitProductionSmoke=1" \
-    --profile "$profile" --port 9513 --timeout 170 \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=$sector&mindustryUnitProductionSmoke=1&mindustryProducedUnitBehaviorSmoke=1" \
+    --profile "$profile" --port 9513 --timeout 210 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require "data-mindustry-campaign-planet=\"$planet\"" \
     --require 'data-mindustry-unit-production="passed"' \
+    --require 'data-mindustry-produced-unit-behavior="passed"' \
+    --require "data-mindustry-produced-unit-behavior-unit=\"$unit\"" \
+    --require 'data-mindustry-produced-unit-behavior-movement="stock-CommandAI-moved"' \
+    --require 'data-mindustry-produced-unit-behavior-weapon="owned-projectile-hit-hostile-building"' \
     --require 'data-mindustry-unit-catalogue-factories="6"' \
     --require 'data-mindustry-unit-catalogue-reconstructors="8"' \
     --require 'data-mindustry-unit-catalogue-assemblers="3"' \
@@ -45,6 +49,7 @@ run_factory(){
   grep -Eq 'data-mindustry-unit-production-unit-constructors="([5-9][0-9]|[1-9][0-9]{2,})"' "$dom"
   grep -Eq 'data-mindustry-unit-catalogue-recipes="([2-9][0-9]|[1-9][0-9]{2,})"' "$dom"
   grep -Eq 'data-mindustry-unit-production-factory-frames="[1-9][0-9]*"' "$dom"
+  grep -Eq 'data-mindustry-produced-unit-behavior-attack-frames="[1-9][0-9]*"' "$dom"
   echo "$planet/$factory -> $unit ($mode): all vanilla unit constructors + stock UnitFactory production/spawn PASS"
 }
 
