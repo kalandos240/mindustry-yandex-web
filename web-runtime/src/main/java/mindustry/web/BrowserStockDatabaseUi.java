@@ -167,6 +167,9 @@ public final class BrowserStockDatabaseUi{
     }
 
     private static void openVanilla(){
+        // Mark the actual Arc Scene click before the compact overlay is hidden.
+        // This separates pointer interception from stock-dialog init errors.
+        markVanillaClick();
         hide();
         BrowserVanillaDialogs.openDatabase();
     }
@@ -240,6 +243,9 @@ public final class BrowserStockDatabaseUi{
         document.documentElement.setAttribute('data-mindustry-database-selection',name);
         """)
     private static native void markSelected(String name);
+
+    @JSBody(script="document.documentElement.setAttribute('data-mindustry-database-vanilla-click','yes');")
+    private static native void markVanillaClick();
 
     @JSBody(params={"x","y"}, script="""
         const root=document.documentElement;
