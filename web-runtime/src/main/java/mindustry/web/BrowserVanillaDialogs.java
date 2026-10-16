@@ -60,6 +60,18 @@ public final class BrowserVanillaDialogs{
         return initialized;
     }
 
+    /** Report visible stock modals on the existing UI sampling cadence, not per frame. */
+    public static void sampleVisibility(){
+        if(!initialized) return;
+        StringBuilder active = new StringBuilder();
+        if(ui.settings.isShown()) active.append("settings,");
+        if(ui.load.isShown()) active.append("saves,");
+        if(ui.controls.isShown()) active.append("controls,");
+        if(ui.schematics.isShown()) active.append("schematics,");
+        if(ui.database.isShown()) active.append("database,");
+        markDialogVisibility(active.length() == 0 ? "none" : active.toString());
+    }
+
     public static void openDatabase(){
         markDatabaseStage("called");
         if(!initialized){
@@ -126,6 +138,9 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-saves', 'stock-LoadDialog-browser-safe');
         """)
     private static native void markInstalled();
+
+    @JSBody(params={"active"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-modal-visible',active);")
+    private static native void markDialogVisibility(String active);
 
     @JSBody(params={"stage"}, script="document.documentElement.setAttribute('data-mindustry-vanilla-database-stage',stage);")
     private static native void markDatabaseStage(String stage);
