@@ -517,6 +517,9 @@ jobs:
       - name: Exercise vanilla conveyor transfer and mechanical drill ore production
         run: bash scripts/verify-browser-building-mechanics.sh
 
+      - name: Verify all original unit constructors and real Serpulo/Erekir unit factory spawning
+        run: bash scripts/verify-browser-unit-production.sh
+
       - name: Verify Tank Fabricator construction does not freeze Erekir browser gameplay
         run: bash scripts/verify-browser-factory-freeze.sh
 
