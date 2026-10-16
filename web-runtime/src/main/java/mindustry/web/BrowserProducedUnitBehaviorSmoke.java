@@ -150,6 +150,11 @@ public final class BrowserProducedUnitBehaviorSmoke{
         return null;
     }
 
+    /** Only signal success after the original factory unit really moved and damaged an enemy. */
+    public static boolean completed(){
+        return complete;
+    }
+
     private static boolean requested(){
         if(!checked){
             enabled = queryRequested();
