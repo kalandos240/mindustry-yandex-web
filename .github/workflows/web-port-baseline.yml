@@ -295,7 +295,11 @@ jobs:
       - name: Verify native vanilla dialogs in real desktop and mobile Chrome
         run: bash scripts/verify-browser-vanilla-dialogs.sh
 
+      # Run the independent game/campaign/portal matrix even if the still-WIP
+      # native first-campaign chooser fails; never silently turn it green.
       - name: Verify original 3D planet map in desktop and mobile Chrome
+        id: planet_navigation
+        continue-on-error: true
         run: bash scripts/verify-browser-planet-dialog.sh
 
       - name: Verify HAR external-host isolation and redaction
@@ -515,6 +519,14 @@ jobs:
           name: web-i18n-report
           path: work/web-i18n-report.txt
           if-no-files-found: warn
+
+      - name: Require original 3D planet navigation for release
+        if: always()
+        run: |
+          if [ "${{ steps.planet_navigation.outcome }}" != "success" ]; then
+            echo "Original 3D PlanetDialog failed: release remains BLOCKED." >&2
+            exit 1
+          fi
 
       - name: Build deterministic Yandex release archive
         if: success()
