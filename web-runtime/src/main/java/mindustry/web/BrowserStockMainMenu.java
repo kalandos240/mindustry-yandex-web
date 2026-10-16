@@ -150,6 +150,7 @@ public final class BrowserStockMainMenu{
                 markPointerCenter(home.find("web-main-controls"), "controls");
                 markPointerCenter(home.find("web-main-settings"), "settings");
                 markPointerCenter(home.find("web-main-saves"), "saves");
+                BrowserVanillaDialogs.sampleVisibility();
             }
         });
 
