@@ -141,6 +141,7 @@ jobs:
           python3 scripts/patch-mindustry-no-links-web.py
           python3 scripts/patch-vanilla-schematics-web.py
           python3 scripts/patch-vanilla-database-web.py
+          python3 scripts/patch-vanilla-planet-web.py
           python3 scripts/patch-vanilla-settings-web.py
           python3 scripts/patch-mindustry-external-urls-web.py
 
