@@ -46,6 +46,12 @@ The original v159.7 `PlanetDialog` is now wired behind a dedicated **Planets** a
 
 Only two original planet portraits (`sprites/planets/serpulo.png`, `erekir.png`) are added to the staged assets, totaling 297,513 source bytes. Browser tests explicitly click the native Planets button and require a **completed 3D render frame** on desktop and mobile. This test and the exact 100-million-byte package gate must pass before a public release. Full sector-launch, rotation, pinch, progress/save-state, graphics fidelity and cold-restart parity still need interactive acceptance checks.
 
+### First-launch campaign chooser
+
+A fresh original Mindustry profile intentionally shows a second `BaseDialog("@campaign.select")` over the 3D planet map. While this is visible, the underlying Serpulo/Erekir list **must not** receive pointer events. Earlier Chrome tests misdiagnosed this intentional modal interception as a selector hitbox bug. Keep the vanilla first-launch campaign choice: its two portrait buttons and confirmation are now given stable Scene names only for real pointer testing, and the browser acceptance test completes the first-run selection before switching planets.
+
+Completion requires actual native click-through (first-run selection → 3D Serpulo/Erekir buttons → TechTree), plus cold restart/persistence. The campaign-choice test must not bypass the real modal via a JavaScript flag or pre-seeded settings.
+
 ## Build sequence / stop-the-line gates
 
 1. `bash scripts/bootstrap.sh` then `bash scripts/apply-port.sh` and the existing pinned overlay steps from `.github/workflows/web-port-baseline.yml`.
