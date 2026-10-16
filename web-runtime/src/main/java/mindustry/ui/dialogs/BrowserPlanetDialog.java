@@ -86,9 +86,13 @@ public class BrowserPlanetDialog extends PlanetDialog{
             Element receiver = Core.scene.hit(at.x, at.y, true);
             boolean exposed = receiver == button || receiver != null
                 && receiver.isDescendantOf(actor -> actor == button);
-            markHitReceiver(marker,
-                receiver == null ? "none" : receiver.name != null ? receiver.name : receiver.getClass().getSimpleName(),
-                exposed);
+            StringBuilder ancestry = new StringBuilder();
+            Element ancestor = receiver;
+            for(int i = 0; i < 8 && ancestor != null; i++, ancestor = ancestor.parent){
+                if(i > 0) ancestry.append(">");
+                ancestry.append(ancestor.name == null ? ancestor.getClass().getSimpleName() : ancestor.name);
+            }
+            markHitReceiver(marker, ancestry.toString(), exposed);
             Core.scene.getViewport().project(at);
             markButtonPosition(marker, at.x, at.y);
         }
