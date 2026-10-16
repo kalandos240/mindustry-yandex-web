@@ -52,7 +52,12 @@ for device in desktop mobile; do
           ty=Number(root.getAttribute('data-mindustry-planet-hit-'+target+'-y'));
         if(!(tx>0&&tx<rect.width&&ty>0&&ty<rect.height))
           throw Error('Native '+target+' planet action outside viewport '+tx+','+ty+' / '+rect.width+'x'+rect.height);
-        await nativeClick(rect.left+tx,rect.top+rect.height-ty);
+        const cx=rect.left+tx,cy=rect.top+rect.height-ty;
+        const element=document.elementFromPoint(cx,cy);
+        root.setAttribute('data-mindustry-planet-test-last-click',
+          target+':'+cx.toFixed(1)+','+cy.toFixed(1)+':DOM='+
+          (element?(element.id||element.tagName):'none'));
+        await nativeClick(cx,cy);
       };
       // A fresh vanilla campaign first shows a separate Serpulo/Erekir
       // portrait chooser above PlanetDialog. It is not safe to click the
@@ -83,7 +88,10 @@ for device in desktop mobile; do
           +', disabled='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-disabled')
           +', listeners='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-listeners')
           +', taps='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-taps')
-          +', pressed='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-pressed'));
+          +', pressed='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-pressed')
+          +', click='+root.getAttribute('data-mindustry-planet-test-last-click')
+          +', DOM-down='+root.getAttribute('data-mindustry-intro-dom-down')
+          +', DOM-up='+root.getAttribute('data-mindustry-intro-dom-up'));
       await wait(()=>root.getAttribute('data-mindustry-planet-first-chooser')==='closed',
         'Vanilla first campaign chooser did not close after confirmation; stage='
           +root.getAttribute('data-mindustry-planet-first-stage')
