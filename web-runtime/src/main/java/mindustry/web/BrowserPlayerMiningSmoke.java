@@ -245,6 +245,7 @@ public final class BrowserPlayerMiningSmoke{
             if(unit.item() == targetItem && unit.stack.amount > 0){
                 minedStack = unit.stack.amount;
                 approachFrames = 0;
+                aimFrames = 0;
                 stage = 7;
                 return;
             }
@@ -274,6 +275,17 @@ public final class BrowserPlayerMiningSmoke{
             stopMovement();
             Vec2 up = Core.camera.project(new Vec2(unit.x, unit.y));
             Vec2 cp = Core.camera.project(new Vec2(core.x, core.y));
+            // Projected coordinates are viewport-dependent. On slow browser
+            // frames the player can reach the core before camera-follow catches
+            // up. Never fire a clipped DOM click at an off-canvas target.
+            if(!visibleWorldPoint(up.x, up.y) || !visibleWorldPoint(cp.x, cp.y)){
+                if(++aimFrames >= maxAimFrames){
+                    throw new IllegalStateException("mining:camera-core-offscreen:" +
+                        Math.round(cp.x) + "," + Math.round(cp.y));
+                }
+                return;
+            }
+            aimFrames = 0;
             playerScreenX = up.x;
             playerScreenY = up.y;
             coreScreenX = cp.x;
@@ -300,12 +312,41 @@ public final class BrowserPlayerMiningSmoke{
                 return;
             }
 
+            Vec2 cp = Core.camera.project(new Vec2(core.x, core.y));
+            if(!visibleWorldPoint(cp.x, cp.y)){
+                // The real camera moved while the drag started. Release through
+                // DOM and retry from the normal scene coordinates; never treat
+                // a browser-clamped (780,0) as the actual core hit target.
+                releasePointer();
+                if(++depositFrames >= maxDepositFrames)
+                    throw new IllegalStateException("mining:camera-moved-drag");
+                stage = 7;
+                return;
+            }
+            coreScreenX = cp.x;
+            coreScreenY = cp.y;
             dispatchPointer("pointermove", coreScreenX, coreScreenY, 0, true);
             stage = 10;
             return;
         }
 
         if(stage == 10){
+            Vec2 cp = Core.camera.project(new Vec2(core.x, core.y));
+            if(!visibleWorldPoint(cp.x, cp.y)){
+                releasePointer();
+                if(++depositFrames >= maxDepositFrames)
+                    throw new IllegalStateException("mining:camera-moved-release");
+                stage = 7;
+                return;
+            }
+            if(Math.abs(cp.x - coreScreenX) > 2f || Math.abs(cp.y - coreScreenY) > 2f){
+                coreScreenX = cp.x;
+                coreScreenY = cp.y;
+                dispatchPointer("pointermove", coreScreenX, coreScreenY, 0, true);
+                if(++depositFrames >= maxDepositFrames)
+                    throw new IllegalStateException("mining:camera-never-settled");
+                return;
+            }
             verifyWorldPointer(coreScreenX, coreScreenY, "core deposit target");
             dispatchPointer("pointerup", coreScreenX, coreScreenY, 0, false);
             pointerDown = false;
@@ -421,6 +462,14 @@ public final class BrowserPlayerMiningSmoke{
         String key = movementKey;
         movementKey = null;
         dispatchKey("keyup", key, key.equals("KeyD") ? "d" : key.equals("KeyA") ? "a" : key.equals("KeyW") ? "w" : "s");
+    }
+
+    private static boolean visibleWorldPoint(float x, float y){
+        return Float.isFinite(x) && Float.isFinite(y)
+            && x >= 4f && y >= 4f
+            && x <= Core.graphics.getWidth() - 4f
+            && y <= Core.graphics.getHeight() - 4f
+            && !sceneCovered(x, y);
     }
 
     private static boolean sceneCovered(float x, float y){
