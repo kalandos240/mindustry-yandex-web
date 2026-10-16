@@ -140,6 +140,7 @@ jobs:
           python3 scripts/patch-mindustry-fonts-web.py work/Mindustry/core/src/mindustry/ui/Fonts.java
           python3 scripts/patch-mindustry-no-links-web.py
           python3 scripts/patch-vanilla-schematics-web.py
+          python3 scripts/patch-vanilla-database-web.py
           python3 scripts/patch-vanilla-settings-web.py
           python3 scripts/patch-mindustry-external-urls-web.py
 
