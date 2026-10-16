@@ -72,7 +72,7 @@ public final class BrowserUnitProductionSmoke{
                     throw new IllegalStateException("Invalid unit type at index " + unitCursor);
                 try{
                     Unit unit = type.create(state.rules.defaultTeam);
-                    if(unit == null || unit.type != type || unit.team != state.rules.defaultTeam)
+                    if(unit == null || unit.type != type || unit.team() != state.rules.defaultTeam)
                         throw new IllegalStateException("Unit constructor returned wrong type/team");
                     createdUnits++;
                 }catch(Throwable error){
@@ -142,9 +142,9 @@ public final class BrowserUnitProductionSmoke{
                 throw new IllegalStateException("Factory/power fixture lost from real world");
 
             if(factoryBuild.payload != null){
-                if(!(factoryBuild.payload instanceof UnitPayload payload) ||
-                    payload.unit == null || payload.unit.type != expectedType ||
-                    payload.unit.team != state.rules.defaultTeam)
+                UnitPayload payload = factoryBuild.payload;
+                if(payload.unit == null || payload.unit.type != expectedType ||
+                    payload.unit.team() != state.rules.defaultTeam)
                     throw new IllegalStateException("Factory produced wrong original UnitPayload");
                 payloadObserved = true;
                 markStage("payload-produced", planet, createdUnits);
