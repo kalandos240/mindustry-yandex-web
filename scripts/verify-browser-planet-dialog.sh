@@ -50,7 +50,9 @@ for device in desktop mobile; do
       await wait(()=>root.getAttribute('data-mindustry-planet-native-choice')==='erekir',
         'Erekir button callback: viewed='+root.getAttribute('data-mindustry-planet-viewed')
           +', hit='+root.getAttribute('data-mindustry-planet-hit-erekir-x')
-          +','+root.getAttribute('data-mindustry-planet-hit-erekir-y'));
+          +','+root.getAttribute('data-mindustry-planet-hit-erekir-y')
+          +', receiver='+root.getAttribute('data-mindustry-planet-hit-erekir-receiver')
+          +', exposed='+root.getAttribute('data-mindustry-planet-hit-erekir-exposed'));
       await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='erekir',
         'Erekir view change after callback: current='+root.getAttribute('data-mindustry-planet-viewed'));
       await choose('serpulo');
