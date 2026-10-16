@@ -302,6 +302,14 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-planet-dialog.sh
 
+      # The complete 46-map boot matrix is long but independent. Run early to
+      # catch late-sector load failures before save, locale and RTS tests,
+      # without skipping those checks when one campaign map is broken.
+      - name: Boot every Serpulo and Erekir campaign map and tick live gameplay
+        id: campaign_map_matrix
+        continue-on-error: true
+        run: bash scripts/verify-browser-all-campaign-maps.sh
+
       - name: Verify HAR external-host isolation and redaction
         run: bash scripts/verify-browser-network-har.sh
 
@@ -506,9 +514,6 @@ jobs:
       - name: Sweep complete vanilla block registry and building factories on both planets
         run: bash scripts/verify-browser-block-registry.sh
 
-      - name: Boot every Serpulo and Erekir campaign map and tick live gameplay
-        run: bash scripts/verify-browser-all-campaign-maps.sh
-
       - name: Verify Tank Fabricator construction does not freeze Erekir browser gameplay
         run: bash scripts/verify-browser-factory-freeze.sh
 
@@ -531,6 +536,14 @@ jobs:
         run: |
           if [ "${{ steps.planet_navigation.outcome }}" != "success" ]; then
             echo "Original 3D PlanetDialog failed: release remains BLOCKED." >&2
+            exit 1
+          fi
+
+      - name: Require all 46 campaign map boots for release
+        if: always()
+        run: |
+          if [ "${{ steps.campaign_map_matrix.outcome }}" != "success" ]; then
+            echo "46-map real Chrome campaign matrix failed: release remains BLOCKED." >&2
             exit 1
           fi
 
