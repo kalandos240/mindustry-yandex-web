@@ -57,8 +57,16 @@ run_map(){
       if(!m||Number(m[1])<16||Number(m[2])<16)
         throw Error('Real campaign map did not create a nonempty playable World: '+world);
       const before=Number(root.getAttribute('data-mindustry-campaign-frames')||0);
-      await new Promise(resolve=>setTimeout(resolve,650));
-      const after=Number(root.getAttribute('data-mindustry-campaign-frames')||0);
+      let after=before;
+      // Individual late-game sector maps can have much heavier first frames
+      // than Ground Zero. Observe actual advancement, with a bounded wait,
+      // rather than assuming a 650ms frame budget on shared CI hardware.
+      for(let attempt=0;attempt<60&&after<=before;attempt++){
+        await new Promise(resolve=>setTimeout(resolve,200));
+        after=Number(root.getAttribute('data-mindustry-campaign-frames')||0);
+        if(root.getAttribute('data-mindustry-web')==='error')
+          throw Error('Browser runtime crashed while loading sector: '+root.getAttribute('data-mindustry-web-error'));
+      }
       if(after<=before)
         throw Error('Campaign simulation did not advance after map boot: '+before+' -> '+after);
       if(root.getAttribute('data-mindustry-web')==='error')
