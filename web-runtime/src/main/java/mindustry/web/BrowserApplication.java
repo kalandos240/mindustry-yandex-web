@@ -164,6 +164,9 @@ public final class BrowserApplication extends WebApplicationBase{
                 // CI-only live building semantics: true conveyor transport and
                 // ore production on the original Ground Zero world.
                 BrowserBuildingMechanicsSmoke.update();
+                // Opt-in CI proof of all vanilla UnitType constructors and
+                // actual Ground Factory/Tank Fabricator stock unit spawning.
+                BrowserUnitProductionSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
