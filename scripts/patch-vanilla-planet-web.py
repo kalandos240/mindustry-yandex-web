@@ -122,5 +122,28 @@ if text.count(old_intro_ok) != 1:
     raise SystemExit("Pinned campaign first-run confirm callback changed")
 text = text.replace(old_intro_ok, new_intro_ok, 1)
 
+# If the first-run OK handler throws before diag.hide(), the overlapping
+# dialog remains visible. Mark every native operation to identify the exact
+# failing campaign transition without bypassing any stock logic.
+old_intro_steps = """                    state.planet = selected[0];
+                    lookAt(state.planet.getStartSector());
+                    selectSector(state.planet.getStartSector());
+                    settings.put("campaignselect", true);
+                    diag.hide();"""
+new_intro_steps = """                    settings.put("web-first-stage", "setting-planet");
+                    state.planet = selected[0];
+                    settings.put("web-first-stage", "looking-at-start-sector");
+                    lookAt(state.planet.getStartSector());
+                    settings.put("web-first-stage", "selecting-start-sector");
+                    selectSector(state.planet.getStartSector());
+                    settings.put("web-first-stage", "saving-campaign-selection");
+                    settings.put("campaignselect", true);
+                    settings.put("web-first-stage", "hiding-dialog");
+                    diag.hide();
+                    settings.put("web-first-stage", "dialog-hidden");"""
+if text.count(old_intro_steps) != 1:
+    raise SystemExit(f"Original first-run OK operation sequence changed: {text.count(old_intro_steps)}")
+text = text.replace(old_intro_steps, new_intro_steps, 1)
+
 path.write_text(text, encoding="utf-8")
 print("Pinned stock 3D PlanetDialog: minimized UI shell compatibility; full draw/camera/pick preserved")
