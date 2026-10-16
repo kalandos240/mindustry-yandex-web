@@ -83,6 +83,12 @@ public class BrowserPlanetDialog extends PlanetDialog{
         Element button = find(name);
         if(button != null && button.getWidth() > 0f && button.getHeight() > 0f){
             Vec2 at = button.localToStageCoordinates(new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
+            Element receiver = Core.scene.hit(at.x, at.y, true);
+            boolean exposed = receiver == button || receiver != null
+                && receiver.isDescendantOf(actor -> actor == button);
+            markHitReceiver(marker,
+                receiver == null ? "none" : receiver.name != null ? receiver.name : receiver.getClass().getSimpleName(),
+                exposed);
             Core.scene.getViewport().project(at);
             markButtonPosition(marker, at.x, at.y);
         }
@@ -93,6 +99,13 @@ public class BrowserPlanetDialog extends PlanetDialog{
 
     @JSBody(params={"planet"}, script="document.documentElement.setAttribute('data-mindustry-planet-viewed',planet);")
     private static native void markViewedPlanet(String planet);
+
+    @JSBody(params={"target","receiver","exposed"}, script="""
+        var root=document.documentElement;
+        root.setAttribute('data-mindustry-planet-hit-'+target+'-receiver',receiver);
+        root.setAttribute('data-mindustry-planet-hit-'+target+'-exposed',exposed ? 'yes' : 'no');
+        """)
+    private static native void markHitReceiver(String target, String receiver, boolean exposed);
 
     @JSBody(params={"target","x","y"}, script="""
         var root=document.documentElement;
