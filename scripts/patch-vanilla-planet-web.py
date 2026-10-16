@@ -47,5 +47,14 @@ for old, new in phase_changes:
         raise SystemExit(f"PlanetDialog constructor phase marker mismatch: {old!r}; count={text.count(old)}")
     text = text.replace(old, new, 1)
 
+# Use the actual upstream planet-switch buttons for browser pointer testing.
+# Giving each button an Arc Scene name does not alter its layout or behavior.
+old_planet_button = '''                        planetButton.getChildren().get(1).setColor(planet.iconColor);'''
+new_planet_button = '''                        planetButton.name = "web-planet-choice-" + planet.name;
+                        planetButton.getChildren().get(1).setColor(planet.iconColor);'''
+if text.count(old_planet_button) != 1:
+    raise SystemExit("Pinned PlanetDialog planet buttons changed")
+text = text.replace(old_planet_button, new_planet_button, 1)
+
 path.write_text(text, encoding="utf-8")
 print("Pinned stock 3D PlanetDialog: minimized UI shell compatibility; full draw/camera/pick preserved")
