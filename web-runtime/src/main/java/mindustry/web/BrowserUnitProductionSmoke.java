@@ -43,6 +43,7 @@ public final class BrowserUnitProductionSmoke{
             throw new IllegalStateException("Unit factory browser regression timeout at stage " + stage);
 
         if(stage == 0){
+            auditProductionCatalogue();
             planet = state.rules.sector.planet.name;
             if("serpulo".equals(planet)){
                 factoryBlock = Blocks.groundFactory;
@@ -169,6 +170,75 @@ public final class BrowserUnitProductionSmoke{
             }
         }
     }
+
+    /** Every shipped vanilla factory and its recipe/upgrade definitions. */
+    private static void auditProductionCatalogue(){
+        Block[] all = {
+            Blocks.groundFactory, Blocks.airFactory, Blocks.navalFactory,
+            Blocks.tankFabricator, Blocks.shipFabricator, Blocks.mechFabricator,
+            Blocks.additiveReconstructor, Blocks.multiplicativeReconstructor,
+            Blocks.exponentialReconstructor, Blocks.tetrativeReconstructor,
+            Blocks.tankRefabricator, Blocks.shipRefabricator,
+            Blocks.mechRefabricator, Blocks.primeRefabricator,
+            Blocks.tankAssembler, Blocks.shipAssembler, Blocks.mechAssembler
+        };
+        int factories = 0, reconstructorCount = 0, assemblers = 0, recipes = 0;
+        for(Block block : all){
+            if(block == null || block.name == null || !block.hasBuilding() ||
+                block.buildType == null)
+                throw new IllegalStateException("Vanilla unit production block is missing");
+            if(block instanceof UnitFactory factory){
+                factories++;
+                if(factory.plans.isEmpty()) throw new IllegalStateException(
+                    "No vanilla unit recipes in " + factory.name);
+                for(var plan : factory.plans){
+                    if(plan == null || plan.unit == null || plan.time <= 0f ||
+                        plan.requirements == null || plan.requirements.length == 0)
+                        throw new IllegalStateException("Invalid unit factory recipe " + factory.name);
+                    for(ItemStack stack : plan.requirements){
+                        if(stack == null || stack.item == null || stack.amount <= 0)
+                            throw new IllegalStateException("Invalid unit material recipe " + factory.name);
+                    }
+                    recipes++;
+                }
+            }else if(block instanceof Reconstructor reconstructor){
+                reconstructorCount++;
+                if(reconstructor.upgrades.isEmpty()) throw new IllegalStateException(
+                    "Missing vanilla reconstruction plans " + reconstructor.name);
+                for(UnitType[] upgrade : reconstructor.upgrades){
+                    if(upgrade == null || upgrade.length != 2 ||
+                        upgrade[0] == null || upgrade[1] == null ||
+                        upgrade[0] == upgrade[1])
+                        throw new IllegalStateException("Invalid unit upgrade recipe " + reconstructor.name);
+                    recipes++;
+                }
+            }else if(block instanceof UnitAssembler assembler){
+                assemblers++;
+                if(assembler.plans.isEmpty())
+                    throw new IllegalStateException("Missing Erekir assembler plans " + assembler.name);
+                for(var plan : assembler.plans){
+                    if(plan == null || plan.unit == null || plan.time <= 0f)
+                        throw new IllegalStateException("Invalid Erekir assembly recipe " + assembler.name);
+                    recipes++;
+                }
+            }else{
+                throw new IllegalStateException("Wrong vanilla unit production class " + block.name);
+            }
+        }
+        if(factories != 6 || reconstructorCount != 8 || assemblers != 3 || recipes < 20)
+            throw new IllegalStateException("Incomplete vanilla unit production plans: " +
+                factories + "/" + reconstructorCount + "/" + assemblers + "/" + recipes);
+        markCatalogue(factories, reconstructorCount, assemblers, recipes);
+    }
+
+    @JSBody(params={"factories","reconstructors","assemblers","recipes"},script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-unit-catalogue-factories',String(factories));
+        root.setAttribute('data-mindustry-unit-catalogue-reconstructors',String(reconstructors));
+        root.setAttribute('data-mindustry-unit-catalogue-assemblers',String(assemblers));
+        root.setAttribute('data-mindustry-unit-catalogue-recipes',String(recipes));
+        """)
+    private static native void markCatalogue(int factories,int reconstructors,int assemblers,int recipes);
 
     private static boolean requested(){
         if(!checked){
