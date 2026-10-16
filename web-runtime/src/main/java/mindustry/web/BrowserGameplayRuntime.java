@@ -206,7 +206,11 @@ public final class BrowserGameplayRuntime{
             runWorldLoadSmoke();
         }else if(smokeMode && menuUpdateFrames == 5){
             BrowserPlayingRuntime.begin();
-        }else if(!smokeMode && menuUpdateFrames == 4){
+        }else if(!smokeMode && (menuUpdateFrames == 4 ||
+            (BrowserCampaignRuntime.matrixWaitingForAssets() && menuUpdateFrames % 8 == 0))){
+            // Retry only the asynchronous campaign matrix asset gate, in a
+            // bounded eight-frame cadence; normal production/test launches
+            // retain their one-shot startup call.
             // CI may request one real campaign sector or packaged local map. Without
             // either query, production remains in the user-controlled local selector.
             BrowserCampaignRuntime.maybeStartTestSector();
