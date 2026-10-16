@@ -47,9 +47,19 @@ for device in desktop mobile; do
         }
       };
       await choose('erekir');
-      await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='erekir','Erekir view change via native button');
+      await wait(()=>root.getAttribute('data-mindustry-planet-native-choice')==='erekir',
+        'Erekir button callback: viewed='+root.getAttribute('data-mindustry-planet-viewed')
+          +', hit='+root.getAttribute('data-mindustry-planet-hit-erekir-x')
+          +','+root.getAttribute('data-mindustry-planet-hit-erekir-y'));
+      await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='erekir',
+        'Erekir view change after callback: current='+root.getAttribute('data-mindustry-planet-viewed'));
       await choose('serpulo');
-      await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo','Serpulo view change via native button');
+      await wait(()=>root.getAttribute('data-mindustry-planet-native-choice')==='serpulo',
+        'Serpulo button callback: viewed='+root.getAttribute('data-mindustry-planet-viewed')
+          +', hit='+root.getAttribute('data-mindustry-planet-hit-serpulo-x')
+          +','+root.getAttribute('data-mindustry-planet-hit-serpulo-y'));
+      await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo',
+        'Serpulo view change after callback: current='+root.getAttribute('data-mindustry-planet-viewed'));
       await wait(()=>root.hasAttribute('data-mindustry-planet-hit-tech-x'),'Native TechTree button');
       await choose('tech');
       await wait(()=>root.getAttribute('data-mindustry-research-open')==='yes','TechTree opens from original planet UI');
