@@ -187,6 +187,13 @@ public final class BrowserInputBridge{
             pendingMoves.delete(slot);
             try { canvas.setPointerCapture(event.pointerId); } catch (_) {}
             canvas.focus({preventScroll: true});
+            // Diagnostics are enabled only while stock first-run campaign selection
+            // is open; distinguish DOM delivery from Arc Scene hit routing.
+            if(document.documentElement.getAttribute('data-mindustry-planet-first-chooser') === 'open'){
+                document.documentElement.setAttribute('data-mindustry-intro-dom-down',
+                    [event.target.id || event.target.tagName, event.clientX, event.clientY,
+                        p[0], p[1], event.pointerType].join(','));
+            }
             pointerDown(slot, p[0], p[1], event.button | 0);
             event.preventDefault();
         }, {passive: false});
@@ -209,6 +216,11 @@ public final class BrowserInputBridge{
             // collapsed into this browser frame.
             pendingMoves.delete(slot);
             pointerMove(slot, p[0], p[1]);
+            if(document.documentElement.getAttribute('data-mindustry-planet-first-chooser') === 'open'){
+                document.documentElement.setAttribute('data-mindustry-intro-dom-up',
+                    [event.target.id || event.target.tagName, event.clientX, event.clientY,
+                        p[0], p[1], event.pointerType].join(','));
+            }
             pointerUp(slot, p[0], p[1], event.button | 0);
             if (event.pointerType !== 'mouse') pointerSlots.delete(event.pointerId);
             event.preventDefault();
