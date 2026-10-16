@@ -34,11 +34,30 @@ for device in desktop mobile; do
         await new Promise(r=>setTimeout(r,100));
       }
       await wait(()=>root.getAttribute('data-mindustry-vanilla-planet-open')==='yes','Original PlanetDialog click/show');
-      await wait(()=>root.getAttribute('data-mindustry-vanilla-planet-frame')==='rendered','3D planet frame did not render');
+      await wait(()=>root.hasAttribute('data-mindustry-planet-hit-erekir-x'),'Erekir native button');
+      await wait(()=>root.hasAttribute('data-mindustry-planet-hit-serpulo-x'),'Serpulo native button');
+      const choose=async target=>{
+        const tx=Number(root.getAttribute('data-mindustry-planet-hit-'+target+'-x')),
+          ty=Number(root.getAttribute('data-mindustry-planet-hit-'+target+'-y'));
+        if(!(tx>0&&tx<rect.width&&ty>0&&ty<rect.height))
+          throw Error('Native '+target+' planet action outside viewport '+tx+','+ty+' / '+rect.width+'x'+rect.height);
+        for(const type of ['pointerdown','pointerup']){
+          canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:741,pointerType:'mouse',button:0,buttons:type==='pointerdown'?1:0,clientX:rect.left+tx,clientY:rect.top+rect.height-ty}));
+          await new Promise(r=>setTimeout(r,100));
+        }
+      };
+      await choose('erekir');
+      await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='erekir','Erekir view change via native button');
+      await choose('serpulo');
+      await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo','Serpulo view change via native button');
+      await wait(()=>root.hasAttribute('data-mindustry-planet-hit-tech-x'),'Native TechTree button');
+      await choose('tech');
+      await wait(()=>root.getAttribute('data-mindustry-research-open')==='yes','TechTree opens from original planet UI');
+      if(root.getAttribute('data-mindustry-web')==='error')throw Error('Planet interaction broke frame loop');
       root.setAttribute('data-mindustry-planet-smoke','passed');
       return 'Original 3D PlanetDialog rendered in WebGL';
     })()" \
     --after-ready-require 'data-mindustry-planet-smoke="passed"' \
     > "/tmp/mindustry-stock-planet-${device}.html"
-  echo "Original 3D planet scene ($device): mouse/touch click and WebGL render PASS"
+  echo "Original 3D planet scene ($device): 3D render, Erekir/Serpulo buttons, native TechTree click PASS"
 done
