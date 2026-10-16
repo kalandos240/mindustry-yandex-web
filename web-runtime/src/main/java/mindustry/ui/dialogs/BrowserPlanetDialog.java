@@ -91,6 +91,7 @@ public class BrowserPlanetDialog extends PlanetDialog{
                 Core.settings.getString("web-first-stage", "none"));
             markFirstSceneDown(Core.settings.getString("web-first-scene-down", "none"));
             markFirstRootDown(Core.settings.getString("web-first-root-down", "none"));
+            markInputRoute(Core.settings.getString("web-first-queue-route", "none"));
             if(firstChooser){
                 sampleButton("web-campaign-first-choice-serpulo", "intro-serpulo");
                 sampleButton("web-campaign-first-choice-erekir", "intro-erekir");
@@ -145,6 +146,9 @@ public class BrowserPlanetDialog extends PlanetDialog{
 
     @JSBody(params={"target"}, script="document.documentElement.setAttribute('data-mindustry-planet-first-root-down',target);")
     private static native void markFirstRootDown(String target);
+
+    @JSBody(params={"route"}, script="document.documentElement.setAttribute('data-mindustry-planet-first-queue-route',route);")
+    private static native void markInputRoute(String route);
 
     @JSBody(params={"step"}, script="document.documentElement.setAttribute('data-mindustry-planet-first-intro-step',step);")
     private static native void markFirstIntroStep(String step);
