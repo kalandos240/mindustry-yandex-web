@@ -21,6 +21,13 @@ import static mindustry.Vars.*;
 public final class BrowserCampaignRuntime{
     private static boolean active;
     private static boolean testChecked;
+    // The 44 deferred .msav files are loaded by an asynchronous browser
+    // warmup. Opt-in matrix boots must await them; the two eager start maps
+    // are deliberately unaffected by this gate.
+    private static boolean matrixWaitingForAssets;
+    public static boolean matrixWaitingForAssets(){
+        return matrixWaitingForAssets;
+    }
     private static boolean diagnostics;
     private static boolean diagnosticsQueryCached;
     private static boolean diagnosticsQueryValue;
@@ -250,6 +257,14 @@ public final class BrowserCampaignRuntime{
 
     public static void maybeStartTestSector(){
         if(testChecked) return;
+        // Only the isolated 46-sector test waits for background campaign
+        // file hydration. Do not consume the one-shot testChecked flag
+        // while a deferred .msav is still absent from Core.files.
+        if(campaignMapMatrixRequested() && !campaignAssetsReady()){
+            matrixWaitingForAssets = true;
+            return;
+        }
+        matrixWaitingForAssets = false;
         testChecked = true;
 
         String resumeRequested = requestedResumeSector();
