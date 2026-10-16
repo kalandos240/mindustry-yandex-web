@@ -170,6 +170,9 @@ public final class BrowserApplication extends WebApplicationBase{
                 // CI-only acceptance of actual factory-produced unit movement,
                 // weapon-owned projectiles and damage against a hostile wall.
                 BrowserProducedUnitBehaviorSmoke.update();
+                // Original Dagger->Mace / Stell->Locus stock reconstructor:
+                // real factory unit, CI payload hand-off and live upgrade.
+                BrowserReconstructorSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
