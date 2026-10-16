@@ -77,6 +77,7 @@ public class BrowserPlanetDialog extends PlanetDialog{
             sampleButton("web-planet-choice-erekir", "erekir");
             sampleButton("web-planet-tech", "tech");
             markZoom(state.zoom);
+            markFirstIntroStep(Core.settings.getString("web-planet-intro-step", "not-clicked"));
 
             // The stock first-run campaign chooser is a *second* BaseDialog
             // above PlanetDialog. Preserve it and sample its native hitboxes
@@ -127,6 +128,9 @@ public class BrowserPlanetDialog extends PlanetDialog{
         root.setAttribute('data-mindustry-planet-first-stage',phase);
         """)
     private static native void markFirstRunActions(String choice, String ok, String phase);
+
+    @JSBody(params={"step"}, script="document.documentElement.setAttribute('data-mindustry-planet-first-intro-step',step);")
+    private static native void markFirstIntroStep(String step);
 
     @JSBody(params={"shown"}, script="document.documentElement.setAttribute('data-mindustry-planet-first-chooser',shown ? 'open' : 'closed');")
     private static native void markFirstChooser(boolean shown);
