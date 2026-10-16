@@ -67,7 +67,7 @@ public final class BrowserPlanetBridge{
                 case "marsh" -> BrowserCampaignRuntime.playMarsh();
                 case "peaks" -> BrowserCampaignRuntime.playPeaks();
                 case "ravine" -> BrowserCampaignRuntime.playRavine();
-                case "caldera" -> BrowserCampaignRuntime.playCaldera();
+                case "caldera-erekir" -> BrowserCampaignRuntime.playCaldera();
                 case "stronghold" -> BrowserCampaignRuntime.playStronghold();
                 case "crevice" -> BrowserCampaignRuntime.playCrevice();
                 case "siege" -> BrowserCampaignRuntime.playSiege();
