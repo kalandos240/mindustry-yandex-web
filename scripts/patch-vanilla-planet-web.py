@@ -68,5 +68,29 @@ if text.count(old_pane) != 1:
     raise SystemExit(f"Pinned planet selector scroll-pane anchor changed: {text.count(old_pane)}")
 text = text.replace(old_pane, new_pane, 1)
 
+# Yandex/TeaVM viewport: the upstream full-screen BaseDialog footer has a
+# larger touch region than the planet-selector column and captures taps at
+# its scroll-list entries. Keep the original footer controls, but prevent its
+# empty Table area from taking touches away from the upstream selection stack.
+# Actual child Back and TechTree buttons remain Touchable.enabled.
+old_footer = '        buttons.bottom();'
+new_footer = '        buttons.bottom();\n        buttons.touchable = Touchable.childrenOnly;'
+if text.count(old_footer) != 1:
+    raise SystemExit(f"Pinned PlanetDialog footer anchor mismatch: {text.count(old_footer)}")
+text = text.replace(old_footer, new_footer, 1)
+
+# In the original Stack, noninteractive layout containers should pass pointer
+# hits through their unused bounds while their real child buttons stay active.
+old_selector = '''        new Table(t -> {
+            t.top().left();
+            ScrollPane pane = new ScrollPane(null, Styles.smallPane);'''
+new_selector = '''        new Table(t -> {
+            t.touchable = Touchable.childrenOnly;
+            t.top().left();
+            ScrollPane pane = new ScrollPane(null, Styles.smallPane);'''
+if text.count(old_selector) != 1:
+    raise SystemExit("Pinned planet selector table anchor mismatch")
+text = text.replace(old_selector, new_selector, 1)
+
 path.write_text(text, encoding="utf-8")
 print("Pinned stock 3D PlanetDialog: minimized UI shell compatibility; full draw/camera/pick preserved")
