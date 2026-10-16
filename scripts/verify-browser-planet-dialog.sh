@@ -93,7 +93,8 @@ for device in desktop mobile; do
           +', DOM-down='+root.getAttribute('data-mindustry-intro-dom-down')
           +', DOM-up='+root.getAttribute('data-mindustry-intro-dom-up')
           +', Arc-down='+root.getAttribute('data-mindustry-planet-first-scene-down')
-          +', Arc-root='+root.getAttribute('data-mindustry-planet-first-root-down'));
+          +', Arc-root='+root.getAttribute('data-mindustry-planet-first-root-down')
+          +', queued='+root.getAttribute('data-mindustry-planet-first-queue-route'));
       await wait(()=>root.getAttribute('data-mindustry-planet-first-chooser')==='closed',
         'Vanilla first campaign chooser did not close after confirmation; stage='
           +root.getAttribute('data-mindustry-planet-first-stage')
