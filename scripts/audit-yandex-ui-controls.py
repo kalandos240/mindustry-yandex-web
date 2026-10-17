@@ -24,6 +24,7 @@ def check(ok, message):
 
 legal = {
     "play": "BrowserStockMainMenu::openPlay",
+    "database.button": "BrowserStockMainMenu::toggleDatabaseMenu",
     "customgame": "BrowserStockMainMenu::openPlay",
     "planets": "BrowserVanillaDialogs::openPlanets",
     "database": "BrowserStockDatabaseUi::show",
@@ -48,8 +49,15 @@ for match in re.finditer(r'mobileButton\(menu, "([^\"]+)", [^,]+, ([^,]+),', men
     seen.append(key)
     check(key in legal and legal[key] == callback.strip(),
           f"unsupported native mobile action {key}: {callback}")
+for match in re.finditer(r'desktopEntry\(submenu, "([^\"]+)", [^,]+, ([^,]+),', menu):
+    key, callback = match.groups()
+    seen.append(key)
+    check(key in legal and legal[key] == callback.strip(),
+          f"unsupported nested desktop action {key}: {callback}")
+check("closeDatabaseMenu();\n            action.run();" in menu,
+      "native submenu actions must close navigation and run their real callback")
 check(set(seen) == set(legal), "missing legal menu action or unapproved action found")
-check(len(seen) == 17, "unexpected menu button count (8 mobile + 9 desktop)")
+check(len(seen) == 18, "unexpected menu button count (8 mobile + 6 desktop parents + 4 submenu actions)")
 check('new MobileButton(icon, "@" + key, action)' in menu,
       "mobile menu must use the original icon-over-label MobileButton")
 check("markPointerCenter(home.find(\"web-main-custom\"), \"custom\")" in menu,

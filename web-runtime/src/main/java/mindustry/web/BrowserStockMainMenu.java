@@ -151,7 +151,7 @@ public final class BrowserStockMainMenu{
                     .name("web-main-custom").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("planets", "Planets"), Icon.terrain,
-                    Styles.flatToggleMenut, () -> { closeDatabaseMenu(); BrowserVanillaDialogs.openPlanets(); })
+                    Styles.flatToggleMenut, closeThen(BrowserVanillaDialogs::openPlanets))
                     .name("web-main-planets").update(button -> button.setChecked(false));
                 menu.row();
                 databaseMenu = menu.button(Core.bundle.get("database.button", "Database"), Icon.menu,
@@ -160,11 +160,11 @@ public final class BrowserStockMainMenu{
                 databaseMenu.update(() -> databaseMenu.setChecked(databaseOpen));
                 menu.row();
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
-                    Styles.flatToggleMenut, () -> { closeDatabaseMenu(); BrowserVanillaDialogs.openSettings(); })
+                    Styles.flatToggleMenut, closeThen(BrowserVanillaDialogs::openSettings))
                     .name("web-main-settings").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
-                    Styles.flatToggleMenut, () -> { closeDatabaseMenu(); BrowserVanillaDialogs.openSaves(); })
+                    Styles.flatToggleMenut, closeThen(BrowserVanillaDialogs::openSaves))
                     .name("web-main-saves").update(button -> button.setChecked(false));
                 menu.row();
             }).width(230f);
@@ -183,6 +183,13 @@ public final class BrowserStockMainMenu{
                 submenu.color.a = 0f;
             }).width(230f);
         }
+    }
+
+    private static Runnable closeThen(Runnable action){
+        return () -> {
+            closeDatabaseMenu();
+            action.run();
+        };
     }
 
     private static void desktopEntry(Table table, String key, arc.scene.style.Drawable icon,
