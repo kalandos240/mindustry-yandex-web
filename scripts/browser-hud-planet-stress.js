@@ -38,6 +38,46 @@
   window.dispatchEvent(new Event('resize'));
   await wait(()=>Number(v('cpu-sample'))>prior,
     'TeaVM lives after resize while original 3D planet is open');
+
+  // User-facing campaign-switch path: while Onset is already playing, use
+  // the real planet-selector and real stock Sector Launch to move to
+  // Ground Zero. BrowserPlanetBridge must checkpoint Erekir BEFORE resetting
+  // world, then load the Serpulo sector with a live GameState.
+  await wait(()=>v('planet-hit-serpulo-exposed')==='yes',
+    'original Serpulo planet selector receives clicks in active campaign');
+  const selectX=Number(v('planet-hit-serpulo-x'));
+  const selectY=Number(v('planet-hit-serpulo-y'));
+  if(!(selectX>0&&selectX<rect.width&&selectY>0&&selectY<rect.height))
+    throw Error('Original Serpulo globe button out of game canvas');
+  const clickStock=async(x,y,name)=>{
+    const req='hud-switch-'+name;
+    root.setAttribute('data-mindustry-cdp-click-ack','');
+    root.setAttribute('data-mindustry-cdp-click-request',JSON.stringify({
+      id:req,x:rect.left+x,y:rect.bottom-y
+    }));
+    await wait(()=>v('cdp-click-ack')===req ||
+      (v('cdp-click-ack')||'').startsWith('ERROR:'),
+      'trusted Chrome click '+name);
+    if(v('cdp-click-ack')!==req)throw Error(name+' mouse click rejected');
+  };
+  await clickStock(selectX,selectY,'serpulo-planet');
+  await wait(()=>v('planet-start-sector-planet')==='serpulo',
+    'start-sector panel changes to real Serpulo');
+  await wait(()=>v('planet-hit-launch-exposed')==='yes' &&
+    v('planet-hit-launch-disabled')==='no',
+    'original selected-sector Launch button');
+  const launchX=Number(v('planet-hit-launch-x'));
+  const launchY=Number(v('planet-hit-launch-y'));
+  if(!(launchX>0&&launchX<rect.width&&launchY>0&&launchY<rect.height))
+    throw Error('Original Serpulo Launch button outside canvas');
+  await clickStock(launchX,launchY,'launch-groundzero');
+  await wait(()=>v('campaign-state')==='playing' &&
+    v('campaign-preset')==='groundZero' && v('campaign-planet')==='serpulo',
+    'live Erekir -> autosaved -> real Serpulo campaign world');
+  const stable=Number(v('cpu-sample'));
+  await wait(()=>Number(v('cpu-sample'))>stable,
+    'TeaVM lives after native cross-planet campaign transition');
+  root.setAttribute('data-mindustry-hud-planet-cross-campaign','passed');
   root.setAttribute('data-mindustry-hud-planet-browser','passed');
-  return 'Live campaign HUD Icon.map opened real 3D globe and survived resize';
+  return 'Live HUD Icon.map opened 3D globe, switched Onset to GroundZero via real Launch and survived resize';
 })()
