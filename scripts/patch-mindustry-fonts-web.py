@@ -11,6 +11,40 @@ text = path.read_text()
 
 replacements = [
     (
+        '''        glyph.page = 0;
+        Fonts.def.getData().setGlyph(ch, glyph);
+        Fonts.outline.getData().setGlyph(ch, glyph);''',
+        '''        glyph.page = 0;
+        if(Core.app != null && Core.app.isWeb()){
+            // Desktop merges the UI atlas into its font texture. Baked Web
+            // fonts keep their PNG pages: inline content glyphs must instead
+            // reference the actual atlas texture through a shared page index.
+            var normal = Fonts.def.getRegions();
+            var outlined = Fonts.outline.getRegions();
+            int page = -1;
+            for(int i = 0; i < Math.min(normal.size, outlined.size); i++){
+                if(normal.get(i).texture == region.texture && outlined.get(i).texture == region.texture){
+                    page = i;
+                    break;
+                }
+            }
+            if(page < 0){
+                page = Math.max(normal.size, outlined.size);
+                while(normal.size < page) normal.add(normal.first());
+                while(outlined.size < page) outlined.add(outlined.first());
+                normal.add(new TextureRegion(region.texture));
+                outlined.add(new TextureRegion(region.texture));
+            }
+            glyph.page = page;
+            // Atlas textures are owned by Core.atlas, never by either font.
+            Fonts.def.setOwnsTexture(false);
+            Fonts.outline.setOwnsTexture(false);
+        }
+        Fonts.def.getData().setGlyph(ch, glyph);
+        Fonts.outline.getData().setGlyph(ch, glyph);''',
+        "registerIcon shared Web atlas pages",
+    ),
+    (
         "    public static void loadSystemCursors(){\n        SystemCursor.arrow.set(Core.graphics.newCursor(\"cursor\", cursorScale()));",
         "    public static void loadSystemCursors(){\n        if(Core.app != null && Core.app.isWeb()) return; // Web cursor policy is owned by the DOM backend.\n\n        SystemCursor.arrow.set(Core.graphics.newCursor(\"cursor\", cursorScale()));",
         "loadSystemCursors",

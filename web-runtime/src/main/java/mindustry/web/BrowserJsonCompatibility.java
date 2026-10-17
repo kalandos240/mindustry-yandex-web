@@ -28,7 +28,7 @@ public final class BrowserJsonCompatibility{
         // Map genfilters are polymorphic Serializable values. A missing TeaVM
         // constructor made Maps.readFilters() discard the saved list and apply
         // default decoration/ore filters instead. Preserve the original schema
-        // and algorithms, replacing only reflective construction.
+        // and algorithms, replacing unavailable constructor/field reflection.
         installFilter(BlendFilter.class, BlendFilter::new);
         installFilter(ClearFilter.class, ClearFilter::new);
         installFilter(CoreSpawnFilter.class, CoreSpawnFilter::new);
@@ -306,14 +306,15 @@ public final class BrowserJsonCompatibility{
     }
 
     private static <T extends GenerateFilter> void installFilter(Class<T> type, Prov<T> factory){
-        installFields(type, factory);
+        BrowserMapFilterJson.install(type, factory);
         if(verifyFilters){
             T value = factory.get();
             value.seed = 314159;
             String encoded = JsonIO.json.toJson(value, GenerateFilter.class);
             GenerateFilter restored = JsonIO.read(GenerateFilter.class, encoded);
             if(restored.getClass() != type || restored.seed != value.seed){
-                throw new IllegalStateException("Map filter JSON lost type/seed: " + type.getName());
+                throw new IllegalStateException("Map filter JSON lost type/seed: " + type.getName()
+                    + ", restored=" + restored.getClass().getName() + ", seed=" + restored.seed + ", json=" + encoded);
             }
             verifiedFilters++;
         }
@@ -324,16 +325,24 @@ public final class BrowserJsonCompatibility{
         // detect a successful constructor followed by silently ignored fields.
         String fixture = "[{class:mindustry.maps.filters.ScatterFilter,seed:17,chance:0.375,flooronto:snow,floor:sand,block:stone-wall},"
             + "{class:mindustry.maps.filters.OreFilter,seed:23,scl:73,threshold:0.42,ore:ore-lead,target:stone},"
-            + "{class:mindustry.maps.filters.MirrorFilter,seed:31,angle:90,rotate:true}]";
+            + "{class:mindustry.maps.filters.MirrorFilter,seed:31,angle:90,rotate:true},"
+            + "{class:mindustry.maps.filters.RandomItemFilter,seed:37,chance:0.8,drops:[{item:copper,amount:17},{item:lead,amount:9}]},"
+            + "{class:mindustry.maps.filters.LogicFilter,seed:41,code:\"print 42\",loop:true}]";
         Seq<GenerateFilter> filters = JsonIO.read(Seq.class, fixture);
         for(int pass = 0; pass < 2; pass++){
-            if(filters.size != 3 || !(filters.get(0) instanceof ScatterFilter scatter)
+            if(filters.size != 5 || !(filters.get(0) instanceof ScatterFilter scatter)
                 || scatter.seed != 17 || scatter.chance != 0.375f || scatter.flooronto != Blocks.snow
                 || scatter.floor != Blocks.sand || scatter.block != Blocks.stoneWall
                 || !(filters.get(1) instanceof OreFilter ore) || ore.seed != 23
                 || ore.scl != 73f || ore.threshold != 0.42f || ore.ore != Blocks.oreLead || ore.target != Blocks.stone
                 || !(filters.get(2) instanceof MirrorFilter mirror) || mirror.seed != 31
-                || mirror.angle != 90 || !mirror.rotate){
+                || mirror.angle != 90 || !mirror.rotate
+                || !(filters.get(3) instanceof RandomItemFilter random) || random.seed != 37
+                || random.chance != 0.8f || random.drops.size != 2
+                || random.drops.get(0).item != Items.copper || random.drops.get(0).amount != 17
+                || random.drops.get(1).item != Items.lead || random.drops.get(1).amount != 9
+                || !(filters.get(4) instanceof LogicFilter logicFilter) || logicFilter.seed != 41
+                || !"print 42".equals(logicFilter.code) || !logicFilter.loop){
                 throw new IllegalStateException("Map filter JSON lost saved parameters, pass=" + pass);
             }
             filters = JsonIO.read(Seq.class, JsonIO.write(filters));

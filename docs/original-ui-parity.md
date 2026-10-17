@@ -109,3 +109,14 @@ factory bridge. The opt-in real-Chrome test requires preserved polymorphic types
 inherited seeds, nondefault Scatter/Ore/Mirror parameters and save/read round-trip;
 it also boots both actual campaigns and rejects serialization/icon warnings.
 Fresh compiled validation remains required before claiming this fix complete.
+
+The constructor-only filter replay detected a lost inherited seed. The explicit
+codec now covers all 60 original declared fields plus seed for every filter; its
+generator is checked against the pinned source declarations in CI. Nondefault
+resource-drop arrays and logic strings are included in the real-browser round-trip.
+
+An additional UI discrepancy was found in Fonts.registerIcon: the desktop merges
+font/UI atlas textures, whereas baked Web fonts keep separate PNGs. Inline
+resource/content glyphs must use their atlas texture through matching font page
+indices. Verify every registered glyph's UVs/texture and actual mixed text/icon
+rendering in both normal and outline fonts before declaring the UI ready.

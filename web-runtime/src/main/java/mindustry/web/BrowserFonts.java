@@ -76,6 +76,53 @@ public final class BrowserFonts{
         }
     }
 
+    /** Verify every registered content emoji uses its original atlas pixels. */
+    public static void verifyContentIconPages(){
+        int count = 0;
+        Font[] fonts = {Fonts.def, Fonts.outline};
+        for(String line : Core.files.internal("icons/icons.properties").readString().split("\n")){
+            if(line.trim().isEmpty()) continue;
+            String[] pair = line.split("=");
+            int code = Integer.parseInt(pair[0]);
+            String[] names = pair[1].trim().split("\\|");
+            if(Fonts.getUnicode(names[0]) != code) continue;
+            TextureRegion original = Core.atlas.find(names[1]);
+            for(Font font : fonts){
+                Font.Glyph glyph = font.getData().getGlyph((char)code);
+                if(glyph == null || glyph.page < 0 || glyph.page >= font.getRegions().size
+                    || font.getRegions().get(glyph.page).texture != original.texture
+                    || glyph.u != original.u || glyph.u2 != original.u2
+                    || glyph.v != original.v2 || glyph.v2 != original.v){
+                    throw new IllegalStateException("Inline content icon lost original atlas page: " + names[0]);
+                }
+            }
+            count++;
+        }
+        if(count < 2 || Fonts.getUnicode("copper") == 0 || Fonts.getUnicode("lead") == 0){
+            throw new IllegalStateException("Original inline resource icons are absent");
+        }
+        // Exercise caches created with one baked page growing to mixed text
+        // and atlas glyphs; the native FontCache must submit both textures.
+        Draw.flush();
+        for(int i = 0; i < 8 && Core.gl20.glGetError() != GL20.GL_NO_ERROR; i++){}
+        Draw.proj(0f, 0f, Core.graphics.getWidth(), Core.graphics.getHeight());
+        Draw.color();
+        String sample = "Cu " + Fonts.getUnicodeStr("copper") + " Pb " + Fonts.getUnicodeStr("lead");
+        Fonts.def.setColor(Color.white);
+        Fonts.outline.setColor(Color.white);
+        Fonts.def.draw(sample, 24f, Core.graphics.getHeight() - 24f);
+        Fonts.outline.draw(sample, 24f, Core.graphics.getHeight() - 52f);
+        Draw.flush();
+        int error = Core.gl20.glGetError();
+        if(error != GL20.GL_NO_ERROR){
+            throw new IllegalStateException("Inline content font/atlas render failed: " + error);
+        }
+        markContentIconsReady(count);
+    }
+
+    @JSBody(params={"count"},script="const r=document.documentElement;r.setAttribute('data-mindustry-content-icons','atlas-pages-verified');r.setAttribute('data-mindustry-content-icon-count',String(count));")
+    private static native void markContentIconsReady(int count);
+
     /** Proves text and icon fonts reach the same real WebGL VBO SpriteBatch. */
     public static void loadAndVerifyRendering(){
         loadAll();

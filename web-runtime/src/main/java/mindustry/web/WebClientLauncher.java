@@ -302,6 +302,7 @@ public final class WebClientLauncher extends ClientLauncher{
         markUiSyncPhase("ui-load-sync");
         uiShell.loadSync();
         markUiSyncPhase("ui-load-sync-ready");
+        BrowserFonts.verifyContentIconPages();
 
         // Original SectorPreset.loadIcon() is conditional on Icon.terrain.
         // ContentLoader.load() above runs *before* UI.loadSync -> Icon.load(),

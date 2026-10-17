@@ -25,6 +25,7 @@ for device in desktop mobile; do
     --require 'data-mindustry-filter-json="verified"' \
     --require 'data-mindustry-filter-json-types="16"' \
     --require 'data-mindustry-filter-json-fields="preserved"' \
+    --require 'data-mindustry-content-icons="atlas-pages-verified"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --after-ready-eval "(async()=>{const r=document.documentElement;const n=Number(r.getAttribute('data-mindustry-cpu-sample'));for(let i=0;i<180;i++){if(r.getAttribute('data-mindustry-web')==='error')throw Error(r.getAttribute('data-mindustry-error'));if(Number(r.getAttribute('data-mindustry-cpu-sample'))>n)return 'Real world continues after map filters';await new Promise(done=>setTimeout(done,100));}throw Error('Campaign stopped after filter parsing');})()" \
     > "/tmp/mindustry-filter-json-$device.html" 2> "/tmp/mindustry-filter-json-$device.log"; then
