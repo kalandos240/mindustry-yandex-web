@@ -3,6 +3,8 @@ package mindustry.web;
 import arc.*;
 import arc.scene.*;
 import arc.scene.event.*;
+import arc.scene.actions.*;
+import arc.math.Interp;
 import arc.math.geom.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
@@ -27,8 +29,15 @@ import static mindustry.Vars.*;
 public final class BrowserStockMainMenu{
     private static boolean contentOpen;
     private static int pointerSampleFrames;
+    private static Table desktopSubmenu;
+    private static Button databaseMenu;
+    private static boolean databaseOpen;
 
     private BrowserStockMainMenu(){}
+
+    public static boolean navigationOpen(){
+        return contentOpen || databaseOpen;
+    }
 
     public static boolean contentOpen(){
         return contentOpen;
@@ -55,6 +64,7 @@ public final class BrowserStockMainMenu{
         home.update(() -> {
             if(state.isMenu() && !contentOpen && (++pointerSampleFrames & 15) == 0){
                 markPointerCenter(home.find("web-main-play"), "play");
+                markPointerCenter(home.find("web-main-database-group"), "database-group");
                 markPointerCenter(home.find("web-main-custom"), "custom");
                 markPointerCenter(home.find("web-main-research"), "research");
                 markPointerCenter(home.find("web-main-database"), "database");
@@ -91,6 +101,10 @@ public final class BrowserStockMainMenu{
 
     private static void rebuildHome(Table home){
         clearMenuHitPoints();
+        databaseOpen = false;
+        desktopSubmenu = null;
+        databaseMenu = null;
+        markDatabaseMenu(false);
         home.clear();
         home.reset();
         if(mobile){
@@ -118,12 +132,12 @@ public final class BrowserStockMainMenu{
         }else{
             // Mirrors MenuFragment.buildDesktop(): a shaded left sidebar
             // with the original Mindustry icons and flat toggle menu style.
-            // Eight desktop entries no longer fit the original four-button
+            // The remaining browser launch shortcuts still need adaptive
             // sidebar height on the minimum Chromium/Yandex iframe viewport.
             // Use adaptive row/logo heights so real button hit rectangles stay
             // within the canvas rather than silently extending off-screen.
             float usableHeight = Math.max(0f, Core.scene.getHeight() - 156f);
-            float desktopRowHeight = Math.max(18f, Math.min(70f, usableHeight / 9f));
+            float desktopRowHeight = Math.max(18f, Math.min(70f, usableHeight / 6f));
             home.left().marginLeft(Core.scene.getWidth() / 10f).marginTop(140f);
             home.table(Styles.black6, menu -> {
                 menu.name = "web-main-desktop-buttons";
@@ -137,36 +151,76 @@ public final class BrowserStockMainMenu{
                     .name("web-main-custom").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("planets", "Planets"), Icon.terrain,
-                    Styles.flatToggleMenut, BrowserVanillaDialogs::openPlanets)
+                    Styles.flatToggleMenut, () -> { closeDatabaseMenu(); BrowserVanillaDialogs.openPlanets(); })
                     .name("web-main-planets").update(button -> button.setChecked(false));
                 menu.row();
-                menu.button(Core.bundle.get("database", "Database"), Icon.book,
-                    Styles.flatToggleMenut, BrowserStockDatabaseUi::show)
-                    .name("web-main-database").update(button -> button.setChecked(false));
-                menu.row();
-                menu.button(Core.bundle.get("research", "Research"), Icon.tree,
-                    Styles.flatToggleMenut, BrowserResearchUi::show)
-                    .name("web-main-research").update(button -> button.setChecked(false));
+                databaseMenu = menu.button(Core.bundle.get("database.button", "Database"), Icon.menu,
+                    Styles.flatToggleMenut, BrowserStockMainMenu::toggleDatabaseMenu)
+                    .name("web-main-database-group").marginLeft(11f).get();
+                databaseMenu.update(() -> databaseMenu.setChecked(databaseOpen));
                 menu.row();
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
-                    Styles.flatToggleMenut, BrowserVanillaDialogs::openSettings)
+                    Styles.flatToggleMenut, () -> { closeDatabaseMenu(); BrowserVanillaDialogs.openSettings(); })
                     .name("web-main-settings").update(button -> button.setChecked(false));
                 menu.row();
-                menu.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
-                    Styles.flatToggleMenut, BrowserVanillaDialogs::openSchematics)
-                    .name("web-main-schematics").update(button -> button.setChecked(false));
-                menu.row();
-                menu.button(Core.bundle.get("settings.controls", "Controls"), Icon.move,
-                    Styles.flatToggleMenut, BrowserVanillaDialogs::openControls)
-                    .name("web-main-controls").update(button -> button.setChecked(false));
-                menu.row();
                 menu.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
-                    Styles.flatToggleMenut, BrowserVanillaDialogs::openSaves)
+                    Styles.flatToggleMenut, () -> { closeDatabaseMenu(); BrowserVanillaDialogs.openSaves(); })
                     .name("web-main-saves").update(button -> button.setChecked(false));
                 menu.row();
             }).width(230f);
+            home.table(Styles.black6, submenu -> {
+                desktopSubmenu = submenu;
+                submenu.name = "web-main-desktop-submenu";
+                submenu.top();
+                submenu.defaults().width(230f).height(desktopRowHeight);
+                submenu.visible(() -> databaseOpen || submenu.hasActions());
+                // Keep the four original-style rows inside small portal frames.
+                submenu.add().height(desktopRowHeight * 2f).row();
+                desktopEntry(submenu, "schematics", Icon.paste, BrowserVanillaDialogs::openSchematics, "schematics");
+                desktopEntry(submenu, "database", Icon.book, BrowserStockDatabaseUi::show, "database");
+                desktopEntry(submenu, "research", Icon.tree, BrowserResearchUi::show, "research");
+                desktopEntry(submenu, "settings.controls", Icon.move, BrowserVanillaDialogs::openControls, "controls");
+                submenu.color.a = 0f;
+            }).width(230f);
         }
     }
+
+    private static void desktopEntry(Table table, String key, arc.scene.style.Drawable icon,
+                                     Runnable action, String name){
+        table.button(Core.bundle.get(key, key), icon, Styles.flatToggleMenut, () -> {
+            closeDatabaseMenu();
+            action.run();
+        }).name("web-main-" + name).marginLeft(11f)
+            .update(button -> button.setChecked(false));
+        table.row();
+    }
+
+    private static void toggleDatabaseMenu(){
+        if(databaseOpen){
+            closeDatabaseMenu();
+        }else{
+            databaseOpen = true;
+            clearMenuHitPoints();
+            desktopSubmenu.clearActions();
+            desktopSubmenu.touchable = Touchable.childrenOnly;
+            desktopSubmenu.actions(Actions.alpha(1f, 0.15f, Interp.fade));
+            markDatabaseMenu(true);
+        }
+    }
+
+    private static void closeDatabaseMenu(){
+        databaseOpen = false;
+        clearMenuHitPoints();
+        if(desktopSubmenu != null){
+            desktopSubmenu.touchable = Touchable.disabled;
+            desktopSubmenu.clearActions();
+            desktopSubmenu.actions(Actions.alpha(0f, 0.2f, Interp.fade));
+        }
+        markDatabaseMenu(false);
+    }
+
+    @JSBody(params={"open"}, script="document.documentElement.setAttribute('data-mindustry-main-menu-database-submenu',open?'open':'closed');")
+    private static native void markDatabaseMenu(boolean open);
 
     private static void mobileButton(Table menu, String key, arc.scene.style.Drawable icon,
                                      Runnable action, String name){
@@ -176,7 +230,7 @@ public final class BrowserStockMainMenu{
 
     @JSBody(script="""
         const root=document.documentElement;
-        for(const name of ['play','custom','research','database','schematics','controls','settings','saves','planets']){
+        for(const name of ['play','database-group','custom','research','database','schematics','controls','settings','saves','planets']){
             root.removeAttribute('data-mindustry-main-menu-'+name+'-x');
             root.removeAttribute('data-mindustry-main-menu-'+name+'-y');
         }
@@ -184,9 +238,11 @@ public final class BrowserStockMainMenu{
     private static native void clearMenuHitPoints();
 
     private static void markPointerCenter(Element button, String name){
-        if(button == null || button.getWidth() < 1f || button.getHeight() < 1f) return;
+        if(button == null || !button.visible || !button.isTouchable() || button.getWidth() < 1f || button.getHeight() < 1f) return;
         Vec2 center = button.localToStageCoordinates(
             new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
+        Element hit = Core.scene.hit(center.x, center.y, true);
+        if(hit != button && (hit == null || !hit.isDescendantOf(button))) return;
         Vec2 screen = Core.scene.getViewport().project(center);
         markMenuHitPoint(name, screen.x, screen.y);
     }
@@ -199,11 +255,13 @@ public final class BrowserStockMainMenu{
     private static native void markMenuHitPoint(String name, float x, float y);
 
     private static void openPlay(){
+        closeDatabaseMenu();
         contentOpen = true;
         markPage("play");
     }
 
     public static void showHome(){
+        closeDatabaseMenu();
         contentOpen = false;
         markPage("home");
     }

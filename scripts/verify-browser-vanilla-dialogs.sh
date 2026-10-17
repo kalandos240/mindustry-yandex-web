@@ -35,6 +35,12 @@ for device in desktop mobile; do
           await new Promise(r=>setTimeout(r,100));
         }
       };
+      const openDatabaseGroup=async()=>{
+        if(root.getAttribute('data-mindustry-main-menu-layout')==='mobile-grid')return;
+        await wait(()=>root.hasAttribute('data-mindustry-main-menu-database-group-x'),'Database parent coordinates');
+        await click(Number(root.getAttribute('data-mindustry-main-menu-database-group-x')),Number(root.getAttribute('data-mindustry-main-menu-database-group-y')));
+        await wait(()=>root.getAttribute('data-mindustry-main-menu-database-submenu')==='open','Database parent opened');
+      };
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-settings-x'),'settings coordinates');
       {
         const rect=canvas.getBoundingClientRect();
@@ -68,6 +74,7 @@ for device in desktop mobile; do
       await new Promise(r=>setTimeout(r,250));
       await wait(()=>!(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('saves'),
         'Arc dialog did not close on Escape: saves');
+      await openDatabaseGroup();
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-controls-x'),'controls coordinates');
       await click(Number(root.getAttribute('data-mindustry-main-menu-controls-x')),Number(root.getAttribute('data-mindustry-main-menu-controls-y')));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-controls-open')==='yes','KeybindDialog open');
@@ -79,6 +86,7 @@ for device in desktop mobile; do
       await new Promise(r=>setTimeout(r,250));
       await wait(()=>!(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('controls'),
         'Arc dialog did not close on Escape: controls');
+      await openDatabaseGroup();
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-schematics-x'),'schematics coordinates');
       await click(Number(root.getAttribute('data-mindustry-main-menu-schematics-x')),Number(root.getAttribute('data-mindustry-main-menu-schematics-y')));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-schematics-open')==='yes','SchematicsDialog open');
@@ -90,6 +98,8 @@ for device in desktop mobile; do
       await new Promise(r=>setTimeout(r,250));
       await wait(()=>!(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('schematics'),
         'Arc dialog did not close on Escape: schematics');
+      await openDatabaseGroup();
+      await wait(()=>root.hasAttribute('data-mindustry-main-menu-database-x'),'database child coordinates');
       await click(Number(root.getAttribute('data-mindustry-main-menu-database-x')),Number(root.getAttribute('data-mindustry-main-menu-database-y')));
       await wait(()=>root.getAttribute('data-mindustry-database-open')==='yes','database after stock dialog close');
       await wait(()=>root.getAttribute('data-mindustry-vanilla-database-open')==='yes',

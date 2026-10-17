@@ -68,11 +68,9 @@
     }
     return { x, y };
   };
-  for (const button of legalButtons) await point(button);
-  root.setAttribute('data-mindustry-ui-controls-in-bounds', String(legalButtons.length));
 
   let nextId = 0;
-  const click = async name => {
+  const nativeClick = async name => {
     const p = await point(name);
     const id = 'ui-button-' + (++nextId);
     root.setAttribute('data-mindustry-cdp-click-ack', '');
@@ -85,6 +83,24 @@
       throw Error('CDP rejected native click on ' + name + ': ' + value('cdp-click-ack'));
     }
   };
+  const grouped = ['research', 'database', 'schematics', 'controls'];
+  const click = async name => {
+    if(!isMobile && grouped.includes(name) && value('main-menu-database-submenu') !== 'open'){
+      await nativeClick('database-group');
+      await wait(() => value('main-menu-database-submenu') === 'open', 'original Database submenu');
+    }
+    await nativeClick(name);
+  };
+  for(const name of legalButtons.filter(name => isMobile || !grouped.includes(name))) await point(name);
+  if(!isMobile){
+    await nativeClick('database-group');
+    await wait(() => value('main-menu-database-submenu') === 'open', 'Database group open');
+    for(const name of grouped) await point(name);
+    await nativeClick('database-group');
+    await wait(() => value('main-menu-database-submenu') === 'closed', 'Database toggle close');
+    await wait(() => !root.hasAttribute('data-mindustry-main-menu-research-x'), 'hidden submenu hitboxes cleared');
+  }
+  root.setAttribute('data-mindustry-ui-controls-in-bounds', String(legalButtons.length));
   const escape = async () => {
     window.dispatchEvent(new KeyboardEvent('keydown', {
       bubbles: true, cancelable: true, code: 'Escape', key: 'Escape'
@@ -94,6 +110,12 @@
       bubbles: true, cancelable: true, code: 'Escape', key: 'Escape'
     }));
   };
+  if(!isMobile){
+    await nativeClick('database-group');
+    await wait(() => value('main-menu-database-submenu') === 'open', 'Database reopen');
+    await escape();
+    await wait(() => value('main-menu-database-submenu') === 'closed', 'Escape closes Database submenu');
+  }
   const modal = kind => (value('vanilla-modal-visible') || '').split(',').includes(kind);
   const action = async (name, marker, kind) => {
     await click(name);

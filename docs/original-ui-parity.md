@@ -120,3 +120,20 @@ font/UI atlas textures, whereas baked Web fonts keep separate PNGs. Inline
 resource/content glyphs must use their atlas texture through matching font page
 indices. Verify every registered glyph's UVs/texture and actual mixed text/icon
 rendering in both normal and outline fonts before declaring the UI ready.
+
+## Desktop submenu migration
+
+Start replacing the crowded flat desktop list with MenuFragment's adjacent
+Database submenu: original black6/flatToggleMenut styling, Icon.menu, 11-unit
+label inset, selected parent, 0.15-second fade-in and 0.2-second fade-out.
+Schematics, database, research and key bindings remain reachable with native
+Scene input. Escape and selecting another action close the submenu, and hidden
+children no longer advertise stale click coordinates. The six remaining browser
+launch shortcuts and the combined Play selector still differ from original;
+this is an incremental migration, not complete menu parity.
+
+The unchanged full build at 12b9fe6 passed the 16-type filter JSON field/round-trip
+gate on desktop/Ground Zero and mobile/Onset (run 39073865322). Decimal fixture
+comparisons allow float rounding; block/item identity and integer fields are
+exact. Menu migration validation must additionally exercise real parent clicks,
+child hitboxes, toggle/Escape closing, native dialogs and research drag.

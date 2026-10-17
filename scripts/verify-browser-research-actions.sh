@@ -56,6 +56,17 @@ for target in desktop-menu desktop-campaign mobile-menu mobile-campaign; do
       const canvas=document.getElementById('mindustry-canvas');
       const root=document.documentElement;
       let x=64, y=$y;
+      if('$scenario'==='menu' && '$device'==='desktop'){
+        for(let i=0;i<110&&!root.hasAttribute('data-mindustry-main-menu-database-group-x');i++)await new Promise(r=>setTimeout(r,100));
+        if(!root.hasAttribute('data-mindustry-main-menu-database-group-x'))throw Error('Missing Database parent hitbox');
+        const rect=canvas.getBoundingClientRect();
+        const x=rect.left+Number(root.getAttribute('data-mindustry-main-menu-database-group-x'));
+        const y=rect.bottom-Number(root.getAttribute('data-mindustry-main-menu-database-group-y'));
+        for(const type of ['pointerdown','pointerup']){
+          canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:719,pointerType:'mouse',clientX:x,clientY:y,button:0,buttons:type==='pointerdown'?1:0,isPrimary:true}));
+          await new Promise(r=>setTimeout(r,100));
+        }
+      }
       const locationPrefix='$scenario'==='menu'?
         'data-mindustry-main-menu-research' : 'data-mindustry-hud-research';
       for(let i=0;i<110;i++){

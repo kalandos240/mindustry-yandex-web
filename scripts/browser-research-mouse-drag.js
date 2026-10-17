@@ -16,6 +16,16 @@
       ', scroll='+val('research-mouse-pan-x')+','+val('research-mouse-pan-y'));
   };
   await wait(()=>val('main-menu-page')==='home','native main menu');
+  if(val('main-menu-layout')!=='mobile-grid'){
+    await wait(()=>root.hasAttribute('data-mindustry-main-menu-database-group-x'),'Database group coordinates');
+    const rect=canvas.getBoundingClientRect(), id='research-parent-open';
+    root.setAttribute('data-mindustry-cdp-click-ack','');
+    root.setAttribute('data-mindustry-cdp-click-request',JSON.stringify({id,
+      x:rect.left+Number(val('main-menu-database-group-x')),
+      y:rect.bottom-Number(val('main-menu-database-group-y'))}));
+    await wait(()=>val('cdp-click-ack')===id,'trusted Database parent click');
+    await wait(()=>val('main-menu-database-submenu')==='open','Database submenu visible');
+  }
   // The Arc menu reports hitboxes on its 16-frame pointer cadence. The
   // earlier test read Number(null) === 0 immediately after DOM-ready and
   // incorrectly called the still-unsampled Research button "clipped".
