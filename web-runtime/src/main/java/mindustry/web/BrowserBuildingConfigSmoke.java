@@ -72,6 +72,12 @@ public final class BrowserBuildingConfigSmoke{
             throw new IllegalStateException("Native Sorter config stalled at stage " + stage);
         }
         if(stage == 1 || stage == 3){
+            // Camera-follow moves world-screen positions while the original
+            // game runs. Refresh the real tile center for trusted CDP clicks.
+            if((stageFrames & 7) == 0){
+                Vec2 center = Core.camera.project(new Vec2(fixture.worldx(), fixture.worldy()));
+                markFixture(center.x, center.y);
+            }
             // Waiting for a real pointer world tap via DesktopInput/MobileInput.
             if(control.input.config.isShown() && control.input.config.getSelected() == sorter){
                 stage = stage == 1 ? 2 : 4;
