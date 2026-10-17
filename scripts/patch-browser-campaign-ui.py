@@ -1383,13 +1383,13 @@ if text.count(old_pause_back) == 1:
     # Legacy minimal pause panel: widen its Back action for mobile.
     text = text.replace(old_pause_back, new_pause_back, 1)
 elif 'dialog.name = "web-pause-dialog"' in text and (
-    'dialog.button(Core.bundle.get("quit", "Quit"), Icon.exit,' in text
+    'dialog.button(Core.bundle.get("back", "Back"), Icon.left,' in text
+    and '.name("web-pause-menu")' in text
     and 'BrowserUiRuntime::returnToMenuWithAd)' in text
 ):
-    # The restored native Arc/Mindustry PausedDialog-style panel already
-    # provides a wider, mobile-safe two-column layout and uses the exact
-    # same campaign save + Yandex quit action. Do not replace its button
-    # with an obsolete unstyled overlay while generating campaign menus.
+    # The Yandex-safe native Pause button returns to the game menu after
+    # saving; it must not imply quitting the browser. Keep the existing
+    # full-width Arc Scene button and do not replace it with legacy HTML.
     pass
 else:
     raise SystemExit("Campaign UI pause-overlay Back anchor no longer matches known native or legacy UI")
