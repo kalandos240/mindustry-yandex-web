@@ -1,4 +1,4 @@
-name: Trace actual native config targets
+name: Isolate stale hover config race
 on:
   push:
     branches: [diagnose-native-config-waves]
