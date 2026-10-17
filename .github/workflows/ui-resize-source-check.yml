@@ -1,0 +1,43 @@
+name: Inspect applied Scene resize lifecycle
+on:
+  push:
+    branches: [desktop-ui-resize-source-check]
+    paths: ['.github/workflows/ui-resize-source-check.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap pinned sources
+        run: bash scripts/bootstrap.sh
+      - name: Apply exact production source overlays
+        run: |
+          bash scripts/apply-port.sh
+          python3 scripts/patch-arc-fi-web.py work/Arc/arc-core/src/arc/files/Fi.java
+          python3 scripts/patch-mindustry-block-reflection.py work/Mindustry/core/src/mindustry/world/Block.java
+          python3 scripts/patch-mindustry-fonts-web.py work/Mindustry/core/src/mindustry/ui/Fonts.java
+          python3 scripts/patch-mindustry-no-links-web.py
+          python3 scripts/patch-vanilla-schematics-web.py
+          python3 scripts/patch-vanilla-database-web.py
+          python3 scripts/patch-vanilla-planet-web.py
+          python3 scripts/patch-vanilla-settings-web.py
+          python3 scripts/patch-mindustry-external-urls-web.py
+
+      - name: Print resize lifecycle from actual TeaVM input sources
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for path in Path('web-runtime/src/main/java').rglob('*.java'):
+              lines=path.read_text().splitlines()
+              hits=set()
+              for i,line in enumerate(lines):
+                  if any(term in line for term in ['scene.resize(', 'getViewport().update(', 'ui.resize(', 'void resize(', 'ResizeEvent']):
+                      hits.update(range(max(0,i-3),min(len(lines),i+8)))
+              if hits:
+                  print(str(path))
+                  for i in sorted(hits):
+                      print(str(i+1)+': '+lines[i])
+          PY
