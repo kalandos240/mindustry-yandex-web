@@ -16,10 +16,17 @@
       ', scroll='+val('research-mouse-pan-x')+','+val('research-mouse-pan-y'));
   };
   await wait(()=>val('main-menu-page')==='home','native main menu');
+  // The Arc menu reports hitboxes on its 16-frame pointer cadence. The
+  // earlier test read Number(null) === 0 immediately after DOM-ready and
+  // incorrectly called the still-unsampled Research button "clipped".
+  await wait(()=>root.hasAttribute('data-mindustry-main-menu-research-x') &&
+    root.hasAttribute('data-mindustry-main-menu-research-y'),
+    'native desktop Research Arc button sampled');
   const rect=canvas.getBoundingClientRect();
   const mx=Number(val('main-menu-research-x')), my=Number(val('main-menu-research-y'));
   if(!(mx>0&&my>0&&mx<rect.width&&my<rect.height))
-    throw Error('Stock research control outside portal canvas');
+    throw Error('Stock research control outside portal canvas: button '+
+      mx+','+my+' vs canvas '+rect.width+'x'+rect.height);
   const clickId='research-mouse-open';
   root.setAttribute('data-mindustry-cdp-click-ack','');
   root.setAttribute('data-mindustry-cdp-click-request',JSON.stringify({
