@@ -52,8 +52,11 @@
   await click('play-campaign', 'Campaign - Planets native TextButton');
   await wait(() => get('vanilla-planet-open')==='yes', 'original 3D PlanetDialog callback');
   await wait(() => get('vanilla-planet-frame')==='rendered', 'real 3D planet mesh render');
-  await wait(() => get('planet-first-chooser')==='open',
-    'first-time vanilla Serpulo/Erekir picker');
+  await wait(() => get('planet-first-chooser')==='closed',
+    'No first-run chooser may intercept native planet buttons');
+  await wait(() => get('planet-viewed')==='serpulo'
+      || get('planet-viewed')==='erekir',
+    'original Serpulo/Erekir 3D globe visible');
   await frame('3D planet visible after native Campaign action');
   if(get('main-menu-page') !== 'play'){
     throw Error('Opening a planet should not replace native Play/Custom Game menu');
