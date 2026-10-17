@@ -1,0 +1,57 @@
+name: Diagnose native config and waves
+on:
+  push:
+    branches: [diagnose-native-config-waves]
+    paths: ['.github/workflows/native-config-waves.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39064596753
+          github-token: ${{ github.token }}
+          path: work/diagnose
+      - name: Verify package and retain original exception stacks
+        run: |
+          cd work/diagnose
+          sha256sum -c mindustry-yandex-release.zip.sha256
+          cd ../..
+          python3 -c 'from zipfile import ZipFile; ZipFile("work/diagnose/mindustry-yandex-release.zip").extractall("web-runtime/build/web")'
+          python3 scripts/debug-browser-runtime.py
+      - name: Original Sorter configuration and clear
+        id: config
+        continue-on-error: true
+        env:
+          MINDUSTRY_CDP_CONSOLE: '1'
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-building-config-stress.sh 2>&1 | tee work/diagnose/config.log
+      - name: Original wave HUD and spawning
+        id: waves
+        continue-on-error: true
+        env:
+          MINDUSTRY_CDP_CONSOLE: '1'
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-wave-hud-stress.sh 2>&1 | tee work/diagnose/waves.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-config-waves-diagnosis
+          path: |
+            work/diagnose/*.log
+            /tmp/mindustry-building-config-*.html
+            /tmp/mindustry-wave-hud-*.html
+      - name: Require actual test outcomes
+        if: always()
+        run: |
+          test '${{ steps.config.outcome }}' = success
+          test '${{ steps.waves.outcome }}' = success
