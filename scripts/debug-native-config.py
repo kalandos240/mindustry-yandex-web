@@ -34,3 +34,14 @@ anchor="ase_ClickListener_touchUp = ($this, $event, $x, $y, $pointer, $button) =
 assert s.count(anchor)==1
 s=s.replace(anchor,anchor+"\n if(document.documentElement.hasAttribute('data-mindustry-building-config-fixture'))console.info('LISTENER_UP', $x,$y,$this.$pressed);")
 Path("web-runtime/build/web/mindustry.js").write_text(s)
+
+# Diagnostic A/B only: refresh the cached hover at the native hit boundary.
+p=Path("web-runtime/build/web/mindustry.js")
+s=p.read_text()
+a=s.index("as_Scene_touchDown =")
+b=s.index("as_Scene_touchDragged =",a)
+part=s[a:b]
+anchor="        $target = $tmp;" + chr(10) + " if(document.documentElement"
+assert part.count(anchor)==1
+part=part.replace(anchor,"        $target = $tmp;" + chr(10) + "        $this.$mouseOverElement = $target;" + chr(10) + " if(document.documentElement")
+p.write_text(s[:a]+part+s[b:])
