@@ -62,6 +62,14 @@
       throw Error('Native ' + name + ' button outside game area: ' +
         sx + ',' + sy + ' in ' + rect.width + 'x' + rect.height);
     }
+    for(const edge of ['left','bottom','right','top']){
+      if(!root.hasAttribute('data-mindustry-main-menu-'+name+'-'+edge)) throw Error('Missing real '+name+' '+edge+' bound');
+    }
+    const left=Number(value('main-menu-'+name+'-left')), bottom=Number(value('main-menu-'+name+'-bottom'));
+    const right=Number(value('main-menu-'+name+'-right')), top=Number(value('main-menu-'+name+'-top'));
+    if(!(left>=-0.5 && bottom>=-0.5 && right<=rect.width+0.5 && top<=rect.height+0.5 && right>left && top>bottom)){
+      throw Error('Native '+name+' rectangle clipped: '+[left,bottom,right,top]+' in '+rect.width+'x'+rect.height);
+    }
     const x = rect.left + sx, y = rect.bottom - sy;
     if (document.elementFromPoint(x, y) !== canvas) {
       throw Error('Native ' + name + ' blocked by portal DOM overlay');

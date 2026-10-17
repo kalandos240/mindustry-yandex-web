@@ -160,3 +160,11 @@ and Escape, both locale Database visits, and direct-campaign recovery via Custom
 Game. Fresh Java/TeaVM and native browser validation are still required. The
 previous c553908 package passed focused run 39076024060 and screenshot proof
 39076254461 at 92,684,526 unpacked bytes; those results do not certify this change.
+
+The adjacent columns also need to fit when DevTools or portal furniture narrows
+the desktop canvas. Two fixed 230-unit columns exceed a 390-pixel surface;
+a visible center does not prove a complete button is visible. Cap both column
+widths to the actual available scene width and publish/check their full projected
+bounds. A permanent Russian native-input gate shrinks/translates the portal
+surface to half width, exercises every menu action, and captures the open
+Database submenu. Its failure blocks release alongside the normal UI gates.

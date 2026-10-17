@@ -36,6 +36,7 @@ public final class BrowserStockMainMenu{
     private static boolean playOpen;
     private static Button playMenu;
     private static float desktopRowHeight;
+    private static float desktopColumnWidth;
 
     private BrowserStockMainMenu(){}
 
@@ -145,12 +146,14 @@ public final class BrowserStockMainMenu{
             // Use adaptive row/logo heights so real button hit rectangles stay
             // within the canvas rather than silently extending off-screen.
             float usableHeight = Math.max(0f, Core.scene.getHeight() - 156f);
+            desktopColumnWidth = Math.max(1f, Math.min(230f,
+                (Core.scene.getWidth() * 0.9f - 8f) / 2f));
             desktopRowHeight = Math.max(18f, Math.min(70f, usableHeight / 5f));
             home.left().marginLeft(Core.scene.getWidth() / 10f).marginTop(140f);
             home.table(Styles.black6, menu -> {
                 menu.name = "web-main-desktop-buttons";
                 menu.top();
-                menu.defaults().width(230f).height(desktopRowHeight);
+                menu.defaults().width(desktopColumnWidth).height(desktopRowHeight);
                 playMenu = menu.button(Core.bundle.get("play", "Play"), Icon.play,
                     Styles.flatToggleMenut, BrowserStockMainMenu::togglePlayMenu)
                     .name("web-main-play").marginLeft(11f).get();
@@ -164,14 +167,14 @@ public final class BrowserStockMainMenu{
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
                     Styles.flatToggleMenut, closeThen(BrowserVanillaDialogs::openSettings))
                     .name("web-main-settings").marginLeft(11f).update(button -> button.setChecked(false));
-            }).width(230f).height(desktopRowHeight * 5f);
+            }).width(desktopColumnWidth).height(desktopRowHeight * 5f);
             home.table(Styles.black6, submenu -> {
                 desktopSubmenu = submenu;
                 submenu.name = "web-main-desktop-submenu";
                 submenu.top();
                 submenu.visible(() -> databaseOpen || playOpen || submenu.hasActions());
                 submenu.color.a = 0f;
-            }).width(230f).height(desktopRowHeight * 5f);
+            }).width(desktopColumnWidth).height(desktopRowHeight * 5f);
 
         }
     }
@@ -196,7 +199,7 @@ public final class BrowserStockMainMenu{
     private static void buildDesktopSubmenu(boolean play){
         Table submenu = desktopSubmenu;
         submenu.clearChildren();
-        submenu.defaults().width(230f).height(desktopRowHeight);
+        submenu.defaults().width(desktopColumnWidth).height(desktopRowHeight);
         if(play){
             desktopEntry(submenu, "campaign", Icon.play, BrowserVanillaDialogs::openPlanets, "planets");
             desktopEntry(submenu, "customgame", Icon.terrain, BrowserStockMainMenu::openPlay, "custom");
@@ -272,8 +275,9 @@ public final class BrowserStockMainMenu{
         root.removeAttribute('data-mindustry-play-campaign-x');
         root.removeAttribute('data-mindustry-play-campaign-y');
         for(const name of ['play','database-group','custom','research','database','schematics','controls','settings','saves','planets']){
-            root.removeAttribute('data-mindustry-main-menu-'+name+'-x');
-            root.removeAttribute('data-mindustry-main-menu-'+name+'-y');
+            for(const edge of ['x','y','left','bottom','right','top']){
+                root.removeAttribute('data-mindustry-main-menu-'+name+'-'+edge);
+            }
         }
         """)
     private static native void clearMenuHitPoints();
@@ -285,16 +289,24 @@ public final class BrowserStockMainMenu{
         Element hit = Core.scene.hit(center.x, center.y, true);
         if(hit != button && (hit == null || !hit.isDescendantOf(button))) return;
         Vec2 screen = Core.scene.getViewport().project(center);
-        markMenuHitPoint(name, screen.x, screen.y);
+        Vec2 corner = button.localToStageCoordinates(Tmp.v1.set(0f, 0f));
+        Core.scene.getViewport().project(corner);
+        float left = corner.x, bottom = corner.y;
+        corner = button.localToStageCoordinates(Tmp.v1.set(button.getWidth(), button.getHeight()));
+        Core.scene.getViewport().project(corner);
+        markMenuHitPoint(name, screen.x, screen.y, left, bottom, corner.x, corner.y);
     }
 
-    @JSBody(params={"name","x","y"}, script="""
+    @JSBody(params={"name","x","y","left","bottom","right","top"}, script="""
         const root=document.documentElement;
         root.setAttribute('data-mindustry-main-menu-'+name+'-x',String(x));
         root.setAttribute('data-mindustry-main-menu-'+name+'-y',String(y));
+        for(const [edge,value] of Object.entries({left,bottom,right,top})){
+            root.setAttribute('data-mindustry-main-menu-'+name+'-'+edge,String(value));
+        }
         if(name==='planets'){root.setAttribute('data-mindustry-play-campaign-x',String(x));root.setAttribute('data-mindustry-play-campaign-y',String(y));}
         """)
-    private static native void markMenuHitPoint(String name, float x, float y);
+    private static native void markMenuHitPoint(String name, float x, float y, float left, float bottom, float right, float top);
 
     private static void openPlay(){
         closeDesktopMenus();

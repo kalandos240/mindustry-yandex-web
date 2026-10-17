@@ -92,6 +92,15 @@ for term in ("data-mindustry-cdp-click-request", "cpu-sample",
 check("id: ui_button_stress" in workflow, "real button/hang CI gate missing")
 check("steps.ui_button_stress.outcome" in workflow, "UI failure must block release")
 
+narrow_smoke = (ROOT / "scripts/verify-browser-narrow-menu.sh").read_text(encoding="utf-8")
+for term in ("surface.style.width='50%'", "--cdp-input-bridge", "browser-ui-button-stress.js",
+             "data-mindustry-narrow-menu-stress", "desktop-narrow-ru.png"):
+    check(term in narrow_smoke, f"narrow native-menu regression lost {term}")
+check("rectangle clipped" in browser_smoke and "['left','bottom','right','top']" in browser_smoke,
+      "menu acceptance must check whole native actor bounds, not only centers")
+check("id: narrow_menu_stress" in workflow and "steps.narrow_menu_stress.outcome" in workflow,
+      "narrow portal menu clipping must block release")
+
 # Pause is not "Exit game": the browser-safe action goes back to the native
 # main menu and must not leave the player stranded with a JVM-style Quit.
 hud_source = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserUiRuntime.java").read_text(encoding="utf-8")
