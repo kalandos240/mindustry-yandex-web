@@ -138,6 +138,31 @@ public final class BrowserUiRuntime{
             .size(mobile ? 320f : 380f, mobile ? 53f : 47f)
             .name("web-play-campaign-planets").get();
         root.row();
+
+        // Full campaign launch must never depend on the 3D globe hit test.
+        // These are native Arc buttons using the SAME Serpulo/Erekir
+        // start-or-resume production entry points as the campaign progression
+        // menu. The planet map remains available immediately above.
+        Table campaignStarts = new Table();
+        TextButton startSerpulo = campaignStarts.button(
+            mindustry.content.Planets.serpulo.localizedName + " - " +
+                Core.bundle.get("play", "Play"),
+            Icon.play, BrowserCampaignRuntime::playGroundZero)
+            .width(mobile ? 152f : 181f).height(mobile ? 51f : 47f)
+            .name("web-play-serpulo").get();
+        TextButton startErekir = campaignStarts.button(
+            mindustry.content.Planets.erekir.localizedName + " - " +
+                Core.bundle.get("play", "Play"),
+            Icon.play, BrowserCampaignRuntime::playOnset)
+            .width(mobile ? 152f : 181f).height(mobile ? 51f : 47f)
+            .name("web-play-erekir").get();
+        startSerpulo.update(() ->
+            startSerpulo.setDisabled(!BrowserCampaignRuntime.campaignAssetsReady()));
+        startErekir.update(() ->
+            startErekir.setDisabled(!BrowserCampaignRuntime.campaignAssetsReady()));
+        root.add(campaignStarts).padBottom(4f);
+        root.row();
+
         // Keep the legacy campaign-UI compatibility injection anchor intact
         // below; it adds stock progression actions during the build overlay.
         root.update(() -> {
@@ -151,6 +176,8 @@ public final class BrowserUiRuntime{
             if(hit != campaign && (hit == null || !hit.isDescendantOf(campaign))) return;
             Vec2 screen = Core.scene.getViewport().project(at);
             markPlayCampaignHitPoint(screen.x, screen.y);
+            sampleDirectCampaignButton(startSerpulo, "serpulo");
+            sampleDirectCampaignButton(startErekir, "erekir");
         });
         root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
         root.row();
@@ -209,6 +236,23 @@ public final class BrowserUiRuntime{
         r.setAttribute('data-mindustry-play-campaign-y',String(y));
         """)
     private static native void markPlayCampaignHitPoint(float x, float y);
+
+    private static void sampleDirectCampaignButton(TextButton button, String planet){
+        if(button.isDisabled() || button.getWidth() < 1f || button.getHeight() < 1f) return;
+        Vec2 center = button.localToStageCoordinates(
+            new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
+        Element hit = Core.scene.hit(center.x, center.y, true);
+        if(hit != button && (hit == null || !hit.isDescendantOf(button))) return;
+        Vec2 screen = Core.scene.getViewport().project(center);
+        markDirectCampaignHit(planet, screen.x, screen.y);
+    }
+
+    @JSBody(params={"planet","x","y"}, script="""
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-play-direct-'+planet+'-x',String(x));
+        r.setAttribute('data-mindustry-play-direct-'+planet+'-y',String(y));
+        """)
+    private static native void markDirectCampaignHit(String planet, float x, float y);
 
     private static void applySettingAction(int setting, int value){
         switch(setting){
