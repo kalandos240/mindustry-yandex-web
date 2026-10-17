@@ -122,47 +122,47 @@ public final class BrowserStockMainMenu{
             // sidebar height on the minimum Chromium/Yandex iframe viewport.
             // Use adaptive row/logo heights so real button hit rectangles stay
             // within the canvas rather than silently extending off-screen.
-            float usableHeight = Math.max(200f, Core.scene.getHeight() - 112f);
-            float desktopRowHeight = Math.max(22f, Math.min(70f, usableHeight / 9f));
-            home.left().marginLeft(Core.scene.getWidth() / 10f).marginTop(96f);
+            float usableHeight = Math.max(0f, Core.scene.getHeight() - 156f);
+            float desktopRowHeight = Math.max(18f, Math.min(70f, usableHeight / 9f));
+            home.left().marginLeft(Core.scene.getWidth() / 10f).marginTop(140f);
             home.table(Styles.black6, menu -> {
                 menu.name = "web-main-desktop-buttons";
                 menu.defaults().width(230f).height(desktopRowHeight);
                 menu.button(Core.bundle.get("play", "Play"), Icon.play,
                     Styles.flatToggleMenut, BrowserStockMainMenu::openPlay)
-                    .name("web-main-play");
+                    .name("web-main-play").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("customgame", "Custom Game"), Icon.terrain,
                     Styles.flatToggleMenut, BrowserStockMainMenu::openPlay)
-                    .name("web-main-custom");
+                    .name("web-main-custom").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("planets", "Planets"), Icon.terrain,
                     Styles.flatToggleMenut, BrowserVanillaDialogs::openPlanets)
-                    .name("web-main-planets");
+                    .name("web-main-planets").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("database", "Database"), Icon.book,
                     Styles.flatToggleMenut, BrowserStockDatabaseUi::show)
-                    .name("web-main-database");
+                    .name("web-main-database").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("research", "Research"), Icon.tree,
                     Styles.flatToggleMenut, BrowserResearchUi::show)
-                    .name("web-main-research");
+                    .name("web-main-research").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
                     Styles.flatToggleMenut, BrowserVanillaDialogs::openSettings)
-                    .name("web-main-settings");
+                    .name("web-main-settings").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
                     Styles.flatToggleMenut, BrowserVanillaDialogs::openSchematics)
-                    .name("web-main-schematics");
+                    .name("web-main-schematics").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("settings.controls", "Controls"), Icon.move,
                     Styles.flatToggleMenut, BrowserVanillaDialogs::openControls)
-                    .name("web-main-controls");
+                    .name("web-main-controls").update(button -> button.setChecked(false));
                 menu.row();
                 menu.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
                     Styles.flatToggleMenut, BrowserVanillaDialogs::openSaves)
-                    .name("web-main-saves");
+                    .name("web-main-saves").update(button -> button.setChecked(false));
                 menu.row();
             }).width(230f);
         }
