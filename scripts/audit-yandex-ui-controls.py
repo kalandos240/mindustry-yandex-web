@@ -149,6 +149,35 @@ check("name: mindustry-yandex-playtest-3d-planets" in workflow and
       "steps.play_campaign_navigation.outcome == 'success'" in workflow,
       "preview could ship without a functioning 3D campaign entry")
 
+# A generated campaign-map test is NOT an acceptance of the real user
+# interface. Always require native Home/Play/Serpulo/Erekir + original 3D
+# stock launch click to start actual world and tick after world creation.
+real_launch = (ROOT / "scripts/browser-real-campaign-launch.js").read_text(encoding="utf-8")
+real_shell = (ROOT / "scripts/verify-browser-real-campaign-launch.sh").read_text(encoding="utf-8")
+for marker in ("direct-serpulo", "direct-erekir", "planet-serpulo",
+               "planet-erekir", "'campaign-state'", "'campaign-world'",
+               "'cdp-click-request'", "'campaign-preset'"):
+    check(marker in real_launch, f"Real campaign end-to-end click lost {marker}")
+check(all(scenario in real_shell for scenario in
+          ("direct-serpulo", "direct-erekir", "planet-serpulo", "planet-erekir")),
+      "Live campaign user-path acceptance does not cover both planets and entry methods")
+check('id: real_campaign_launch' in workflow and
+      'steps.real_campaign_launch.outcome' in workflow and
+      "steps.real_campaign_launch.outcome == 'success'" in workflow,
+      "Real menu and 3D sector launch must hard-block release and certified preview")
+check('"web-play-serpulo"' in play_menu and '"web-play-erekir"' in play_menu and
+      'BrowserCampaignRuntime::playGroundZero' in play_menu and
+      'BrowserCampaignRuntime::playOnset' in play_menu,
+      "Missing actual Serpulo/Erekir campaign start buttons in Play")
+planet_bridge = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserPlanetBridge.java").read_text(encoding="utf-8")
+check("BrowserCampaignRuntime.returnToMenu();" in planet_bridge and
+      "BrowserCampaignRuntime.active()" in planet_bridge,
+      "3D planet sector transition no longer saves live campaign before switching")
+planet_map = (ROOT / "web-runtime/src/main/java/mindustry/ui/dialogs/BrowserPlanetDialog.java").read_text(encoding="utf-8")
+check("focusStartingSector()" in planet_map and
+      '"web-planet-launch"' in (ROOT / "scripts/patch-vanilla-planet-web.py").read_text(encoding="utf-8"),
+      "Original planet map lost visible starting sector and native launch control")
+
 print(f"Yandex UI compliance: {len(seen)} approved main menu entries, "
       f"{len(pause_keys)} pause controls, native 3D Campaign from Play, "
       "nested Settings, real building configuration and freeze gates")
