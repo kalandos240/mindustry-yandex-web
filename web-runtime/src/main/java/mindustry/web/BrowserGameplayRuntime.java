@@ -39,6 +39,8 @@ public final class BrowserGameplayRuntime{
     private static int menuUpdateFrames;
     private static int moduleLoopFrames;
     private static boolean worldLoadSmokeComplete;
+    private static boolean priorNativeModal;
+    private static int nativeModalSampleFrames;
 
     private BrowserGameplayRuntime(){}
 
@@ -116,6 +118,22 @@ public final class BrowserGameplayRuntime{
 
     private static void updateFrame(){
         if(!initialized || logic == null || state == null) return;
+
+        // The last Escape press can close a stock Dialog in Arc Scene before
+        // this frame's gameplay shortcut handler runs. If we only query the
+        // CURRENT dialog state, the same keyDown also resumes the paused
+        // world behind the dialog. Preserve one frame of modal history.
+        boolean nativeModalNow = Core.scene != null &&
+            (Core.scene.hasDialog() || BrowserVanillaDialogs.anyNativeModalShown());
+        boolean nativeModalKeyGuard = nativeModalNow || priorNativeModal;
+        priorNativeModal = nativeModalNow;
+        // Stock Dialog visibility must also refresh WHILE playing/paused.
+        // Previously only the Home menu sampled it, leaving stale "settings"
+        // markers after closing a dialog from the campaign Pause menu.
+        if((++nativeModalSampleFrames & 15) == 0 && BrowserVanillaDialogs.initialized()){
+            BrowserVanillaDialogs.sampleVisibility();
+        }
+
         // Arc keyboard events are drained before the listener update. The
         // stock Control.update() handles Space only during playing frames and
         // directly sets GameState.paused, bypassing the Web frozen-clock
@@ -129,7 +147,8 @@ public final class BrowserGameplayRuntime{
         boolean menuTapped = !smokeMode && Core.input != null && Core.input.keyTap(Binding.menu);
         boolean researchOpen = BrowserResearchUi.isOpen();
         boolean databaseOpen = BrowserStockDatabaseUi.isOpen();
-        if(menuTapped && Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
+        if(menuTapped && !nativeModalKeyGuard &&
+            Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
             if(researchOpen) BrowserResearchUi.escape();
             else if(databaseOpen) BrowserStockDatabaseUi.hide();
         }
@@ -138,6 +157,7 @@ public final class BrowserGameplayRuntime{
         && (Core.input.keyTap(Binding.pause) || menuTapped)
         && !state.gameOver
         && !state.rules.pauseDisabled && Core.scene != null
+        && !nativeModalKeyGuard
         && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
             if(BrowserCampaignRuntime.active()){
                 if(state.isPaused()) BrowserCampaignRuntime.resume();
