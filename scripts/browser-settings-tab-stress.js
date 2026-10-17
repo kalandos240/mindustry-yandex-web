@@ -22,6 +22,26 @@
       'TeaVM full scheduler halted after ' + label);
   };
   const position = async (prefix, name) => {
+    // The original Settings category list is in a ScrollPane. A dev/data
+    // category can be below the fold on a small Yandex iframe: scroll
+    // through the REAL canvas and wait for Scene.hit to expose its actor.
+    if (prefix.startsWith('settings-hit-')) {
+      const k = 'data-mindustry-' + prefix;
+      root.removeAttribute(k + '-x');
+      root.removeAttribute(k + '-y');
+      const rect = canvas.getBoundingClientRect();
+      const px = rect.left + rect.width * .5;
+      const py = rect.top + rect.height * .5;
+      for (let n = 0; n < 20 && !root.hasAttribute(k + '-x'); n++) {
+        if (n >= 2) {
+          canvas.dispatchEvent(new WheelEvent('wheel', {
+            bubbles:true, cancelable:true, clientX:px, clientY:py,
+            deltaY:n < 10 ? 115 : -115
+          }));
+        }
+        await sleep(375);
+      }
+    }
     await wait(() => root.hasAttribute('data-mindustry-' + prefix + '-x'),
       'Arc hitbox ' + name);
     const rect = canvas.getBoundingClientRect();
