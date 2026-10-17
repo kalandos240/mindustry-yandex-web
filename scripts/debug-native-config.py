@@ -65,3 +65,11 @@ replacement="""    finally:
         input_bridge_stop.set()"""
 assert s.count(anchor)==1
 p.write_text(s.replace(anchor,replacement))
+
+# Diagnostic A/B only: restore the native popup group above the later palette.
+p=Path("web-runtime/build/web/mindustry.js")
+s=p.read_text()
+anchor="mw_BrowserBuildingConfigSmoke_update = () => {"
+assert s.count(anchor)==1
+s=s.replace(anchor,anchor+"\n if(mw_BrowserBuildingConfigSmoke_stage > 0) as_Element_toFront(m_Vars_control.$input.$group4);")
+p.write_text(s)
