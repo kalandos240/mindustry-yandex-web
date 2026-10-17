@@ -108,6 +108,34 @@ and desktop file actions are removed from the browser Settings overlay
 before compilation. This targeted nested coverage is not a claim that
 all of the dozens of preferences have been individually exercised yet.
 
+## Stock configurable building and RTS command stability (October 17)
+
+The mandatory `native_building_config` Chrome gate starts an authentic
+Serpulo Ground Zero world on both desktop and mobile. A query-guarded Java
+observer creates **one disposable stock Sorter** on a valid, visible ground
+tile. It never calls `SorterBuild.configure`, `BlockConfigFragment.showConfig`
+or changes `sortItem` directly. Trusted Chrome mouse/touch clicks open the
+original stock `BlockConfigFragment`, select Copper in
+`ItemSelection.buildTable`, re-open the same Sorter, then clear the selection.
+The test checks the original `SorterBuild.sortItem` after each action and
+requires the true TeaVM Java scheduler to advance in between. Input hitboxes
+must remain inside the game canvas (not advertising/portal content). The
+fixture and UI telemetry are gated by `mindustryBuildingConfigSmoke=1`, and
+do not affect normal players.
+
+Desktop RTS tests already select one/two real Dagger units with the stock
+Shift/G keybindings and native drag rectangle, issue actual CommandAI move
+orders, and toggle stock Hold Fire on and off. Mobile RTS already taps the
+original Command button, selects a Dagger and issues a move order. Those
+existing tests now additionally require a *new* Java scheduler CPU sample
+after their final action, to detect a main-thread freeze that a correct
+unit-command marker alone could miss.
+
+This is **one original building configuration type**, not yet evidence for
+all factories, logic editors, bridges, turrets or reactor configuration
+buttons. Continue adding individual real-click building-family cases without
+ever replacing stock game widgets with fake browser buttons.
+
 ## Other required, independent browser gates
 
 These already form part of the release CI and should **not** be removed to
