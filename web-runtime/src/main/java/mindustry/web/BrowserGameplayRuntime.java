@@ -247,7 +247,13 @@ public final class BrowserGameplayRuntime{
     private static native void markSpaceTransition(String state);
 
     private static void runMenuModuleFrame(){
-        boolean trace = smokeMode || moduleLoopFrames < 3;
+        // Trace each stock subsystem while the 3D planet dialog is present.
+        // One of the native UI/renderer callbacks is currently throwing a
+        // NullPointerException in TeaVM; logging the last *entered* phase is
+        // more useful than the generic "frame-listeners" top-level error.
+        boolean trace = smokeMode || moduleLoopFrames < 3 ||
+            BrowserVanillaDialogs.initialized() && ui != null &&
+            ui.planet != null && ui.planet.isShown();
 
         if(trace) markModulePhase("logic");
         logic.updateWebMenu();
