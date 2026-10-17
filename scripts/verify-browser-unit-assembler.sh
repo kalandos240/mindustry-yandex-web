@@ -19,6 +19,11 @@ done
 
 run_assembler(){
   local mode="$1" unit="$2" components="$3" device="$4"
+  local block="${mode%2}-assembler" tier=0 module=none
+  if [[ "$mode" == *2 ]]; then
+    tier=1
+    module=stock-basic-assembler-module
+  fi
   local profile="/tmp/mindustry-$mode-assembler-$device-profile"
   local dom="/tmp/mindustry-$mode-assembler-$device.html"
   local emulator=()
@@ -26,12 +31,14 @@ run_assembler(){
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=onset&mindustryUnitAssemblerSmoke=$mode" \
-    --profile "$profile" --port 9514 --timeout 190 "${emulator[@]}" \
+    --profile "$profile" --port 9514 --timeout 210 "${emulator[@]}" \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-planet="erekir"' \
     --require 'data-mindustry-assembler="passed"' \
-    --require "data-mindustry-assembler-block=\"$mode-assembler\"" \
+    --require "data-mindustry-assembler-block=\"$block\"" \
+    --require "data-mindustry-assembler-tier=\"$tier\"" \
+    --require "data-mindustry-assembler-module=\"$module\"" \
     --require "data-mindustry-assembler-unit=\"$unit\"" \
     --require 'data-mindustry-assembler-planet="erekir"' \
     --require 'data-mindustry-assembler-drone-source="stock-AssemblerAI"' \
@@ -42,14 +49,24 @@ run_assembler(){
 
   grep -Eq 'data-mindustry-assembler-positioned-drones="[4-9][0-9]*"' "$dom"
   grep -Eq 'data-mindustry-assembler-frames="[1-9][0-9]*"' "$dom"
-  echo "Erekir $mode assembler -> $unit ($device): four original AI drones, $components genuine payload deposits and stock unit spawning PASS"
+  echo "Erekir $mode assembler -> $unit ($device): stock tier=$tier, 4 original AI drones, $components accepted/deposited payloads and real stock unit spawn PASS"
 }
 
 # Plan 0 in pinned vanilla v159.7:
 # Vanquish = 4 Stell + 10 large tungsten walls (14).
 # Quell = 4 Elude + 12 large beryllium walls (16).
 # Tecta = 5 Merui + 12 large tungsten walls (17).
-run_assembler tank vanquish 14 desktop
-run_assembler ship quell 16 desktop
-run_assembler mech tecta 17 mobile
-echo "All three first-tier Erekir stock assemblers: genuine drones, payloads and finished units PASS"
+if [ "${1:-basic}" = advanced ]; then
+  # Requires a real Basic Assembler Module physically linked to each assembler;
+  # all three original Tier-2 recipes require 6 upgraded unit payloads and
+  # 20 large carbide walls; stock UnitAssemblerBuild consumes these 26 inputs.
+  run_assembler tank2 conquer 26 desktop
+  run_assembler ship2 disrupt 26 mobile
+  run_assembler mech2 collaris 26 desktop
+  echo "All three second-tier Erekir assemblers with real linked modules PASS"
+else
+  run_assembler tank vanquish 14 desktop
+  run_assembler ship quell 16 desktop
+  run_assembler mech tecta 17 mobile
+  echo "All three first-tier Erekir stock assemblers: genuine drones, payloads and finished units PASS"
+fi
