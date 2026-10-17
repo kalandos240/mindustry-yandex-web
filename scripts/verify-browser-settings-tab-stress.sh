@@ -32,6 +32,12 @@ for device in desktop mobile; do
     --after-ready-require "data-mindustry-settings-nested-device=\"$device\"" \
     --after-ready-require 'data-mindustry-main-menu-page="home"' \
     --after-ready-require 'data-mindustry-web="ready"' > "$dom"
-  grep -Eq 'data-mindustry-settings-nested-clicks="[1-9][0-9]+"' "$dom"
-  echo "$device: real Settings Game/Graphics/Sound/Dev, live Hints checkbox, Language/Controls PASS"
+  # The exact native-click path is 8 actions on mobile, 9 on desktop:
+  # open Settings, four category tabs, Hints toggle+restore, Language,
+  # plus Controls on desktop. The previous >=10 regex always failed AFTER
+  # the browser had already reported successful native interaction.
+  expected=8
+  if [ "$device" = desktop ]; then expected=9; fi
+  grep -Fq "data-mindustry-settings-nested-clicks=\"$expected\"" "$dom"
+  echo "$device: $expected trusted real clicks: Settings tabs, Hints restore, Language/Controls PASS"
 done
