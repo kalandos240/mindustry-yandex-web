@@ -125,7 +125,7 @@
   await action('controls', 'vanilla-controls-open', 'controls');
   await action('schematics', 'vanilla-schematics-open', 'schematics');
   await overlay('research', 'research-open');
-  await overlay('database', 'database-open');
+  await action('database', 'vanilla-database-open', 'database');
   // A second click-after-close cycle detects stale Arc modal touch capture,
   // unhandled key-up states and freezes that initial startup smoke can miss.
   await action('settings', 'vanilla-settings-open', 'settings');

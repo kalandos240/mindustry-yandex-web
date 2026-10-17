@@ -39,6 +39,7 @@ public final class BrowserVanillaDialogs{
         // Their original widgets and stat definitions are retained.
         ui.content = new ContentInfoDialog();
         ui.database = new DatabaseDialog();
+        BrowserStockDatabaseUi.bind();
         ui.controls = new KeybindDialog();
         ui.language = new LanguageDialog();
         // Stock dialog reuses the original sound/game/graphics/data/preferences UI.
@@ -115,6 +116,7 @@ public final class BrowserVanillaDialogs{
         if(ui.language.isShown()) active.append("language,");
         if(ui.schematics.isShown()) active.append("schematics,");
         if(ui.database.isShown()) active.append("database,");
+        BrowserStockDatabaseUi.sample();
         if(ui.planet != null && ui.planet.isShown()) active.append("planet,");
         markDialogVisibility(active.length() == 0 ? "none" : active.toString());
         if(ui.settings.isShown() && settingsNestedProbeRequested()) sampleSettingsNestedControls();

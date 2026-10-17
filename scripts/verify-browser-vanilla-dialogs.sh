@@ -92,12 +92,6 @@ for device in desktop mobile; do
         'Arc dialog did not close on Escape: schematics');
       await click(Number(root.getAttribute('data-mindustry-main-menu-database-x')),Number(root.getAttribute('data-mindustry-main-menu-database-y')));
       await wait(()=>root.getAttribute('data-mindustry-database-open')==='yes','database after stock dialog close');
-      await wait(()=>root.hasAttribute('data-mindustry-database-vanilla-x'),'vanilla database coordinates');
-      await click(Number(root.getAttribute('data-mindustry-database-vanilla-x')),Number(root.getAttribute('data-mindustry-database-vanilla-y')));
-      await wait(()=>root.getAttribute('data-mindustry-database-vanilla-click')==='yes',
-        'Native database button missed: coords='+root.getAttribute('data-mindustry-database-vanilla-x')
-        +','+root.getAttribute('data-mindustry-database-vanilla-y')
-        +', visible='+root.getAttribute('data-mindustry-vanilla-modal-visible'));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-database-open')==='yes',
         'DatabaseDialog not shown: stage='+root.getAttribute('data-mindustry-vanilla-database-stage')
         +', trace='+root.getAttribute('data-mindustry-vanilla-database-trace')
