@@ -1,0 +1,75 @@
+name: Fresh native gameplay acceptance
+on:
+  push:
+    branches: [native-gameplay-acceptance-d1b2435]
+    paths: ['.github/workflows/native-gameplay-acceptance.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  exact-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for the pinned compiled package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in {1..72}; do
+            artifact_id="$(gh api repos/kalandos240/mindustry-yandex-web/actions/runs/39065913507/artifacts --jq '.artifacts[] | select(.name == "mindustry-yandex-manual-playtest-experimental") | .id')"
+            if [ -n "$artifact_id" ]; then exit 0; fi
+            sleep 10
+          done
+          echo "Pinned compiled package did not arrive"
+          exit 1
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39065913507
+          github-token: ${{ github.token }}
+          path: work/native-gameplay
+      - name: Verify and unpack exact game without runtime modifications
+        run: |
+          cd work/native-gameplay
+          sha256sum -c mindustry-yandex-release.zip.sha256
+          cd ../..
+          python3 -c 'from zipfile import ZipFile; ZipFile("work/native-gameplay/mindustry-yandex-release.zip").extractall("web-runtime/build/web")'
+      - name: Native wave clicks and spawning on Serpulo and Erekir
+        id: waves
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-wave-hud-stress.sh 2>&1 | tee work/native-gameplay/waves.log
+      - name: Native Sorter configuration and clear on desktop and mobile
+        id: config
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-building-config-stress.sh 2>&1 | tee work/native-gameplay/config.log
+      - name: Menu dialogs and all original baked icon glyphs
+        id: menu
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-ui-button-stress.sh 2>&1 | tee work/native-gameplay/menu.log
+      - name: Original 3D planets on desktop and mobile
+        id: planets
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-planet-dialog.sh 2>&1 | tee work/native-gameplay/planets.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fresh-native-gameplay-evidence
+          path: |
+            work/native-gameplay/*.log
+            work/menu-ui/*.png
+      - name: Enforce actual step outcomes
+        if: always()
+        run: |
+          test '${{ steps.waves.outcome }}' = success
+          test '${{ steps.config.outcome }}' = success
+          test '${{ steps.menu.outcome }}' = success
+          test '${{ steps.planets.outcome }}' = success
