@@ -99,6 +99,13 @@ public final class BrowserUiRuntime{
         BrowserResearchUi.init();
         BrowserStockDatabaseUi.init();
 
+        // InputHandler.add() mounts its config/inventory group before the
+        // browser mounts PlacementFragment. Restore the native popup priority
+        // after all HUD fragments exist, so the mobile palette cannot cover
+        // ItemSelection buttons for a building near the bottom of the screen.
+        Element configRoot = Core.scene.find("web-native-config-root");
+        if(configRoot != null) configRoot.toFront();
+
         // The original MobileInput is built into a dedicated HUD WidgetGroup.
         // In the lean Web shell, additional stock and browser HUD overlays are
         // installed after InputHandler.add(), and their Label/Image descendants

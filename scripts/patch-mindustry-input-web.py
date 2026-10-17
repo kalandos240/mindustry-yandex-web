@@ -58,6 +58,7 @@ old_overlay = """            group.setFillParent(true);
             inv.build(group);
 """
 new_overlay = """            group.setFillParent(true);
+            group.name = "web-native-config-root";
             Element overlayMarker = Core.scene.find(\"overlaymarker\");
             if(overlayMarker == null){
                 Vars.ui.hudGroup.addChild(group);

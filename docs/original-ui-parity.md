@@ -79,3 +79,17 @@ at browser startup. Both original source fonts contain all selected symbols.
 The wave button now uses the original right-edge textures, disabled/hover states,
 actor name and guarded hotkey. The remainder of the mission panel is still the
 Web implementation; full HudFragment parity is not claimed.
+
+Fresh unmodified package acceptance 39066015250 (d1b2435) confirmed native wave
+clicks on Frozen Forest/desktop and Intersect/mobile, full original icon glyph
+startup, desktop Sorter configure/clear, both menu device layouts and both 3D
+planet layouts. Its only failed gate was mobile Sorter copper visibility.
+Unpacked size: 92,521,887 bytes, leaving 7,478,113 bytes below the portal limit.
+
+The actual mobile failure screenshot shows PlacementFragment covering the
+configuration popup: InputHandler.add() mounted its private config group before
+the later placement HUD. Name that native group at construction and restore its
+priority after HUD installation. It remains below the separate modal/pause scene
+roots; mobile command controls keep their existing priority. Verify the new Java
+build with the unchanged real copper-selection/clear acceptance, not only an
+instrumented replay.
