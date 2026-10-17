@@ -35,6 +35,9 @@ public final class BrowserUnitAssemblerSmoke{
     private static UnitType output;
     private static boolean sawDrone, sawReady, sawStockProgress;
     private static String mode;
+    private static boolean advanced;
+    private static Tile moduleTile, modulePowerTile;
+    private static UnitAssemblerModule.UnitAssemblerModuleBuild moduleBuild;
 
     private BrowserUnitAssemblerSmoke(){}
 
@@ -51,14 +54,18 @@ public final class BrowserUnitAssemblerSmoke{
         if(stage == 0){
             Block selected = "ship".equals(mode) ? Blocks.shipAssembler :
                 "mech".equals(mode) ? Blocks.mechAssembler : Blocks.tankAssembler;
-            UnitType expected = "ship".equals(mode) ? UnitTypes.quell :
-                "mech".equals(mode) ? UnitTypes.tecta : UnitTypes.vanquish;
+            UnitType expected = advanced
+                ? ("ship".equals(mode) ? UnitTypes.disrupt :
+                    "mech".equals(mode) ? UnitTypes.collaris : UnitTypes.conquer)
+                : ("ship".equals(mode) ? UnitTypes.quell :
+                    "mech".equals(mode) ? UnitTypes.tecta : UnitTypes.vanquish);
             if(!(selected instanceof UnitAssembler a) ||
-                a.plans.isEmpty() || a.plans.first().unit != expected)
+                a.plans.size <= (advanced ? 1 : 0) ||
+                a.plans.get(advanced ? 1 : 0).unit != expected)
                 throw new IllegalStateException("Original Erekir " + mode +
                     " assembler / " + expected.name + " recipe absent");
             assembler = a;
-            recipe = a.plans.first().requirements;
+            recipe = a.plans.get(advanced ? 1 : 0).requirements;
             output = expected;
             if(recipe == null || recipe.size < 2 ||
                 !recipe.contains(st -> st.item instanceof UnitType) ||
@@ -105,6 +112,21 @@ public final class BrowserUnitAssemblerSmoke{
                     supply.build == null || b.power == null || b.liquids == null)
                     throw new IllegalStateException("Original assembler / power fixture failed to initialize");
 
+                // Do not alter currentTier by hand. A genuine 5x5 stock
+                // Basic Assembler Module must fit the perimeter of the
+                // assembler's 13x13 production area, link through getLink(),
+                // and cause the original building to select its second plan.
+                if(advanced && !attachOriginalModule(spot, b)){
+                    supply.setBlock(Blocks.air);
+                    spot.setBlock(Blocks.air);
+                    continue;
+                }
+                if(b.currentTier != (advanced ? 1 : 0) ||
+                    b.plan().unit != output)
+                    throw new IllegalStateException("Stock module did not select " +
+                        output.name + " recipe (tier " + b.currentTier + ")");
+                markTier(advanced ? 1 : 0, advanced ? "stock-basic-assembler-module" : "none");
+
                 factoryTile = spot;
                 powerTile = supply;
                 build = b;
@@ -126,6 +148,11 @@ public final class BrowserUnitAssemblerSmoke{
         if(factoryTile.block() != assembler || powerTile.block() != Blocks.powerSource ||
             build == null || !build.isAdded())
             throw new IllegalStateException("Vanilla assembler/power fixture lost from real world");
+        if(advanced && (moduleBuild == null || !moduleBuild.isAdded() ||
+            moduleBuild.link != build || build.currentTier != 1 ||
+            moduleTile.block() != Blocks.basicAssemblerModule ||
+            modulePowerTile.block() != Blocks.powerSource))
+            throw new IllegalStateException("Original Tier-2 module lost link or power fixture");
 
         // Keep the isolated liquid input realistic while permitting the
         // original logic to run long enough for four AI-controlled drones.
@@ -232,10 +259,69 @@ public final class BrowserUnitAssemblerSmoke{
 
     private static int deliveredForCurrent;
 
+    /**
+     * Stock UnitAssemblerModule.canPlaceOn/getLink are validated after the
+     * main assembler is physically placed. The module is placed outside the
+     * output area facing inward; its own real PowerSource is adjacent.
+     * The three positions are the east/north/south perimeter of rotation=0.
+     */
+    private static boolean attachOriginalModule(Tile assemblerSpot,
+        UnitAssembler.UnitAssemblerBuild assemblerBuild){
+        UnitAssemblerModule module = (UnitAssemblerModule)Blocks.basicAssemblerModule;
+        int ax = assemblerSpot.x, ay = assemblerSpot.y;
+        // dx, dy, module rotation, power dx from module, power dy.
+        int[][] slots = {
+            {18, 0, 2, 3, 0},
+            {9, 9, 3, 0, 3},
+            {9, -9, 1, 0, -3}
+        };
+        for(int[] slot : slots){
+            int mx = ax + slot[0], my = ay + slot[1];
+            int sx = mx + slot[3], sy = my + slot[4];
+            Tile mt = world.tile(mx, my), supply = world.tile(sx, sy);
+            if(mt == null || supply == null ||
+                !assemblerBuild.moduleFits(module, mt.worldx(), mt.worldy(), slot[2]) ||
+                !Build.validPlace(module, assemblerBuild.team, mx, my, slot[2], false) ||
+                !Build.validPlace(Blocks.powerSource, assemblerBuild.team, sx, sy, 0, false))
+                continue;
+
+            mt.setBlock(module, assemblerBuild.team, slot[2]);
+            supply.setBlock(Blocks.powerSource, assemblerBuild.team, 0);
+            if(!(mt.build instanceof UnitAssemblerModule.UnitAssemblerModuleBuild linked) ||
+                supply.build == null){
+                supply.setBlock(Blocks.air);
+                mt.setBlock(Blocks.air);
+                continue;
+            }
+            linked.findLink();
+            if(linked.link != assemblerBuild || assemblerBuild.currentTier != 1){
+                supply.setBlock(Blocks.air);
+                mt.setBlock(Blocks.air);
+                continue;
+            }
+            linked.onProximityUpdate();
+            supply.build.onProximityUpdate();
+            moduleTile = mt;
+            modulePowerTile = supply;
+            moduleBuild = linked;
+            return true;
+        }
+        return false;
+    }
+
+    @JSBody(params={"tier","module"},script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-assembler-tier',String(tier));
+        root.setAttribute('data-mindustry-assembler-module',module);
+        """)
+    private static native void markTier(int tier,String module);
+
     private static boolean requested(){
         if(!checked){
             mode = queryMode();
             if("1".equals(mode)) mode = "tank"; // backwards-compatible original single-assembler check
+            advanced = mode.endsWith("2");
+            if(advanced) mode = mode.substring(0, mode.length() - 1);
             enabled = "tank".equals(mode) || "ship".equals(mode) || "mech".equals(mode);
             checked = true;
         }
