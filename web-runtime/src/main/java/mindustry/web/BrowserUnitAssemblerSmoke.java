@@ -14,13 +14,13 @@ import org.teavm.jso.JSBody;
 import static mindustry.Vars.*;
 
 /**
- * Isolated, real Chrome Erekir Vanquish production through stock UnitAssembler.
+ * Isolated, real Chrome Erekir Tier-1 Tank/Ship/Mech production through stock UnitAssembler.
  *
  * Unlike the factory/reconstructor tests, this checks 4 actual stock assembler
  * drones and their AssemblerAI positions. Only the upstream payload conveyor
  * deliveries are supplied as CI fixtures using UnitAssemblerBuild.handlePayload:
  * all deposits use its normal moveInPayload/yeetPayload update loop; the
- * Vanquish must be emitted by original UnitAssemblerBuild.updateTile/spawned.
+ * Vanquish, Quell or Tecta must be emitted by stock UnitAssemblerBuild.updateTile/spawned.
  *
  * Never active in ordinary gameplay.
  */
@@ -34,6 +34,7 @@ public final class BrowserUnitAssemblerSmoke{
     private static Seq<PayloadStack> recipe;
     private static UnitType output;
     private static boolean sawDrone, sawReady, sawStockProgress;
+    private static String mode;
 
     private BrowserUnitAssemblerSmoke(){}
 
@@ -48,14 +49,21 @@ public final class BrowserUnitAssemblerSmoke{
             "Vanilla Erekir UnitAssembler timed out at stage=" + stage);
 
         if(stage == 0){
-            if(!(Blocks.tankAssembler instanceof UnitAssembler a) ||
-                a.plans.isEmpty() || a.plans.first().unit != UnitTypes.vanquish)
-                throw new IllegalStateException("Original Erekir Tank Assembler/Vanquish recipe absent");
+            Block selected = "ship".equals(mode) ? Blocks.shipAssembler :
+                "mech".equals(mode) ? Blocks.mechAssembler : Blocks.tankAssembler;
+            UnitType expected = "ship".equals(mode) ? UnitTypes.quell :
+                "mech".equals(mode) ? UnitTypes.tecta : UnitTypes.vanquish;
+            if(!(selected instanceof UnitAssembler a) ||
+                a.plans.isEmpty() || a.plans.first().unit != expected)
+                throw new IllegalStateException("Original Erekir " + mode +
+                    " assembler / " + expected.name + " recipe absent");
             assembler = a;
             recipe = a.plans.first().requirements;
-            output = UnitTypes.vanquish;
-            if(recipe == null || recipe.size < 2)
-                throw new IllegalStateException("Tank Assembler payload recipe incomplete");
+            output = expected;
+            if(recipe == null || recipe.size < 2 ||
+                !recipe.contains(st -> st.item instanceof UnitType) ||
+                !recipe.contains(st -> st.item instanceof Block))
+                throw new IllegalStateException(mode + " Assembler unit/block payload recipe incomplete");
             output.quietUnlock();
             for(PayloadStack stack : recipe){
                 if(stack.item == null || stack.amount <= 0)
@@ -111,7 +119,7 @@ public final class BrowserUnitAssemblerSmoke{
                 return;
             }
             if(searchIndex >= 61 * 61)
-                throw new IllegalStateException("No safe original Tank Assembler build area in Onset");
+                throw new IllegalStateException("No safe original " + mode + " Assembler build area in Onset");
             return;
         }
 
@@ -143,7 +151,7 @@ public final class BrowserUnitAssemblerSmoke{
                 return;
             }
             if(++stageFrames > 330)
-                throw new IllegalStateException("Original tank assembler failed to build four drones: "+
+                throw new IllegalStateException("Original " + mode + " assembler failed to build four drones: "+
                     build.units.size + "/" + assembler.dronesCreated +
                     " power=" + build.power.status);
             return;
@@ -204,7 +212,7 @@ public final class BrowserUnitAssemblerSmoke{
 
             if(state.rules.defaultTeam.data().countType(output) > outputBefore){
                 if(!sawDrone || !sawReady || !sawStockProgress || maxPositioned < assembler.dronesCreated)
-                    throw new IllegalStateException("Vanquish appeared without complete native assembly evidence"+
+                    throw new IllegalStateException(output.name + " appeared without complete native assembly evidence"+
                         ": drones=" + build.units.size + ", positioned="+maxPositioned+
                         ", ready="+sawReady+", progress="+sawStockProgress);
                 if(build.blocks.total() > 0)
@@ -214,7 +222,7 @@ public final class BrowserUnitAssemblerSmoke{
                 return;
             }
             if(++stageFrames > 720)
-                throw new IllegalStateException("Original Vanquish assembler did not spawn: "+
+                throw new IllegalStateException("Original " + output.name + " assembler did not spawn: "+
                     "drones=" + build.units.size + ", positioned=" + positioned +
                     ", progress=" + build.progress + ", efficiency=" + build.efficiency +
                     ", power=" + build.power.status + ", payloads=" + build.blocks.total() +
@@ -226,14 +234,16 @@ public final class BrowserUnitAssemblerSmoke{
 
     private static boolean requested(){
         if(!checked){
-            enabled = queryRequested();
+            mode = queryMode();
+            if("1".equals(mode)) mode = "tank"; // backwards-compatible original single-assembler check
+            enabled = "tank".equals(mode) || "ship".equals(mode) || "mech".equals(mode);
             checked = true;
         }
         return enabled;
     }
 
-    @JSBody(script="return new URLSearchParams(location.search).get('mindustryUnitAssemblerSmoke') === '1';")
-    private static native boolean queryRequested();
+    @JSBody(script="return new URLSearchParams(location.search).get('mindustryUnitAssemblerSmoke') || '';")
+    private static native String queryMode();
 
     @JSBody(params={"stage"},script="""
         document.documentElement.setAttribute('data-mindustry-assembler-stage',stage);
