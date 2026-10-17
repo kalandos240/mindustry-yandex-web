@@ -29,6 +29,8 @@ for device in desktop mobile; do
     --profile "$profile" --port 9522 --timeout 180 --cdp-input-bridge \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-planet-meshes="ready"' \
+    --require 'data-mindustry-planet-sector-icons="ready"' \
+    --require 'data-mindustry-planet-sector-icon-count="46"' \
     --require 'data-mindustry-main-menu-page="home"' \
     --after-ready-eval "$(cat "$ROOT_DIR/scripts/browser-play-campaign-stress.js")" \
     --after-ready-require 'data-mindustry-play-campaign-smoke="passed"' \
