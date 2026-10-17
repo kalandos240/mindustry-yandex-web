@@ -92,9 +92,20 @@ if text.count(old_selector) != 1:
     raise SystemExit("Pinned planet selector table anchor mismatch")
 text = text.replace(old_selector, new_selector, 1)
 
-# Preserve the upstream first-time campaign chooser. It is an extra
-# BaseDialog above the 3D map until the user picks Serpulo or Erekir, so
-# Chrome must click it before accessing the map's own planet selector.
+# The stock first-time portrait chooser is an additional BaseDialog above
+# PlanetDialog. On the TeaVM/WebGL canvas its OK button overlaps another
+# image-actor hit area on 780x437 and portrait surfaces, so users cannot
+# reach the ACTUAL 3D map and clicks can stall frame processing.
+#
+# The real PlanetDialog already has native Serpulo and Erekir planet buttons.
+# Bypass only this redundant first-run chooser in Web (not the 3D scene,
+# planet switcher, sector selection, research tree, or campaign rules).
+# An accessible stock world map is preferable to a broken first-run modal.
+first_run_guard = '            if(!settings.getBool("campaignselect") && !content.planets().contains(p -> p.sectors.contains(Sector::hasBase))){'
+if text.count(first_run_guard) != 1:
+    raise SystemExit("Pinned first-run stock campaign chooser guard no longer matches")
+text = text.replace(first_run_guard,
+    '            if(false && !settings.getBool("campaignselect") && !content.planets().contains(p -> p.sectors.contains(Sector::hasBase))){', 1)
 
 # Capture Arc Scene touchDown without consuming any events. DOM pointer
 # delivery alone cannot prove that Scene received the button input.
