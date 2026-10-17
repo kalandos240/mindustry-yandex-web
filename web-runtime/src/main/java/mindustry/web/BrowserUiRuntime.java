@@ -134,8 +134,8 @@ public final class BrowserUiRuntime{
             .size(mobile ? 320f : 380f, mobile ? 53f : 47f)
             .name("web-play-campaign-planets").get();
         root.row();
-        root.add(Core.bundle.get("customgame", "Custom Game")).padTop(7f).padBottom(4f);
-        root.row();
+        // Keep the legacy campaign-UI compatibility injection anchor intact
+        // below; it adds stock progression actions during the build overlay.
         root.update(() -> {
             if(!state.isMenu() || !BrowserStockMainMenu.contentOpen()
                 || campaign.getWidth() < 1f || campaign.getHeight() < 1f) return;
@@ -148,6 +148,8 @@ public final class BrowserUiRuntime{
             Vec2 screen = Core.scene.getViewport().project(at);
             markPlayCampaignHitPoint(screen.x, screen.y);
         });
+        root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
+        root.row();
         localContinueButton = new TextButton(Core.bundle.get("continue", "Continue"));
         localContinueButton.clicked(BrowserLocalMapRuntime::continueSaved);
         localContinueButton.setDisabled(!BrowserSaveRuntime.hasLocalSession());
@@ -171,11 +173,9 @@ public final class BrowserUiRuntime{
         ScrollPane pane = new ScrollPane(mapButtons);
         pane.setFadeScrollBars(false);
         pane.setScrollingDisabled(true, false);
-        // The Play header/3D campaign action consumes another row. Do not
-        // clip the map ScrollPane in portrait or embedded portal viewports.
-        float menuHeight = Core.graphics.getHeight() / Scl.scl(1f);
-        float paneHeight = Math.max(144f, Math.min(mobile ? 340f : 420f, menuHeight - 260f));
-        root.add(pane).width(mobile ? 320f : 380f).height(paneHeight);
+        // The pinned build overlay further adjusts the map-list scrollpane
+        // for portrait/landscape after injecting compact campaign progression.
+        root.add(pane).width(mobile ? 320f : 380f).height(mobile ? 430f : 500f);
         ui.menuGroup.addChild(root);
         BrowserStockMainMenu.install(ui.menuGroup, root);
     }
