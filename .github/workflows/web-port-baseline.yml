@@ -315,6 +315,12 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-unit-production.sh
 
+      # Real Erekir assembler construction, payloads, drone AI and Vanquish.
+      - name: Produce Vanquish through native Erekir Tank Assembler with four drones
+        id: unit_assembler
+        continue-on-error: true
+        run: bash scripts/verify-browser-unit-assembler.sh
+
       # The complete 46-map boot matrix is long but independent. Run early to
       # catch late-sector load failures before save, locale and RTS tests,
       # without skipping those checks when one campaign map is broken.
@@ -566,6 +572,14 @@ jobs:
           if [ "${{ steps.production_mechanics.outcome }}" != "success" ] || \
              [ "${{ steps.unit_production.outcome }}" != "success" ]; then
             echo "Original building or unit production tests failed: release remains BLOCKED." >&2
+            exit 1
+          fi
+
+      - name: Require original Erekir unit assembler for release
+        if: always()
+        run: |
+          if [ "${{ steps.unit_assembler.outcome }}" != "success" ]; then
+            echo "Real Vanquish assembly failed: release remains BLOCKED." >&2
             exit 1
           fi
 
