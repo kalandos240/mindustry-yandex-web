@@ -189,6 +189,7 @@ public final class BrowserUiRuntime{
             .padBottom(8f);
         root.row();
 
+        Table mapButtons = new Table();
         // Native mode choice belongs to Custom Game, never above the main menu.
         localModeButton = root.button(localModeLabel(), Icon.settings, () -> {
             applySettingAction(5, BrowserLocalMapRuntime.customModeCode() == 0 ? 1 : 0);
@@ -197,7 +198,6 @@ public final class BrowserUiRuntime{
             .name("web-custom-mode").get();
         root.row();
 
-        Table mapButtons = new Table();
         mapButtons.defaults().growX().height(mobile ? 52f : 46f).pad(2f);
         for(String slug : BrowserLocalMapRuntime.slugs()){
             mapButtons.button(BrowserLocalMapRuntime.displayName(slug), () -> BrowserLocalMapRuntime.start(slug));

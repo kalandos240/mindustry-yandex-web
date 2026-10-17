@@ -245,7 +245,7 @@ public final class BrowserUnitAssemblerSmoke{
                 if(build.blocks.total() > 0)
                     throw new IllegalStateException("Stock assembler did not consume deposited payloads");
                 completed = true;
-                markPassed(assembler.name,output.name,frames,delivered,maxPositioned);
+                markPassed(assembler.name,output.name,frames,delivered,maxPositioned,build.units.size);
                 return;
             }
             if(++stageFrames > 720)
@@ -343,7 +343,7 @@ public final class BrowserUnitAssemblerSmoke{
         """)
     private static native void markDeposits(int delivered,int required);
 
-    @JSBody(params={"block","unit","frames","delivered","drones"},script="""
+    @JSBody(params={"block","unit","frames","delivered","drones","created"},script="""
         const root=document.documentElement;
         root.setAttribute('data-mindustry-assembler','passed');
         root.setAttribute('data-mindustry-assembler-block',block);
@@ -355,6 +355,7 @@ public final class BrowserUnitAssemblerSmoke{
         root.setAttribute('data-mindustry-assembler-frames',String(frames));
         root.setAttribute('data-mindustry-assembler-component-count',String(delivered));
         root.setAttribute('data-mindustry-assembler-positioned-drones',String(drones));
+        root.setAttribute('data-mindustry-assembler-created-drones',String(created));
         """)
-    private static native void markPassed(String block,String unit,int frames,int delivered,int drones);
+    private static native void markPassed(String block,String unit,int frames,int delivered,int drones,int created);
 }
