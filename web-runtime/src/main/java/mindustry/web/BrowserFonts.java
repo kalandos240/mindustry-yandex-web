@@ -35,8 +35,13 @@ public final class BrowserFonts{
         if(Iconc.all == null || Iconc.all.isEmpty()){
             throw new IllegalStateException("Mindustry generated icon character table is empty");
         }
-        requireGlyph(Fonts.icon, Iconc.all.charAt(0), "icon");
-        requireGlyph(Fonts.iconLarge, Iconc.all.charAt(0), "iconLarge");
+        for(int i = 0; i < Iconc.all.length(); i++){
+            char glyph = Iconc.all.charAt(i);
+            requireGlyph(Fonts.def, glyph, "small UI icon");
+            requireGlyph(Fonts.outline, glyph, "outline UI icon");
+            requireGlyph(Fonts.icon, glyph, "icon");
+            requireGlyph(Fonts.iconLarge, glyph, "iconLarge");
+        }
 
         Fonts.def.getData().markupEnabled = true;
         Fonts.outline.getData().markupEnabled = true;

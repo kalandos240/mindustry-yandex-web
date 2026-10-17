@@ -97,6 +97,10 @@ public final class WebFontBaker{
     private static String collectCharacters(Fi bundles) throws IOException{
         LinkedHashSet<Character> chars = new LinkedHashSet<>();
         add(chars, FreeTypeFontGenerator.DEFAULT_CHARS);
+        // Icon.load() creates every *Small drawable from Fonts.def. Desktop
+        // FreeType adds these lazily; baked browser fonts must contain the
+        // complete table up front, including icons absent from bundle text.
+        add(chars, Iconc.all);
         chars.add('\0');
 
         // English + Russian are the first browser release targets. Reading values

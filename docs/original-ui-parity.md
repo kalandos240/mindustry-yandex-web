@@ -61,3 +61,21 @@ URLs omitted mindustryCampaignMapMatrix=1. The corrected verifier must launch
 the real survival maps and still require a trusted native HUD click, original
 Logic.runWave progression and a continuing game loop. This fixture correction
 alone does not certify wave gameplay. Sorter configuration remains under diagnosis.
+
+## Current input and font stabilization
+
+The native Sorter trace shows a real pointerdown targeting its copper Image,
+followed by listener release coordinates around -1.4 million while the popup
+shrinks. Scene's cached hover is updated in UI.act(), after Control polls world
+input. The Web overlay queries the current stage hit for getHoverElement()
+without changing act()'s enter/exit cache or advancing actors twice. The real
+configure/clear browser test remains the acceptance gate.
+
+Icon.load() creates every Small icon from Fonts.def, while the browser baker
+previously collected only bundle characters. Include all 138 Iconc symbols in
+baked UI fonts and validate every glyph in default, outline, icon and iconLarge
+at browser startup. Both original source fonts contain all selected symbols.
+
+The wave button now uses the original right-edge textures, disabled/hover states,
+actor name and guarded hotkey. The remainder of the mission panel is still the
+Web implementation; full HudFragment parity is not claimed.
