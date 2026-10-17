@@ -18,7 +18,7 @@ for device in desktop mobile; do
   if [ "$device" = mobile ]; then args+=(--emulate-mobile); scenario=onset; fi
   profile="/tmp/mindustry-filter-json-$device"
   rm -rf "$profile"
-  MINDUSTRY_CDP_CONSOLE=1 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${args[@]}" \
+  if MINDUSTRY_CDP_CONSOLE=1 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${args[@]}" \
     --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryFilterSmoke=1&mindustryCampaignSmoke=$scenario" \
     --profile "$profile" --port 9540 --timeout 180 \
     --require 'data-mindustry-web="ready"' \
@@ -27,7 +27,12 @@ for device in desktop mobile; do
     --require 'data-mindustry-filter-json-fields="preserved"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --after-ready-eval "(async()=>{const r=document.documentElement;const n=Number(r.getAttribute('data-mindustry-cpu-sample'));for(let i=0;i<180;i++){if(r.getAttribute('data-mindustry-web')==='error')throw Error(r.getAttribute('data-mindustry-error'));if(Number(r.getAttribute('data-mindustry-cpu-sample'))>n)return 'Real world continues after map filters';await new Promise(done=>setTimeout(done,100));}throw Error('Campaign stopped after filter parsing');})()" \
-    > "/tmp/mindustry-filter-json-$device.html" 2> "/tmp/mindustry-filter-json-$device.log"
+    > "/tmp/mindustry-filter-json-$device.html" 2> "/tmp/mindustry-filter-json-$device.log"; then
+    :
+  else
+    cat "/tmp/mindustry-filter-json-$device.log" >&2
+    exit 1
+  fi
   cat "/tmp/mindustry-filter-json-$device.log"
   if grep -E 'SerializationException|Error constructing instance|NoSuchMethodException|No icon found for glyph' "/tmp/mindustry-filter-json-$device.log"; then
     echo 'Original map/font data still failed to deserialize or load' >&2
