@@ -27,7 +27,7 @@ jobs:
       - name: Unpack exact archived game and instrument first throws
         run: |
           python3 -c 'from zipfile import ZipFile; ZipFile("work/browser-debug/archive/mindustry-yandex-release.zip").extractall("web-runtime/build/web")'
-          python3 scripts/debug-browser-runtime.py
+          python3 scripts/debug-browser-runtime.py --bind-preset-maps
           python3 scripts/test-chrome-promise-timeout.py
       - name: Native menu and database with deadline-correct CDP transport
         id: menu

@@ -17,6 +17,34 @@ public class BrowserPlanetDialog extends PlanetDialog{
     private boolean firstFrame;
     private int uiSampleFrames;
     private String lastPlanet = "";
+    private Sector waitingForMap;
+
+    @Override
+    Sector findLauncher(Sector to){
+        // Original renderOverProjections calls this while drawing hovered
+        // sectors, BEFORE the browser launch action can bind their maps.
+        if(!BrowserCampaignRuntime.preparePresetGenerator(to)) return null;
+        return super.findLauncher(to);
+    }
+
+    @Override
+    boolean hasNoCandidate(Sector sector){
+        return !sector.hasBase() && !BrowserCampaignRuntime.preparePresetGenerator(sector) || super.hasNoCandidate(sector);
+    }
+
+    @Override
+    public void selectSector(Sector sector){
+        waitingForMap = sector == null || sector.hasBase() || BrowserCampaignRuntime.preparePresetGenerator(sector) ? null : sector;
+        super.selectSector(sector);
+        if(waitingForMap != null){
+            BrowserCampaignAssets.defer(sector.preset, () -> {
+                if(selected == sector && BrowserCampaignRuntime.preparePresetGenerator(sector)){
+                    waitingForMap = null;
+                    updateSelected();
+                }
+            });
+        }
+    }
 
     @Override
     void addTech(){
@@ -106,6 +134,11 @@ public class BrowserPlanetDialog extends PlanetDialog{
         markPlanetFramePhase("act-enter");
         try{
             super.act(delta);
+            if(waitingForMap != null && selected == waitingForMap
+            && BrowserCampaignRuntime.preparePresetGenerator(waitingForMap)){
+                waitingForMap = null;
+                updateSelected();
+            }
             markPlanetFramePhase("act-finished");
         }catch(Throwable crash){
             markPlanetFrameFailure("act", crash);

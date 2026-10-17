@@ -64,6 +64,17 @@ public final class BrowserCampaignRuntime{
         return campaignAssetsReadyNative();
     }
 
+    /** Content.init creates FileMapGenerator before the browser map catalog exists. */
+    public static boolean preparePresetGenerator(Sector sector){
+        if(sector == null || sector.preset == null) return true;
+        SectorPreset preset = sector.preset;
+        if(preset.generator != null && preset.generator.map != null) return true;
+        Fi file = Core.files.internal("maps/" + sector.planet.name + "/" + preset.name + "." + mapExtension);
+        if(maps == null || !file.exists() || file.length() < 128) return false;
+        preset.generator = new FileMapGenerator(preset.name, preset);
+        return preset.generator.map != null;
+    }
+
     /** DOM-heavy campaign telemetry is enabled only for explicit browser smoke runs. */
     public static boolean diagnosticsEnabled(){
         if(!diagnosticsQueryCached){

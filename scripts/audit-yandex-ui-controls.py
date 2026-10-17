@@ -213,6 +213,14 @@ for real_planet_test in (
           'data-mindustry-planet-sector-icon-count="46"' in source,
           "Native planet Chrome acceptance can wrongly pass with null SectorPreset.uiIcon: " + real_planet_test)
 
+check('Sector findLauncher(Sector to)' in planet_map and
+      'BrowserCampaignRuntime.preparePresetGenerator(to)' in planet_map and
+      'return super.findLauncher(to)' in planet_map,
+      "Original globe must bind preset maps before the stock launch-candidate renderer")
+check('public static boolean preparePresetGenerator(Sector sector)' in
+      (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserCampaignRuntime.java").read_text(),
+      "FileMapGenerator created before maps initialization must be rebound")
+
 print(f"Yandex UI compliance: {len(seen)} approved main menu entries, "
       f"{len(pause_keys)} pause controls, native 3D Campaign from Play, "
       "nested Settings, real building configuration and freeze gates")
