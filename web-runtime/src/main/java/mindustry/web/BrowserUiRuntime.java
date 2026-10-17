@@ -180,15 +180,15 @@ public final class BrowserUiRuntime{
         // The pinned build overlay further adjusts the map-list scrollpane
         // for portrait/landscape after injecting compact campaign progression.
         root.add(pane).width(mobile ? 320f : 380f).height(mobile ? 430f : 500f);
+        ui.menuGroup.addChild(root);
         // Preserve the upstream campaign-progress controls inserted by the
         // build overlay, but make the WHOLE Play submenu vertically scrollable.
         // Native Arc ScrollPane owns scrolling on both desktop and touch;
         // portal advertising outside the canvas never receives these events.
         //
-        // The temporary original root mount must remain for the pinned
-        // patch-browser-campaign-ui.py anchor. Adding it to ScrollPane then
-        // transfers parent ownership into the visible Play viewport.
-        ui.menuGroup.addChild(root);
+        // The temporary original root mount remains for the pinned
+        // patch-browser-campaign-ui.py anchor. The ScrollPane constructor
+        // then reparents this same stock Table into the visible Play viewport.
         ScrollPane playScroll = new ScrollPane(root, Styles.smallPane);
         playScroll.setFadeScrollBars(false);
         playScroll.setScrollingDisabled(true, false);
