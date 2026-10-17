@@ -119,9 +119,35 @@ public final class BrowserUiRuntime{
     private static void buildLocalMapMenu(){
         Table root = new Table();
         root.setFillParent(true);
-        root.defaults().pad(4f);
-        root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
+        root.defaults().pad(3f);
+        root.add(Core.bundle.get("play", "Play")).padBottom(5f);
         root.row();
+
+        // A fresh player's first Play submenu must lead to the actual 3D
+        // campaign planets, not silently present ONLY disposable local maps.
+        // Keep the original PlanetDialog/first-run chooser, and preserve the
+        // existing local Custom Game controls below this explicit entry.
+        TextButton campaign = root.button(
+            Core.bundle.get("campaign", "Campaign") + " - " +
+                Core.bundle.get("planets", "Planets"),
+            Icon.planet, BrowserVanillaDialogs::openPlanets)
+            .size(mobile ? 320f : 380f, mobile ? 53f : 47f)
+            .name("web-play-campaign-planets").get();
+        root.row();
+        root.add(Core.bundle.get("customgame", "Custom Game")).padTop(7f).padBottom(4f);
+        root.row();
+        root.update(() -> {
+            if(!state.isMenu() || !BrowserStockMainMenu.contentOpen()
+                || campaign.getWidth() < 1f || campaign.getHeight() < 1f) return;
+            // Track real moving Arc coordinates; portal layout and viewport
+            // resizes may change the Yandex game surface after opening Play.
+            Vec2 at = campaign.localToStageCoordinates(new Vec2(
+                campaign.getWidth() / 2f, campaign.getHeight() / 2f));
+            Element hit = Core.scene.hit(at.x, at.y, true);
+            if(hit != campaign && (hit == null || !hit.isDescendantOf(campaign))) return;
+            Vec2 screen = Core.scene.getViewport().project(at);
+            markPlayCampaignHitPoint(screen.x, screen.y);
+        });
         localContinueButton = new TextButton(Core.bundle.get("continue", "Continue"));
         localContinueButton.clicked(BrowserLocalMapRuntime::continueSaved);
         localContinueButton.setDisabled(!BrowserSaveRuntime.hasLocalSession());
@@ -145,10 +171,21 @@ public final class BrowserUiRuntime{
         ScrollPane pane = new ScrollPane(mapButtons);
         pane.setFadeScrollBars(false);
         pane.setScrollingDisabled(true, false);
-        root.add(pane).width(mobile ? 320f : 380f).height(mobile ? 430f : 500f);
+        // The Play header/3D campaign action consumes another row. Do not
+        // clip the map ScrollPane in portrait or embedded portal viewports.
+        float menuHeight = Core.graphics.getHeight() / Scl.scl(1f);
+        float paneHeight = Math.max(144f, Math.min(mobile ? 340f : 420f, menuHeight - 260f));
+        root.add(pane).width(mobile ? 320f : 380f).height(paneHeight);
         ui.menuGroup.addChild(root);
         BrowserStockMainMenu.install(ui.menuGroup, root);
     }
+
+    @JSBody(params={"x", "y"}, script="""
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-play-campaign-x',String(x));
+        r.setAttribute('data-mindustry-play-campaign-y',String(y));
+        """)
+    private static native void markPlayCampaignHitPoint(float x, float y);
 
     private static void applySettingAction(int setting, int value){
         switch(setting){
