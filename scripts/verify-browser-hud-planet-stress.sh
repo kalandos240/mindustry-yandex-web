@@ -23,6 +23,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --after-ready-eval "$(cat "$ROOT_DIR/scripts/browser-hud-planet-stress.js")" \
   --after-ready-require 'data-mindustry-hud-planet-browser="passed"' \
   --after-ready-require 'data-mindustry-hud-planet-open="yes"' \
+  --after-ready-require 'data-mindustry-hud-planet-cross-campaign="passed"' \
+  --after-ready-require 'data-mindustry-campaign-planet="serpulo"' \
   --after-ready-require 'data-mindustry-web="ready"' \
   > /tmp/mindustry-hud-planet.html
-echo "Real playable Erekir campaign HUD: original Icon.map opens 3D planets and survives resize PASS"
+echo "Real Erekir HUD Icon.map -> Serpulo 3D native sector Launch -> playable Ground Zero + resize PASS"
