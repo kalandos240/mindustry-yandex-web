@@ -41,6 +41,11 @@
     'original menu animation keeps rendering');
   if(value('menu-logo') !== 'original-MenuFragment') throw Error('Missing original top-centered menu logo');
 
+  for(const id of ['mindustry-settings-toggle','mindustry-settings-overlay','mindustry-local-mode']){
+    if(document.getElementById(id)) throw Error('Legacy DOM widget obscures original menu: '+id);
+  }
+  if(document.getElementById('mindustry-web-status').textContent.trim())
+    throw Error('Debug status obscures the ready game menu');
   const isMobile = value('main-menu-layout') === 'mobile-grid';
   const legalButtons = ['play', 'research', 'database', 'settings',
     'schematics', 'controls', 'saves', 'planets'];

@@ -201,7 +201,10 @@ public final class BrowserCanvas{
             document.documentElement.removeAttribute('data-mindustry-error');
         }
         const status = document.getElementById('mindustry-web-status');
-        if (status) status.textContent = text;
+        if (status) {
+            status.textContent = state === 'ready' ? '' : text;
+            if(state === 'ready') status.removeAttribute('style');
+        }
         """)
     private static native void setStatusDom(String state, String text);
 }

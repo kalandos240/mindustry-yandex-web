@@ -21,6 +21,13 @@ public final class Bootstrap{
     private Bootstrap(){}
 
     public static void main(String[] args){
+        // Match upstream.lock; the browser does not run desktop version.properties loading.
+        Version.number = 8;
+        Version.build = 159;
+        Version.revision = 7;
+        Version.type = "web";
+        Version.modifier = "web";
+        Version.commitHash = "c9686eb";
         try{
             installAndVerifyFiles();
             installAndVerifySettings();
@@ -113,7 +120,7 @@ public final class Bootstrap{
                     throw new IllegalStateException("Mindustry browser content.init campaign/tech-tree state failed runtime initialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init/load, campaign metadata, tech trees, specialized block factories and real content regions ready; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; content-regions@atlas; settings@localStorage; waiting for first rendered sprite frame...");
+                BrowserCanvas.setStatus("initialized", Core.bundle.get("loading", "Loading..."));
             }
 
             @Override

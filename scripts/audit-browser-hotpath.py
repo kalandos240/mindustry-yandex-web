@@ -453,7 +453,7 @@ INVENTORY_SMOKE = (SCRIPTS / "verify-browser-campaign-save-resume.sh").read_text
 require(INVENTORY_SMOKE, 'data-mindustry-campaign-resume-copper="137"', "cold restart core copper equality")
 require(INVENTORY_SMOKE, 'data-mindustry-campaign-resume-lead="73"', "cold restart core lead equality")
 PAGE = (ROOT / "web-runtime/src/web/index.html").read_text(encoding="utf-8")
-require(PAGE, "'data-mindustry-campaign-state', 'data-mindustry-local-map-state'", "custom mode hides in gameplay")
+require(BROWSER_UI, 'name("web-custom-mode")', "native custom mode belongs to Play selector")
 require(BROWSER_UI, 'dialog.name = "web-pause-dialog"', "stock Arc Scene pause dialog")
 require(BROWSER_UI, "new Table(Tex.pane2)", "original pane textures on pause and game-over dialogs")
 require(BROWSER_UI, "dialog.button(Core.bundle.get(\"resume\", \"Resume\"), Icon.play", "native Resume action/icon")

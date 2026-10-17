@@ -35,6 +35,7 @@ public final class BrowserUiRuntime{
 
     private static boolean initialized;
     private static TextButton localContinueButton;
+    private static TextButton localModeButton;
     private static int hudResearchPointerFrames;
     private static int hudDatabasePointerFrames;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
@@ -186,6 +187,14 @@ public final class BrowserUiRuntime{
             .width(mobile ? 320f : 380f)
             .height(mobile ? 54f : 46f)
             .padBottom(8f);
+        root.row();
+
+        // Native mode choice belongs to Custom Game, never above the main menu.
+        localModeButton = root.button(localModeLabel(), Icon.settings, () -> {
+            applySettingAction(5, BrowserLocalMapRuntime.customModeCode() == 0 ? 1 : 0);
+            syncLocalModeUi();
+        }).width(mobile ? 320f : 380f).height(mobile ? 52f : 46f)
+            .name("web-custom-mode").get();
         root.row();
 
         Table mapButtons = new Table();
@@ -606,6 +615,12 @@ public final class BrowserUiRuntime{
     public static void syncLocalModeUi(){
         if(!initialized) return;
         setLocalModeUi(BrowserLocalMapRuntime.customModeCode());
+        if(localModeButton != null) localModeButton.setText(localModeLabel());
+    }
+
+    private static String localModeLabel(){
+        return Core.bundle.get(BrowserLocalMapRuntime.customModeCode() == 1
+            ? "mode.sandbox.name" : "mode.survival.name");
     }
 
     @JSBody(params = {"source"}, script = "const r=document.documentElement;r.setAttribute('data-mindustry-hud-commands','stock-PlacementFragment');r.setAttribute('data-mindustry-hud-command-toggle',source);r.setAttribute('data-mindustry-hud-command-mode','off');")
