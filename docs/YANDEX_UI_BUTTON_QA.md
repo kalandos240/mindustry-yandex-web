@@ -88,6 +88,26 @@ Nested buttons inside each dialog, unit-specific commands, building config
 widgets, alternative resolutions and live Yandex SDK ad interruption
 remain **separately required acceptance work**, not already passed.
 
+## Nested original Settings controls (October 17)
+
+The new **blocking** CI step `settings_nested_stress` runs independent
+desktop and mobile Chrome instances against the pinned original
+`SettingsMenuDialog`. It uses native Arc Scene coordinate and hit-test
+sampling (not HTML menu replicas), and tests `Game`, `Graphics`,
+`Sound` and `Developer` category buttons, Escape back to the original
+category selector, LanguageDialog, and the original KeybindDialog where
+that menu entry is exposed. The **real Hints checkbox** is toggled and
+restored, with its actual persisted `Core.settings` value observed after
+each native Chrome pointer click. After every transition the Java frame
+loop must still advance. The test scrolls the original Settings ScrollPane
+through the canvas when a category falls outside a smaller iframe.
+
+`Data` has destructive clear-research/saves controls; these are **never
+automatically clicked** in a fresh user session. Unsupported ZIP backups
+and desktop file actions are removed from the browser Settings overlay
+before compilation. This targeted nested coverage is not a claim that
+all of the dozens of preferences have been individually exercised yet.
+
 ## Other required, independent browser gates
 
 These already form part of the release CI and should **not** be removed to
