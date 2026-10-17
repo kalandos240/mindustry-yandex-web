@@ -151,6 +151,7 @@ public final class BrowserStockMainMenu{
         home.update(() -> {
             if(state.isMenu() && !contentOpen && (++pointerSampleFrames & 15) == 0){
                 markPointerCenter(home.find("web-main-play"), "play");
+                markPointerCenter(home.find("web-main-custom"), "custom");
                 markPointerCenter(home.find("web-main-research"), "research");
                 markPointerCenter(home.find("web-main-database"), "database");
                 markPointerCenter(home.find("web-main-schematics"), "schematics");
