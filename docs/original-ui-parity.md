@@ -139,8 +139,8 @@ exact. Menu migration validation must additionally exercise real parent clicks,
 child hitboxes, toggle/Escape closing, native dialogs and research drag.
 
 Visual QA of acceptance 39074767764 exposed a mid-word Schematics wrap on the
-mobile portrait tiles. Adaptive tiles can be narrower than the original 120
-units, while the fixed font size remains unchanged. Measure the longest localized
-word and fit it to the actual label cell, keeping native wrapping at spaces.
-Recompute only when cell width changes, and verify both measured fit and the
-next compiled portrait screenshot before claiming this visual defect fixed.
+mobile portrait tiles. The attempted per-label font scaling regressed shared
+font/icon rendering in compiled screenshot 39075464213 and was removed. Reduce
+horizontal tile margins to give native labels their actual tile width, preserving
+shared font/cache state. The corrected compiled screenshot remains the visual
+gate; a computed width marker alone does not prove the displayed UI is correct.

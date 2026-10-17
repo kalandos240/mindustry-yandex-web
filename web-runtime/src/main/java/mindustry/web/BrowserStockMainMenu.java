@@ -1,7 +1,6 @@
 package mindustry.web;
 
 import arc.*;
-import arc.graphics.g2d.GlyphLayout;
 import arc.scene.*;
 import arc.scene.event.*;
 import arc.scene.actions.*;
@@ -234,34 +233,12 @@ public final class BrowserStockMainMenu{
                                      Runnable action, String name){
         // Original Mindustry MobileButton, including its icon-over-label layout.
         MobileButton button = new MobileButton(icon, "@" + key, action);
-        // Adaptive portrait tiles may be narrower than the original 120
-        // units. Keep native wrapping at spaces, fitting the longest word
-        // within the actual label cell instead of splitting it mid-word.
-        Label label = button.find(element -> element instanceof Label);
-        if(label != null){
-            GlyphLayout measure = new GlyphLayout();
-            float widest = 0f;
-            for(String word : label.getText().toString().split("\\s+")){
-                measure.setText(label.getStyle().font, word);
-                widest = Math.max(widest, measure.width);
-            }
-            final float longestWord = widest;
-            final float normalScale = label.getStyle().font.getScaleX();
-            final float[] previousWidth = {-1f};
-            label.update(() -> {
-                float available = label.getWidth() - 2f;
-                if(available <= 0f || available == previousWidth[0] || longestWord <= 0f) return;
-                previousWidth[0] = available;
-                float scale = Math.min(normalScale, normalScale * available / longestWord);
-                if(label.getFontScaleX() != scale) label.setFontScale(scale);
-                markMobileLabelFit(name, scale, longestWord * scale / normalScale <= available + 0.01f);
-            });
-        }
+        // The native button's desktop-sized horizontal margins can split
+        // long localized words on adaptive portrait tiles. Preserve the
+        // original shared font/cache state and give labels the tile width.
+        button.marginLeft(2f).marginRight(2f);
         menu.add(button).name("web-main-" + name);
     }
-
-    @JSBody(params={"name", "scale", "fits"}, script="const r=document.documentElement;r.setAttribute('data-mindustry-menu-label-'+name+'-scale',String(scale));r.setAttribute('data-mindustry-menu-label-'+name+'-fits',String(fits));")
-    private static native void markMobileLabelFit(String name, float scale, boolean fits);
 
     @JSBody(script="""
         const root=document.documentElement;

@@ -47,10 +47,6 @@
   if(document.getElementById('mindustry-web-status').textContent.trim())
     throw Error('Debug status obscures the ready game menu');
   const isMobile = value('main-menu-layout') === 'mobile-grid';
-  if(isMobile){
-    await wait(() => value('menu-label-schematics-fits') === 'true', 'Schematics word fits actual mobile label cell');
-    if(!(Number(value('menu-label-schematics-scale')) > 0)) throw Error('Mobile label text vanished');
-  }
   const legalButtons = ['play', 'research', 'database', 'settings',
     'schematics', 'controls', 'saves', 'planets'];
   if (!isMobile) legalButtons.push('custom');
