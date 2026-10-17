@@ -34,7 +34,7 @@ Reference: https://yandex.ru/dev/games/doc/ru/concepts/requirements.html
 | Schematics | Native schematic browsing/import/export | Chrome CDP click, Escape, loop heartbeat |
 | Controls | Native Mindustry key bindings | Chrome CDP click, Escape, loop heartbeat |
 | Saved Games | Browser-safe Load dialog | Chrome CDP click, Escape, loop heartbeat |
-| Planets | Original 3D planet renderer/sector selector | Separate real Chrome `verify-browser-planet-dialog.sh`, including first-run chooser |
+| Planets | Original 3D planet renderer/sector selector | Separate real Chrome `verify-browser-planet-dialog.sh`, including unobstructed Serpulo/Erekir globe and direct in-game HUD test |
 
 CI script `scripts/verify-browser-ui-button-stress.sh` launches independent
 desktop **and** mobile Chrome profiles. `scripts/browser-ui-button-stress.js`
@@ -141,8 +141,10 @@ ever replacing stock game widgets with fake browser buttons.
 The Home **Play** entry no longer drops an unfamiliar player into only
 the local Custom Game map list. It now leads to a separate
 **Campaign - Planets** Arc TextButton which opens the *original*
-`PlanetDialog` with Serpulo/Erekir 3D graphics, the vanilla first-campaign
-chooser, native tech tree and the named campaign sectors. The existing
+`PlanetDialog` with Serpulo/Erekir 3D graphics, native tech tree and
+named campaign sectors. The extra first-run portrait chooser is intentionally
+bypassed in Web after its original confirmation control proved unclickable
+on small browser viewports; both planets remain selectable on the 3D map. The existing
 Custom Game section, Continue save and default maps stay available in
 the same Play submenu. The map ScrollPane height is limited by the
 actual in-game viewport, protecting Yandex portrait/reduced iframes.
@@ -150,8 +152,8 @@ actual in-game viewport, protecting Yandex portrait/reduced iframes.
 The additional blocking `play_campaign_navigation` job clicks through
 **Home > Play > Campaign - Planets** in two fresh real Chrome profiles
 (desktop and emulated mobile). It requires in-bounds Arc Scene button
-centers, successful Chrome input receipts, real 3D draw, first-run
-Serpulo/Erekir choice and continued TeaVM frame ticks. This prevents a
+centers, successful Chrome input receipts, real 3D draw, unobstructed
+Serpulo/Erekir globe and continued TeaVM frame ticks. This prevents a
 working direct Planets button from masking a broken Play entry.
 
 A separate `mindustry-yandex-playtest-3d-planets` Actions artifact is
@@ -162,6 +164,40 @@ SHA-256, size report and an explicit `PLAYTEST-NOT-RELEASE.txt` warning.
 This is a **manual preview**, not a claim of final release readiness.
 The ordinary `mindustry-yandex-release` artifact still appears **only
 after all required final tests pass** and `main` remains untouched.
+
+
+## Reported October 17 regressions and release blockers
+
+User screenshots show a browser `NullPointerException` during a DPR-triggered
+`resize` (#404), a separate `frame-listeners` crash, scripted sectors
+showing the stock HUD "Waiting...", and no mouse-drag navigation in Research.
+
+- The WebGL adaptive quality governor may change backing-buffer resolution
+  while canvas CSS dimensions remain unchanged. `BrowserApplication` now
+  skips the expensive native Scene `resize()` when **only DPR changes**;
+  real orientation, container and CSS size changes still dispatch it.
+- `BrowserResearchUi` listens for real left-button drag in the desktop
+  TechTree `ScrollPane`; scrolling works on both axes, preserves node
+  clicks and wheel zoom. `research_mouse_drag` uses trusted Chrome CDP
+  press/move/release; failure blocks the production release.
+- `native_hud_planet` uses the actual in-game DesktopInput `Icon.map`
+  while Erekir is playing, checks original WebGL PlanetDialog rendering,
+  reruns a resize and requires a continuing TeaVM frame heartbeat.
+- `native_wave_hud` clicks the ORIGINAL `HudFragment` wave control and
+  checks `GameState.wave` advances. It covers timed-wave sectors
+  Frozen Forest and Intersect (Serpulo/Erekir) rather than falsely treating
+  Ground Zero/Onset scripted wave timing as a defect.
+- **Pinned map evidence:** groundZero.msav explicitly specifies
+  `waveTimer:false,waveSending:false`; onset.msav specifies
+  `waveTimer:false,attackMode:true`. These are original scenario rules.
+  Do not override them globally to make the status read "Countdown".
+  Scripted attack/mission waves and their objectives need their own
+  story-progression acceptance, separate from ordinary timed waves.
+
+All these are **new tests/fixes awaiting CI confirmation**. A development
+playtest ZIP is **not** a validated Yandex release, even when it compiles and
+is below 100,000,000 unpacked bytes. The source branch stays isolated from
+`main`.
 
 ## Other required, independent browser gates
 
