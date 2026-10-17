@@ -13,7 +13,7 @@ import static mindustry.Vars.*;
 
 /**
  * Opt-in Chrome regression for the actual vanilla unit entity constructors
- * and two first-tier unit factories, one on each campaign planet.
+ * and all six first-tier factories in isolated Serpulo/Erekir campaign worlds.
  *
  * Factory input items and an adjacent sandbox PowerSource are TEST FIXTURES.
  * Production itself is NOT simulated: UnitFactoryBuild.updateTile must
@@ -46,14 +46,33 @@ public final class BrowserUnitProductionSmoke{
         if(stage == 0){
             auditProductionCatalogue();
             planet = state.rules.sector.planet.name;
-            if("serpulo".equals(planet)){
+            // No query keeps the original Dagger/Stell regression, which
+            // continues into stock CommandAI combat and reconstructor tests.
+            // Named modes are separate cold-profile probes for the remaining
+            // first-tier factories; they never run in public gameplay.
+            String selected = queryFactory();
+            if("serpulo".equals(planet) && selected.isEmpty() ||
+                "ground".equals(selected) && "serpulo".equals(planet)){
                 factoryBlock = Blocks.groundFactory;
                 expectedType = UnitTypes.dagger;
-            }else if("erekir".equals(planet)){
+            }else if("serpulo".equals(planet) && "air".equals(selected)){
+                factoryBlock = Blocks.airFactory;
+                expectedType = UnitTypes.flare;
+            }else if("serpulo".equals(planet) && "naval".equals(selected)){
+                factoryBlock = Blocks.navalFactory;
+                expectedType = UnitTypes.risso;
+            }else if("erekir".equals(planet) && selected.isEmpty() ||
+                "tank".equals(selected) && "erekir".equals(planet)){
                 factoryBlock = Blocks.tankFabricator;
                 expectedType = UnitTypes.stell;
+            }else if("erekir".equals(planet) && "ship".equals(selected)){
+                factoryBlock = Blocks.shipFabricator;
+                expectedType = UnitTypes.elude;
+            }else if("erekir".equals(planet) && "mech".equals(selected)){
+                factoryBlock = Blocks.mechFabricator;
+                expectedType = UnitTypes.merui;
             }else{
-                throw new IllegalStateException("Unexpected production planet " + planet);
+                throw new IllegalStateException("Unknown factory/planet test: " + planet + "/" + selected);
             }
             if(!(factoryBlock instanceof UnitFactory factory) ||
                 factory.plans.isEmpty() || factory.plans.get(0).unit != expectedType)
@@ -91,11 +110,19 @@ public final class BrowserUnitProductionSmoke{
 
         if(stage == 2){
             Building core = state.rules.defaultTeam.core();
-            for(int i = 0; i < 90 && searchIndex < 61 * 61; i++, searchIndex++){
-                int x = core.tile.x + searchIndex % 61 - 30;
-                int y = core.tile.y + searchIndex / 61 - 30;
+            // The naval factory must release its real Risso into existing
+            // campaign water. Search farther on Coastline instead of editing
+            // map floors or manufacturing a unit outside vanilla mechanics.
+            int searchSize = factoryBlock == Blocks.navalFactory ? 121 : 61;
+            int radius = searchSize / 2;
+            for(int i = 0; i < 150 && searchIndex < searchSize * searchSize; i++, searchIndex++){
+                int x = core.tile.x + searchIndex % searchSize - radius;
+                int y = core.tile.y + searchIndex / searchSize - radius;
                 Tile factory = world.tile(x, y), source = world.tile(x, y + 2);
+                Tile output = world.tile(x + 2, y);
                 if(factory == null || source == null ||
+                    (factoryBlock == Blocks.navalFactory &&
+                        (output == null || !output.floor().isLiquid || output.block() != Blocks.air)) ||
                     !Build.validPlace(factoryBlock, state.rules.defaultTeam, x, y, 0, false) ||
                     !Build.validPlace(Blocks.powerSource, state.rules.defaultTeam, x, y + 2, 0, false))
                     continue;
@@ -133,7 +160,7 @@ public final class BrowserUnitProductionSmoke{
                 markStage("factory-working", planet, createdUnits);
                 return;
             }
-            if(searchIndex >= 61 * 61)
+            if(searchIndex >= searchSize * searchSize)
                 throw new IllegalStateException("No buildable location for vanilla "
                     + factoryBlock.name + " and adjacent power source");
             return;
@@ -258,6 +285,9 @@ public final class BrowserUnitProductionSmoke{
 
     @JSBody(script="return new URLSearchParams(location.search).get('mindustryUnitProductionSmoke') === '1';")
     private static native boolean queryRequested();
+
+    @JSBody(script="return new URLSearchParams(location.search).get('mindustryUnitFactory') || '';")
+    private static native String queryFactory();
 
     @JSBody(params={"stage","planet","count"},script="""
         const root=document.documentElement;
