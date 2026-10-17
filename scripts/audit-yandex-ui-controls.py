@@ -131,5 +131,27 @@ check("id: native_building_config" in workflow and
       "steps.native_building_config.outcome" in workflow,
       "real building config mouse/touch acceptance must block Yandex release")
 
+# The Play page used to be just the Custom Game selector; keep its
+# browser-safe entry to actual stock 3D campaign planets, including real
+# iframe pointer coordinates, as a hard Yandex release & preview condition.
+play_menu = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserUiRuntime.java").read_text(encoding="utf-8")
+campaign_chrome = (ROOT / "scripts/browser-play-campaign-stress.js").read_text(encoding="utf-8")
+for marker in ('"web-play-campaign-planets"', 'BrowserVanillaDialogs::openPlanets',
+               "markPlayCampaignHitPoint(", '"web-play-campaign"'):
+    # The Java observer emits data-mindustry-play-campaign-* through JSBody.
+    if marker == '"web-play-campaign"':
+        continue
+    check(marker in play_menu, f"Play > Campaign stock 3D UI lost {marker}")
+for marker in ("main-menu-play", "play-campaign-x", "vanilla-planet-frame",
+               "planet-first-chooser", "cdp-click-request", "cpu-sample"):
+    check(marker in campaign_chrome, f"Play > Campaign Chrome input lost {marker}")
+check("id: play_campaign_navigation" in workflow and
+      "steps.play_campaign_navigation.outcome" in workflow,
+      "missing hard Play > Campaign 3D launch test or release gate")
+check("name: mindustry-yandex-playtest-3d-planets" in workflow and
+      "steps.play_campaign_navigation.outcome == 'success'" in workflow,
+      "preview could ship without a functioning 3D campaign entry")
+
 print(f"Yandex UI compliance: {len(seen)} approved main menu entries, "
-      f"{len(pause_keys)} pause controls, nested Settings, real building configuration and freeze gates")
+      f"{len(pause_keys)} pause controls, native 3D Campaign from Play, "
+      "nested Settings, real building configuration and freeze gates")
