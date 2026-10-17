@@ -305,6 +305,14 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-ui-button-stress.sh
 
+      # Keep the browser game scheduler moving after each native Arc Scene
+      # button in actual Serpulo campaign and local maps, on both devices.
+      # Do not trust mere Java button construction or DOM element presence.
+      - name: Exercise every Pause action and campaign HUD Research without browser freezes
+        id: gameplay_button_stress
+        continue-on-error: true
+        run: bash scripts/verify-browser-gameplay-button-stress.sh
+
       # Run the independent game/campaign/portal matrix even if the still-WIP
       # native first-campaign chooser fails; never silently turn it green.
       - name: Verify original 3D planet map in desktop and mobile Chrome
@@ -602,8 +610,9 @@ jobs:
       - name: Require responsive permitted UI controls for Yandex release
         if: always()
         run: |
-          if [ "${{ steps.ui_button_stress.outcome }}" != "success" ]; then
-            echo "Native menu controls froze, were unreachable, or failed to open/close: release BLOCKED." >&2
+          if [ "${{ steps.ui_button_stress.outcome }}" != "success" ] || \
+             [ "${{ steps.gameplay_button_stress.outcome }}" != "success" ]; then
+            echo "Native main menu, HUD or Pause controls froze, were unreachable, or failed to open/close: release BLOCKED." >&2
             exit 1
           fi
 
