@@ -235,5 +235,14 @@ if text.count(description_row) != 1:
     raise SystemExit("Pinned first-campaign description anchor changed")
 text = text.replace(description_row, ok_row + '\n\n' + description_row, 1)
 
+# Name the ORIGINAL launch/resume button in the upstream selected-sector
+# panel so Chrome can verify an actual Arc Scene click starts a loaded world.
+# Do not replace it with any script-generated or fake campaign selection.
+old_sector_launch = '''locked ? Icon.lock : Icon.play, this::playSelected).growX().height(54f).minWidth(170f).padTop(4).disabled(locked || noCandidate);'''
+new_sector_launch = '''locked ? Icon.lock : Icon.play, this::playSelected).growX().height(54f).minWidth(170f).padTop(4).disabled(locked || noCandidate).name("web-planet-launch");'''
+if text.count(old_sector_launch) != 1:
+    raise SystemExit("Pinned stock sector Launch/Resume button source anchor changed")
+text = text.replace(old_sector_launch, new_sector_launch, 1)
+
 path.write_text(text, encoding="utf-8")
 print("Pinned stock 3D PlanetDialog: minimized UI shell compatibility; full draw/camera/pick preserved")
