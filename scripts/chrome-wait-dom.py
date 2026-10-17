@@ -197,7 +197,7 @@ def cdp_input_bridge(port: int, url: str, deadline: float, mobile: bool, stop: t
     ws = None
     try:
         ws = WebSocket(target_websocket(port, url, deadline))
-        message_id, last_request = 1, None
+        message_id, last_request, last_drag_request = 1, None, None
         while not stop.is_set() and time.monotonic() < deadline:
             request = evaluate(ws, message_id,
                 "document.documentElement.getAttribute('data-mindustry-cdp-click-request') || ''")
@@ -234,6 +234,53 @@ def cdp_input_bridge(port: int, url: str, deadline: float, mobile: bool, stop: t
                 evaluate(ws, message_id,
                     "document.documentElement.setAttribute('data-mindustry-cdp-click-ack',"
                     + json.dumps(status) + ")")
+                message_id += 1
+
+            # Genuine Chrome left-mouse press/move/release for the spatial
+            # TechTree viewport. This is a test-only devtools request, not
+            # an HTML replacement for Arc's desktop mouse gesture handler.
+            drag_request = evaluate(ws, message_id,
+                "document.documentElement.getAttribute('data-mindustry-cdp-drag-request') || ''")
+            message_id += 1
+            if drag_request and drag_request != last_drag_request:
+                last_drag_request = drag_request
+                try:
+                    drag = json.loads(drag_request)
+                    drag_id = str(drag["id"])
+                    start_x, start_y = float(drag["x0"]), float(drag["y0"])
+                    end_x, end_y = float(drag["x1"]), float(drag["y1"])
+                    steps = int(drag.get("steps", 10))
+                    if mobile or steps < 2 or steps > 40 or any(
+                        not 0 <= v <= 10000 for v in (start_x, start_y, end_x, end_y)
+                    ):
+                        raise ValueError("Invalid desktop CDP drag request")
+                    for typ, x, y, button, buttons in [
+                        ("mouseMoved", start_x, start_y, "none", 0),
+                        ("mousePressed", start_x, start_y, "left", 1),
+                    ]:
+                        cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
+                            "type": typ, "x": x, "y": y, "button": button,
+                            "buttons": buttons, "clickCount": 1})
+                        message_id += 1
+                    for step in range(1, steps + 1):
+                        fraction = step / steps
+                        x = start_x + (end_x - start_x) * fraction
+                        y = start_y + (end_y - start_y) * fraction
+                        cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
+                            "type": "mouseMoved", "x": x, "y": y, "button": "left",
+                            "buttons": 1, "clickCount": 1})
+                        message_id += 1
+                        time.sleep(0.018)
+                    cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
+                        "type": "mouseReleased", "x": end_x, "y": end_y,
+                        "button": "left", "buttons": 0, "clickCount": 1})
+                    message_id += 1
+                    drag_status = drag_id
+                except Exception as error:
+                    drag_status = "ERROR: " + str(error)[:220]
+                evaluate(ws, message_id,
+                    "document.documentElement.setAttribute('data-mindustry-cdp-drag-ack',"
+                    + json.dumps(drag_status) + ")")
                 message_id += 1
             stop.wait(0.07)
     except Exception as error:
