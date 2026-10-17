@@ -1,0 +1,73 @@
+name: Original desktop submenu visual proof
+on:
+  push:
+    branches: [desktop-submenu-visual-v4]
+    paths: ['.github/workflows/desktop-submenu-visual.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for exact compiled package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in {1..72}; do
+            artifact_id="$(gh api repos/kalandos240/mindustry-yandex-web/actions/runs/39076024060/artifacts --jq '.artifacts[] | select(.name == "mindustry-yandex-manual-playtest-experimental") | .id')"
+            if [ -n "$artifact_id" ]; then exit 0; fi
+            status="$(gh api repos/kalandos240/mindustry-yandex-web/actions/runs/39076024060 --jq '.status')"
+            if [ "$status" = completed ]; then exit 1; fi
+            sleep 10
+          done
+          exit 1
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39076024060
+          github-token: ${{ github.token }}
+          path: work/visual-package
+      - name: Open the original-style submenu through real Chrome input
+        run: |
+          (cd work/visual-package && sha256sum -c mindustry-yandex-release.zip.sha256)
+          python3 -c 'from zipfile import ZipFile; ZipFile("work/visual-package/mindustry-yandex-release.zip").extractall("web-runtime/build/web")'
+          python3 -m http.server 8181 --bind 127.0.0.1 --directory web-runtime/build/web >/tmp/submenu-http.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          mkdir -p work/submenu-visual
+          python3 scripts/chrome-wait-dom.py --url http://127.0.0.1:8181/index.html?lang=en \
+            --profile /tmp/submenu-visual --port 9563 --timeout 150 --cdp-input-bridge \
+            --require 'data-mindustry-web="ready"' \
+            --screenshot work/submenu-visual/desktop-submenu-open.png \
+            --after-ready-eval "(async()=>{
+              const r=document.documentElement,c=document.getElementById('mindustry-canvas');
+              const get=k=>r.getAttribute('data-mindustry-'+k);
+              const wait=async(fn,msg)=>{for(let i=0;i<160;i++){
+                if(get('web')==='error')throw Error(get('error'));
+                if(fn())return;await new Promise(done=>setTimeout(done,100));
+              }throw Error(msg);};
+              await wait(()=>r.hasAttribute('data-mindustry-main-menu-database-group-x'),'Database parent hitbox');
+              const b=c.getBoundingClientRect(), id='visual-parent';
+              r.setAttribute('data-mindustry-cdp-click-ack','');
+              r.setAttribute('data-mindustry-cdp-click-request',JSON.stringify({id,
+                x:b.left+Number(get('main-menu-database-group-x')),
+                y:b.bottom-Number(get('main-menu-database-group-y'))}));
+              await wait(()=>get('cdp-click-ack')===id,'trusted native click');
+              await wait(()=>get('main-menu-database-submenu')==='open','actual submenu open');
+              for(const name of ['schematics','database','research','controls'])
+                await wait(()=>r.hasAttribute('data-mindustry-main-menu-'+name+'-x'),name+' actual Scene hitbox');
+              const n=Number(get('cpu-sample'));
+              await wait(()=>Number(get('cpu-sample'))>n,'live native scene');
+              r.setAttribute('data-mindustry-submenu-visual','ready');
+              return 'Original-style Database submenu remains open with four live native actions';
+            })()" \
+            --after-ready-require 'data-mindustry-submenu-visual="ready"' \
+            >work/submenu-visual/desktop.html 2>work/submenu-visual/desktop.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-submenu-open-visual-proof
+          path: work/submenu-visual/*
