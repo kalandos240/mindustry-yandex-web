@@ -79,6 +79,19 @@ public final class BrowserBuildingConfigSmoke{
                 markOpened(stage == 2 ? "first" : "reopen");
             }
         }else if(stage == 2 || stage == 4){
+            // ItemSelection closes its own popup immediately on a successful
+            // click, so first inspect the build value even when hidden.
+            if(stage == 2 && sorter.sortItem == Items.copper){
+                stage = 3;
+                stageFrames = 0;
+                markSet();
+                return;
+            }
+            if(stage == 4 && sorter.sortItem == null){
+                finished = true;
+                markPassed();
+                return;
+            }
             if(!control.input.config.isShown() ||
                 control.input.config.getSelected() != sorter) return;
             // The stock ItemSelection.buildTable creates a native ImageButton
@@ -95,14 +108,6 @@ public final class BrowserBuildingConfigSmoke{
                 Vec2 screen = Core.scene.getViewport().project(p);
                 markCopper(screen.x, screen.y, stage == 2 ? "set" : "clear");
             });
-            if(stage == 2 && sorter.sortItem == Items.copper){
-                stage = 3;
-                stageFrames = 0;
-                markSet();
-            }else if(stage == 4 && sorter.sortItem == null){
-                finished = true;
-                markPassed();
-            }
         }
     }
 
