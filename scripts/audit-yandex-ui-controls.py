@@ -74,5 +74,29 @@ for term in ("data-mindustry-cdp-click-request", "cpu-sample",
 check("id: ui_button_stress" in workflow, "real button/hang CI gate missing")
 check("steps.ui_button_stress.outcome" in workflow, "UI failure must block release")
 
-print(f"Yandex UI compliance: {len(seen)} approved main menu control entries, "
-      "unsupported actions excluded, real-click/frame-liveness CI gate wired")
+# Pause is not "Exit game": the browser-safe action goes back to the native
+# main menu and must not leave the player stranded with a JVM-style Quit.
+hud_source = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserUiRuntime.java").read_text(encoding="utf-8")
+pause_source = hud_source.split("private static void buildLocalPauseOverlay()", 1)[1].split(
+    "private static void markPauseHitPoint(", 1
+)[0]
+pause_keys = [m.group(1) for m in re.finditer(r'dialog\.button\(Core\.bundle\.get\("([^"]+)"', pause_source)]
+check(pause_keys == ["resume", "settings", "savegame", "research",
+                     "schematics", "settings.controls", "loadgame", "back"],
+      "pause dialog has a forbidden/unknown/misleading action")
+check('"web-pause-menu"' in pause_source and
+      'BrowserUiRuntime::returnToMenuWithAd' in pause_source and
+      '"quit"' not in pause_source,
+      "pause menu must expose a safe Back, not a browser Exit/Quit")
+check("BrowserVanillaDialogs.sampleVisibility();" in pause_source,
+      "paused dialogs must update their real visible state")
+for action in ("resume", "settings", "save", "research", "schematics", "controls", "saves", "menu"):
+    check(f'web-pause-{action}' in pause_source, f"pause {action} button is missing")
+    check(f'markPauseHitPoint(dialog.find("web-pause-{action}")' in pause_source,
+          f"pause {action} cannot be tested by real Chrome input")
+check("id: gameplay_button_stress" in workflow and
+      "steps.gameplay_button_stress.outcome" in workflow,
+      "HUD/pause native-button freeze test must be a hard Yandex release gate")
+
+print(f"Yandex UI compliance: {len(seen)} approved main menu entries, "
+      f"{len(pause_keys)} functional pause controls, freeze/real-click CI gates wired")
