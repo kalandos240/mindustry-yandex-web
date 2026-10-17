@@ -1,0 +1,57 @@
+name: Archived browser regression diagnosis
+on:
+  push:
+    branches: [original-menu-ui-parity]
+    paths: ['.github/workflows/browser-debug.yml', 'scripts/debug-browser-runtime.py']
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: Archived Web port workflow run to reproduce
+        default: '39058868543'
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  archived-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: ${{ inputs.source_run || '39058868543' }}
+          github-token: ${{ github.token }}
+          path: work/browser-debug/archive
+      - name: Unpack exact archived game and instrument first throws
+        run: |
+          python3 -c 'from zipfile import ZipFile; ZipFile("work/browser-debug/archive/mindustry-yandex-release.zip").extractall("web-runtime/build/web")'
+          python3 scripts/debug-browser-runtime.py
+          python3 scripts/test-chrome-promise-timeout.py
+      - name: Native menu and database with deadline-correct CDP transport
+        id: menu
+        continue-on-error: true
+        env:
+          MINDUSTRY_CDP_CONSOLE: '1'
+        run: bash scripts/verify-browser-ui-button-stress.sh 2>&1 | tee work/browser-debug/menu.log
+      - name: Reproduce original 3D globe and retain exact throw stack
+        id: planets
+        continue-on-error: true
+        env:
+          MINDUSTRY_CDP_CONSOLE: '1'
+        run: bash scripts/verify-browser-planet-dialog.sh 2>&1 | tee work/browser-debug/planets.log
+      - name: Upload actual screenshots and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archived-browser-debug
+          path: |
+            work/browser-debug/*.log
+            work/menu-ui/*.png
+          if-no-files-found: error
+      - name: Require actual test outcomes
+        if: always()
+        run: |
+          test '${{ steps.menu.outcome }}' = success
+          test '${{ steps.planets.outcome }}' = success

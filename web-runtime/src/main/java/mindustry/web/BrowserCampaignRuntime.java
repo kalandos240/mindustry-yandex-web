@@ -727,6 +727,22 @@ public final class BrowserCampaignRuntime{
         flushCampaignStorage();
     }
 
+    /** Adopt the original BaseDialog pause before checking frozen simulation ticks. */
+    public static void adoptNativeDialogPause(){
+        if(!active || !state.isPaused()) return;
+        pauseUpdateId = state.updateId;
+        pausedFrames = 0;
+        markPaused(pauseUpdateId);
+    }
+
+    public static void nativeDialogResumed(){
+        if(!active || !state.isPlaying()) return;
+        if(state.updateId != pauseUpdateId){
+            throw new IllegalStateException("Native dialog advanced the campaign simulation clock");
+        }
+        markPauseResumed(state.updateId);
+    }
+
     public static void updatePausedFrame(){
         if(!active || current == null || !state.isPaused() || !state.isCampaign()
         || state.rules.sector != current || state.gameOver){

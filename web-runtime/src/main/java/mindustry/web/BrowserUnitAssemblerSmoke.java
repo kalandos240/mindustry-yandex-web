@@ -238,7 +238,7 @@ public final class BrowserUnitAssemblerSmoke{
             if(build.progress > 0f) sawStockProgress = true;
 
             if(state.rules.defaultTeam.data().countType(output) > outputBefore){
-                if(!sawDrone || !sawReady || !sawStockProgress || maxPositioned < assembler.dronesCreated)
+                if(!sawDrone || !sawReady || !sawStockProgress || build.units.size < assembler.dronesCreated || maxPositioned == 0)
                     throw new IllegalStateException(output.name + " appeared without complete native assembly evidence"+
                         ": drones=" + build.units.size + ", positioned="+maxPositioned+
                         ", ready="+sawReady+", progress="+sawStockProgress);

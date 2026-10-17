@@ -40,6 +40,7 @@ public final class BrowserGameplayRuntime{
     private static int moduleLoopFrames;
     private static boolean worldLoadSmokeComplete;
     private static boolean priorNativeModal;
+    private static boolean nativeDialogPaused;
     private static int nativeModalSampleFrames;
 
     private BrowserGameplayRuntime(){}
@@ -127,6 +128,18 @@ public final class BrowserGameplayRuntime{
             (Core.scene.hasDialog() || BrowserVanillaDialogs.anyNativeModalShown());
         boolean nativeModalKeyGuard = nativeModalNow || priorNativeModal;
         priorNativeModal = nativeModalNow;
+        if(nativeModalNow && state.isPaused() && !nativeDialogPaused){
+            if(BrowserCampaignRuntime.active()) BrowserCampaignRuntime.adoptNativeDialogPause();
+            else if(BrowserLocalMapRuntime.active()) BrowserLocalMapRuntime.adoptNativeDialogPause();
+            nativeDialogPaused = true;
+        }else if(nativeDialogPaused && state.isPlaying()){
+            if(BrowserCampaignRuntime.active()) BrowserCampaignRuntime.nativeDialogResumed();
+            else if(BrowserLocalMapRuntime.active()) BrowserLocalMapRuntime.nativeDialogResumed();
+            nativeDialogPaused = false;
+        }else if(state.isMenu()){
+            nativeDialogPaused = false;
+        }
+
         // Stock Dialog visibility must also refresh WHILE playing/paused.
         // Previously only the Home menu sampled it, leaving stale "settings"
         // markers after closing a dialog from the campaign Pause menu.
