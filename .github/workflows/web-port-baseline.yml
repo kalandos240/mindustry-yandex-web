@@ -378,6 +378,13 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-play-campaign-stress.sh
 
+      # Desktop TechTree must support holding left mouse and dragging
+      # through genuine CDP input; scrollbars/wheel alone are not sufficient.
+      - name: Drag original Research TechTree with left mouse in both axes
+        id: research_mouse_drag
+        continue-on-error: true
+        run: bash scripts/verify-browser-research-mouse-drag.sh
+
       # Run critical new real-world block and unit production tests before the
       # long 46-map matrix. Both remain release blockers, but independent
       # campaign/UX checks must still run and report their own conclusions.
@@ -432,7 +439,7 @@ jobs:
       # This lets a human actually test the latest game while long CI runs.
       - name: Package interim 3D-planet playtest archive
         id: playtest_preview
-        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.play_campaign_navigation.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_wave_hud.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
+        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.play_campaign_navigation.outcome == 'success' && steps.research_mouse_drag.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_wave_hud.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
         run: |
           python3 scripts/package-yandex-release.py
           (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
@@ -714,6 +721,7 @@ jobs:
         run: |
           if [ "${{ steps.ui_button_stress.outcome }}" != "success" ] || \
              [ "${{ steps.settings_nested_stress.outcome }}" != "success" ] || \
+             [ "${{ steps.research_mouse_drag.outcome }}" != "success" ] || \
              [ "${{ steps.gameplay_button_stress.outcome }}" != "success" ]; then
             echo "Native main menu, HUD or Pause controls froze, were unreachable, or failed to open/close: release BLOCKED." >&2
             exit 1
