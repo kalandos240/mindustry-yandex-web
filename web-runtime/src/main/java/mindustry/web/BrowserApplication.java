@@ -176,6 +176,9 @@ public final class BrowserApplication extends WebApplicationBase{
                 // CI-only native Erekir Tank Assembler: 4 real assembly drones,
                 // stock payload conveyor intake and Vanquish output.
                 BrowserUnitAssemblerSmoke.update();
+                // Opt-in native Sorter config: real canvas click -> stock
+                // BlockConfigFragment -> ItemSelection copper set/clear.
+                BrowserBuildingConfigSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
