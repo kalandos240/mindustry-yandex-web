@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           name: mindustry-yandex-manual-playtest-experimental
@@ -29,6 +31,9 @@ jobs:
           python3 -c 'from zipfile import ZipFile; ZipFile("work/browser-debug/archive/mindustry-yandex-release.zip").extractall("web-runtime/build/web")'
           python3 scripts/debug-browser-runtime.py --bind-preset-maps
           python3 scripts/test-chrome-promise-timeout.py
+          # This job replays an archived fixture, not the fresh native-only UI.
+          # Use the menu acceptance that belongs to that exact game package.
+          git show 84ad5f08547d345d6c0939ae431adb63b1f341a8:scripts/browser-ui-button-stress.js > scripts/browser-ui-button-stress.js
       - name: Native menu and database with deadline-correct CDP transport
         id: menu
         continue-on-error: true
