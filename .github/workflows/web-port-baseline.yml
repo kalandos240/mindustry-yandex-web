@@ -315,6 +315,14 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-unit-production.sh
 
+      # The existing Dagger/Stell tests continue into stock combat and
+      # reconstructor upgrades. This independent matrix exercises the other
+      # four original basic UnitFactory output paths in fresh Chrome profiles.
+      - name: Produce Flare, Risso, Elude and Merui using all remaining stock unit factories
+        id: unit_factory_matrix
+        continue-on-error: true
+        run: bash scripts/verify-browser-unit-factory-matrix.sh
+
       # Real Erekir assembler construction, payloads, drone AI and Vanquish.
       - name: Produce Vanquish, Quell and Tecta through original Erekir Tank, Ship and Mech Assemblers
         id: unit_assembler
@@ -575,8 +583,9 @@ jobs:
         if: always()
         run: |
           if [ "${{ steps.production_mechanics.outcome }}" != "success" ] || \
-             [ "${{ steps.unit_production.outcome }}" != "success" ]; then
-            echo "Original building or unit production tests failed: release remains BLOCKED." >&2
+             [ "${{ steps.unit_production.outcome }}" != "success" ] || \
+             [ "${{ steps.unit_factory_matrix.outcome }}" != "success" ]; then
+            echo "Original building or one of six real unit factories failed: release remains BLOCKED." >&2
             exit 1
           fi
 
