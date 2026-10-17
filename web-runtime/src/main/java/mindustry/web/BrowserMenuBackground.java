@@ -4,6 +4,7 @@ import arc.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
 import arc.scene.*;
+import arc.scene.ui.layout.Scl;
 import arc.util.*;
 import mindustry.core.*;
 import mindustry.graphics.MenuRenderer;
