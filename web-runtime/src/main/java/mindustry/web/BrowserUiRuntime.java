@@ -118,7 +118,11 @@ public final class BrowserUiRuntime{
 
     private static void buildLocalMapMenu(){
         Table root = new Table();
-        root.setFillParent(true);
+        // The campaign/research progress list is taller than a 780x437
+        // embedded Yandex iframe. Never center the unscrollable full-height
+        // Table: that previously pushed the very first Campaign - Planets
+        // button outside the actual game screen (y=604 on a 437px canvas).
+        root.top();
         root.defaults().pad(3f);
         root.add(Core.bundle.get("play", "Play")).padBottom(5f);
         root.row();
@@ -176,7 +180,26 @@ public final class BrowserUiRuntime{
         // The pinned build overlay further adjusts the map-list scrollpane
         // for portrait/landscape after injecting compact campaign progression.
         root.add(pane).width(mobile ? 320f : 380f).height(mobile ? 430f : 500f);
+        // Preserve the upstream campaign-progress controls inserted by the
+        // build overlay, but make the WHOLE Play submenu vertically scrollable.
+        // Native Arc ScrollPane owns scrolling on both desktop and touch;
+        // portal advertising outside the canvas never receives these events.
+        //
+        // The temporary original root mount must remain for the pinned
+        // patch-browser-campaign-ui.py anchor. Adding it to ScrollPane then
+        // transfers parent ownership into the visible Play viewport.
         ui.menuGroup.addChild(root);
+        ScrollPane playScroll = new ScrollPane(root, Styles.smallPane);
+        playScroll.setFadeScrollBars(false);
+        playScroll.setScrollingDisabled(true, false);
+        playScroll.setOverscroll(false, false);
+        Table playViewport = new Table();
+        playViewport.setFillParent(true);
+        playViewport.touchable = Touchable.childrenOnly;
+        playViewport.visible(() -> state.isMenu() && BrowserStockMainMenu.contentOpen());
+        playViewport.add(playScroll).grow();
+        ui.menuGroup.addChild(playViewport);
+        // Keep Play home/Back overlays above the scroll viewport for clicks.
         BrowserStockMainMenu.install(ui.menuGroup, root);
     }
 
