@@ -358,6 +358,10 @@ public final class WebClientLauncher extends ClientLauncher{
         BrowserGameplayRuntime.init();
         markUiSyncPhase("gameplay-runtime-ready");
 
+        markUiSyncPhase("original-menu-background");
+        BrowserMenuBackground.install(ui.menuGroup);
+        markUiSyncPhase("original-menu-background-ready");
+
         markUiSyncPhase("vanilla-local-dialogs");
         BrowserVanillaDialogs.install();
         markUiSyncPhase("vanilla-local-dialogs-ready");

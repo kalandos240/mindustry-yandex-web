@@ -311,6 +311,7 @@ def main() -> int:
         help="Promise-aware JavaScript expression to run once required DOM markers are ready.",
     )
     parser.add_argument("--after-ready-require", action="append", default=[])
+    parser.add_argument("--screenshot", help="Save a PNG of the final verified browser surface.")
     parser.add_argument("--chrome", default="google-chrome")
     parser.add_argument("--cdp-input-bridge", action="store_true",
                         help="Use trusted CDP mouse/touch clicks during after-ready eval.")
@@ -536,6 +537,12 @@ def main() -> int:
                     else ""
                 )
                 sys.stderr.write(f"Chrome required markers ready{phase} in {elapsed:.3f}s after {polls} DOM poll(s).\n")
+                if args.screenshot:
+                    screenshot = cdp_command(ws, message_id, "Page.captureScreenshot", {"format": "png"})
+                    message_id += 1
+                    destination = Path(args.screenshot)
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(base64.b64decode(screenshot["result"]["data"]))
                 sys.stdout.write("<!DOCTYPE html>\n" + last_html + "\n")
                 return 0
             time.sleep(0.1)
@@ -574,6 +581,12 @@ def main() -> int:
                 else ""
             )
             sys.stderr.write(f"Chrome required markers ready{phase} at deadline edge in {elapsed:.3f}s after {polls} DOM poll(s).\n")
+            if args.screenshot:
+                screenshot = cdp_command(ws, message_id, "Page.captureScreenshot", {"format": "png"})
+                message_id += 1
+                destination = Path(args.screenshot)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(base64.b64decode(screenshot["result"]["data"]))
             sys.stdout.write("<!DOCTYPE html>\n" + last_html + "\n")
             return 0
 

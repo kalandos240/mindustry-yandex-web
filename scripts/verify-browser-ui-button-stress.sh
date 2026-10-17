@@ -27,6 +27,7 @@ for device in desktop mobile; do
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${args[@]}" \
     --url "http://127.0.0.1:$PORT/index.html?lang=en" \
     --profile "$profile" --port 9517 --timeout 190 --cdp-input-bridge \
+    --screenshot "$ROOT_DIR/work/menu-ui/$device.png" \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-vanilla-dialogs="ready"' \
     --require 'data-mindustry-main-menu-page="home"' \

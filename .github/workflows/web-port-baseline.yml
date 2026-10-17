@@ -354,6 +354,15 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-ui-button-stress.sh
 
+      - name: Upload original menu desktop and mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-menu-ui-screenshots
+          path: work/menu-ui/*.png
+          if-no-files-found: ignore
+
+
       - name: Exercise original Settings categories and persisted preferences with trusted Chrome input
         id: settings_nested_stress
         continue-on-error: true

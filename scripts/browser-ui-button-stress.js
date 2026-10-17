@@ -34,6 +34,13 @@
   };
 
   await wait(() => value('main-menu-page') === 'home', 'stock home menu');
+  await wait(() => value('menu-background') === 'original-MenuRenderer',
+    'actual original terrain, shadows and flying menu units rendered');
+  const firstMenuFrame = Number(value('menu-background-frames'));
+  await wait(() => Number(value('menu-background-frames')) > firstMenuFrame,
+    'original menu animation keeps rendering');
+  if(value('menu-logo') !== 'original-MenuFragment') throw Error('Missing original top-centered menu logo');
+
   const isMobile = value('main-menu-layout') === 'mobile-grid';
   const legalButtons = ['play', 'research', 'database', 'settings',
     'schematics', 'controls', 'saves', 'planets'];

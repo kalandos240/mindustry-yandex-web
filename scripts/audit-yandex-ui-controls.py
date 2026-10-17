@@ -42,9 +42,16 @@ for match in re.finditer(r'\bmenu\.button\(Core\.bundle\.get\("([^"]+)"', menu):
     check(legal[key] in tail,
           f"menu button {key} must have a supported native callback {legal[key]}")
 check(menu.count("menu.button(") == len(seen),
-      "a menu button was added without the approved localized-action format")
+      "a desktop menu button was added without the approved localized-action format")
+for match in re.finditer(r'mobileButton\(menu, "([^\"]+)", [^,]+, ([^,]+),', menu):
+    key, callback = match.groups()
+    seen.append(key)
+    check(key in legal and legal[key] == callback.strip(),
+          f"unsupported native mobile action {key}: {callback}")
 check(set(seen) == set(legal), "missing legal menu action or unapproved action found")
 check(len(seen) == 17, "unexpected menu button count (8 mobile + 9 desktop)")
+check('new MobileButton(icon, "@" + key, action)' in menu,
+      "mobile menu must use the original icon-over-label MobileButton")
 check("markPointerCenter(home.find(\"web-main-custom\"), \"custom\")" in menu,
       "desktop Custom Game real pointer hitbox missing")
 
