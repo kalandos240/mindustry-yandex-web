@@ -45,3 +45,23 @@ anchor="        $target = $tmp;" + chr(10) + " if(document.documentElement"
 assert part.count(anchor)==1
 part=part.replace(anchor,"        $target = $tmp;" + chr(10) + "        $this.$mouseOverElement = $target;" + chr(10) + " if(document.documentElement")
 p.write_text(s[:a]+part+s[b:])
+
+# Save the actual stopped surface before Chrome is terminated, including failures.
+p=Path("scripts/chrome-wait-dom.py")
+s=p.read_text()
+anchor="    finally:" + chr(10) + "        input_bridge_stop.set()"
+replacement="""    finally:
+        if ws is not None:
+            try:
+                name = Path(args.profile).name
+                diagnostic = Path('work/diagnose')
+                diagnostic.mkdir(parents=True, exist_ok=True)
+                dom = evaluate(ws, message_id + 100000, 'document.documentElement.outerHTML')
+                (diagnostic / (name + '.html')).write_text(dom)
+                screenshot = cdp_command(ws, message_id + 100001, 'Page.captureScreenshot', {'format':'png'})
+                (diagnostic / (name + '.png')).write_bytes(base64.b64decode(screenshot['result']['data']))
+            except Exception as error:
+                sys.stderr.write('Diagnostic capture failed: ' + str(error) + '\\n')
+        input_bridge_stop.set()"""
+assert s.count(anchor)==1
+p.write_text(s.replace(anchor,replacement))
