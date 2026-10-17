@@ -137,12 +137,9 @@ check("id: native_building_config" in workflow and
 play_menu = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserUiRuntime.java").read_text(encoding="utf-8")
 campaign_chrome = (ROOT / "scripts/browser-play-campaign-stress.js").read_text(encoding="utf-8")
 for marker in ('"web-play-campaign-planets"', 'BrowserVanillaDialogs::openPlanets',
-               "markPlayCampaignHitPoint(", '"web-play-campaign"'):
-    # The Java observer emits data-mindustry-play-campaign-* through JSBody.
-    if marker == '"web-play-campaign"':
-        continue
+               "markPlayCampaignHitPoint(", "'data-mindustry-play-campaign-x'"):
     check(marker in play_menu, f"Play > Campaign stock 3D UI lost {marker}")
-for marker in ("main-menu-play", "play-campaign-x", "vanilla-planet-frame",
+for marker in ("main-menu-play", "'play-campaign'", "vanilla-planet-frame",
                "planet-first-chooser", "cdp-click-request", "cpu-sample"):
     check(marker in campaign_chrome, f"Play > Campaign Chrome input lost {marker}")
 check("id: play_campaign_navigation" in workflow and
