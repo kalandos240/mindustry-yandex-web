@@ -27,6 +27,7 @@ legal = {
     "database.button": "BrowserStockMainMenu::toggleDatabaseMenu",
     "customgame": "BrowserStockMainMenu::openPlay",
     "planets": "BrowserVanillaDialogs::openPlanets",
+    "campaign": "BrowserVanillaDialogs::openPlanets",
     "database": "BrowserStockDatabaseUi::show",
     "research": "BrowserResearchUi::show",
     "settings": "BrowserVanillaDialogs::openSettings",
@@ -40,7 +41,8 @@ for match in re.finditer(r'\bmenu\.button\(Core\.bundle\.get\("([^"]+)"', menu):
     seen.append(key)
     check(key in legal, f"unsupported or unreviewed visible menu button: {key}")
     tail = menu[match.end(): match.end() + 350]
-    check(legal[key] in tail,
+    expected = "BrowserStockMainMenu::togglePlayMenu" if key == "play" else legal[key]
+    check(expected in tail,
           f"menu button {key} must have a supported native callback {legal[key]}")
 check(menu.count("menu.button(") == len(seen),
       "a desktop menu button was added without the approved localized-action format")
@@ -54,10 +56,10 @@ for match in re.finditer(r'desktopEntry\(submenu, "([^\"]+)", [^,]+, ([^,]+),', 
     seen.append(key)
     check(key in legal and legal[key] == callback.strip(),
           f"unsupported nested desktop action {key}: {callback}")
-check("closeDatabaseMenu();\n            action.run();" in menu,
+check("closeDesktopMenus();\n            action.run();" in menu,
       "native submenu actions must close navigation and run their real callback")
 check(set(seen) == set(legal), "missing legal menu action or unapproved action found")
-check(len(seen) == 18, "unexpected menu button count (8 mobile + 6 desktop parents + 4 submenu actions)")
+check(len(seen) == 18, "unexpected menu button count (8 mobile + 3 desktop parents + 7 submenu actions)")
 check('new MobileButton(icon, "@" + key, action)' in menu and
       'button.marginLeft(2f).marginRight(2f)' in menu,
       "mobile menu must use the original icon-over-label MobileButton")

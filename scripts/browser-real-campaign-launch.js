@@ -59,6 +59,7 @@
   await wait(()=>get('main-menu-page')==='play','actual Play menu');
   await heartbeat('Play');
   if(scenario.startsWith('direct-')){
+    if(get('input-mode')!=='mobile') await click('main-menu-custom','Play > Custom Game recovery selector');
     // Start maps are eager. Simulate an unrelated background-map failure;
     // neither campaign's native start button may depend on all 46 maps.
     root.setAttribute('data-mindustry-campaign-assets','error');

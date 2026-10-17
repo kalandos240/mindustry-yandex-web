@@ -144,3 +144,19 @@ font/icon rendering in compiled screenshot 39075464213 and was removed. Reduce
 horizontal tile margins to give native labels their actual tile width, preserving
 shared font/cache state. The corrected compiled screenshot remains the visual
 gate; a computed width marker alone does not prove the displayed UI is correct.
+
+## Original desktop Play grouping
+
+The desktop sidebar now exposes only the supported original Play, Database and
+Settings parents. Play opens adjacent Campaign, Custom Game and Load Game rows;
+Campaign enters the original 3D PlanetDialog. Custom Game retains the validated
+browser selector and direct campaign recovery paths. Mobile navigation remains
+unchanged. A single submenu switches between Play and Database, using original
+styles/fades and clearing inactive hitboxes. Five adaptive row slots keep both
+submenus inside the minimum portal frame.
+
+Update actual input tests for nested campaign/saves/custom entries, Play toggle
+and Escape, both locale Database visits, and direct-campaign recovery via Custom
+Game. Fresh Java/TeaVM and native browser validation are still required. The
+previous c553908 package passed focused run 39076024060 and screenshot proof
+39076254461 at 92,684,526 unpacked bytes; those results do not certify this change.

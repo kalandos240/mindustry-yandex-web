@@ -84,15 +84,25 @@
     }
   };
   const grouped = ['research', 'database', 'schematics', 'controls'];
+  const playChildren = ['planets', 'custom', 'saves'];
   const click = async name => {
     if(!isMobile && grouped.includes(name) && value('main-menu-database-submenu') !== 'open'){
       await nativeClick('database-group');
       await wait(() => value('main-menu-database-submenu') === 'open', 'original Database submenu');
     }
+    if(!isMobile && playChildren.includes(name) && value('main-menu-play-submenu') !== 'open'){
+      await nativeClick('play');
+      await wait(() => value('main-menu-play-submenu') === 'open', 'original Play submenu');
+    }
     await nativeClick(name);
   };
-  for(const name of legalButtons.filter(name => isMobile || !grouped.includes(name))) await point(name);
+  for(const name of legalButtons.filter(name => isMobile || (!grouped.includes(name) && !playChildren.includes(name)))) await point(name);
   if(!isMobile){
+    await nativeClick('play');
+    await wait(() => value('main-menu-play-submenu') === 'open', 'Play group open');
+    for(const name of playChildren) await point(name);
+    await nativeClick('play');
+    await wait(() => value('main-menu-page') === 'home', 'Play parent toggle close');
     await nativeClick('database-group');
     await wait(() => value('main-menu-database-submenu') === 'open', 'Database group open');
     for(const name of grouped) await point(name);
@@ -140,7 +150,7 @@
     await wait(() => value('main-menu-page') === 'play', name + ' submenu');
     await alive(name + ' submenu');
     // The Back button lives on the second stock native Arc Scene table.
-    await click('back');
+    await click(!isMobile && name === 'play' ? 'play' : 'back');
     await wait(() => value('main-menu-page') === 'home', name + ' back to home');
     await alive(name + ' Back');
   };

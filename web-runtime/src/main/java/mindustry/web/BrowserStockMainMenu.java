@@ -24,7 +24,8 @@ import static mindustry.Vars.*;
  * The heavyweight online/Mods/Editor paths stay omitted intentionally.
  *
  * The existing fully functional campaign/custom-map selector is reused as
- * the Play content. It still owns all native sector actions and local saves.
+ * the mobile Play content and desktop Custom Game recovery selector. It
+ * still owns the direct campaign recovery actions and local saves.
  */
 public final class BrowserStockMainMenu{
     private static boolean contentOpen;
@@ -32,11 +33,14 @@ public final class BrowserStockMainMenu{
     private static Table desktopSubmenu;
     private static Button databaseMenu;
     private static boolean databaseOpen;
+    private static boolean playOpen;
+    private static Button playMenu;
+    private static float desktopRowHeight;
 
     private BrowserStockMainMenu(){}
 
     public static boolean navigationOpen(){
-        return contentOpen || databaseOpen;
+        return contentOpen || databaseOpen || playOpen;
     }
 
     public static boolean contentOpen(){
@@ -102,6 +106,10 @@ public final class BrowserStockMainMenu{
     private static void rebuildHome(Table home){
         clearMenuHitPoints();
         databaseOpen = false;
+        playOpen = false;
+        playMenu = null;
+        markPlayMenu(false);
+        if(!contentOpen) markPage("home");
         desktopSubmenu = null;
         databaseMenu = null;
         markDatabaseMenu(false);
@@ -137,22 +145,16 @@ public final class BrowserStockMainMenu{
             // Use adaptive row/logo heights so real button hit rectangles stay
             // within the canvas rather than silently extending off-screen.
             float usableHeight = Math.max(0f, Core.scene.getHeight() - 156f);
-            float desktopRowHeight = Math.max(18f, Math.min(70f, usableHeight / 6f));
+            desktopRowHeight = Math.max(18f, Math.min(70f, usableHeight / 5f));
             home.left().marginLeft(Core.scene.getWidth() / 10f).marginTop(140f);
             home.table(Styles.black6, menu -> {
                 menu.name = "web-main-desktop-buttons";
+                menu.top();
                 menu.defaults().width(230f).height(desktopRowHeight);
-                menu.button(Core.bundle.get("play", "Play"), Icon.play,
-                    Styles.flatToggleMenut, BrowserStockMainMenu::openPlay)
-                    .name("web-main-play").update(button -> button.setChecked(false));
-                menu.row();
-                menu.button(Core.bundle.get("customgame", "Custom Game"), Icon.terrain,
-                    Styles.flatToggleMenut, BrowserStockMainMenu::openPlay)
-                    .name("web-main-custom").update(button -> button.setChecked(false));
-                menu.row();
-                menu.button(Core.bundle.get("planets", "Planets"), Icon.terrain,
-                    Styles.flatToggleMenut, closeThen(BrowserVanillaDialogs::openPlanets))
-                    .name("web-main-planets").update(button -> button.setChecked(false));
+                playMenu = menu.button(Core.bundle.get("play", "Play"), Icon.play,
+                    Styles.flatToggleMenut, BrowserStockMainMenu::togglePlayMenu)
+                    .name("web-main-play").marginLeft(11f).get();
+                playMenu.update(() -> playMenu.setChecked(playOpen));
                 menu.row();
                 databaseMenu = menu.button(Core.bundle.get("database.button", "Database"), Icon.menu,
                     Styles.flatToggleMenut, BrowserStockMainMenu::toggleDatabaseMenu)
@@ -161,33 +163,22 @@ public final class BrowserStockMainMenu{
                 menu.row();
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
                     Styles.flatToggleMenut, closeThen(BrowserVanillaDialogs::openSettings))
-                    .name("web-main-settings").update(button -> button.setChecked(false));
-                menu.row();
-                menu.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
-                    Styles.flatToggleMenut, closeThen(BrowserVanillaDialogs::openSaves))
-                    .name("web-main-saves").update(button -> button.setChecked(false));
-                menu.row();
-            }).width(230f);
+                    .name("web-main-settings").marginLeft(11f).update(button -> button.setChecked(false));
+            }).width(230f).height(desktopRowHeight * 5f);
             home.table(Styles.black6, submenu -> {
                 desktopSubmenu = submenu;
                 submenu.name = "web-main-desktop-submenu";
                 submenu.top();
-                submenu.defaults().width(230f).height(desktopRowHeight);
-                submenu.visible(() -> databaseOpen || submenu.hasActions());
-                // Keep the four original-style rows inside small portal frames.
-                submenu.add().height(desktopRowHeight * 2f).row();
-                desktopEntry(submenu, "schematics", Icon.paste, BrowserVanillaDialogs::openSchematics, "schematics");
-                desktopEntry(submenu, "database", Icon.book, BrowserStockDatabaseUi::show, "database");
-                desktopEntry(submenu, "research", Icon.tree, BrowserResearchUi::show, "research");
-                desktopEntry(submenu, "settings.controls", Icon.move, BrowserVanillaDialogs::openControls, "controls");
+                submenu.visible(() -> databaseOpen || playOpen || submenu.hasActions());
                 submenu.color.a = 0f;
-            }).width(230f);
+            }).width(230f).height(desktopRowHeight * 5f);
+
         }
     }
 
     private static Runnable closeThen(Runnable action){
         return () -> {
-            closeDatabaseMenu();
+            closeDesktopMenus();
             action.run();
         };
     }
@@ -195,28 +186,61 @@ public final class BrowserStockMainMenu{
     private static void desktopEntry(Table table, String key, arc.scene.style.Drawable icon,
                                      Runnable action, String name){
         table.button(Core.bundle.get(key, key), icon, Styles.flatToggleMenut, () -> {
-            closeDatabaseMenu();
+            closeDesktopMenus();
             action.run();
         }).name("web-main-" + name).marginLeft(11f)
             .update(button -> button.setChecked(false));
         table.row();
     }
 
+    private static void buildDesktopSubmenu(boolean play){
+        Table submenu = desktopSubmenu;
+        submenu.clearChildren();
+        submenu.defaults().width(230f).height(desktopRowHeight);
+        if(play){
+            desktopEntry(submenu, "campaign", Icon.play, BrowserVanillaDialogs::openPlanets, "planets");
+            desktopEntry(submenu, "customgame", Icon.terrain, BrowserStockMainMenu::openPlay, "custom");
+            desktopEntry(submenu, "loadgame", Icon.download, BrowserVanillaDialogs::openSaves, "saves");
+        }else{
+            submenu.add().height(desktopRowHeight).row();
+            desktopEntry(submenu, "schematics", Icon.paste, BrowserVanillaDialogs::openSchematics, "schematics");
+            desktopEntry(submenu, "database", Icon.book, BrowserStockDatabaseUi::show, "database");
+            desktopEntry(submenu, "research", Icon.tree, BrowserResearchUi::show, "research");
+            desktopEntry(submenu, "settings.controls", Icon.move, BrowserVanillaDialogs::openControls, "controls");
+        }
+        desktopSubmenu.clearActions();
+        desktopSubmenu.touchable = Touchable.childrenOnly;
+        desktopSubmenu.actions(Actions.alpha(0f), Actions.alpha(1f, 0.15f, Interp.fade));
+    }
+
+    private static void togglePlayMenu(){
+        if(playOpen){
+            closeDesktopMenus();
+        }else{
+            closeDesktopMenus();
+            playOpen = true;
+            buildDesktopSubmenu(true);
+            markPlayMenu(true);
+            markPage("play");
+        }
+    }
+
     private static void toggleDatabaseMenu(){
         if(databaseOpen){
-            closeDatabaseMenu();
+            closeDesktopMenus();
         }else{
+            closeDesktopMenus();
             databaseOpen = true;
-            clearMenuHitPoints();
-            desktopSubmenu.clearActions();
-            desktopSubmenu.touchable = Touchable.childrenOnly;
-            desktopSubmenu.actions(Actions.alpha(1f, 0.15f, Interp.fade));
+            buildDesktopSubmenu(false);
             markDatabaseMenu(true);
         }
     }
 
-    private static void closeDatabaseMenu(){
+    private static void closeDesktopMenus(){
         databaseOpen = false;
+        playOpen = false;
+        markPlayMenu(false);
+        if(!contentOpen) markPage("home");
         clearMenuHitPoints();
         if(desktopSubmenu != null){
             desktopSubmenu.touchable = Touchable.disabled;
@@ -225,6 +249,9 @@ public final class BrowserStockMainMenu{
         }
         markDatabaseMenu(false);
     }
+
+    @JSBody(params={"open"}, script="document.documentElement.setAttribute('data-mindustry-main-menu-play-submenu',open?'open':'closed');")
+    private static native void markPlayMenu(boolean open);
 
     @JSBody(params={"open"}, script="document.documentElement.setAttribute('data-mindustry-main-menu-database-submenu',open?'open':'closed');")
     private static native void markDatabaseMenu(boolean open);
@@ -242,6 +269,8 @@ public final class BrowserStockMainMenu{
 
     @JSBody(script="""
         const root=document.documentElement;
+        root.removeAttribute('data-mindustry-play-campaign-x');
+        root.removeAttribute('data-mindustry-play-campaign-y');
         for(const name of ['play','database-group','custom','research','database','schematics','controls','settings','saves','planets']){
             root.removeAttribute('data-mindustry-main-menu-'+name+'-x');
             root.removeAttribute('data-mindustry-main-menu-'+name+'-y');
@@ -263,17 +292,18 @@ public final class BrowserStockMainMenu{
         const root=document.documentElement;
         root.setAttribute('data-mindustry-main-menu-'+name+'-x',String(x));
         root.setAttribute('data-mindustry-main-menu-'+name+'-y',String(y));
+        if(name==='planets'){root.setAttribute('data-mindustry-play-campaign-x',String(x));root.setAttribute('data-mindustry-play-campaign-y',String(y));}
         """)
     private static native void markMenuHitPoint(String name, float x, float y);
 
     private static void openPlay(){
-        closeDatabaseMenu();
+        closeDesktopMenus();
         contentOpen = true;
         markPage("play");
     }
 
     public static void showHome(){
-        closeDatabaseMenu();
+        closeDesktopMenus();
         contentOpen = false;
         markPage("home");
     }

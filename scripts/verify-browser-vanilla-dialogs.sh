@@ -63,6 +63,11 @@ for device in desktop mobile; do
       await new Promise(r=>setTimeout(r,250));
       await wait(()=>!(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('settings'),
         'Arc dialog did not close on Escape: settings');
+      if(root.getAttribute('data-mindustry-main-menu-layout')!=='mobile-grid'){
+        await wait(()=>root.hasAttribute('data-mindustry-main-menu-play-x'),'Play parent coordinates');
+        await click(Number(root.getAttribute('data-mindustry-main-menu-play-x')),Number(root.getAttribute('data-mindustry-main-menu-play-y')));
+        await wait(()=>root.getAttribute('data-mindustry-main-menu-play-submenu')==='open','Play parent opened');
+      }
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-saves-x'),'saves button coordinates');
       await click(Number(root.getAttribute('data-mindustry-main-menu-saves-x')),Number(root.getAttribute('data-mindustry-main-menu-saves-y')));
       await wait(()=>root.getAttribute('data-mindustry-vanilla-saves-open')==='yes','LoadDialog save manager opened');

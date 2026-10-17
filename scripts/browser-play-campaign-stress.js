@@ -72,8 +72,8 @@
   await wait(() => Number(get('planet-render-frames')) > firstStableFrame,
     'completed original 3D frames continue beyond initial opening');
   await frame('3D sector projections stay alive beyond initial render');
-  if(get('main-menu-page') !== 'play'){
-    throw Error('Opening a planet should not replace native Play/Custom Game menu');
+  if(get('main-menu-page') !== (get('input-mode')==='mobile'?'play':'home')){
+    throw Error('Planet dialog left native navigation in an unexpected state');
   }
   r.setAttribute('data-mindustry-play-campaign-smoke','passed');
   r.setAttribute('data-mindustry-play-campaign-device',
