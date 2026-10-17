@@ -10,6 +10,24 @@ server_pid=""
 cleanup(){ if [ -n "$server_pid" ]; then kill "$server_pid" 2>/dev/null || true; fi; }
 trap cleanup EXIT
 
+# After every stock RTS command, prove the actual Java/TeaVM frame loop
+# continues to advance; DOM readiness alone cannot detect hard browser freezes.
+rts_watchdog="(async()=>{
+  const r=document.documentElement;
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const sample=()=>Number(r.getAttribute('data-mindustry-cpu-sample')||0);
+  const before=sample();
+  for(let i=0;i<120;i++){
+    if(r.getAttribute('data-mindustry-web')!=='ready')
+      throw Error('RTS command crashed the browser runtime');
+    if(sample()>before && before>0){
+      r.setAttribute('data-mindustry-rts-frame-watchdog','passed');
+      return true;
+    }
+    await sleep(100);
+  }
+  throw Error('Stock RTS command left game loop unresponsive');
+})()"
 command -v google-chrome >/dev/null
 test -s "$WEB_DIR/index.html"
 test -s "$WEB_DIR/assets/maps/default/maze.msav"
@@ -36,7 +54,9 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-hud-commands="stock-PlacementFragment"' \
   --require 'data-mindustry-rts-command-smoke="commanded"' \
   --require 'data-mindustry-rts-command-source="dom-shift-g-and-right-click"' \
-  --require 'data-mindustry-network="local-only"' > "$dom"
+  --require 'data-mindustry-network="local-only"' \
+  --after-ready-eval "$rts_watchdog" \
+  --after-ready-require 'data-mindustry-rts-frame-watchdog="passed"' > "$dom"
 
 grep -Eq 'data-mindustry-rts-command-unit-id="[0-9]+"' "$dom"
 grep -Eq 'data-mindustry-rts-selected-count="[1-9][0-9]*"' "$dom"
@@ -64,7 +84,9 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-rts-group-smoke="commanded"' \
   --require 'data-mindustry-rts-group-source="dom-key-g-and-single-right-click"' \
   --require 'data-mindustry-rts-group-orders="2"' \
-  --require 'data-mindustry-network="local-only"' > "$group_dom"
+  --require 'data-mindustry-network="local-only"' \
+  --after-ready-eval "$rts_watchdog" \
+  --after-ready-require 'data-mindustry-rts-frame-watchdog="passed"' > "$group_dom"
 
 grep -Eq 'data-mindustry-rts-group-unit-ids="[0-9]+,[0-9]+"' "$group_dom"
 grep -Eq 'data-mindustry-rts-group-selected-count="[2-9][0-9]*"' "$group_dom"
@@ -92,7 +114,9 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-rts-rect-smoke="commanded"' \
   --require 'data-mindustry-rts-rect-source="dom-left-button-world-drag"' \
   --require 'data-mindustry-rts-group-orders="2"' \
-  --require 'data-mindustry-network="local-only"' > "$rect_dom"
+  --require 'data-mindustry-network="local-only"' \
+  --after-ready-eval "$rts_watchdog" \
+  --after-ready-require 'data-mindustry-rts-frame-watchdog="passed"' > "$rect_dom"
 
 grep -Eq 'data-mindustry-rts-rect-selected-count="[2-9][0-9]*"' "$rect_dom"
 grep -Eq 'data-mindustry-rts-group-unit-ids="[0-9]+,[0-9]+"' "$rect_dom"
@@ -120,7 +144,9 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-rts-stance-smoke="on-then-off"' \
   --require 'data-mindustry-rts-stance-source="dom-key-k-native-placementfragment-keybind"' \
   --require 'data-mindustry-rts-stance-count="2"' \
-  --require 'data-mindustry-network="local-only"' > "$stance_dom"
+  --require 'data-mindustry-network="local-only"' \
+  --after-ready-eval "$rts_watchdog" \
+  --after-ready-require 'data-mindustry-rts-frame-watchdog="passed"' > "$stance_dom"
 
 grep -Eq 'data-mindustry-rts-stance-unit-ids="[0-9]+,[0-9]+"' "$stance_dom"
 echo "RTS stance: DOM Shift+G -> stock PlacementFragment KeyK -> two stock CommandAI Hold Fire on -> KeyK again -> both off PASS"
