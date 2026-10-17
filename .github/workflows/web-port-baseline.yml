@@ -321,6 +321,11 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-unit-assembler.sh
 
+      - name: Produce Conquer, Disrupt and Collaris with physically linked Erekir Tier-2 assembler modules
+        id: unit_assembler_advanced
+        continue-on-error: true
+        run: bash scripts/verify-browser-unit-assembler.sh advanced
+
       # The complete 46-map boot matrix is long but independent. Run early to
       # catch late-sector load failures before save, locale and RTS tests,
       # without skipping those checks when one campaign map is broken.
@@ -578,8 +583,9 @@ jobs:
       - name: Require original Erekir unit assembler for release
         if: always()
         run: |
-          if [ "${{ steps.unit_assembler.outcome }}" != "success" ]; then
-            echo "Stock Erekir Tank, Ship or Mech assembly failed: release remains BLOCKED." >&2
+          if [ "${{ steps.unit_assembler.outcome }}" != "success" ] || \
+             [ "${{ steps.unit_assembler_advanced.outcome }}" != "success" ]; then
+            echo "Stock Erekir Tier-1/Tier-2 Tank, Ship or Mech assembly failed: release remains BLOCKED." >&2
             exit 1
           fi
 
