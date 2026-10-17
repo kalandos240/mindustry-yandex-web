@@ -179,6 +179,9 @@ public final class BrowserApplication extends WebApplicationBase{
                 // Opt-in native Sorter config: real canvas click -> stock
                 // BlockConfigFragment -> ItemSelection copper set/clear.
                 BrowserBuildingConfigSmoke.update();
+                // Chrome test of the exact original HudFragment "skip" wave
+                // action, including real unit-wave state advancement.
+                BrowserWaveHudSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
