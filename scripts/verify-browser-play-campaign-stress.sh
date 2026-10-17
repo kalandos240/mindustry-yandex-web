@@ -33,7 +33,7 @@ for device in desktop mobile; do
     --after-ready-require 'data-mindustry-play-campaign-smoke="passed"' \
     --after-ready-require "data-mindustry-play-campaign-device=\"$device\"" \
     --after-ready-require 'data-mindustry-vanilla-planet-frame="rendered"' \
-    --after-ready-require 'data-mindustry-planet-first-chooser="open"' \
+    --after-ready-require 'data-mindustry-planet-first-chooser="closed"' \
     --after-ready-require 'data-mindustry-web="ready"' > "$dom"
   grep -q 'data-mindustry-play-campaign-clicks="2"' "$dom"
   echo "$device: home Play -> native Campaign Planets, first-run chooser and true Java heartbeat PASS"
