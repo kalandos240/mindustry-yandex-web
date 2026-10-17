@@ -152,7 +152,11 @@ if "data-mindustry-async-core" not in runtime:
                     BrowserCampaignRuntime.updateFrame();
                 }else{
                     if(!BrowserLocalMapRuntime.active()){
-                        throw new IllegalStateException("Production Web entered playing state outside a local-map or campaign session");
+                        // A failed sector launch can leave vanilla Logic.play's
+                        // State.playing behind without any browser-owned session.
+                        // This is recoverable: never kill the Java frame loop.
+                        recoverOrphanSession("playing");
+                        return;
                     }
                     BrowserLocalMapRuntime.updateFrame();
                 }
@@ -161,10 +165,13 @@ if "data-mindustry-async-core" not in runtime:
         }
 '''
     new_play = '''        if(state.isPlaying()){
-            // Match ClientLauncher.update(): snapshot async inputs before the module frame,
-            // compute on the same browser event loop, then flush process outputs after it.
-            // This initializes and advances stock PhysicsProcess/AvoidanceProcess without
-            // retaining ExecutorService, Future or worker threads in TeaVM.
+            // Recover BEFORE beginning the stock asynchronous physics frame:
+            // orphaned vanilla State.playing has no browser-owned World session.
+            if(!smokeMode && !BrowserCampaignRuntime.active()
+            && !BrowserLocalMapRuntime.active()){
+                recoverOrphanSession("playing");
+                return;
+            }
             asyncCore.begin();
             try{
                 if(smokeMode){
@@ -175,9 +182,6 @@ if "data-mindustry-async-core" not in runtime:
                 }else if(BrowserCampaignRuntime.active()){
                     BrowserCampaignRuntime.updateFrame();
                 }else{
-                    if(!BrowserLocalMapRuntime.active()){
-                        throw new IllegalStateException("Production Web entered playing state outside a local-map or campaign session");
-                    }
                     BrowserLocalMapRuntime.updateFrame();
                 }
             }finally{
