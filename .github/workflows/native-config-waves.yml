@@ -1,4 +1,4 @@
-name: Inspect mobile configuration geometry
+name: Verify native popup layer diagnosis
 on:
   push:
     branches: [diagnose-native-config-waves]
