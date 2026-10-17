@@ -23,7 +23,7 @@ for device in desktop mobile; do
   dom="/tmp/mindustry-native-settings-$device.html"
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${flags[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustrySettingsNestedSmoke=1" \
     --profile "$profile" --port 9519 --timeout 230 --cdp-input-bridge \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-vanilla-dialogs="ready"' \
