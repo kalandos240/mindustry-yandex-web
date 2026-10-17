@@ -33,6 +33,7 @@ jobs:
         run: |
           python3 -m py_compile scripts/*.py
           python3 scripts/test_yandex_size_budget.py
+          node scripts/test-campaign-map-loading.js
           python3 scripts/audit-campaign-consistency.py
           python3 scripts/audit-browser-hotpath.py
           python3 scripts/audit-yandex-ui-controls.py
@@ -90,6 +91,7 @@ jobs:
         run: |
           python3 -m py_compile scripts/*.py
           python3 scripts/test_yandex_size_budget.py
+          node scripts/test-campaign-map-loading.js
           python3 scripts/audit-campaign-consistency.py
           python3 scripts/audit-browser-hotpath.py
           python3 scripts/audit-yandex-ui-controls.py
@@ -212,6 +214,7 @@ jobs:
       - name: Verify exact 100 MB Yandex unpacked size budget
         run: |
           python3 scripts/test_yandex_size_budget.py
+          node scripts/test-campaign-map-loading.js
           python3 scripts/yandex_size_budget.py
 
       - name: Upload Yandex size-budget report

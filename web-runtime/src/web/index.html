@@ -126,6 +126,24 @@
             root.setAttribute('data-mindustry-asset-index', 'set');
             const cache = Object.create(null);
             globalThis.__mindustryAssetCache = cache;
+            const campaignRequests = new Map();
+            // Share foreground launches with background warmup, including retries.
+            globalThis.__mindustryPrepareCampaignMap = path => {
+                if(!globalThis.__mindustryAssetSet.has(path)) return Promise.reject(new Error('Unpackaged campaign map: ' + path));
+                const url = 'assets/' + path;
+                if(cache[url]) return Promise.resolve();
+                if(campaignRequests.has(path)) return campaignRequests.get(path);
+                const request = (async () => {
+                    const response = await fetch(url);
+                    if(!response.ok) throw new Error('Campaign map load failed (' + response.status + '): ' + url);
+                    const bytes = new Int8Array(await response.arrayBuffer());
+                    if(bytes.byteLength < 128) throw new Error('Incomplete campaign map: ' + path);
+                    cache[url] = bytes;
+                })();
+                campaignRequests.set(path, request);
+                request.then(() => campaignRequests.delete(path), () => campaignRequests.delete(path));
+                return request;
+            };
 
             // Arc's synchronous Fi bridge needs renderer/UI/content assets in memory before
             // main(). Audio is URL-backed. Campaign maps are only needed when a sector starts,
@@ -208,11 +226,8 @@
                         if(index >= deferredCampaignManifest.length) return;
                         const path = deferredCampaignManifest[index];
                         const url = 'assets/' + path;
-                        const response = await fetch(url);
-                        if(!response.ok) throw new Error('Campaign map warmup failed (' + response.status + '): ' + url);
-                        const bytes = new Int8Array(await response.arrayBuffer());
-                        cache[url] = bytes;
-                        warmedBytes += bytes.byteLength;
+                        await globalThis.__mindustryPrepareCampaignMap(path);
+                        warmedBytes += cache[url] ? cache[url].byteLength : 0;
                         warmed++;
                     }
                 }

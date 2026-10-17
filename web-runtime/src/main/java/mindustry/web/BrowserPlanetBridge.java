@@ -31,6 +31,9 @@ public final class BrowserPlanetBridge{
             reject("sector-locked:" + sector.preset.name);
             return;
         }
+        // Wait BEFORE checkpointing/resetting the currently active world.
+        if(!BrowserCampaignRuntime.hasSectorSave(sector.preset)
+        && BrowserCampaignAssets.defer(sector.preset, () -> launchSector(sector))) return;
         try{
             // In vanilla the player can launch a different sector FROM the
             // active 3D planet map. The old Web guard silently rejected it.

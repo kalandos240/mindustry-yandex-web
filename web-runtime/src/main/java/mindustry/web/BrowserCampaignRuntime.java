@@ -94,7 +94,7 @@ public final class BrowserCampaignRuntime{
             && meta.rules.sector.id == sector.id && meta.rules.sector.planet == sector.planet;
     }
 
-    private static boolean hasSectorSave(SectorPreset preset){
+    static boolean hasSectorSave(SectorPreset preset){
         Sector sector = preset == null ? null : preset.sector;
         if(sector == null || sector.save == null || sector.save.file == null
         || !sector.save.file.exists() || sector.save.file.length() < 128){
@@ -119,6 +119,8 @@ public final class BrowserCampaignRuntime{
             continuePreset(preset);
             return;
         }
+
+        if(BrowserCampaignAssets.defer(preset, () -> playUnlockedPreset(preset, originPreset, actionId))) return;
 
         Sector origin = originPreset == null ? null : originPreset.sector;
         if(origin == null || !origin.hasBase() || !origin.isCaptured()){
