@@ -16,11 +16,18 @@ rts_watchdog="(async()=>{
   const r=document.documentElement;
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const sample=()=>Number(r.getAttribute('data-mindustry-cpu-sample')||0);
-  const before=sample();
+  let before=sample();
+  for(let i=0;i<120 && before===0;i++){
+    if(r.getAttribute('data-mindustry-web')!=='ready')
+      throw Error('RTS command crashed before first Java frame sample');
+    await sleep(100);
+    before=sample();
+  }
+  if(before===0) throw Error('RTS command never reached first Java frame sample');
   for(let i=0;i<120;i++){
     if(r.getAttribute('data-mindustry-web')!=='ready')
       throw Error('RTS command crashed the browser runtime');
-    if(sample()>before && before>0){
+    if(sample()>before){
       r.setAttribute('data-mindustry-rts-frame-watchdog','passed');
       return true;
     }
