@@ -410,17 +410,59 @@ public final class BrowserUiRuntime{
             .colspan(2).name("web-pause-saves");
         dialog.row();
 
-        dialog.button(Core.bundle.get("quit", "Quit"), Icon.exit,
+        // A browser game cannot be exited like a native desktop program.
+        // This action safely saves/returns to the game menu (and schedules
+        // eligible Yandex ads), so never advertise a misleading "Quit".
+        dialog.button(Core.bundle.get("back", "Back"), Icon.left,
             BrowserUiRuntime::returnToMenuWithAd)
             .width(width * 2f + 10f).height(height)
-            .colspan(2).name("web-pause-exit").padBottom(15f);
+            .colspan(2).name("web-pause-menu").padBottom(15f);
 
         overlay.add(dialog).center();
+        // The stock menu is not active while playing, so its visibility
+        // sampler cannot observe Settings/Controls/Saves shown from Pause.
+        // Update native Arc hitboxes and the real dialog visibility here,
+        // at one sample per 16 Scene frames rather than every frame.
+        int[] sampling = {0};
+        overlay.update(() -> {
+            if(!overlay.visible || (++sampling[0] & 15) != 0) return;
+            markPauseHitPoint(dialog.find("web-pause-resume"), "resume");
+            markPauseHitPoint(dialog.find("web-pause-settings"), "settings");
+            markPauseHitPoint(dialog.find("web-pause-save"), "save");
+            if(BrowserCampaignRuntime.active() && state.isCampaign()){
+                markPauseHitPoint(dialog.find("web-pause-research"), "research");
+            }
+            markPauseHitPoint(dialog.find("web-pause-schematics"), "schematics");
+            markPauseHitPoint(dialog.find("web-pause-controls"), "controls");
+            markPauseHitPoint(dialog.find("web-pause-saves"), "saves");
+            markPauseHitPoint(dialog.find("web-pause-menu"), "menu");
+            BrowserVanillaDialogs.sampleVisibility();
+            markPauseVisible();
+        });
         ui.hudGroup.addChild(overlay);
         markPauseUiReady();
         markPauseSettingsUiReady();
         markStockPauseUiReady(mobile ? "mobile" : "desktop");
     }
+
+    private static void markPauseHitPoint(Element button, String action){
+        if(button == null || !button.visible || Core.scene == null
+            || button.getWidth() <= 1f || button.getHeight() <= 1f) return;
+        Vec2 center = button.localToStageCoordinates(
+            new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
+        Vec2 screen = Core.scene.getViewport().project(center);
+        markPauseHitPointNative(action, screen.x, screen.y);
+    }
+
+    @JSBody(params = {"action", "x", "y"}, script = """
+        const r = document.documentElement;
+        r.setAttribute('data-mindustry-pause-button-' + action + '-x', String(x));
+        r.setAttribute('data-mindustry-pause-button-' + action + '-y', String(y));
+        """)
+    private static native void markPauseHitPointNative(String action, float x, float y);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-dialog-visible','yes');")
+    private static native void markPauseVisible();
 
     /**
      * The original game-over screen has a dedicated, modal action instead of
