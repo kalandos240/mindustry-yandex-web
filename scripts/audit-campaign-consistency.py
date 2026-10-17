@@ -10,6 +10,7 @@ EREKIR_TEST = (ROOT / "scripts" / "verify-browser-erekir-progression.sh").read_t
 RESEARCH = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignResearch.java").read_text(encoding="utf-8")
 RUNTIME = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
 UI_PATCH = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
+PLANET_BRIDGE = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserPlanetBridge.java").read_text(encoding="utf-8")
 
 SERPULO = [
     "groundZero", "frozenForest", "crateredBattleground", "ruinousShores",
@@ -204,6 +205,28 @@ for preset, origin in LAUNCH_ORIGINS.items():
         RUNTIME,
         f'playUnlockedPreset(SectorPresets.{preset}, SectorPresets.{origin}, "{action}")',
         f"campaign launch mapping {preset}",
+    )
+
+# Audit the ACTUAL 3D PlanetDialog -> browser campaign dispatch, not just the
+# separate menu's playUnlockedPreset path. File names and Java field names may
+# differ (Erekir Caldera is named "caldera-erekir" in vanilla v159.7).
+planet_dispatch = dict(re.findall(
+    r'case "([^"]+)"\s*->\s*BrowserCampaignRuntime\.(play[A-Za-z0-9]+)\(\);',
+    PLANET_BRIDGE,
+))
+expected_planet_dispatch = {
+    name: "play" + name[0].upper() + name[1:] for name in SERPULO
+}
+expected_planet_dispatch.update({
+    file_name: "play" + field[0].upper() + field[1:]
+    for field, file_name in EREKIR
+})
+if planet_dispatch != expected_planet_dispatch:
+    failures.append(
+        "3D planet campaign launch dispatch mismatch: " +
+        f"missing={sorted(expected_planet_dispatch.keys() - planet_dispatch.keys())}, " +
+        f"extra={sorted(planet_dispatch.keys() - expected_planet_dispatch.keys())}, " +
+        f"incorrect={sorted(k for k in expected_planet_dispatch.keys() & planet_dispatch.keys() if planet_dispatch[k] != expected_planet_dispatch[k])}"
     )
 
 if len(LAUNCH_ORIGINS) != 44:

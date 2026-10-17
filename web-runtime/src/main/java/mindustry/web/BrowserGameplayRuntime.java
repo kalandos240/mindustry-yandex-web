@@ -39,6 +39,8 @@ public final class BrowserGameplayRuntime{
     private static int menuUpdateFrames;
     private static int moduleLoopFrames;
     private static boolean worldLoadSmokeComplete;
+    private static boolean priorNativeModal;
+    private static int nativeModalSampleFrames;
 
     private BrowserGameplayRuntime(){}
 
@@ -116,6 +118,22 @@ public final class BrowserGameplayRuntime{
 
     private static void updateFrame(){
         if(!initialized || logic == null || state == null) return;
+
+        // The last Escape press can close a stock Dialog in Arc Scene before
+        // this frame's gameplay shortcut handler runs. If we only query the
+        // CURRENT dialog state, the same keyDown also resumes the paused
+        // world behind the dialog. Preserve one frame of modal history.
+        boolean nativeModalNow = Core.scene != null &&
+            (Core.scene.hasDialog() || BrowserVanillaDialogs.anyNativeModalShown());
+        boolean nativeModalKeyGuard = nativeModalNow || priorNativeModal;
+        priorNativeModal = nativeModalNow;
+        // Stock Dialog visibility must also refresh WHILE playing/paused.
+        // Previously only the Home menu sampled it, leaving stale "settings"
+        // markers after closing a dialog from the campaign Pause menu.
+        if((++nativeModalSampleFrames & 15) == 0 && BrowserVanillaDialogs.initialized()){
+            BrowserVanillaDialogs.sampleVisibility();
+        }
+
         // Arc keyboard events are drained before the listener update. The
         // stock Control.update() handles Space only during playing frames and
         // directly sets GameState.paused, bypassing the Web frozen-clock
@@ -129,7 +147,8 @@ public final class BrowserGameplayRuntime{
         boolean menuTapped = !smokeMode && Core.input != null && Core.input.keyTap(Binding.menu);
         boolean researchOpen = BrowserResearchUi.isOpen();
         boolean databaseOpen = BrowserStockDatabaseUi.isOpen();
-        if(menuTapped && Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
+        if(menuTapped && !nativeModalKeyGuard &&
+            Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
             if(researchOpen) BrowserResearchUi.escape();
             else if(databaseOpen) BrowserStockDatabaseUi.hide();
         }
@@ -138,6 +157,7 @@ public final class BrowserGameplayRuntime{
         && (Core.input.keyTap(Binding.pause) || menuTapped)
         && !state.gameOver
         && !state.rules.pauseDisabled && Core.scene != null
+        && !nativeModalKeyGuard
         && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
             if(BrowserCampaignRuntime.active()){
                 if(state.isPaused()) BrowserCampaignRuntime.resume();
@@ -206,7 +226,11 @@ public final class BrowserGameplayRuntime{
             runWorldLoadSmoke();
         }else if(smokeMode && menuUpdateFrames == 5){
             BrowserPlayingRuntime.begin();
-        }else if(!smokeMode && menuUpdateFrames == 4){
+        }else if(!smokeMode && (menuUpdateFrames == 4 ||
+            (BrowserCampaignRuntime.matrixWaitingForAssets() && menuUpdateFrames % 8 == 0))){
+            // Retry only the asynchronous campaign matrix asset gate, in a
+            // bounded eight-frame cadence; normal production/test launches
+            // retain their one-shot startup call.
             // CI may request one real campaign sector or packaged local map. Without
             // either query, production remains in the user-controlled local selector.
             BrowserCampaignRuntime.maybeStartTestSector();
@@ -223,7 +247,13 @@ public final class BrowserGameplayRuntime{
     private static native void markSpaceTransition(String state);
 
     private static void runMenuModuleFrame(){
-        boolean trace = smokeMode || moduleLoopFrames < 3;
+        // Trace each stock subsystem while the 3D planet dialog is present.
+        // One of the native UI/renderer callbacks is currently throwing a
+        // NullPointerException in TeaVM; logging the last *entered* phase is
+        // more useful than the generic "frame-listeners" top-level error.
+        boolean trace = smokeMode || moduleLoopFrames < 3 ||
+            BrowserVanillaDialogs.initialized() && ui != null &&
+            ui.planet != null && ui.planet.isShown();
 
         if(trace) markModulePhase("logic");
         logic.updateWebMenu();

@@ -38,7 +38,7 @@ public final class BrowserStockDatabaseUi{
     private static UnlockableContent selected;
     private static Table tiles;
     private static Label detailTitle, detailText, pageLabel;
-    private static Element closeButton;
+    private static Element closeButton, vanillaButton;
     private static int pointerFrames;
 
     private BrowserStockDatabaseUi(){}
@@ -64,6 +64,10 @@ public final class BrowserStockDatabaseUi{
         dialog.table(header -> {
             header.add(Core.bundle.get("database", "Database"))
                 .style(Styles.outlineLabel).growX().left();
+            vanillaButton = header.button(Core.bundle.get("all", "All"), Icon.book,
+                BrowserStockDatabaseUi::openVanilla)
+                .height(mobile ? 52f : 43f)
+                .name("web-database-open-vanilla").get();
             closeButton = header.button(Icon.cancel, BrowserStockDatabaseUi::hide)
                 .size(mobile ? 52f : 43f).name("web-database-back").get();
         }).growX().row();
@@ -116,6 +120,11 @@ public final class BrowserStockDatabaseUi{
 
         dialog.table(details -> {
             detailTitle = details.add("").growX().left().get();
+            details.button(Icon.info, () -> {
+                if(selected != null && ui.content != null) ui.content.show(selected);
+            }).size(mobile ? 48f : 40f)
+                .disabled(b -> selected == null || ui.content == null)
+                .name("web-database-stock-content-info");
             details.row();
             detailText = details.add("").width(width - 30f).left().wrap().get();
         }).growX().row();
@@ -127,6 +136,12 @@ public final class BrowserStockDatabaseUi{
                     new Vec2(closeButton.getWidth() * 0.5f, closeButton.getHeight() * 0.5f));
                 Vec2 screen = Core.scene.getViewport().project(stage);
                 markClosePosition(screen.x, screen.y);
+                if(vanillaButton != null && vanillaButton.getWidth() > 0f){
+                    Vec2 vanillaStage = vanillaButton.localToStageCoordinates(
+                        new Vec2(vanillaButton.getWidth() * 0.5f, vanillaButton.getHeight() * 0.5f));
+                    Vec2 vanillaScreen = Core.scene.getViewport().project(vanillaStage);
+                    markVanillaPosition(vanillaScreen.x, vanillaScreen.y);
+                }
             }
         });
         // The pinned Database button is also on the native DesktopInput HUD.
@@ -149,6 +164,14 @@ public final class BrowserStockDatabaseUi{
     public static void hide(){
         open = false;
         markOpen(false);
+    }
+
+    private static void openVanilla(){
+        // Mark the actual Arc Scene click before the compact overlay is hidden.
+        // This separates pointer interception from stock-dialog init errors.
+        markVanillaClick();
+        hide();
+        BrowserVanillaDialogs.openDatabase();
     }
 
     /** Escape handling uses the same visibility flag as the native Back button. */
@@ -220,6 +243,16 @@ public final class BrowserStockDatabaseUi{
         document.documentElement.setAttribute('data-mindustry-database-selection',name);
         """)
     private static native void markSelected(String name);
+
+    @JSBody(script="document.documentElement.setAttribute('data-mindustry-database-vanilla-click','yes');")
+    private static native void markVanillaClick();
+
+    @JSBody(params={"x","y"}, script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-database-vanilla-x',String(x));
+        root.setAttribute('data-mindustry-database-vanilla-y',String(y));
+        """)
+    private static native void markVanillaPosition(float x, float y);
 
     @JSBody(params={"x","y"}, script="""
         const root=document.documentElement;

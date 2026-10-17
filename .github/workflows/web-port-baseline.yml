@@ -2,7 +2,7 @@ name: Web port baseline
 
 on:
   push:
-    branches: [main]
+    branches: [main, full-vanilla-port-100mb]
   pull_request:
   workflow_dispatch:
 
@@ -32,8 +32,10 @@ jobs:
       - name: Static-check release and browser test harness
         run: |
           python3 -m py_compile scripts/*.py
+          python3 scripts/test_yandex_size_budget.py
           python3 scripts/audit-campaign-consistency.py
           python3 scripts/audit-browser-hotpath.py
+          python3 scripts/audit-yandex-ui-controls.py
           for script in scripts/*.sh; do
             bash -n "$script"
           done
@@ -87,8 +89,10 @@ jobs:
       - name: Static-check release and browser test harness
         run: |
           python3 -m py_compile scripts/*.py
+          python3 scripts/test_yandex_size_budget.py
           python3 scripts/audit-campaign-consistency.py
           python3 scripts/audit-browser-hotpath.py
+          python3 scripts/audit-yandex-ui-controls.py
           for script in scripts/*.sh; do
             bash -n "$script"
           done
@@ -108,7 +112,21 @@ jobs:
         working-directory: work/Mindustry
         run: |
           chmod +x gradlew
-          ./gradlew tools:pack '-Pargs=[]' --no-daemon --stacktrace
+          # Maven Central can return HTTP 429 on parallel hosted GitHub runners.
+          # Retry transient upstream dependency resolution with bounded backoff
+          # instead of marking a game/rendering regression before compilation.
+          packed=no
+          for attempt in 1 2 3; do
+            if ./gradlew tools:pack '-Pargs=[]' --no-daemon --stacktrace; then
+              packed=yes
+              break
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Atlas Gradle dependency/build attempt $attempt failed; retrying after rate-limit cooldown"
+              sleep $((attempt * 20))
+            fi
+          done
+          test "$packed" = yes
           test -s core/assets/sprites/sprites.aatls
           test -s core/assets/sprites/sprites.png
           pages="$(find core/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)"
@@ -137,6 +155,10 @@ jobs:
           python3 scripts/patch-mindustry-block-reflection.py work/Mindustry/core/src/mindustry/world/Block.java
           python3 scripts/patch-mindustry-fonts-web.py work/Mindustry/core/src/mindustry/ui/Fonts.java
           python3 scripts/patch-mindustry-no-links-web.py
+          python3 scripts/patch-vanilla-schematics-web.py
+          python3 scripts/patch-vanilla-database-web.py
+          python3 scripts/patch-vanilla-planet-web.py
+          python3 scripts/patch-vanilla-settings-web.py
           python3 scripts/patch-mindustry-external-urls-web.py
 
       - name: Verify applied local gameplay overlays
@@ -186,6 +208,21 @@ jobs:
 
       - name: Remove TeaVM runtime documentation link
         run: python3 scripts/sanitize-teavm-runtime-links.py
+
+      - name: Verify exact 100 MB Yandex unpacked size budget
+        run: |
+          python3 scripts/test_yandex_size_budget.py
+          python3 scripts/yandex_size_budget.py
+
+      - name: Upload Yandex size-budget report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yandex-size-budget
+          path: |
+            work/release/mindustry-yandex-size-budget.txt
+            work/release/mindustry-yandex-size-budget.json
+          if-no-files-found: warn
 
       - name: Validate staged browser smoke package
         run: |
@@ -269,6 +306,182 @@ jobs:
 
       - name: Audit Yandex release package requirements
         run: bash scripts/audit-yandex-release.sh
+
+      # An independently downloadable DEVELOPMENT BUILD for the user's
+      # hands-on testing. This is explicitly NOT a release or even a claim
+      # that the subsequent real-Chrome tests passed: they continue below.
+      # Package only after TeaVM compiled, all pinned assets are present,
+      # the external-URL audit passed, and 100000000-byte cap passed.
+      # Do not condition the human-playtest artifact on yet-to-run UI/factory
+      # matrix outcomes, and never rename it to the approved release artifact.
+      - name: Package experimental game for manual playtesting
+        run: |
+          python3 scripts/package-yandex-release.py
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          cat > work/release/EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt <<EOF
+          This is a DEVELOPMENT playtest build, not a verified Yandex Games release.
+          Git SHA: ${GITHUB_SHA}
+          Includes original 3D Serpulo/Erekir planet interface in this source revision.
+          IMPORTANT: Native browser interaction, 46 campaign maps, saves and
+          gameplay factory regressions have NOT finished running at publication.
+          Some features may be incomplete or malfunction. Please report bugs.
+          Hard release gates later in this workflow are NOT bypassed.
+          EOF
+
+      - name: Upload experimental playable Yandex ZIP after byte budget
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          path: |
+            work/release/mindustry-yandex-release.zip
+            work/release/mindustry-yandex-release.zip.sha256
+            work/release/mindustry-yandex-release-report.txt
+            work/release/EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt
+          if-no-files-found: error
+
+      # Fail fast on native dialog interaction before the long campaign matrices.
+      - name: Verify native vanilla dialogs in real desktop and mobile Chrome
+        run: bash scripts/verify-browser-vanilla-dialogs.sh
+
+      # Interactive buttons are not certified merely by compiling their dialogs.
+      # Require real Chrome mouse/touch events AND a continuing TeaVM frame loop
+      # after each open/close, including repeat visits and a reduced game viewport.
+      - name: Stress all allowed menu buttons for missed actions and hard freezes
+        id: ui_button_stress
+        continue-on-error: true
+        run: bash scripts/verify-browser-ui-button-stress.sh
+
+      - name: Exercise original Settings categories and persisted preferences with trusted Chrome input
+        id: settings_nested_stress
+        continue-on-error: true
+        run: bash scripts/verify-browser-settings-tab-stress.sh
+
+      # Keep the browser game scheduler moving after each native Arc Scene
+      # button in actual Serpulo campaign and local maps, on both devices.
+      # Do not trust mere Java button construction or DOM element presence.
+      - name: Exercise every Pause action and campaign HUD Research without browser freezes
+        id: gameplay_button_stress
+        continue-on-error: true
+        run: bash scripts/verify-browser-gameplay-button-stress.sh
+
+      # Run the independent game/campaign/portal matrix even if the still-WIP
+      # native first-campaign chooser fails; never silently turn it green.
+      - name: Verify original 3D planet map in desktop and mobile Chrome
+        id: planet_navigation
+        continue-on-error: true
+        run: bash scripts/verify-browser-planet-dialog.sh
+
+      # Home Play must also offer an obvious Campaign button that opens
+      # the original 3D planet/sector UI, without obscuring local Custom Game.
+      - name: Open 3D planets from actual Play submenu on desktop and mobile
+        id: play_campaign_navigation
+        continue-on-error: true
+        run: bash scripts/verify-browser-play-campaign-stress.sh
+
+      # Previous 46-map matrix called startPreset() directly and could pass
+      # while both visible campaign entry points were broken. Test REAL
+      # Play > Serpulo/Erekir buttons AND original globe > Sector Launch:
+      # four fresh desktop/mobile Chrome user paths, no smoke shortcuts.
+      - name: Start genuine Serpulo and Erekir campaigns from native menu and globe
+        id: real_campaign_launch
+        continue-on-error: true
+        run: bash scripts/verify-browser-real-campaign-launch.sh
+
+      # User reproduction: campaign is running on Erekir and player taps
+      # the actual DesktopInput Icon.map. Verify the stock 3D dialog keeps
+      # rendering and TeaVM does not die on a subsequent resize event.
+      - name: Open original planet map from real in-game Erekir HUD
+        id: native_hud_planet
+        continue-on-error: true
+        run: bash scripts/verify-browser-hud-planet-stress.sh
+
+      # Desktop TechTree must support holding left mouse and dragging
+      # through genuine CDP input; scrollbars/wheel alone are not sufficient.
+      - name: Drag original Research TechTree with left mouse in both axes
+        id: research_mouse_drag
+        continue-on-error: true
+        run: bash scripts/verify-browser-research-mouse-drag.sh
+
+      # Run critical new real-world block and unit production tests before the
+      # long 46-map matrix. Both remain release blockers, but independent
+      # campaign/UX checks must still run and report their own conclusions.
+      - name: Exercise vanilla conveyor transfer and mechanical drill ore production
+        id: production_mechanics
+        continue-on-error: true
+        run: bash scripts/verify-browser-building-mechanics.sh
+
+      # Real mouse/touch on original world tile and stock ItemSelection, not
+      # a direct SorterBuild.configure call. Require both set AND clear UI.
+      - name: Configure and clear original Sorter through native browser buttons
+        id: native_building_config
+        continue-on-error: true
+        run: bash scripts/verify-browser-building-config-stress.sh
+
+      # Verify the stock HudFragment wave button actually increments a
+      # live campaign wave without any JS/direct Logic.runWave shortcuts.
+      # Ground Zero and Onset exercise both planets and mouse/touch controls.
+      - name: Click real wave HUD and advance survival waves on both planets
+        id: native_wave_hud
+        continue-on-error: true
+        run: bash scripts/verify-browser-wave-hud-stress.sh
+
+      - name: Verify all original unit constructors and real Serpulo/Erekir unit factory spawning
+        id: unit_production
+        continue-on-error: true
+        run: bash scripts/verify-browser-unit-production.sh
+
+      # The existing Dagger/Stell tests continue into stock combat and
+      # reconstructor upgrades. This independent matrix exercises the other
+      # four original basic UnitFactory output paths in fresh Chrome profiles.
+      - name: Produce Flare, Risso, Elude and Merui using all remaining stock unit factories
+        id: unit_factory_matrix
+        continue-on-error: true
+        run: bash scripts/verify-browser-unit-factory-matrix.sh
+
+      # Real Erekir assembler construction, payloads, drone AI and Vanquish.
+      - name: Produce Vanquish, Quell and Tecta through original Erekir Tank, Ship and Mech Assemblers
+        id: unit_assembler
+        continue-on-error: true
+        run: bash scripts/verify-browser-unit-assembler.sh
+
+      - name: Produce Conquer, Disrupt and Collaris with physically linked Erekir Tier-2 assembler modules
+        id: unit_assembler_advanced
+        continue-on-error: true
+        run: bash scripts/verify-browser-unit-assembler.sh advanced
+
+      # Publish a clearly labeled, NOT-release playtest build with working
+      # Serpulo/Erekir 3D planets after core game/controls/factory browser gates.
+      # The 46-map/cold-save/portal/advertisement matrix continues afterward;
+      # no production release artifact is published until EVERY gate passes.
+      # This lets a human actually test the latest game while long CI runs.
+      - name: Package interim 3D-planet playtest archive
+        id: playtest_preview
+        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.play_campaign_navigation.outcome == 'success' && steps.native_hud_planet.outcome == 'success' && steps.real_campaign_launch.outcome == 'success' && steps.research_mouse_drag.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_wave_hud.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
+        run: |
+          python3 scripts/package-yandex-release.py
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          test -s work/release/mindustry-yandex-release.zip
+          printf 'PLAYTEST ONLY — release gates still running.\nCommit: %s\nOriginal 3D PlanetDialog: verified by Chrome on desktop/mobile.\nUnpacked limit: 100000000 bytes; checked by packager.\nFinal release: requires all campaign maps, saves, controls and portal tests.\n' "$GITHUB_SHA" > work/release/PLAYTEST-NOT-RELEASE.txt
+
+      - name: Upload interim 3D-planet browser playtest ZIP
+        if: ${{ steps.playtest_preview.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-yandex-playtest-3d-planets
+          path: |
+            work/release/mindustry-yandex-release.zip
+            work/release/mindustry-yandex-release.zip.sha256
+            work/release/mindustry-yandex-release-report.txt
+            work/release/PLAYTEST-NOT-RELEASE.txt
+          if-no-files-found: error
+
+      # The complete 46-map boot matrix is long but independent. Run early to
+      # catch late-sector load failures before save, locale and RTS tests,
+      # without skipping those checks when one campaign map is broken.
+      - name: Boot every Serpulo and Erekir campaign map and tick live gameplay
+        id: campaign_map_matrix
+        continue-on-error: true
+        run: bash scripts/verify-browser-all-campaign-maps.sh
 
       - name: Verify HAR external-host isolation and redaction
         run: bash scripts/verify-browser-network-har.sh
@@ -471,6 +684,9 @@ jobs:
       - name: Verify Space hotkey pause and resume never freezes the browser
         run: bash scripts/verify-browser-space-pause.sh
 
+      - name: Sweep complete vanilla block registry and building factories on both planets
+        run: bash scripts/verify-browser-block-registry.sh
+
       - name: Verify Tank Fabricator construction does not freeze Erekir browser gameplay
         run: bash scripts/verify-browser-factory-freeze.sh
 
@@ -487,6 +703,57 @@ jobs:
           name: web-i18n-report
           path: work/web-i18n-report.txt
           if-no-files-found: warn
+
+      - name: Require original 3D planet navigation for release
+        if: always()
+        run: |
+          if [ "${{ steps.planet_navigation.outcome }}" != "success" ] || \
+             [ "${{ steps.play_campaign_navigation.outcome }}" != "success" ] || \
+             [ "${{ steps.native_hud_planet.outcome }}" != "success" ] || \
+             [ "${{ steps.real_campaign_launch.outcome }}" != "success" ]; then
+            echo "Original 3D PlanetDialog failed: release remains BLOCKED." >&2
+            exit 1
+          fi
+
+      - name: Require all 46 campaign map boots for release
+        if: always()
+        run: |
+          if [ "${{ steps.campaign_map_matrix.outcome }}" != "success" ]; then
+            echo "46-map real Chrome campaign matrix failed: release remains BLOCKED." >&2
+            exit 1
+          fi
+
+      - name: Require real building and unit production for release
+        if: always()
+        run: |
+          if [ "${{ steps.production_mechanics.outcome }}" != "success" ] || \
+             [ "${{ steps.native_wave_hud.outcome }}" != "success" ] || \
+             [ "${{ steps.native_building_config.outcome }}" != "success" ] || \
+             [ "${{ steps.unit_production.outcome }}" != "success" ] || \
+             [ "${{ steps.unit_factory_matrix.outcome }}" != "success" ]; then
+            echo "Original building or one of six real unit factories failed: release remains BLOCKED." >&2
+            exit 1
+          fi
+
+      - name: Require responsive permitted UI controls for Yandex release
+        if: always()
+        run: |
+          if [ "${{ steps.ui_button_stress.outcome }}" != "success" ] || \
+             [ "${{ steps.settings_nested_stress.outcome }}" != "success" ] || \
+             [ "${{ steps.research_mouse_drag.outcome }}" != "success" ] || \
+             [ "${{ steps.gameplay_button_stress.outcome }}" != "success" ]; then
+            echo "Native main menu, HUD or Pause controls froze, were unreachable, or failed to open/close: release BLOCKED." >&2
+            exit 1
+          fi
+
+      - name: Require original Erekir unit assembler for release
+        if: always()
+        run: |
+          if [ "${{ steps.unit_assembler.outcome }}" != "success" ] || \
+             [ "${{ steps.unit_assembler_advanced.outcome }}" != "success" ]; then
+            echo "Stock Erekir Tier-1/Tier-2 Tank, Ship or Mech assembly failed: release remains BLOCKED." >&2
+            exit 1
+          fi
 
       - name: Build deterministic Yandex release archive
         if: success()

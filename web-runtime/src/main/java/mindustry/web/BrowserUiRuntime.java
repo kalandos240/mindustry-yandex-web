@@ -118,8 +118,67 @@ public final class BrowserUiRuntime{
 
     private static void buildLocalMapMenu(){
         Table root = new Table();
-        root.setFillParent(true);
-        root.defaults().pad(4f);
+        // The campaign/research progress list is taller than a 780x437
+        // embedded Yandex iframe. Never center the unscrollable full-height
+        // Table: that previously pushed the very first Campaign - Planets
+        // button outside the actual game screen (y=604 on a 437px canvas).
+        root.top();
+        root.defaults().pad(3f);
+        root.add(Core.bundle.get("play", "Play")).padBottom(5f);
+        root.row();
+
+        // A fresh player's first Play submenu must lead to the actual 3D
+        // campaign planets, not silently present ONLY disposable local maps.
+        // Keep the original PlanetDialog/first-run chooser, and preserve the
+        // existing local Custom Game controls below this explicit entry.
+        TextButton campaign = root.button(
+            Core.bundle.get("campaign", "Campaign") + " - " +
+                Core.bundle.get("planets", "Planets"),
+            Icon.planet, BrowserVanillaDialogs::openPlanets)
+            .size(mobile ? 320f : 380f, mobile ? 53f : 47f)
+            .name("web-play-campaign-planets").get();
+        root.row();
+
+        // Full campaign launch must never depend on the 3D globe hit test.
+        // These are native Arc buttons using the SAME Serpulo/Erekir
+        // start-or-resume production entry points as the campaign progression
+        // menu. The planet map remains available immediately above.
+        Table campaignStarts = new Table();
+        TextButton startSerpulo = campaignStarts.button(
+            mindustry.content.Planets.serpulo.localizedName + " - " +
+                Core.bundle.get("play", "Play"),
+            Icon.play, BrowserCampaignRuntime::playGroundZero)
+            .width(mobile ? 152f : 181f).height(mobile ? 51f : 47f)
+            .name("web-play-serpulo").get();
+        TextButton startErekir = campaignStarts.button(
+            mindustry.content.Planets.erekir.localizedName + " - " +
+                Core.bundle.get("play", "Play"),
+            Icon.play, BrowserCampaignRuntime::playOnset)
+            .width(mobile ? 152f : 181f).height(mobile ? 51f : 47f)
+            .name("web-play-erekir").get();
+        startSerpulo.update(() ->
+            startSerpulo.setDisabled(!BrowserCampaignRuntime.campaignAssetsReady()));
+        startErekir.update(() ->
+            startErekir.setDisabled(!BrowserCampaignRuntime.campaignAssetsReady()));
+        root.add(campaignStarts).padBottom(4f);
+        root.row();
+
+        // Keep the legacy campaign-UI compatibility injection anchor intact
+        // below; it adds stock progression actions during the build overlay.
+        root.update(() -> {
+            if(!state.isMenu() || !BrowserStockMainMenu.contentOpen()
+                || campaign.getWidth() < 1f || campaign.getHeight() < 1f) return;
+            // Track real moving Arc coordinates; portal layout and viewport
+            // resizes may change the Yandex game surface after opening Play.
+            Vec2 at = campaign.localToStageCoordinates(new Vec2(
+                campaign.getWidth() / 2f, campaign.getHeight() / 2f));
+            Element hit = Core.scene.hit(at.x, at.y, true);
+            if(hit != campaign && (hit == null || !hit.isDescendantOf(campaign))) return;
+            Vec2 screen = Core.scene.getViewport().project(at);
+            markPlayCampaignHitPoint(screen.x, screen.y);
+            sampleDirectCampaignButton(startSerpulo, "serpulo");
+            sampleDirectCampaignButton(startErekir, "erekir");
+        });
         root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
         root.row();
         localContinueButton = new TextButton(Core.bundle.get("continue", "Continue"));
@@ -145,10 +204,55 @@ public final class BrowserUiRuntime{
         ScrollPane pane = new ScrollPane(mapButtons);
         pane.setFadeScrollBars(false);
         pane.setScrollingDisabled(true, false);
+        // The pinned build overlay further adjusts the map-list scrollpane
+        // for portrait/landscape after injecting compact campaign progression.
         root.add(pane).width(mobile ? 320f : 380f).height(mobile ? 430f : 500f);
         ui.menuGroup.addChild(root);
+        // Preserve the upstream campaign-progress controls inserted by the
+        // build overlay, but make the WHOLE Play submenu vertically scrollable.
+        // Native Arc ScrollPane owns scrolling on both desktop and touch;
+        // portal advertising outside the canvas never receives these events.
+        //
+        // The temporary original root mount remains for the pinned
+        // patch-browser-campaign-ui.py anchor. The ScrollPane constructor
+        // then reparents this same stock Table into the visible Play viewport.
+        ScrollPane playScroll = new ScrollPane(root, Styles.smallPane);
+        playScroll.setFadeScrollBars(false);
+        playScroll.setScrollingDisabled(true, false);
+        playScroll.setOverscroll(false, false);
+        Table playViewport = new Table();
+        playViewport.setFillParent(true);
+        playViewport.touchable = Touchable.childrenOnly;
+        playViewport.visible(() -> state.isMenu() && BrowserStockMainMenu.contentOpen());
+        playViewport.add(playScroll).grow();
+        ui.menuGroup.addChild(playViewport);
+        // Keep Play home/Back overlays above the scroll viewport for clicks.
         BrowserStockMainMenu.install(ui.menuGroup, root);
     }
+
+    @JSBody(params={"x", "y"}, script="""
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-play-campaign-x',String(x));
+        r.setAttribute('data-mindustry-play-campaign-y',String(y));
+        """)
+    private static native void markPlayCampaignHitPoint(float x, float y);
+
+    private static void sampleDirectCampaignButton(TextButton button, String planet){
+        if(button.isDisabled() || button.getWidth() < 1f || button.getHeight() < 1f) return;
+        Vec2 center = button.localToStageCoordinates(
+            new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
+        Element hit = Core.scene.hit(center.x, center.y, true);
+        if(hit != button && (hit == null || !hit.isDescendantOf(button))) return;
+        Vec2 screen = Core.scene.getViewport().project(center);
+        markDirectCampaignHit(planet, screen.x, screen.y);
+    }
+
+    @JSBody(params={"planet","x","y"}, script="""
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-play-direct-'+planet+'-x',String(x));
+        r.setAttribute('data-mindustry-play-direct-'+planet+'-y',String(y));
+        """)
+    private static native void markDirectCampaignHit(String planet, float x, float y);
 
     private static void applySettingAction(int setting, int value){
         switch(setting){
@@ -381,7 +485,7 @@ public final class BrowserUiRuntime{
             BrowserUiRuntime::resumeActiveSession)
             .size(width, height).name("web-pause-resume");
         dialog.button(Core.bundle.get("settings", "Settings"), Icon.settings,
-            BrowserUiRuntime::openPauseSettings)
+            BrowserVanillaDialogs::openSettings)
             .size(width, height).name("web-pause-settings");
         dialog.row();
 
@@ -396,17 +500,73 @@ public final class BrowserUiRuntime{
             .visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
         dialog.row();
 
-        dialog.button(Core.bundle.get("quit", "Quit"), Icon.exit,
+        dialog.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
+            BrowserVanillaDialogs::openSchematics)
+            .size(width, height).name("web-pause-schematics");
+        dialog.button(Core.bundle.get("settings.controls", "Controls"), Icon.move,
+            BrowserVanillaDialogs::openControls)
+            .size(width, height).name("web-pause-controls");
+        dialog.row();
+
+        dialog.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
+            BrowserVanillaDialogs::openSaves)
+            .width(width * 2f + 10f).height(height)
+            .colspan(2).name("web-pause-saves");
+        dialog.row();
+
+        // A browser game cannot be exited like a native desktop program.
+        // This action safely saves/returns to the game menu (and schedules
+        // eligible Yandex ads), so never advertise a misleading "Quit".
+        dialog.button(Core.bundle.get("back", "Back"), Icon.left,
             BrowserUiRuntime::returnToMenuWithAd)
             .width(width * 2f + 10f).height(height)
-            .colspan(2).name("web-pause-exit").padBottom(15f);
+            .colspan(2).name("web-pause-menu").padBottom(15f);
 
         overlay.add(dialog).center();
+        // The stock menu is not active while playing, so its visibility
+        // sampler cannot observe Settings/Controls/Saves shown from Pause.
+        // Update native Arc hitboxes and the real dialog visibility here,
+        // at one sample per 16 Scene frames rather than every frame.
+        int[] sampling = {0};
+        overlay.update(() -> {
+            if(!overlay.visible || (++sampling[0] & 15) != 0) return;
+            markPauseHitPoint(dialog.find("web-pause-resume"), "resume");
+            markPauseHitPoint(dialog.find("web-pause-settings"), "settings");
+            markPauseHitPoint(dialog.find("web-pause-save"), "save");
+            if(BrowserCampaignRuntime.active() && state.isCampaign()){
+                markPauseHitPoint(dialog.find("web-pause-research"), "research");
+            }
+            markPauseHitPoint(dialog.find("web-pause-schematics"), "schematics");
+            markPauseHitPoint(dialog.find("web-pause-controls"), "controls");
+            markPauseHitPoint(dialog.find("web-pause-saves"), "saves");
+            markPauseHitPoint(dialog.find("web-pause-menu"), "menu");
+            BrowserVanillaDialogs.sampleVisibility();
+            markPauseVisible();
+        });
         ui.hudGroup.addChild(overlay);
         markPauseUiReady();
         markPauseSettingsUiReady();
         markStockPauseUiReady(mobile ? "mobile" : "desktop");
     }
+
+    private static void markPauseHitPoint(Element button, String action){
+        if(button == null || !button.visible || Core.scene == null
+            || button.getWidth() <= 1f || button.getHeight() <= 1f) return;
+        Vec2 center = button.localToStageCoordinates(
+            new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
+        Vec2 screen = Core.scene.getViewport().project(center);
+        markPauseHitPointNative(action, screen.x, screen.y);
+    }
+
+    @JSBody(params = {"action", "x", "y"}, script = """
+        const r = document.documentElement;
+        r.setAttribute('data-mindustry-pause-button-' + action + '-x', String(x));
+        r.setAttribute('data-mindustry-pause-button-' + action + '-y', String(y));
+        """)
+    private static native void markPauseHitPointNative(String action, float x, float y);
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-dialog-visible','yes');")
+    private static native void markPauseVisible();
 
     /**
      * The original game-over screen has a dedicated, modal action instead of

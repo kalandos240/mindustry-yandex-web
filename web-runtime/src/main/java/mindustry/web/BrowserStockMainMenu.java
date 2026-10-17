@@ -71,18 +71,38 @@ public final class BrowserStockMainMenu{
                     BrowserResearchUi::show).size(tileWidth, 76f)
                     .name("web-main-research");
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
-                    BrowserUiRuntime::openMenuSettings).size(tileWidth, 76f)
+                    BrowserVanillaDialogs::openSettings).size(tileWidth, 76f)
                     .name("web-main-settings");
+                menu.row();
+                menu.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
+                    BrowserVanillaDialogs::openSchematics).size(tileWidth, 64f)
+                    .name("web-main-schematics");
+                menu.button(Core.bundle.get("settings.controls", "Controls"), Icon.move,
+                    BrowserVanillaDialogs::openControls).size(tileWidth, 64f)
+                    .name("web-main-controls");
+                menu.row();
+                menu.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
+                    BrowserVanillaDialogs::openSaves).size(tileWidth, 55f)
+                    .name("web-main-saves");
+                menu.button(Core.bundle.get("planets", "Planets"), Icon.terrain,
+                    BrowserVanillaDialogs::openPlanets).size(tileWidth, 55f)
+                    .name("web-main-planets");
                 menu.row();
                 menu.add(Version.combined()).colspan(2).padBottom(8f);
             }).width(Math.min(2f * tileWidth + 20f, Core.graphics.getWidth() - 12f));
         }else{
             // Mirrors MenuFragment.buildDesktop(): a shaded left sidebar
             // with the original Mindustry icons and flat toggle menu style.
-            home.left().top().marginLeft(12f).marginTop(76f);
+            // Eight desktop entries no longer fit the original four-button
+            // sidebar height on the minimum Chromium/Yandex iframe viewport.
+            // Use adaptive row/logo heights so real button hit rectangles stay
+            // within the canvas rather than silently extending off-screen.
+            float usableHeight = Math.max(320f, Core.graphics.getHeight() / Scl.scl(1f) - 100f);
+            float desktopRowHeight = Math.max(32f, Math.min(54f, (usableHeight - 114f) / 9f));
+            home.left().top().marginLeft(12f).marginTop(25f);
             home.table(Styles.black6, menu -> {
                 menu.name = "web-main-desktop-buttons";
-                menu.defaults().width(230f).height(66f);
+                menu.defaults().width(230f).height(desktopRowHeight);
                 addLogo(menu, 210f);
                 menu.row();
                 menu.button(Core.bundle.get("play", "Play"), Icon.play,
@@ -93,6 +113,10 @@ public final class BrowserStockMainMenu{
                     Styles.flatToggleMenut, BrowserStockMainMenu::openPlay)
                     .name("web-main-custom");
                 menu.row();
+                menu.button(Core.bundle.get("planets", "Planets"), Icon.terrain,
+                    Styles.flatToggleMenut, BrowserVanillaDialogs::openPlanets)
+                    .name("web-main-planets");
+                menu.row();
                 menu.button(Core.bundle.get("database", "Database"), Icon.book,
                     Styles.flatToggleMenut, BrowserStockDatabaseUi::show)
                     .name("web-main-database");
@@ -102,10 +126,22 @@ public final class BrowserStockMainMenu{
                     .name("web-main-research");
                 menu.row();
                 menu.button(Core.bundle.get("settings", "Settings"), Icon.settings,
-                    Styles.flatToggleMenut, BrowserUiRuntime::openMenuSettings)
+                    Styles.flatToggleMenut, BrowserVanillaDialogs::openSettings)
                     .name("web-main-settings");
                 menu.row();
-                menu.add(Version.combined()).padTop(16f).padBottom(12f);
+                menu.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
+                    Styles.flatToggleMenut, BrowserVanillaDialogs::openSchematics)
+                    .name("web-main-schematics");
+                menu.row();
+                menu.button(Core.bundle.get("settings.controls", "Controls"), Icon.move,
+                    Styles.flatToggleMenut, BrowserVanillaDialogs::openControls)
+                    .name("web-main-controls");
+                menu.row();
+                menu.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
+                    Styles.flatToggleMenut, BrowserVanillaDialogs::openSaves)
+                    .name("web-main-saves");
+                menu.row();
+                menu.add(Version.combined()).padTop(5f).padBottom(5f);
             }).width(230f);
         }
         parent.addChild(home);
@@ -115,8 +151,15 @@ public final class BrowserStockMainMenu{
         home.update(() -> {
             if(state.isMenu() && !contentOpen && (++pointerSampleFrames & 15) == 0){
                 markPointerCenter(home.find("web-main-play"), "play");
+                markPointerCenter(home.find("web-main-custom"), "custom");
                 markPointerCenter(home.find("web-main-research"), "research");
                 markPointerCenter(home.find("web-main-database"), "database");
+                markPointerCenter(home.find("web-main-schematics"), "schematics");
+                markPointerCenter(home.find("web-main-controls"), "controls");
+                markPointerCenter(home.find("web-main-settings"), "settings");
+                markPointerCenter(home.find("web-main-saves"), "saves");
+                markPointerCenter(home.find("web-main-planets"), "planets");
+                BrowserVanillaDialogs.sampleVisibility();
             }
         });
 
@@ -145,8 +188,8 @@ public final class BrowserStockMainMenu{
     private static void addLogo(Table menu, float width){
         Image logo = new Image(Core.atlas.find("logo"));
         logo.setScaling(Scaling.fit);
-        menu.add(logo).width(width).height(72f).colspan(mobile ? 2 : 1)
-            .padTop(10f).padBottom(14f);
+        menu.add(logo).width(width).height(mobile ? 72f : 55f).colspan(mobile ? 2 : 1)
+            .padTop(mobile ? 10f : 4f).padBottom(mobile ? 14f : 5f);
     }
 
     private static void markPointerCenter(Element button, String name){

@@ -187,7 +187,24 @@ public final class BrowserInputBridge{
             pendingMoves.delete(slot);
             try { canvas.setPointerCapture(event.pointerId); } catch (_) {}
             canvas.focus({preventScroll: true});
-            pointerDown(slot, p[0], p[1], event.button | 0);
+            // Diagnostics are enabled only while stock first-run campaign selection
+            // is open; distinguish DOM delivery from Arc Scene hit routing.
+            if(document.documentElement.getAttribute('data-mindustry-planet-first-chooser') === 'open'){
+                document.documentElement.setAttribute('data-mindustry-intro-dom-down',
+                    [event.target.id || event.target.tagName, event.clientX, event.clientY,
+                        p[0], p[1], event.pointerType].join(','));
+            }
+            try{
+                pointerDown(slot, p[0], p[1], event.button | 0);
+                if(document.documentElement.getAttribute('data-mindustry-planet-first-chooser') === 'open'){
+                    document.documentElement.setAttribute('data-mindustry-intro-pointerdown-callback',
+                        'returned:' + p[0] + ',' + p[1]);
+                }
+            }catch(error){
+                document.documentElement.setAttribute('data-mindustry-intro-pointerdown-callback',
+                    'threw:' + String(error).slice(0, 200));
+                throw error;
+            }
             event.preventDefault();
         }, {passive: false});
 
@@ -209,7 +226,22 @@ public final class BrowserInputBridge{
             // collapsed into this browser frame.
             pendingMoves.delete(slot);
             pointerMove(slot, p[0], p[1]);
-            pointerUp(slot, p[0], p[1], event.button | 0);
+            if(document.documentElement.getAttribute('data-mindustry-planet-first-chooser') === 'open'){
+                document.documentElement.setAttribute('data-mindustry-intro-dom-up',
+                    [event.target.id || event.target.tagName, event.clientX, event.clientY,
+                        p[0], p[1], event.pointerType].join(','));
+            }
+            try{
+                pointerUp(slot, p[0], p[1], event.button | 0);
+                if(document.documentElement.getAttribute('data-mindustry-planet-first-chooser') === 'open'){
+                    document.documentElement.setAttribute('data-mindustry-intro-pointerup-callback',
+                        'returned:' + p[0] + ',' + p[1]);
+                }
+            }catch(error){
+                document.documentElement.setAttribute('data-mindustry-intro-pointerup-callback',
+                    'threw:' + String(error).slice(0, 200));
+                throw error;
+            }
             if (event.pointerType !== 'mouse') pointerSlots.delete(event.pointerId);
             event.preventDefault();
         };

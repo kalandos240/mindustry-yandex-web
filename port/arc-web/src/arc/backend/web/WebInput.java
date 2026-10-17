@@ -2,21 +2,86 @@ package arc.backend.web;
 
 import arc.*;
 import arc.input.*;
+import arc.math.geom.*;
+import arc.struct.*;
 
 /** Browser-neutral Arc input state. DOM events are fed into this class by the TeaVM layer. */
 public class WebInput extends Input{
     private static final int maxPointers = 10;
 
     private final InputEventQueue queue = new InputEventQueue();
+
+    // First-run campaign UI diagnostic only. Preserve normal gameplay
+    // dispatch unchanged. During the stock chooser, record the ordered
+    // recipient that consumes each real queued pointerdown; this pinpoints
+    // whether an event is lost before it reaches Arc Scene.
+    private final InputMultiplexer firstRunRouteProbe = new InputMultiplexer(inputMultiplexer){
+        @Override
+        public boolean touchDown(int sx, int sy, int pointer, KeyCode button){
+            Vec2 at = new Vec2(sx, sy);
+            Core.scene.screenToStageCoordinates(at);
+            arc.scene.Element hit = Core.scene.hit(at.x, at.y, true);
+            String hitName = hit == null ? "null" :
+                hit.name != null ? hit.name : hit.getClass().getSimpleName();
+
+            SnapshotSeq<InputProcessor> processors = inputMultiplexer.getProcessors();
+            Object[] snapshot = processors.begin();
+            StringBuilder route = new StringBuilder();
+            boolean consumed = false;
+            try{
+                for(int i = 0, n = processors.size; i < n; i++){
+                    InputProcessor handler = (InputProcessor)snapshot[i];
+                    boolean handled = handler.touchDown(sx, sy, pointer, button);
+                    if(i > 0) route.append('>');
+                    route.append(handler.getClass().getSimpleName());
+                    if(handled){
+                        route.append(":handled");
+                        consumed = true;
+                        break;
+                    }
+                }
+            }finally{
+                processors.end();
+            }
+            if(Core.settings != null){
+                Core.settings.put("web-first-queue-route",
+                    sx + "," + sy + " hit=" + hitName + " stage=" +
+                    Math.round(at.x) + "," + Math.round(at.y) + " via=" + route);
+            }
+            return consumed;
+        }
+    };
     private final int[] x = new int[maxPointers], y = new int[maxPointers];
     private final int[] deltaX = new int[maxPointers], deltaY = new int[maxPointers];
     private final int[] pressed = new int[maxPointers];
     private boolean justTouched;
+    private int firstRunEnqueued, firstRunDrained;
+
+    /** Observe queued native events only after the first-run portrait was picked. */
+    private boolean firstRunClickPending(){
+        return Core.settings != null &&
+            !"none".equals(Core.settings.getString("web-first-choice", "none")) &&
+            "none".equals(Core.settings.getString("web-first-ok", "none"));
+    }
 
     /** Drain queued DOM events before the application update. */
     public void update(){
-        queue.setProcessor(inputMultiplexer);
+        // The extra multiplexer is used only while the original first-run
+        // chooser is displayed; outside that modal, the exact existing
+        // input queue and dispatch path remain unchanged.
+        boolean firstRunChooser = Core.scene != null && Core.scene.getDialog() != null
+            && Core.scene.getDialog().find("web-campaign-first-confirm") != null;
+        queue.setProcessor(firstRunChooser ? firstRunRouteProbe : inputMultiplexer);
+        int pendingId = firstRunEnqueued;
         queue.drain();
+        if(pendingId != firstRunDrained){
+            firstRunDrained = pendingId;
+            if(Core.settings != null){
+                Core.settings.put("web-first-queue-drained",
+                    pendingId + ":dialog=" + firstRunChooser + ":processor=" +
+                    (firstRunChooser ? "chooser-probe" : "normal-scene"));
+            }
+        }
     }
 
     /** Clear one-frame input state after the application update. */
@@ -49,6 +114,12 @@ public class WebInput extends Input{
         pressed[pointer]++;
         justTouched = true;
         queue.touchDown(x[pointer], y[pointer], pointer, button == null ? KeyCode.mouseLeft : button);
+        if(firstRunClickPending()){
+            firstRunEnqueued++;
+            Core.settings.put("web-first-queue-enqueued",
+                firstRunEnqueued + ":" + x[pointer] + "," + y[pointer] +
+                ":pointer=" + pointer + ":button=" + button);
+        }
     }
 
     public void pointerUp(int pointer, int screenX, int screenY, KeyCode button){

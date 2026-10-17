@@ -150,6 +150,9 @@ public final class BrowserFiles implements Files{
         if(length < 0 || length > bytes.length) throw new IllegalArgumentException("Invalid browser local write length: " + length);
         registerParents(normalized);
         storeLocalBytes(normalized, bytes, length);
+        if(normalized.startsWith("web-exports/")){
+            downloadLocalExport(normalized.substring("web-exports/".length()), bytes, length);
+        }
     }
 
     boolean mkdirLocal(String path){
@@ -281,6 +284,21 @@ public final class BrowserFiles implements Files{
     private static native int preloadedLength(String url);
     @JSBody(script = "return !!(globalThis.__mindustryStorage && document.documentElement.getAttribute('data-mindustry-storage') === 'ready');")
     private static native boolean persistentStorageReady();
+    // Local Blob download initiated only after the original Mindustry writer persists bytes.
+    @JSBody(params = {"name","bytes","length"}, script = """
+        const content = bytes.slice(0,length);
+        const url = URL.createObjectURL(new Blob([content],{type:'application/octet-stream'}));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        document.documentElement.setAttribute('data-mindustry-web-export','download-started');
+        """)
+    private static native void downloadLocalExport(String name, byte[] bytes, int length);
     @JSBody(params = {"path"}, script = "return globalThis.__mindustryStorage.get(path);")
     private static native byte[] requestLocalBytes(String path);
     @JSBody(params = {"path", "bytes", "length"}, script = "globalThis.__mindustryStorage.put(path, bytes, length);")

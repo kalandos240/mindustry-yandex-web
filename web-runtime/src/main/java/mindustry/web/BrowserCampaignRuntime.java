@@ -21,6 +21,13 @@ import static mindustry.Vars.*;
 public final class BrowserCampaignRuntime{
     private static boolean active;
     private static boolean testChecked;
+    // The 44 deferred .msav files are loaded by an asynchronous browser
+    // warmup. Opt-in matrix boots must await them; the two eager start maps
+    // are deliberately unaffected by this gate.
+    private static boolean matrixWaitingForAssets;
+    public static boolean matrixWaitingForAssets(){
+        return matrixWaitingForAssets;
+    }
     private static boolean diagnostics;
     private static boolean diagnosticsQueryCached;
     private static boolean diagnosticsQueryValue;
@@ -250,6 +257,14 @@ public final class BrowserCampaignRuntime{
 
     public static void maybeStartTestSector(){
         if(testChecked) return;
+        // Only the isolated 46-sector test waits for background campaign
+        // file hydration. Do not consume the one-shot testChecked flag
+        // while a deferred .msav is still absent from Core.files.
+        if(campaignMapMatrixRequested() && !campaignAssetsReady()){
+            matrixWaitingForAssets = true;
+            return;
+        }
+        matrixWaitingForAssets = false;
         testChecked = true;
 
         String resumeRequested = requestedResumeSector();
@@ -275,6 +290,23 @@ public final class BrowserCampaignRuntime{
             startGroundZero();
         }else if("onset".equalsIgnoreCase(requested)){
             startOnset();
+        }else if(campaignMapMatrixRequested()){
+            // CI-only full preset boot matrix: load the real packaged .msav,
+            // launch the original campaign state and advance live Logic frames.
+            // The ordinary public campaign path still requires prerequisite
+            // research/capture; only explicit isolated browser smoke profiles
+            // may bypass the unlock to verify late-game sector compatibility.
+            diagPhase("matrix-lookup");
+            SectorPreset testPreset = content.sector(requested);
+            if(testPreset == null || testPreset.sector == null
+                || (testPreset.sector.planet != Planets.serpulo
+                    && testPreset.sector.planet != Planets.erekir)){
+                throw new IllegalArgumentException("Unknown Mindustry campaign matrix sector: " + requested);
+            }
+            diagPhase("matrix-quiet-unlock");
+            testPreset.quietUnlock();
+            diagPhase("matrix-start");
+            startPreset(testPreset, testPreset.sector);
         }else{
             throw new IllegalArgumentException("Unsupported browser campaign smoke sector: " + requested);
         }
@@ -383,22 +415,27 @@ public final class BrowserCampaignRuntime{
         pausedFrames = 0;
         pauseSmokeArmed = false;
 
+        diagPhase("start-check-menu");
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("c:start-menu");
         }
+        diagPhase("start-check-network");
         if(net == null || net.active() || netServer != null || netClient != null){
             throw new IllegalStateException("c:start-net");
         }
 
+        diagPhase("start-check-sector");
         Sector sector = preset == null ? null : preset.sector;
         if(preset == null || sector == null || (sector.planet != Planets.serpulo && sector.planet != Planets.erekir)){
             throw new IllegalStateException("c:meta");
         }
+        diagPhase("start-check-sector-unlock");
         if(preset != SectorPresets.groundZero && !preset.unlocked()){
             throw new IllegalStateException("c:locked:" + preset.name);
         }
 
+        diagPhase("start-check-packaged-msav");
         Fi presetFile = Core.files.internal("maps/" + sector.planet.name + "/" + preset.name + "." + mapExtension);
         if(!presetFile.exists() || presetFile.length() < 128){
             throw new IllegalStateException("c:map:" + preset.name);
@@ -407,6 +444,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("c:maps");
         }
 
+        diagPhase("start-bind-generator");
         if(preset.generator == null || preset.generator.map == null){
             preset.generator = new FileMapGenerator(preset.name, preset);
         }
@@ -2007,6 +2045,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSmoke') || '';")
     private static native String requestedSector();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignMapMatrix') === '1';")
+    private static native boolean campaignMapMatrixRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignContinueSmoke') || '';")
     private static native String requestedResumeSector();

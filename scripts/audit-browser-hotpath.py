@@ -481,7 +481,9 @@ require(MAIN_MENU, "new Image(Core.atlas.find(\"logo\"))", "original Mindustry l
 require(MAIN_MENU, 'menu.name = "web-main-mobile-buttons"', "original mobile icon grid")
 require(MAIN_MENU, 'menu.name = "web-main-desktop-buttons"', "original desktop sidebar")
 require(MAIN_MENU, "BrowserResearchUi::show", "working original research navigation")
-require(MAIN_MENU, "BrowserUiRuntime::openMenuSettings", "working menu settings action")
+require(MAIN_MENU, "BrowserVanillaDialogs::openSettings", "working original settings menu action")
+require((WEB_JAVA / "BrowserVanillaDialogs.java").read_text(encoding="utf-8"),
+    "ui.settings = new SettingsMenuDialog();", "original pinned SettingsMenuDialog is mounted")
 require(MAIN_MENU, "playContent.visible", "native submenu does not capture game touches")
 require(MAIN_MENU, "data-mindustry-main-menu-layout", "observable responsive menu layout")
 DATABASE_UI = (WEB_JAVA / "BrowserStockDatabaseUi.java").read_text(encoding="utf-8")

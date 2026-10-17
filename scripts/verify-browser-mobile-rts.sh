@@ -38,7 +38,31 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-mobile-rts-smoke="commanded"' \
   --require 'data-mindustry-mobile-rts-selection="native-MobileInput"' \
   --require 'data-mindustry-mobile-rts-source="real-dom-touch-mobileinput"' \
-  --require 'data-mindustry-network="local-only"' > "$DOM"
+  --require 'data-mindustry-network="local-only"' \
+  --after-ready-eval "(async()=>{
+    const r=document.documentElement;
+    const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    for(let n=0;n<120;n++){
+      if(r.getAttribute('data-mindustry-web')!=='ready')
+        throw Error('Mobile RTS touch command crashed TeaVM');
+      const previous=Number(r.getAttribute('data-mindustry-cpu-sample')||0);
+      if(previous>0){
+        for(let i=0;i<120;i++){
+          if(r.getAttribute('data-mindustry-web')!=='ready')
+            throw Error('Mobile RTS command stopped Java frame loop');
+          if(Number(r.getAttribute('data-mindustry-cpu-sample')||0)>previous){
+            r.setAttribute('data-mindustry-mobile-rts-frame-watchdog','passed');
+            return true;
+          }
+          await sleep(100);
+        }
+        throw Error('Mobile RTS touch UI froze the game');
+      }
+      await sleep(100);
+    }
+    throw Error('Mobile RTS never produced Java frame sample');
+  })()" \
+  --after-ready-require 'data-mindustry-mobile-rts-frame-watchdog="passed"' > "$DOM"
 
 grep -Eq 'data-mindustry-mobile-rts-command-unit-id="[0-9]+"' "$DOM"
 grep -Eq 'data-mindustry-mobile-rts-ai-target="-?[0-9]+(\.[0-9]+)?,-?[0-9]+(\.[0-9]+)?"' "$DOM"
