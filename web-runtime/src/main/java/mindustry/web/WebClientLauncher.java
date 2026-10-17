@@ -200,6 +200,13 @@ public final class WebClientLauncher extends ClientLauncher{
         markRendererInitialized();
     }
 
+    @JSBody(script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-planet-meshes','ready');
+        root.setAttribute('data-mindustry-content-load','complete');
+        """)
+    private static native void markPlanetMeshesLoaded();
+
     private static void installRendererDefaults(boolean mobileMode){
         // Full SettingsMenuDialog is intentionally absent from the lean Web UI, so install
         // the stock defaults that Renderer normally receives there. Persisted user values
@@ -264,6 +271,26 @@ public final class WebClientLauncher extends ClientLauncher{
         markUiSyncPhase("renderer-init");
         initRendererRuntime();
         markUiSyncPhase("renderer-init-ready");
+
+        // Missing vanilla lifecycle stage: ContentLoader.init() only sets
+        // up rules/metadata. Planet.mesh (and all Content.load()/loadIcon()
+        // sprites) are created by ContentLoader.load() AFTER shaders/atlas
+        // become available. The previous Web startup skipped this entirely:
+        // normal 2D sector worlds still drew, but PlanetRenderer called
+        // Planet.draw() -> mesh.render() on a NULL mesh, killing the TeaVM
+        // frame loop when any player clicked the stock 3D planet map.
+        // Restore the exact upstream content load once, before Arc Scene
+        // dialogs render or the user can interact with the globe.
+        markUiSyncPhase("content-load");
+        content.load();
+        drainAssetQueue("Mindustry vanilla ContentLoader.load");
+        if(mindustry.content.Planets.sun.mesh == null ||
+            mindustry.content.Planets.serpulo.mesh == null ||
+            mindustry.content.Planets.erekir.mesh == null){
+            throw new IllegalStateException("Vanilla Sun, Serpulo and Erekir 3D meshes are absent after ContentLoader.load()");
+        }
+        markPlanetMeshesLoaded();
+        markUiSyncPhase("content-load-ready");
 
         markUiSyncPhase("ui-load-sync");
         uiShell.loadSync();
