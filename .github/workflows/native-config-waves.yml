@@ -1,4 +1,4 @@
-name: Trace native config pointer routing
+name: Trace actual native config targets
 on:
   push:
     branches: [diagnose-native-config-waves]
