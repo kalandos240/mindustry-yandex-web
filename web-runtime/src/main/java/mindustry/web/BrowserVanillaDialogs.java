@@ -1,6 +1,9 @@
 package mindustry.web;
 
 import arc.*;
+import arc.math.geom.*;
+import arc.scene.*;
+import arc.scene.ui.*;
 import mindustry.core.*;
 import mindustry.game.*;
 import mindustry.ui.dialogs.*;
@@ -95,11 +98,83 @@ public final class BrowserVanillaDialogs{
         if(ui.settings.isShown()) active.append("settings,");
         if(ui.load.isShown()) active.append("saves,");
         if(ui.controls.isShown()) active.append("controls,");
+        if(ui.language.isShown()) active.append("language,");
         if(ui.schematics.isShown()) active.append("schematics,");
         if(ui.database.isShown()) active.append("database,");
         if(ui.planet != null && ui.planet.isShown()) active.append("planet,");
         markDialogVisibility(active.length() == 0 ? "none" : active.toString());
+        if(ui.settings.isShown()) sampleSettingsNestedControls();
     }
+
+    /**
+     * Only discover ACTUAL visible Arc Scene buttons, not synthetic DOM menu
+     * proxies. This also enables a native Chrome acceptance test of settings
+     * category navigation and one ordinary persisted checkbox (Hints).
+     * Destructive Data page controls are deliberately never clicked.
+     */
+    private static void sampleSettingsNestedControls(){
+        String page = ui.settings.game.parent != null ? "game" :
+            ui.settings.graphics.parent != null ? "graphics" :
+            ui.settings.sound.parent != null ? "sound" :
+            ui.settings.dev.parent != null ? "dev" : "root";
+        markSettingsPage(page, Core.settings.getBool("hints", true));
+        if(!"root".equals(page) && !"game".equals(page)) return;
+        String[] names = {"game", "graphics", "sound", "language", "controls", "dev"};
+        String[] labels = {
+            Core.bundle.get("settings.game", "Game"),
+            Core.bundle.get("settings.graphics", "Graphics"),
+            Core.bundle.get("settings.sound", "Sound"),
+            Core.bundle.get("settings.language", "Language"),
+            Core.bundle.get("settings.controls", "Controls"),
+            Core.bundle.get("settings.dev", "Developer")
+        };
+        final boolean nestedGame = "game".equals(page);
+        final String hint = Core.bundle.get("setting.hints.name", "Hints");
+        Core.scene.root.forEach(actor -> {
+            if(!(actor instanceof Button button) || !button.visible ||
+                !button.isDescendantOf(ui.settings) || button.getWidth() <= 1f ||
+                button.getHeight() <= 1f) return;
+
+            String name = null;
+            if(!nestedGame && button instanceof TextButton textButton){
+                String displayed = textButton.getText().toString();
+                for(int i = 0; i < names.length; i++){
+                    if(labels[i].equals(displayed)){
+                        name = names[i];
+                        break;
+                    }
+                }
+            }else if(nestedGame && !(button instanceof TextButton)){
+                boolean[] containsHints = {false};
+                button.forEach(child -> {
+                    if(child instanceof Label label &&
+                        hint.equals(label.getText().toString())) containsHints[0] = true;
+                });
+                if(containsHints[0]) name = "toggle-hints";
+            }
+            if(name == null) return;
+            Vec2 center = button.localToStageCoordinates(new Vec2(
+                button.getWidth() / 2f, button.getHeight() / 2f));
+            Element top = Core.scene.hit(center.x, center.y, true);
+            if(top != button && (top == null || !top.isDescendantOf(button))) return;
+            Vec2 screen = Core.scene.getViewport().project(center);
+            markSettingsHitPoint(name, screen.x, screen.y);
+        });
+    }
+
+    @JSBody(params = {"page", "hints"}, script = """
+        const r = document.documentElement;
+        r.setAttribute('data-mindustry-settings-native-page',page);
+        r.setAttribute('data-mindustry-settings-native-hints',hints ? 'true' : 'false');
+        """)
+    private static native void markSettingsPage(String page, boolean hints);
+
+    @JSBody(params = {"name", "x", "y"}, script = """
+        const r = document.documentElement;
+        r.setAttribute('data-mindustry-settings-hit-' + name + '-x',String(x));
+        r.setAttribute('data-mindustry-settings-hit-' + name + '-y',String(y));
+        """)
+    private static native void markSettingsHitPoint(String name,float x,float y);
 
     public static void openPlanets(){
         markPlanetStage("called");
