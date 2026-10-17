@@ -29,7 +29,20 @@ for device in desktop mobile; do
     --require 'data-mindustry-main-menu-page="home"' \
     --after-ready-eval "(async () => {
       const root=document.documentElement,canvas=document.getElementById('mindustry-canvas');
-      const wait=async(fn,name)=>{for(let i=0;i<220;i++){if(fn())return;await new Promise(r=>setTimeout(r,100));}throw Error(name+'; planet stage='+root.getAttribute('data-mindustry-vanilla-planet-stage')+', visible='+root.getAttribute('data-mindustry-vanilla-modal-visible'));};
+      const wait=async(fn,name)=>{for(let i=0;i<220;i++){
+        if(root.getAttribute('data-mindustry-web')==='error')
+          throw Error('REAL 3D map crashed during '+name+'; Java='+root.getAttribute('data-mindustry-error')+'; stage='+root.getAttribute('data-mindustry-planet-frame-phase')+'; failure='+root.getAttribute('data-mindustry-planet-frame-failure'));
+        if(fn())return;
+        await new Promise(r=>setTimeout(r,100));
+      }throw Error(name+'; planet stage='+root.getAttribute('data-mindustry-vanilla-planet-stage')+', visible='+root.getAttribute('data-mindustry-vanilla-modal-visible'));};
+      const sustained3d=async(label)=>{
+        const before=Number(root.getAttribute('data-mindustry-cpu-sample'));
+        await new Promise(r=>setTimeout(r,1800));
+        await wait(()=>Number(root.getAttribute('data-mindustry-cpu-sample'))>before,
+          label+': render must survive more than 1.8s of real vanilla sector projections');
+        if(root.getAttribute('data-mindustry-web')!=='ready')
+          throw Error('3D globe broke live TeaVM frame after '+label);
+      };
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-planets-x'),'Planet menu hitpoint');
       const rect=canvas.getBoundingClientRect(), x=Number(root.getAttribute('data-mindustry-main-menu-planets-x')), y=Number(root.getAttribute('data-mindustry-main-menu-planets-y'));
       if(!(x>0&&x<rect.width&&y>0&&y<rect.height))throw Error('Planet button outside canvas '+x+','+y);
@@ -72,6 +85,7 @@ for device in desktop mobile; do
       await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo'
         || root.getAttribute('data-mindustry-planet-viewed')==='erekir',
         'No real 3D Serpulo/Erekir globe visible');
+      await sustained3d('first real map open');
 
       // The original planet selector is a ScrollPane; in short mobile
       // viewports a planet may require a native wheel/touch-scroll before
@@ -108,6 +122,7 @@ for device in desktop mobile; do
           +','+root.getAttribute('data-mindustry-planet-hit-serpulo-y'));
       await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo',
         'Serpulo view change after callback: current='+root.getAttribute('data-mindustry-planet-viewed'));
+      await sustained3d('Serpulo after switching from Erekir');
       await wait(()=>root.hasAttribute('data-mindustry-planet-hit-tech-x'),'Native TechTree button');
       await choose('tech');
       await wait(()=>root.getAttribute('data-mindustry-research-open')==='yes','TechTree opens from original planet UI');
