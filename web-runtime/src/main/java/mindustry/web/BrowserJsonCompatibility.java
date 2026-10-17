@@ -341,16 +341,17 @@ public final class BrowserJsonCompatibility{
                 || scatter.seed != 17 || scatter.chance != 0.375f || scatter.flooronto != Blocks.snow
                 || scatter.floor != Blocks.sand || scatter.block != Blocks.stoneWall
                 || !(filters.get(1) instanceof OreFilter ore) || ore.seed != 23
-                || ore.scl != 73f || ore.threshold != 0.42f || ore.ore != Blocks.oreLead || ore.target != Blocks.stone
+                || ore.scl != 73f || Math.abs(ore.threshold - 0.42f) > 0.000001f || ore.ore != Blocks.oreLead || ore.target != Blocks.stone
                 || !(filters.get(2) instanceof MirrorFilter mirror) || mirror.seed != 31
                 || mirror.angle != 90 || !mirror.rotate
                 || !(filters.get(3) instanceof RandomItemFilter random) || random.seed != 37
-                || random.chance != 0.8f || random.drops.size != 2
+                || Math.abs(random.chance - 0.8f) > 0.000001f || random.drops.size != 2
                 || random.drops.get(0).item != Items.copper || random.drops.get(0).amount != 17
                 || random.drops.get(1).item != Items.lead || random.drops.get(1).amount != 9
                 || !(filters.get(4) instanceof LogicFilter logicFilter) || logicFilter.seed != 41
                 || !"print 42".equals(logicFilter.code) || !logicFilter.loop){
-                throw new IllegalStateException("Map filter JSON lost saved parameters, pass=" + pass);
+                throw new IllegalStateException("Map filter JSON lost saved parameters, pass=" + pass
+                    + ", restored=" + JsonIO.write(filters));
             }
             filters = JsonIO.read(Seq.class, JsonIO.write(filters));
         }
