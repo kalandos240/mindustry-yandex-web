@@ -200,6 +200,13 @@ public final class WebClientLauncher extends ClientLauncher{
         markRendererInitialized();
     }
 
+    @JSBody(params={"count"},script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-planet-sector-icons','ready');
+        root.setAttribute('data-mindustry-planet-sector-icon-count',String(count));
+        """)
+    private static native void markPlanetSectorIconsLoaded(int count);
+
     @JSBody(script="""
         const root=document.documentElement;
         root.setAttribute('data-mindustry-planet-meshes','ready');
@@ -295,6 +302,34 @@ public final class WebClientLauncher extends ClientLauncher{
         markUiSyncPhase("ui-load-sync");
         uiShell.loadSync();
         markUiSyncPhase("ui-load-sync-ready");
+
+        // Original SectorPreset.loadIcon() is conditional on Icon.terrain.
+        // ContentLoader.load() above runs *before* UI.loadSync -> Icon.load(),
+        // so every unlocked sector preset had a null uiIcon, even though
+        // its planet mesh was correctly initialized. The user's real Yandex
+        // stack trace resolves exactly to Sector.icon() dereferencing this
+        // null preset.uiIcon during PlanetDialog.renderProjections().
+        //
+        // Re-run only the 46 original SectorPreset.loadIcon callbacks AFTER
+        // UI.loadSync, preserving other content/meshes and vanilla icons.
+        // Fail at startup rather than freezing frame #132 on the 3D map.
+        markUiSyncPhase("planet-sector-icons");
+        if(Icon.terrain == null || Icon.terrain.getRegion() == null){
+            throw new IllegalStateException("Vanilla Icon.terrain has not been initialized by UI.loadSync()");
+        }
+        int sectorIcons = 0;
+        for(mindustry.type.SectorPreset preset : content.sectors()){
+            preset.loadIcon();
+            if(preset.uiIcon == null || preset.fullIcon == null){
+                throw new IllegalStateException("3D planet sector icon missing for " + preset.name);
+            }
+            sectorIcons++;
+        }
+        if(sectorIcons != 46){
+            throw new IllegalStateException("Unexpected stock Serpulo/Erekir sector icon count: " + sectorIcons);
+        }
+        markPlanetSectorIconsLoaded(sectorIcons);
+        markUiSyncPhase("planet-sector-icons-ready");
 
         if(Core.scene == null
         || Tex.whiteui == null
