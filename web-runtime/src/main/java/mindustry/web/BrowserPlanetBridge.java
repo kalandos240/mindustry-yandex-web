@@ -19,13 +19,31 @@ public final class BrowserPlanetBridge{
             reject("procedural-sector-not-yet-supported");
             return;
         }
-        if(state == null || !state.isMenu() || BrowserCampaignRuntime.active() || BrowserLocalMapRuntime.active()){
-            reject("return-to-menu-before-launch");
+        if(state == null || BrowserLocalMapRuntime.active()
+        || !state.isMenu() && !(state.isCampaign() && BrowserCampaignRuntime.active())){
+            reject("campaign-or-menu-required");
+            return;
+        }
+        // Never destroy the current game for a locked/nonlaunchable sector.
+        // The desktop PlanetDialog disables these actions, but retain this
+        // safety check for touch, old saves and the Web sector bridge.
+        if(sector.preset.requireUnlock && sector.preset.locked() && !sector.hasBase()){
+            reject("sector-locked:" + sector.preset.name);
             return;
         }
         try{
-            // Back out of 3D before browser world's existing save/load transition.
+            // In vanilla the player can launch a different sector FROM the
+            // active 3D planet map. The old Web guard silently rejected it.
+            // Save the current world's wave, inventory and autosave first,
+            // then run the same tested menu-to-campaign loading path.
             if(ui.planet != null && ui.planet.isShown()) ui.planet.hide();
+            if(BrowserCampaignRuntime.active()){
+                BrowserCampaignRuntime.returnToMenu();
+            }
+            if(!state.isMenu()){
+                reject("campaign-transition-not-returned-to-menu");
+                return;
+            }
             markLaunch(sector.planet.name + "/" + sector.preset.name);
             switch(sector.preset.name){
                 case "groundZero" -> BrowserCampaignRuntime.playGroundZero();
