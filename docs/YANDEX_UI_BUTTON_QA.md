@@ -136,6 +136,33 @@ all factories, logic editors, bridges, turrets or reactor configuration
 buttons. Continue adding individual real-click building-family cases without
 ever replacing stock game widgets with fake browser buttons.
 
+## Play > Campaign 3D map and downloadable playtest archive (October 17)
+
+The Home **Play** entry no longer drops an unfamiliar player into only
+the local Custom Game map list. It now leads to a separate
+**Campaign - Planets** Arc TextButton which opens the *original*
+`PlanetDialog` with Serpulo/Erekir 3D graphics, the vanilla first-campaign
+chooser, native tech tree and the named campaign sectors. The existing
+Custom Game section, Continue save and default maps stay available in
+the same Play submenu. The map ScrollPane height is limited by the
+actual in-game viewport, protecting Yandex portrait/reduced iframes.
+
+The additional blocking `play_campaign_navigation` job clicks through
+**Home > Play > Campaign - Planets** in two fresh real Chrome profiles
+(desktop and emulated mobile). It requires in-bounds Arc Scene button
+centers, successful Chrome input receipts, real 3D draw, first-run
+Serpulo/Erekir choice and continued TeaVM frame ticks. This prevents a
+working direct Planets button from masking a broken Play entry.
+
+A separate `mindustry-yandex-playtest-3d-planets` Actions artifact is
+published **before the long campaign/portal matrix**, only after the
+3D/UI/building/unit/assembler early browser gates have actually passed.
+Its payload contains the deterministic ready-to-import Yandex ZIP,
+SHA-256, size report and an explicit `PLAYTEST-NOT-RELEASE.txt` warning.
+This is a **manual preview**, not a claim of final release readiness.
+The ordinary `mindustry-yandex-release` artifact still appears **only
+after all required final tests pass** and `main` remains untouched.
+
 ## Other required, independent browser gates
 
 These already form part of the release CI and should **not** be removed to
