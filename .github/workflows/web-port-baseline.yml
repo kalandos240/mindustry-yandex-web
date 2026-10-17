@@ -307,6 +307,38 @@ jobs:
       - name: Audit Yandex release package requirements
         run: bash scripts/audit-yandex-release.sh
 
+      # An independently downloadable DEVELOPMENT BUILD for the user's
+      # hands-on testing. This is explicitly NOT a release or even a claim
+      # that the subsequent real-Chrome tests passed: they continue below.
+      # Package only after TeaVM compiled, all pinned assets are present,
+      # the external-URL audit passed, and 100000000-byte cap passed.
+      # Do not condition the human-playtest artifact on yet-to-run UI/factory
+      # matrix outcomes, and never rename it to the approved release artifact.
+      - name: Package experimental game for manual playtesting
+        run: |
+          python3 scripts/package-yandex-release.py
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          cat > work/release/EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt <<EOF
+          This is a DEVELOPMENT playtest build, not a verified Yandex Games release.
+          Git SHA: ${GITHUB_SHA}
+          Includes original 3D Serpulo/Erekir planet interface in this source revision.
+          IMPORTANT: Native browser interaction, 46 campaign maps, saves and
+          gameplay factory regressions have NOT finished running at publication.
+          Some features may be incomplete or malfunction. Please report bugs.
+          Hard release gates later in this workflow are NOT bypassed.
+          EOF
+
+      - name: Upload experimental playable Yandex ZIP after byte budget
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          path: |
+            work/release/mindustry-yandex-release.zip
+            work/release/mindustry-yandex-release.zip.sha256
+            work/release/mindustry-yandex-release-report.txt
+            work/release/EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt
+          if-no-files-found: error
+
       # Fail fast on native dialog interaction before the long campaign matrices.
       - name: Verify native vanilla dialogs in real desktop and mobile Chrome
         run: bash scripts/verify-browser-vanilla-dialogs.sh
