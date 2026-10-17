@@ -156,10 +156,8 @@ public final class BrowserUiRuntime{
             Icon.play, BrowserCampaignRuntime::playOnset)
             .width(mobile ? 152f : 181f).height(mobile ? 51f : 47f)
             .name("web-play-erekir").get();
-        startSerpulo.update(() ->
-            startSerpulo.setDisabled(!BrowserCampaignRuntime.campaignAssetsReady()));
-        startErekir.update(() ->
-            startErekir.setDisabled(!BrowserCampaignRuntime.campaignAssetsReady()));
+        // Both start maps are eager; an unrelated deferred-map failure must
+        // never disable starting or resuming either campaign.
         root.add(campaignStarts).padBottom(4f);
         root.row();
 
