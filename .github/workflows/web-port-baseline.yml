@@ -333,6 +333,13 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-building-mechanics.sh
 
+      # Real mouse/touch on original world tile and stock ItemSelection, not
+      # a direct SorterBuild.configure call. Require both set AND clear UI.
+      - name: Configure and clear original Sorter through native browser buttons
+        id: native_building_config
+        continue-on-error: true
+        run: bash scripts/verify-browser-building-config-stress.sh
+
       - name: Verify all original unit constructors and real Serpulo/Erekir unit factory spawning
         id: unit_production
         continue-on-error: true
@@ -606,6 +613,7 @@ jobs:
         if: always()
         run: |
           if [ "${{ steps.production_mechanics.outcome }}" != "success" ] || \
+             [ "${{ steps.native_building_config.outcome }}" != "success" ] || \
              [ "${{ steps.unit_production.outcome }}" != "success" ] || \
              [ "${{ steps.unit_factory_matrix.outcome }}" != "success" ]; then
             echo "Original building or one of six real unit factories failed: release remains BLOCKED." >&2
