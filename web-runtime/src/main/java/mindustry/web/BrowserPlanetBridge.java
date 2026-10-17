@@ -36,7 +36,10 @@ public final class BrowserPlanetBridge{
             // active 3D planet map. The old Web guard silently rejected it.
             // Save the current world's wave, inventory and autosave first,
             // then run the same tested menu-to-campaign loading path.
-            if(ui.planet != null && ui.planet.isShown()) ui.planet.hide();
+            // Do not hide the visible planet map before we know a sector
+            // really entered a live World. On a failed launch the player must
+            // keep the sector choice and see the exact error, not get dumped
+            // into the main menu with no explanation.
             if(BrowserCampaignRuntime.active()){
                 BrowserCampaignRuntime.returnToMenu();
             }
@@ -94,9 +97,24 @@ public final class BrowserPlanetBridge{
                 case "origin" -> BrowserCampaignRuntime.playOrigin();
                 default -> reject("unpackaged-sector:" + sector.preset.name);
             }
+            if(BrowserCampaignRuntime.active() && state.isPlaying()){
+                if(ui.planet != null && ui.planet.isShown()) ui.planet.hide();
+                markLaunchReady(sector.planet.name + "/" + sector.preset.name);
+            }else{
+                reject("sector-launch-did-not-enter-world:" + sector.preset.name);
+            }
         }catch(Throwable error){
-            markError(error.getClass().getName());
-            ui.showException(error);
+            String detail = error.getClass().getName() + ": " + String.valueOf(error.getMessage());
+            markError(detail);
+            // The start/resume layer has already logged the exact first
+            // exception and stage. Keep the 3D globe usable for another try;
+            // a second error in stock exception-dialog construction must
+            // never become a fatal browser frame exception.
+            try{
+                ui.showException(error);
+            }catch(Throwable dialogFailure){
+                markError(detail + " / exception-dialog: " + dialogFailure.getClass().getName());
+            }
         }
     }
 
@@ -109,6 +127,14 @@ public final class BrowserPlanetBridge{
 
     @JSBody(params={"sector"}, script="document.documentElement.setAttribute('data-mindustry-planet-launch-sector',sector);")
     private static native void markLaunch(String sector);
+
+    @JSBody(params={"sector"}, script="""
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-planet-launch-result','playing');
+        r.setAttribute('data-mindustry-planet-launch-sector',sector);
+        r.removeAttribute('data-mindustry-planet-launch-error');
+        """)
+    private static native void markLaunchReady(String sector);
 
     @JSBody(params={"reason"}, script="document.documentElement.setAttribute('data-mindustry-planet-launch-error',reason);")
     private static native void markError(String reason);
