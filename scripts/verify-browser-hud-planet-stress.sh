@@ -19,6 +19,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryCampaignSmoke=onset&mindustryHudPlanetSmoke=1" \
   --profile "$profile" --port 9541 --timeout 180 --cdp-input-bridge \
   --require 'data-mindustry-web="ready"' \
+  --require 'data-mindustry-planet-meshes="ready"' \
   --require 'data-mindustry-campaign-state="playing"' \
   --after-ready-eval "$(cat "$ROOT_DIR/scripts/browser-hud-planet-stress.js")" \
   --after-ready-require 'data-mindustry-hud-planet-browser="passed"' \
