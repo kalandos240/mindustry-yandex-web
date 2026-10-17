@@ -178,6 +178,25 @@ check("focusStartingSector()" in planet_map and
       '"web-planet-launch"' in (ROOT / "scripts/patch-vanilla-planet-web.py").read_text(encoding="utf-8"),
       "Original planet map lost visible starting sector and native launch control")
 
+# The missing upstream ContentLoader.load() phase left Planet.mesh == null
+# and crashed PlanetRenderer.render() with NullPointerException immediately
+# after user clicks a 3D globe. Guard the lifecycle, not just the button.
+web_launcher = (ROOT / "web-runtime/src/main/java/mindustry/web/WebClientLauncher.java").read_text(encoding="utf-8")
+check("content.load();" in web_launcher and
+      "mindustry.content.Planets.serpulo.mesh == null" in web_launcher and
+      "mindustry.content.Planets.erekir.mesh == null" in web_launcher and
+      'data-mindustry-planet-meshes' in web_launcher,
+      "Vanilla planet meshes could be null: ContentLoader.load/mesh gate missing")
+for real_planet_test in (
+    "verify-browser-planet-dialog.sh",
+    "verify-browser-play-campaign-stress.sh",
+    "verify-browser-real-campaign-launch.sh",
+    "verify-browser-hud-planet-stress.sh",
+):
+    source = (ROOT / "scripts" / real_planet_test).read_text(encoding="utf-8")
+    check('data-mindustry-planet-meshes="ready"' in source,
+          "Native planet Chrome acceptance skips actual 3D mesh readiness: " + real_planet_test)
+
 print(f"Yandex UI compliance: {len(seen)} approved main menu entries, "
       f"{len(pause_keys)} pause controls, native 3D Campaign from Play, "
       "nested Settings, real building configuration and freeze gates")
