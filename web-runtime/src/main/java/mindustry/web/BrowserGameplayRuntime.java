@@ -181,7 +181,11 @@ public final class BrowserGameplayRuntime{
                     BrowserCampaignRuntime.updateFrame();
                 }else{
                     if(!BrowserLocalMapRuntime.active()){
-                        throw new IllegalStateException("Production Web entered playing state outside a local-map or campaign session");
+                        // A failed sector launch can leave vanilla Logic.play's
+                        // State.playing behind without any browser-owned session.
+                        // This is recoverable: never kill the Java frame loop.
+                        recoverOrphanSession("playing");
+                        return;
                     }
                     BrowserLocalMapRuntime.updateFrame();
                 }
@@ -198,7 +202,7 @@ public final class BrowserGameplayRuntime{
             }else if(BrowserLocalMapRuntime.active()){
                 BrowserLocalMapRuntime.updatePausedFrame();
             }else{
-                throw new IllegalStateException("Web entered paused state outside a production local-map or campaign session");
+                recoverOrphanSession("paused");
             }
             return;
         }
@@ -237,6 +241,35 @@ public final class BrowserGameplayRuntime{
             if(state.isMenu()) BrowserLocalMapRuntime.maybeStartTestMap();
         }
     }
+
+    private static void recoverOrphanSession(String mode){
+        // The original launch exception has already been recorded by the
+        // campaign starter. A second exception on the next rAF frame would
+        // permanently stop all input, so return to a live menu instead.
+        markOrphanSession(mode);
+        try{
+            if(logic != null) logic.reset();
+        }catch(Throwable resetFailure){
+            markOrphanResetFailure(resetFailure.getClass().getName());
+            if(state != null) state.set(GameState.State.menu);
+        }
+        // Show a real, nonfatal status without interrupting Arc Scene input.
+        // A fresh sector selection after a failed launch must remain possible.
+    }
+
+    @JSBody(params={"mode"}, script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-session-recovery', mode);
+        root.setAttribute('data-mindustry-session-recovery-status','returned-to-menu');
+        const status=document.getElementById('mindustry-web-status');
+        if(status) status.textContent='Sector could not be launched. Choose a sector again.';
+        """)
+    private static native void markOrphanSession(String mode);
+
+    @JSBody(params={"name"},script="""
+        document.documentElement.setAttribute('data-mindustry-session-reset-failure', name);
+        """)
+    private static native void markOrphanResetFailure(String name);
 
     @JSBody(params = {"state"}, script = """
         const root = document.documentElement;
