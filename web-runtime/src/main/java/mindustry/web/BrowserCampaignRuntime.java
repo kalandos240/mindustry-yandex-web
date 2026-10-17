@@ -541,9 +541,22 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(params={"sector","type","message"}, script="""
         const root=document.documentElement;
-        root.setAttribute('data-mindustry-campaign-launch-failure',
-            sector+' / '+type+' / '+message);
+        const phase=root.getAttribute('data-mindustry-campaign-phase') || 'unrecorded';
+        const detail=sector+' / '+phase+' / '+type+' / '+message;
+        root.setAttribute('data-mindustry-campaign-launch-failure',detail);
         root.setAttribute('data-mindustry-campaign-launch-result','failed');
+        console.error('Mindustry campaign launch failed:',detail);
+        const status=document.getElementById('mindustry-web-status');
+        if(status){
+            status.textContent='Sector launch failed: '+detail;
+            status.style.opacity='1';
+            status.style.color='#ffb2a8';
+            status.style.background='rgba(10,0,0,.9)';
+            status.style.padding='8px';
+            status.style.maxWidth='calc(100% - 28px)';
+            status.style.overflowWrap='anywhere';
+            status.style.pointerEvents='none';
+        }
         """)
     private static native void markLaunchFailure(String sector, String type, String message);
 
@@ -564,6 +577,9 @@ public final class BrowserCampaignRuntime{
     private static void continuePreset(SectorPreset preset){
         if(active) throw new IllegalStateException("c:active");
         cacheSmokeFlags();
+        String resumeSector = preset == null ? "missing-sector" : preset.name;
+        try{
+            diagPhase("resume-start");
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("c:resume-menu");
@@ -647,6 +663,23 @@ public final class BrowserCampaignRuntime{
         pauseSmokeArmed = false;
         markResumed(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             expectedBytes, state.wave, loadedTickMillis);
+        }catch(Throwable resumeError){
+            // A previous-release save, a damaged checkpoint, or a browser
+            // storage failure must not strand the entire TeaVM frame loop.
+            // Preserve the slot: never delete or overwrite it on a failed load.
+            markLaunchFailure(resumeSector, resumeError.getClass().getName(),
+                String.valueOf(resumeError.getMessage()));
+            current = null;
+            active = false;
+            frames = 0;
+            try{
+                if(logic != null && state != null && !state.isMenu()) logic.reset();
+            }catch(Throwable resetError){
+                markRecoveryFailure(resetError.getClass().getName());
+                if(state != null) state.set(mindustry.core.GameState.State.menu);
+            }
+            throw resumeError;
+        }
     }
 
     public static void pause(){
@@ -2047,7 +2080,10 @@ public final class BrowserCampaignRuntime{
     }
 
     private static void diagPhase(String phase){
-        if(diagnostics || pauseSmoke || captureSmoke || progressSmoke) markPhase(phase);
+        // Launch/resume takes place with active=false. Always retain the last
+        // real stage for user reports from Firefox/Yandex's nested iframe.
+        // Live-frame telemetry stays opt-in to avoid DOM churn every tick.
+        if(!active || diagnostics || pauseSmoke || captureSmoke || progressSmoke) markPhase(phase);
     }
 
     /** Exact byte count used by DataOutputStream.writeUTF's modified UTF-8 payload. */
