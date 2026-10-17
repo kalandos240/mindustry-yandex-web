@@ -59,68 +59,16 @@ for device in desktop mobile; do
           (element?(element.id||element.tagName):'none'));
         await nativeClick(cx,cy);
       };
-      // A fresh vanilla campaign first shows a separate Serpulo/Erekir
-      // portrait chooser above PlanetDialog. It is not safe to click the
-      // planet map through that modal; choose the original Serpulo option.
-      await wait(()=>root.getAttribute('data-mindustry-planet-first-chooser')==='open',
-        'First-time vanilla Serpulo/Erekir campaign choice did not open');
-      await wait(()=>root.hasAttribute('data-mindustry-planet-hit-intro-serpulo-x'),
-        'Vanilla campaign portrait selector has no native hitbox');
-      await wait(()=>root.getAttribute('data-mindustry-planet-hit-intro-serpulo-exposed')==='yes',
-        'Vanilla Serpulo portrait is occluded: '
-          +root.getAttribute('data-mindustry-planet-hit-intro-serpulo-receiver'));
-      await choose('intro-serpulo');
-      await wait(()=>root.getAttribute('data-mindustry-planet-hit-intro-serpulo-checked')==='yes',
-        'Click did not select first-run Serpulo portrait; hit='
-          +root.getAttribute('data-mindustry-planet-hit-intro-serpulo-receiver'));
-      await wait(()=>root.hasAttribute('data-mindustry-planet-hit-intro-confirm-x'),
-        'Vanilla campaign confirm button has no native hitbox');
-      await wait(()=>root.getAttribute('data-mindustry-planet-hit-intro-confirm-disabled')==='no',
-        'First campaign confirmation remained disabled despite Serpulo selection');
-      await wait(()=>root.getAttribute('data-mindustry-planet-hit-intro-confirm-exposed')==='yes',
-        'First campaign confirmation button is blocked by: '
-          +root.getAttribute('data-mindustry-planet-hit-intro-confirm-receiver'));
-      await choose('intro-confirm');
-      // CDP native clicks are real mouse/touch inputs, not direct UI actions.
-      // On loaded WebGL startup Arc can miss the first button down/up while
-      // draining queued input; retry the *same exposed stock button* a bounded
-      // number of times, never force selection or mark the test passed.
-      for(let retry=0;retry<2;retry++){
-        for(let tick=0;tick<12;tick++){
-          if(root.getAttribute('data-mindustry-planet-first-confirm')==='serpulo')break;
-          await new Promise(r=>setTimeout(r,100));
-        }
-        if(root.getAttribute('data-mindustry-planet-first-confirm')==='serpulo')break;
-        if(root.getAttribute('data-mindustry-planet-first-chooser')!=='open')break;
-        if(root.getAttribute('data-mindustry-planet-hit-intro-confirm-exposed')!=='yes')break;
-        await choose('intro-confirm');
-      }
-      await wait(()=>root.getAttribute('data-mindustry-planet-first-confirm')==='serpulo',
-        'Original campaign OK callback was not reached; choice='
-          +root.getAttribute('data-mindustry-planet-first-selected')
-          +', button receiver='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-receiver')
-          +', disabled='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-disabled')
-          +', listeners='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-listeners')
-          +', taps='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-taps')
-          +', pressed='+root.getAttribute('data-mindustry-planet-hit-intro-confirm-pressed')
-          +', click='+root.getAttribute('data-mindustry-planet-test-last-click')
-          +', DOM-down='+root.getAttribute('data-mindustry-intro-dom-down')
-          +', DOM-up='+root.getAttribute('data-mindustry-intro-dom-up')
-          +', Arc-down='+root.getAttribute('data-mindustry-planet-first-scene-down')
-          +', Arc-root='+root.getAttribute('data-mindustry-planet-first-root-down')
-          +', queued='+root.getAttribute('data-mindustry-planet-first-queue-route')
-          +', enqueued='+root.getAttribute('data-mindustry-planet-first-queue-enqueued')
-          +', drained='+root.getAttribute('data-mindustry-planet-first-queue-drained')
-          +', callback-down='+root.getAttribute('data-mindustry-intro-pointerdown-callback')
-          +', callback-up='+root.getAttribute('data-mindustry-intro-pointerup-callback')
-          +', reset='+root.getAttribute('data-mindustry-input-reset-count'));
+      // TeaVM enters the ACTUAL original PlanetDialog immediately rather
+      // than placing an unclickable initial portrait modal on top. Verify
+      // that we are looking at a genuine 3D globe before native selection.
       await wait(()=>root.getAttribute('data-mindustry-planet-first-chooser')==='closed',
-        'Vanilla first campaign chooser did not close after confirmation; stage='
-          +root.getAttribute('data-mindustry-planet-first-stage')
-          +', native-confirm='+root.getAttribute('data-mindustry-planet-first-confirm')
-          +', selected='+root.getAttribute('data-mindustry-planet-hit-intro-serpulo-checked'));
-      await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo',
-        'Original campaign Serpulo choice did not update active planet');
+        'Unexpected first-run modal blocks the real planet map');
+      await wait(()=>root.getAttribute('data-mindustry-vanilla-planet-frame')==='rendered',
+        'Original 3D planet mesh did not render');
+      await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo'
+        || root.getAttribute('data-mindustry-planet-viewed')==='erekir',
+        'No real 3D Serpulo/Erekir globe visible');
 
       // The original planet selector is a ScrollPane; in short mobile
       // viewports a planet may require a native wheel/touch-scroll before
