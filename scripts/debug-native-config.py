@@ -15,3 +15,22 @@ p.write_text(s)
 p=Path("scripts/verify-browser-wave-hud-stress.sh")
 s=p.read_text().replace("&mindustryWaveHudSmoke=1","&mindustryCampaignMapMatrix=1&mindustryWaveHudSmoke=1")
 p.write_text(s)
+
+# Observe the actual native target and listener without redirecting input.
+s=p.read_text() if False else Path("web-runtime/build/web/mindustry.js").read_text()
+for anchor,label in [
+("as_Scene_touchDown = ($this, $screenX, $screenY, $pointer, $button) => {","SCENE_DOWN"),
+("as_Scene_touchUp = ($this, $screenX, $screenY, $pointer, $button) => {","SCENE_UP")]:
+    assert s.count(anchor)==1
+    s=s.replace(anchor,anchor+"\n if(document.documentElement.hasAttribute('data-mindustry-building-config-fixture'))console.info('"+label+"', $screenX, $screenY);")
+a=s.index("as_Scene_touchDown =")
+b=s.index("as_Scene_touchDragged =",a)
+part=s[a:b]
+anchor="        $target = $tmp;"
+assert part.count(anchor)==1
+part=part.replace(anchor,anchor+"\n if(document.documentElement.hasAttribute('data-mindustry-building-config-fixture'))console.info('SCENE_TARGET', $target && $target.constructor.name, $target && $target.$name, document.documentElement.getAttribute('data-mindustry-cdp-click-request'));")
+s=s[:a]+part+s[b:]
+anchor="ase_ClickListener_touchUp = ($this, $event, $x, $y, $pointer, $button) => {"
+assert s.count(anchor)==1
+s=s.replace(anchor,anchor+"\n if(document.documentElement.hasAttribute('data-mindustry-building-config-fixture'))console.info('LISTENER_UP', $x,$y,$this.$pressed);")
+Path("web-runtime/build/web/mindustry.js").write_text(s)
