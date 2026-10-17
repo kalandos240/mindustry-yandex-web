@@ -98,5 +98,20 @@ check("id: gameplay_button_stress" in workflow and
       "steps.gameplay_button_stress.outcome" in workflow,
       "HUD/pause native-button freeze test must be a hard Yandex release gate")
 
+# Real Settings navigation must not become a fake HTML menu. Watch the
+# stock SettingsMenuDialog's actual category actors and persisted options.
+native_dialogs = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserVanillaDialogs.java").read_text(encoding="utf-8")
+settings_smoke = (ROOT / "scripts/browser-settings-tab-stress.js").read_text(encoding="utf-8")
+for marker in ("sampleSettingsNestedControls()", "settings-native-page",
+               "settings-native-hints", "settings-hit-", "Core.scene.hit("):
+    check(marker in native_dialogs, f"stock Settings instrumentation lost {marker}")
+for marker in ("settings-hit-toggle-hints", "settings-native-hints",
+               "settings-hit-language", "settings-hit-controls",
+               "settings-native-page", "cpu-sample", "cdp-click-request"):
+    check(marker in settings_smoke, f"real nested Settings regression lost {marker}")
+check("id: settings_nested_stress" in workflow and
+      "steps.settings_nested_stress.outcome" in workflow,
+      "nested Settings buttons cannot bypass the hard release gate")
+
 print(f"Yandex UI compliance: {len(seen)} approved main menu entries, "
-      f"{len(pause_keys)} functional pause controls, freeze/real-click CI gates wired")
+      f"{len(pause_keys)} functional pause controls, nested Settings and real-click freeze gates")
