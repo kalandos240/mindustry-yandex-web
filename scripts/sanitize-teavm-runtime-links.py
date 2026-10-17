@@ -25,10 +25,10 @@ text = text.replace(KNOWN, "TeaVM coroutine documentation", 1)
 # .map is intentionally excluded by the hard 100 MB Yandex unpacked limit.
 # Leaving it causes Firefox/Chrome to request a missing file and emit 404.
 # Strip only the trailing annotation; keep JavaScript and stack traces intact.
-source_map = re.compile(r"(?m)^//# sourceMappingURL=mindustry\\.js\\.map\\s*$")
+source_map = re.compile(r"(?m)^//# sourceMappingURL=mindustry\.js\.map\s*$")
 if len(source_map.findall(text)) != 1:
     raise SystemExit("TeaVM source-map annotation changed: expected one trailing reference")
-text = source_map.sub("", text, count=1).rstrip() + "\\n"
+text = source_map.sub("", text, count=1).rstrip() + "\n"
 JS.write_text(text, encoding="utf-8")
 
 remaining = sorted(set(re.findall(r"(?:https?|wss?)://[^\s\"'<>]+", text)))
