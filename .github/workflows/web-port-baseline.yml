@@ -316,7 +316,7 @@ jobs:
         run: bash scripts/verify-browser-unit-production.sh
 
       # Real Erekir assembler construction, payloads, drone AI and Vanquish.
-      - name: Produce Vanquish through native Erekir Tank Assembler with four drones
+      - name: Produce Vanquish, Quell and Tecta through original Erekir Tank, Ship and Mech Assemblers
         id: unit_assembler
         continue-on-error: true
         run: bash scripts/verify-browser-unit-assembler.sh
@@ -579,7 +579,7 @@ jobs:
         if: always()
         run: |
           if [ "${{ steps.unit_assembler.outcome }}" != "success" ]; then
-            echo "Real Vanquish assembly failed: release remains BLOCKED." >&2
+            echo "Stock Erekir Tank, Ship or Mech assembly failed: release remains BLOCKED." >&2
             exit 1
           fi
 
