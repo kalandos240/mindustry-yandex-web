@@ -168,3 +168,10 @@ widths to the actual available scene width and publish/check their full projecte
 bounds. A permanent Russian native-input gate shrinks/translates the portal
 surface to half width, exercises every menu action, and captures the open
 Database submenu. Its failure blocks release alongside the normal UI gates.
+
+The first narrow test exposed stale desktop coordinates after a container-only
+resize: Arc Scene follows its own resize listener, while the menu had listened
+only for Mindustry ResizeEvent. Rebuild on actual Scene dimension changes at the
+existing 16-frame menu sampling cadence, clear old hitboxes, and require the
+menu-size marker before the narrow input test begins. Explicit JSBody rectangle
+assignments also avoid the TeaVM parser warnings from object shorthand.

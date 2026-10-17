@@ -37,6 +37,7 @@ public final class BrowserStockMainMenu{
     private static Button playMenu;
     private static float desktopRowHeight;
     private static float desktopColumnWidth;
+    private static float menuSceneWidth = -1f, menuSceneHeight = -1f;
 
     private BrowserStockMainMenu(){}
 
@@ -68,6 +69,12 @@ public final class BrowserStockMainMenu{
         // browser orientation changes without keeping stale positions.
         home.update(() -> {
             if(state.isMenu() && !contentOpen && (++pointerSampleFrames & 15) == 0){
+                // Scene observes container-only resizes directly; these do not
+                // necessarily dispatch Mindustry's window ResizeEvent.
+                if(menuSceneWidth != Core.scene.getWidth() || menuSceneHeight != Core.scene.getHeight()){
+                    rebuildHome(home);
+                    return;
+                }
                 markPointerCenter(home.find("web-main-play"), "play");
                 markPointerCenter(home.find("web-main-database-group"), "database-group");
                 markPointerCenter(home.find("web-main-custom"), "custom");
@@ -105,6 +112,8 @@ public final class BrowserStockMainMenu{
     }
 
     private static void rebuildHome(Table home){
+        menuSceneWidth = Core.scene.getWidth();
+        menuSceneHeight = Core.scene.getHeight();
         clearMenuHitPoints();
         databaseOpen = false;
         playOpen = false;
@@ -177,7 +186,11 @@ public final class BrowserStockMainMenu{
             }).width(desktopColumnWidth).height(desktopRowHeight * 5f);
 
         }
+        markMenuSize(menuSceneWidth, menuSceneHeight);
     }
+
+    @JSBody(params={"width","height"}, script="document.documentElement.setAttribute('data-mindustry-main-menu-size',Math.round(width)+'x'+Math.round(height));")
+    private static native void markMenuSize(float width, float height);
 
     private static Runnable closeThen(Runnable action){
         return () -> {
@@ -301,9 +314,10 @@ public final class BrowserStockMainMenu{
         const root=document.documentElement;
         root.setAttribute('data-mindustry-main-menu-'+name+'-x',String(x));
         root.setAttribute('data-mindustry-main-menu-'+name+'-y',String(y));
-        for(const [edge,value] of Object.entries({left,bottom,right,top})){
-            root.setAttribute('data-mindustry-main-menu-'+name+'-'+edge,String(value));
-        }
+        root.setAttribute('data-mindustry-main-menu-'+name+'-left',String(left));
+        root.setAttribute('data-mindustry-main-menu-'+name+'-bottom',String(bottom));
+        root.setAttribute('data-mindustry-main-menu-'+name+'-right',String(right));
+        root.setAttribute('data-mindustry-main-menu-'+name+'-top',String(top));
         if(name==='planets'){root.setAttribute('data-mindustry-play-campaign-x',String(x));root.setAttribute('data-mindustry-play-campaign-y',String(y));}
         """)
     private static native void markMenuHitPoint(String name, float x, float y, float left, float bottom, float right, float top);

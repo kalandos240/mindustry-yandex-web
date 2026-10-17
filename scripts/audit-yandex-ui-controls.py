@@ -94,7 +94,7 @@ check("steps.ui_button_stress.outcome" in workflow, "UI failure must block relea
 
 narrow_smoke = (ROOT / "scripts/verify-browser-narrow-menu.sh").read_text(encoding="utf-8")
 for term in ("surface.style.width='50%'", "--cdp-input-bridge", "browser-ui-button-stress.js",
-             "data-mindustry-narrow-menu-stress", "desktop-narrow-ru.png"):
+             "data-mindustry-narrow-menu-stress", "main-menu-size", "desktop-narrow-ru.png"):
     check(term in narrow_smoke, f"narrow native-menu regression lost {term}")
 check("rectangle clipped" in browser_smoke and "['left','bottom','right','top']" in browser_smoke,
       "menu acceptance must check whole native actor bounds, not only centers")

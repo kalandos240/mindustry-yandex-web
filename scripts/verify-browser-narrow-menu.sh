@@ -26,13 +26,14 @@ prefix = """(async()=>{
   const wait=async(fn,message)=>{for(let i=0;i<160;i++){
     if(get('web')==='error')throw Error(get('error'));
     if(fn())return;await new Promise(done=>setTimeout(done,100));
-  }throw Error(message);};
+  }throw Error(message+'; menu='+get('main-menu-size')+'; container='+get('container-size'));};
   const before=Number(get('resize-count'));
   surface.style.marginLeft='7%';
   surface.style.width='50%';
   await wait(()=>Number(get('resize-count'))>before &&
     get('container-size')===surface.clientWidth+'x'+surface.clientHeight &&
-    get('container-match')==='true','actual translated portal resize');
+    get('container-match')==='true' &&
+    get('main-menu-size')===surface.clientWidth+'x'+surface.clientHeight,'actual translated portal and native menu resize');
   if(!(canvas.clientWidth>=300 && canvas.clientWidth<=400))throw Error('Narrow fixture did not constrain game width');
   if(get('main-menu-layout')!=='desktop-sidebar')throw Error('Narrow desktop silently switched to mobile UI');
   await """
