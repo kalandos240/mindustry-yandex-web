@@ -33,6 +33,7 @@ for scenario in direct-serpulo direct-erekir planet-serpulo planet-erekir; do
     --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryUiCampaignStart=$scenario" \
     --profile "$profile" --port 9544 --timeout 210 --cdp-input-bridge \
     --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-planet-meshes="ready"' \
     --require 'data-mindustry-main-menu-page="home"' \
     --after-ready-eval "$(cat "$ROOT/scripts/browser-real-campaign-launch.js")" \
     --after-ready-require 'data-mindustry-ui-campaign-start="passed"' \
