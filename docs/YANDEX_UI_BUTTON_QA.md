@@ -55,6 +55,39 @@ Existing source patches prevent unsupported desktop ZIP backup/import,
 log-folder, fullscreen/vsync and OS restart buttons from appearing in stock
 Settings. The game also suppresses browser context menu and text selection.
 
+## Real in-game HUD and Pause acceptance (October 17)
+
+A second **blocking** job step `gameplay_button_stress` runs
+`scripts/verify-browser-gameplay-button-stress.sh` on four independent
+actual-world browser profiles: Serpulo Ground Zero campaign desktop and mobile;
+stock Maze local game desktop and mobile. It reuses the original
+`BrowserUiRuntime` Arc Scene actor/callbacks and the existing campaign/local
+state machines rather than calling any gameplay methods from the test.
+
+All eight supported pause actions (seven outside campaign) are now explicitly
+tracked in native pause UI, not in the dormant main-menu actor graph:
+**Resume, Settings, Save Game, Research (campaign), Schematics,
+Controls, Saved Games and Back to menu**. The formerly mislabeled
+`Quit` button is now **Back** and returns to the menu after normal save/cloud
+barriers; it does not attempt to exit the browser. The test also clicks the
+real native in-campaign Research icon before pausing.
+
+Chrome sends its actual desktop pointer/touch input to the game canvas by CDP
+and asserts: usable hit rectangles remain within the current canvas; opening
+Settings/Controls/Schematics/Saves exposes the correct stock modal; Escape
+closes it without resuming gameplay; Research opens and closes; Save Game
+creates an actual campaign/local checkpoint while the simulation remains
+paused; Resume returns to live gameplay; and Back reaches the original menu.
+After **every** transition the real Java scheduler must advance
+`data-mindustry-cpu-sample`, rather than merely receiving browser
+`requestAnimationFrame` callbacks. Both a missing callback and a stopped
+simulation result in a failing release gate.
+
+Note: this covers the reachable first-level Pause and Research actions.
+Nested buttons inside each dialog, unit-specific commands, building config
+widgets, alternative resolutions and live Yandex SDK ad interruption
+remain **separately required acceptance work**, not already passed.
+
 ## Other required, independent browser gates
 
 These already form part of the release CI and should **not** be removed to
