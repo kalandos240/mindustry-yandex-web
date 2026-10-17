@@ -378,6 +378,15 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-play-campaign-stress.sh
 
+      # Previous 46-map matrix called startPreset() directly and could pass
+      # while both visible campaign entry points were broken. Test REAL
+      # Play > Serpulo/Erekir buttons AND original globe > Sector Launch:
+      # four fresh desktop/mobile Chrome user paths, no smoke shortcuts.
+      - name: Start genuine Serpulo and Erekir campaigns from native menu and globe
+        id: real_campaign_launch
+        continue-on-error: true
+        run: bash scripts/verify-browser-real-campaign-launch.sh
+
       # User reproduction: campaign is running on Erekir and player taps
       # the actual DesktopInput Icon.map. Verify the stock 3D dialog keeps
       # rendering and TeaVM does not die on a subsequent resize event.
@@ -447,7 +456,7 @@ jobs:
       # This lets a human actually test the latest game while long CI runs.
       - name: Package interim 3D-planet playtest archive
         id: playtest_preview
-        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.play_campaign_navigation.outcome == 'success' && steps.native_hud_planet.outcome == 'success' && steps.research_mouse_drag.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_wave_hud.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
+        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.play_campaign_navigation.outcome == 'success' && steps.native_hud_planet.outcome == 'success' && steps.real_campaign_launch.outcome == 'success' && steps.research_mouse_drag.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_wave_hud.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
         run: |
           python3 scripts/package-yandex-release.py
           (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
@@ -700,7 +709,8 @@ jobs:
         run: |
           if [ "${{ steps.planet_navigation.outcome }}" != "success" ] || \
              [ "${{ steps.play_campaign_navigation.outcome }}" != "success" ] || \
-             [ "${{ steps.native_hud_planet.outcome }}" != "success" ]; then
+             [ "${{ steps.native_hud_planet.outcome }}" != "success" ] || \
+             [ "${{ steps.real_campaign_launch.outcome }}" != "success" ]; then
             echo "Original 3D PlanetDialog failed: release remains BLOCKED." >&2
             exit 1
           fi
