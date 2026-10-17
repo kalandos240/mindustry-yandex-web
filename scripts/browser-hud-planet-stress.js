@@ -8,7 +8,10 @@
   const wait=async(fn,label)=>{
     for(let i=0;i<180;i++){
       if(v('web')==='error')throw Error('Mindustry froze after '+label+
-        ': '+document.body.innerText.slice(-350));
+        ': '+(v('error')||document.body.innerText.slice(-350))+
+        '; planet-frame='+v('planet-frame-phase')+
+        '; planet-failure='+v('planet-frame-failure')+
+        '; module='+v('module-phase'));
       if(fn())return;
       await sleep(100);
     }
