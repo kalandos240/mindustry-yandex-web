@@ -364,6 +364,32 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-unit-assembler.sh advanced
 
+      # Publish a clearly labeled, NOT-release playtest build with working
+      # Serpulo/Erekir 3D planets after core game/controls/factory browser gates.
+      # The 46-map/cold-save/portal/advertisement matrix continues afterward;
+      # no production release artifact is published until EVERY gate passes.
+      # This lets a human actually test the latest game while long CI runs.
+      - name: Package interim 3D-planet playtest archive
+        id: playtest_preview
+        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
+        run: |
+          python3 scripts/package-yandex-release.py
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          test -s work/release/mindustry-yandex-release.zip
+          printf 'PLAYTEST ONLY — release gates still running.\nCommit: %s\nOriginal 3D PlanetDialog: verified by Chrome on desktop/mobile.\nUnpacked limit: 100000000 bytes; checked by packager.\nFinal release: requires all campaign maps, saves, controls and portal tests.\n' "$GITHUB_SHA" > work/release/PLAYTEST-NOT-RELEASE.txt
+
+      - name: Upload interim 3D-planet browser playtest ZIP
+        if: ${{ steps.playtest_preview.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-yandex-playtest-3d-planets
+          path: |
+            work/release/mindustry-yandex-release.zip
+            work/release/mindustry-yandex-release.zip.sha256
+            work/release/mindustry-yandex-release-report.txt
+            work/release/PLAYTEST-NOT-RELEASE.txt
+          if-no-files-found: error
+
       # The complete 46-map boot matrix is long but independent. Run early to
       # catch late-sector load failures before save, locale and RTS tests,
       # without skipping those checks when one campaign map is broken.
