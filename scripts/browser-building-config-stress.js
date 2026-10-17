@@ -7,7 +7,11 @@
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const wait = async (f, step) => {
     for (let n = 0; n < 140; n++) {
-      if (value('web') !== 'ready') throw Error('Mindustry frame died: ' + step);
+      if (value('web') !== 'ready') throw Error('Mindustry frame died: ' + step +
+        '; web-error=' + value('web-error') +
+        '; campaign=' + value('campaign-state') +
+        '; selected=' + value('building-config-selected') +
+        '; expected-choice=' + value('building-config-choice'));
       if (f()) return;
       await sleep(100);
     }
