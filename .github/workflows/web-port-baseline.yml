@@ -393,6 +393,14 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-building-config-stress.sh
 
+      # Verify the stock HudFragment wave button actually increments a
+      # live campaign wave without any JS/direct Logic.runWave shortcuts.
+      # Ground Zero and Onset exercise both planets and mouse/touch controls.
+      - name: Click real wave HUD and advance survival waves on both planets
+        id: native_wave_hud
+        continue-on-error: true
+        run: bash scripts/verify-browser-wave-hud-stress.sh
+
       - name: Verify all original unit constructors and real Serpulo/Erekir unit factory spawning
         id: unit_production
         continue-on-error: true
@@ -424,7 +432,7 @@ jobs:
       # This lets a human actually test the latest game while long CI runs.
       - name: Package interim 3D-planet playtest archive
         id: playtest_preview
-        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.play_campaign_navigation.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
+        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.play_campaign_navigation.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_wave_hud.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
         run: |
           python3 scripts/package-yandex-release.py
           (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
@@ -693,6 +701,7 @@ jobs:
         if: always()
         run: |
           if [ "${{ steps.production_mechanics.outcome }}" != "success" ] || \
+             [ "${{ steps.native_wave_hud.outcome }}" != "success" ] || \
              [ "${{ steps.native_building_config.outcome }}" != "success" ] || \
              [ "${{ steps.unit_production.outcome }}" != "success" ] || \
              [ "${{ steps.unit_factory_matrix.outcome }}" != "success" ]; then
