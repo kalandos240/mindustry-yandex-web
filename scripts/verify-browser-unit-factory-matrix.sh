@@ -27,10 +27,15 @@ run_factory(){
   local profile="/tmp/mindustry-factory-matrix-$mode-$device"
   local dom="/tmp/mindustry-factory-matrix-$mode-$device.html"
   local device_args=()
+  local matrix_flag=''
   if [ "$device" = mobile ]; then device_args+=(--emulate-mobile); fi
+  # A fresh Chrome profile has not unlocked Coastline. The same isolated
+  # 46-map loader already used by CI boots its actual campaign .msav without
+  # changing player progression in normal public sessions.
+  if [ "$sector" = coastline ]; then matrix_flag='&mindustryCampaignMapMatrix=1'; fi
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${device_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=$sector&mindustryUnitProductionSmoke=1&mindustryUnitFactory=$mode" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=$sector&mindustryUnitProductionSmoke=1&mindustryUnitFactory=$mode$matrix_flag" \
     --profile "$profile" --port 9516 --timeout 190 \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-campaign-state="playing"' \
