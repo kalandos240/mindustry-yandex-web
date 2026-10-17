@@ -137,3 +137,10 @@ gate on desktop/Ground Zero and mobile/Onset (run 39073865322). Decimal fixture
 comparisons allow float rounding; block/item identity and integer fields are
 exact. Menu migration validation must additionally exercise real parent clicks,
 child hitboxes, toggle/Escape closing, native dialogs and research drag.
+
+Visual QA of acceptance 39074767764 exposed a mid-word Schematics wrap on the
+mobile portrait tiles. Adaptive tiles can be narrower than the original 120
+units, while the fixed font size remains unchanged. Measure the longest localized
+word and fit it to the actual label cell, keeping native wrapping at spaces.
+Recompute only when cell width changes, and verify both measured fit and the
+next compiled portrait screenshot before claiming this visual defect fixed.
