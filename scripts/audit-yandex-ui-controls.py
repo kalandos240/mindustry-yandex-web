@@ -187,6 +187,12 @@ check("content.load();" in web_launcher and
       "mindustry.content.Planets.erekir.mesh == null" in web_launcher and
       'data-mindustry-planet-meshes' in web_launcher,
       "Vanilla planet meshes could be null: ContentLoader.load/mesh gate missing")
+check('preset.loadIcon();' in web_launcher and
+      'Icon.terrain == null' in web_launcher and
+      'preset.uiIcon == null' in web_launcher and
+      'sectorIcons != 46' in web_launcher and
+      'data-mindustry-planet-sector-icons' in web_launcher,
+      "REAL Yandex PlanetDialog Sector.icon() NPE regression: all original SectorPreset icons must load AFTER Icon.load()")
 for real_planet_test in (
     "verify-browser-planet-dialog.sh",
     "verify-browser-play-campaign-stress.sh",
@@ -196,6 +202,9 @@ for real_planet_test in (
     source = (ROOT / "scripts" / real_planet_test).read_text(encoding="utf-8")
     check('data-mindustry-planet-meshes="ready"' in source,
           "Native planet Chrome acceptance skips actual 3D mesh readiness: " + real_planet_test)
+    check('data-mindustry-planet-sector-icons="ready"' in source and
+          'data-mindustry-planet-sector-icon-count="46"' in source,
+          "Native planet Chrome acceptance can wrongly pass with null SectorPreset.uiIcon: " + real_planet_test)
 
 print(f"Yandex UI compliance: {len(seen)} approved main menu entries, "
       f"{len(pause_keys)} pause controls, native 3D Campaign from Play, "
