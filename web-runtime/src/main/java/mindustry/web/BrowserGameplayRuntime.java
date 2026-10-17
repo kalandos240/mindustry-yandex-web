@@ -151,6 +151,7 @@ public final class BrowserGameplayRuntime{
             Core.scene != null && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
             if(researchOpen) BrowserResearchUi.escape();
             else if(databaseOpen) BrowserStockDatabaseUi.hide();
+            else if(state.isMenu() && BrowserStockMainMenu.contentOpen()) BrowserStockMainMenu.showHome();
         }
         if(!smokeMode && (state.isPlaying() || state.isPaused())
         && !researchOpen && !databaseOpen

@@ -90,15 +90,15 @@ public final class BrowserStockMainMenu{
     }
 
     private static void rebuildHome(Table home){
+        clearMenuHitPoints();
         home.clear();
         home.reset();
         if(mobile){
             boolean portrait = Core.graphics.isPortrait();
             int columns = portrait ? 2 : 4;
-            float tileSize = Math.min(120f, Math.min(
+            final float tileSize = Math.max(36f, Math.min(120f, Math.min(
                 (Core.scene.getWidth() - 20f) / columns - 10f,
-                (Core.scene.getHeight() - 136f) / (8f / columns) - 10f));
-            tileSize = Math.max(36f, tileSize);
+                (Core.scene.getHeight() - 136f) / (8f / columns) - 10f)));
             home.center().marginTop(96f);
             home.table(menu -> {
                 menu.name = "web-main-mobile-buttons";
@@ -173,6 +173,15 @@ public final class BrowserStockMainMenu{
         // Original Mindustry MobileButton, including its icon-over-label layout.
         menu.add(new MobileButton(icon, "@" + key, action)).name("web-main-" + name);
     }
+
+    @JSBody(script="""
+        const root=document.documentElement;
+        for(const name of ['play','custom','research','database','schematics','controls','settings','saves','planets']){
+            root.removeAttribute('data-mindustry-main-menu-'+name+'-x');
+            root.removeAttribute('data-mindustry-main-menu-'+name+'-y');
+        }
+        """)
+    private static native void clearMenuHitPoints();
 
     private static void markPointerCenter(Element button, String name){
         if(button == null || button.getWidth() < 1f || button.getHeight() < 1f) return;

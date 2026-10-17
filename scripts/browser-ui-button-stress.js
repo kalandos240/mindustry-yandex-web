@@ -131,6 +131,12 @@
   await action('settings', 'vanilla-settings-open', 'settings');
   await play('play');
 
+  await click('play');
+  await wait(() => value('main-menu-page') === 'play', 'Play before Escape');
+  await escape();
+  await wait(() => value('main-menu-page') === 'home', 'Escape closes Play submenu');
+  await alive('native Play submenu Escape');
+
   // Planet chooser, 3D globe switching and the native first-run confirmation
   // are tested by verify-browser-planet-dialog.sh on both devices; clicking
   // behind that intentional first-run modal here would be a false positive.
