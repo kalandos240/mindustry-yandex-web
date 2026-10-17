@@ -325,6 +325,13 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-planet-dialog.sh
 
+      # Home Play must also offer an obvious Campaign button that opens
+      # the original 3D planet/sector UI, without obscuring local Custom Game.
+      - name: Open 3D planets from actual Play submenu on desktop and mobile
+        id: play_campaign_navigation
+        continue-on-error: true
+        run: bash scripts/verify-browser-play-campaign-stress.sh
+
       # Run critical new real-world block and unit production tests before the
       # long 46-map matrix. Both remain release blockers, but independent
       # campaign/UX checks must still run and report their own conclusions.
@@ -371,7 +378,7 @@ jobs:
       # This lets a human actually test the latest game while long CI runs.
       - name: Package interim 3D-planet playtest archive
         id: playtest_preview
-        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
+        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.play_campaign_navigation.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
         run: |
           python3 scripts/package-yandex-release.py
           (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
@@ -622,7 +629,8 @@ jobs:
       - name: Require original 3D planet navigation for release
         if: always()
         run: |
-          if [ "${{ steps.planet_navigation.outcome }}" != "success" ]; then
+          if [ "${{ steps.planet_navigation.outcome }}" != "success" ] || \
+             [ "${{ steps.play_campaign_navigation.outcome }}" != "success" ]; then
             echo "Original 3D PlanetDialog failed: release remains BLOCKED." >&2
             exit 1
           fi
