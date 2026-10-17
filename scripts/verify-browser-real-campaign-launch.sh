@@ -34,6 +34,8 @@ for scenario in direct-serpulo direct-erekir planet-serpulo planet-erekir; do
     --profile "$profile" --port 9544 --timeout 210 --cdp-input-bridge \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-planet-meshes="ready"' \
+    --require 'data-mindustry-planet-sector-icons="ready"' \
+    --require 'data-mindustry-planet-sector-icon-count="46"' \
     --require 'data-mindustry-main-menu-page="home"' \
     --after-ready-eval "$(cat "$ROOT/scripts/browser-real-campaign-launch.js")" \
     --after-ready-require 'data-mindustry-ui-campaign-start="passed"' \
