@@ -175,3 +175,10 @@ only for Mindustry ResizeEvent. Rebuild on actual Scene dimension changes at the
 existing 16-frame menu sampling cadence, clear old hitboxes, and require the
 menu-size marker before the narrow input test begins. Explicit JSBody rectangle
 assignments also avoid the TeaVM parser warnings from object shorthand.
+
+Applied-source inspection found the missing global lifecycle hook: Bootstrap's
+ApplicationListener forwarded setup/update but never resize to the stock UI.
+Forward real logical resizes to UI.resize (margins, Scene viewport, ResizeEvent).
+BrowserApplication still filters backing-DPR-only adjustments, avoiding actor
+rebuilds during adaptive pixel-ratio changes. Validate menu, world HUD, portal
+bounds and orientation with the actual resized Scene before delivering a ZIP.

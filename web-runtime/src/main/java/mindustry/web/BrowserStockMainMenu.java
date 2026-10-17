@@ -69,8 +69,8 @@ public final class BrowserStockMainMenu{
         // browser orientation changes without keeping stale positions.
         home.update(() -> {
             if(state.isMenu() && !contentOpen && (++pointerSampleFrames & 15) == 0){
-                // Scene observes container-only resizes directly; these do not
-                // necessarily dispatch Mindustry's window ResizeEvent.
+                // Retain a fallback for callers updating the Scene viewport
+                // directly instead of using the stock UI ResizeEvent.
                 if(menuSceneWidth != Core.scene.getWidth() || menuSceneHeight != Core.scene.getHeight()){
                     rebuildHome(home);
                     return;
