@@ -1,0 +1,94 @@
+name: Original filters and inline atlas icons
+on:
+  push:
+    branches: [filter-atlas-acceptance-96f34be]
+    paths: ['.github/workflows/filter-json-acceptance.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  exact-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for pinned compiled package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in {1..72}; do
+            artifact_id="$(gh api repos/kalandos240/mindustry-yandex-web/actions/runs/39072987609/artifacts --jq '.artifacts[] | select(.name == "mindustry-yandex-manual-playtest-experimental") | .id')"
+            if [ -n "$artifact_id" ]; then exit 0; fi
+            status="$(gh api repos/kalandos240/mindustry-yandex-web/actions/runs/39072987609 --jq '.status')"
+            if [ "$status" = completed ]; then echo 'Build ended without playable package'; exit 1; fi
+            sleep 10
+          done
+          exit 1
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39072987609
+          github-token: ${{ github.token }}
+          path: work/filter-acceptance
+      - name: Verify and unpack exact compiled ZIP
+        run: |
+          cd work/filter-acceptance
+          sha256sum -c mindustry-yandex-release.zip.sha256
+          cd ../..
+          python3 -c 'from zipfile import ZipFile; ZipFile("work/filter-acceptance/mindustry-yandex-release.zip").extractall("web-runtime/build/web")'
+      - name: Original map filters on both planets and devices
+        id: filters
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-map-filter-json.sh 2>&1 | tee work/filter-acceptance/filters.log
+      - name: Exact integrated startup gate from production workflow
+        id: startup
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import textwrap
+          s=Path('.github/workflows/web-port-baseline.yml').read_text()
+          s=s[s.index('      - name: Execute integrated desktop and mobile runtime in headless Chrome'):]
+          s=s[s.index('        run: |')+len('        run: |'):]
+          s=s[:s.index('\n      - name:')]
+          Path('work/filter-acceptance/startup.sh').write_text('set -euo pipefail\n'+textwrap.dedent(s))
+          PY
+          set -o pipefail
+          bash work/filter-acceptance/startup.sh 2>&1 | tee work/filter-acceptance/startup.log
+      - name: Native Play and sustained actual 3D frames
+        id: play
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-play-campaign-stress.sh 2>&1 | tee work/filter-acceptance/play.log
+      - name: All campaign and local Pause actions on both devices
+        id: pause
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-gameplay-button-stress.sh 2>&1 | tee work/filter-acceptance/pause.log
+      - name: Original menu interactions on both devices
+        id: menu
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-ui-button-stress.sh 2>&1 | tee work/filter-acceptance/menu.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: filter-json-and-release-gates
+          path: |
+            work/filter-acceptance/*.log
+            /tmp/mindustry-filter-json-*.log
+            /tmp/mindustry-filter-json-*.html
+            work/menu-ui/*.png
+      - name: Require actual outcomes
+        if: always()
+        run: |
+          test '${{ steps.filters.outcome }}' = success
+          test '${{ steps.startup.outcome }}' = success
+          test '${{ steps.play.outcome }}' = success
+          test '${{ steps.pause.outcome }}' = success
+          test '${{ steps.menu.outcome }}' = success
