@@ -113,5 +113,23 @@ check("id: settings_nested_stress" in workflow and
       "steps.settings_nested_stress.outcome" in workflow,
       "nested Settings buttons cannot bypass the hard release gate")
 
+# Verify a real configurable Serpulo building also gets native mouse/touch
+# coverage. A successful inventory/building mechanics test alone does not prove
+# the Sorter ItemSelection buttons respond in the game window.
+config_smoke = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserBuildingConfigSmoke.java").read_text(encoding="utf-8")
+config_chrome = (ROOT / "scripts/browser-building-config-stress.js").read_text(encoding="utf-8")
+app = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserApplication.java").read_text(encoding="utf-8")
+for term in ("Blocks.sorter", "Sorter.SorterBuild", "Items.copper", "control.input.config.isShown()",
+             "data-mindustry-building-config-smoke", "mindustryBuildingConfigSmoke"):
+    check(term in config_smoke, f"native building configuration observer lost {term}")
+for term in ("cdp-click-request", "cpu-sample", "building-config-cleared",
+             "building-config-selected", "building-config-fixture", "elementFromPoint"):
+    check(term in config_chrome, f"building configuration browser gate lost {term}")
+check("BrowserBuildingConfigSmoke.update();" in app,
+      "CI building config probe not connected to Java scheduler")
+check("id: native_building_config" in workflow and
+      "steps.native_building_config.outcome" in workflow,
+      "real building config mouse/touch acceptance must block Yandex release")
+
 print(f"Yandex UI compliance: {len(seen)} approved main menu entries, "
-      f"{len(pause_keys)} functional pause controls, nested Settings and real-click freeze gates")
+      f"{len(pause_keys)} pause controls, nested Settings, real building configuration and freeze gates")
