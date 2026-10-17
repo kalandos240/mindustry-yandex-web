@@ -93,3 +93,19 @@ priority after HUD installation. It remains below the separate modal/pause scene
 roots; mobile command controls keep their existing priority. Verify the new Java
 build with the unchanged real copper-selection/clear acceptance, not only an
 instrumented replay.
+
+## Full-regression follow-up
+
+Run 39066456393 loaded/ticked all 46 campaign maps and completed all six basic
+factory outputs and all six T1/T2 assembler outputs using original mechanics.
+Its actual remaining failures were an incorrect 10+ click requirement for the
+eight-click local pause scenario, a 2.2-second assumption about the 64-frame CPU
+sample on the globe, and obsolete visible-debug-text assertions in startup.
+Keep those gates: validate the scenario's exact click count, completed native
+planet draws plus the scheduler, and explicit WebGL/bootstrap evidence instead.
+
+Register all 16 original map-filter constructors using the existing browser JSON
+factory bridge. The opt-in real-Chrome test requires preserved polymorphic types,
+inherited seeds, nondefault Scatter/Ore/Mirror parameters and save/read round-trip;
+it also boots both actual campaigns and rejects serialization/icon warnings.
+Fresh compiled validation remains required before claiming this fix complete.

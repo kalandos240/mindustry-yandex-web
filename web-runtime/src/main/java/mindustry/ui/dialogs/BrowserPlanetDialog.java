@@ -179,6 +179,7 @@ public class BrowserPlanetDialog extends PlanetDialog{
         // sparingly, solely to let the browser integration test click stock
         // touch/mouse buttons, rather than invoking a test-only Java shortcut.
         if(++uiSampleFrames % 18 == 0 && isShown()){
+            markRenderProgress(uiSampleFrames);
             String planet = state.planet == null ? "none" : state.planet.name;
             if(!planet.equals(lastPlanet)){
                 lastPlanet = planet;
@@ -313,6 +314,9 @@ public class BrowserPlanetDialog extends PlanetDialog{
     @JSBody(params={"zoom"}, script="document.documentElement.setAttribute('data-mindustry-planet-zoom',String(zoom));")
     private static native void markZoom(float zoom);
 
-    @JSBody(script="document.documentElement.setAttribute('data-mindustry-vanilla-planet-frame','rendered');")
+    @JSBody(params={"frames"},script="document.documentElement.setAttribute('data-mindustry-planet-render-frames',String(frames));")
+    private static native void markRenderProgress(int frames);
+
+    @JSBody(script="document.documentElement.setAttribute('data-mindustry-vanilla-planet-frame','rendered');document.documentElement.setAttribute('data-mindustry-planet-render-frames','1');")
     private static native void markFirstRender();
 }

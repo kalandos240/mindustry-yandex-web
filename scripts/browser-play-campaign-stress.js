@@ -64,12 +64,13 @@
   // Real Yandex report: game showed the Play menu for 132 frames, then
   // Sector.icon() threw while painting a sector projection. Do NOT certify
   // a dialogue merely because its first opening frame was visible.
-  const firstStableFrame=Number(get('cpu-sample'));
+  const firstStableFrame=Number(get('planet-render-frames'));
   await sleep(2200);
-  if(get('web')!=='ready' || Number(get('cpu-sample'))<=firstStableFrame)
-    throw Error('Planet map froze after opening; Java='+get('error')+
-      '; native 3D phase='+get('planet-frame-phase')+
-      '; sector-icons='+get('planet-sector-icons'));
+  // cpu-sample is published only every 64 full Java frames. A busy software
+  // renderer can stay alive without crossing that boundary in 2.2 seconds.
+  // Require another completed original 3D draw, then the scheduler watchdog.
+  await wait(() => Number(get('planet-render-frames')) > firstStableFrame,
+    'completed original 3D frames continue beyond initial opening');
   await frame('3D sector projections stay alive beyond initial render');
   if(get('main-menu-page') !== 'play'){
     throw Error('Opening a planet should not replace native Play/Custom Game menu');
