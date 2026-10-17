@@ -133,9 +133,31 @@ public final class BrowserPlanetBridge{
         r.setAttribute('data-mindustry-planet-launch-result','playing');
         r.setAttribute('data-mindustry-planet-launch-sector',sector);
         r.removeAttribute('data-mindustry-planet-launch-error');
+        const status=document.getElementById('mindustry-web-status');
+        if(status){
+            status.textContent='';
+            status.removeAttribute('style');
+        }
         """)
     private static native void markLaunchReady(String sector);
 
-    @JSBody(params={"reason"}, script="document.documentElement.setAttribute('data-mindustry-planet-launch-error',reason);")
+    @JSBody(params={"reason"}, script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-planet-launch-error',reason);
+        root.setAttribute('data-mindustry-planet-launch-result','failed');
+        const first=root.getAttribute('data-mindustry-campaign-launch-failure') || '';
+        const details=first || reason;
+        console.error('Mindustry sector was not launched:',details);
+        const status=document.getElementById('mindustry-web-status');
+        if(status){
+            status.textContent='Sector could not start: '+details;
+            status.style.opacity='1';
+            status.style.color='#ffb2a8';
+            status.style.background='rgba(10,0,0,.9)';
+            status.style.padding='8px';
+            status.style.maxWidth='calc(100% - 28px)';
+            status.style.overflowWrap='anywhere';
+        }
+        """)
     private static native void markError(String reason);
 }
