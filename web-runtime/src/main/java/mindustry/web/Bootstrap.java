@@ -125,6 +125,19 @@ public final class Bootstrap{
             }
 
             @Override
+            public void resize(int width, int height){
+                // This listener invokes launcher.setup directly rather than
+                // ClientLauncher's module loop. Forward real CSS-size changes
+                // to the stock UI as well: margins, Scene viewport and the
+                // original ResizeEvent must follow the actual game surface.
+                // BrowserApplication already excludes backing-DPR-only changes.
+                if(Core.scene != null){
+                    if(Vars.ui != null) Vars.ui.resize(width, height);
+                    else Core.scene.resize(width, height);
+                }
+            }
+
+            @Override
             public void update(){
                 if(!frameVerified){
                     try{

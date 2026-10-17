@@ -43,6 +43,16 @@ for device in desktop mobile; do
         if(root.getAttribute('data-mindustry-web')!=='ready')
           throw Error('3D globe broke live TeaVM frame after '+label);
       };
+      if(root.getAttribute('data-mindustry-main-menu-layout')!=='mobile-grid'){
+        await wait(()=>root.hasAttribute('data-mindustry-main-menu-play-x'),'Play parent hitpoint');
+        const b=canvas.getBoundingClientRect(), id='planet-play-parent';
+        root.setAttribute('data-mindustry-cdp-click-ack','');
+        root.setAttribute('data-mindustry-cdp-click-request',JSON.stringify({id,
+          x:b.left+Number(root.getAttribute('data-mindustry-main-menu-play-x')),
+          y:b.bottom-Number(root.getAttribute('data-mindustry-main-menu-play-y'))}));
+        await wait(()=>root.getAttribute('data-mindustry-cdp-click-ack')===id,'Play parent native click');
+        await wait(()=>root.getAttribute('data-mindustry-main-menu-play-submenu')==='open','Play submenu shown');
+      }
       await wait(()=>root.hasAttribute('data-mindustry-main-menu-planets-x'),'Planet menu hitpoint');
       const rect=canvas.getBoundingClientRect(), x=Number(root.getAttribute('data-mindustry-main-menu-planets-x')), y=Number(root.getAttribute('data-mindustry-main-menu-planets-y'));
       if(!(x>0&&x<rect.width&&y>0&&y<rect.height))throw Error('Planet button outside canvas '+x+','+y);

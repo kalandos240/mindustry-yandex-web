@@ -24,8 +24,10 @@ def check(ok, message):
 
 legal = {
     "play": "BrowserStockMainMenu::openPlay",
+    "database.button": "BrowserStockMainMenu::toggleDatabaseMenu",
     "customgame": "BrowserStockMainMenu::openPlay",
     "planets": "BrowserVanillaDialogs::openPlanets",
+    "campaign": "BrowserVanillaDialogs::openPlanets",
     "database": "BrowserStockDatabaseUi::show",
     "research": "BrowserResearchUi::show",
     "settings": "BrowserVanillaDialogs::openSettings",
@@ -39,7 +41,8 @@ for match in re.finditer(r'\bmenu\.button\(Core\.bundle\.get\("([^"]+)"', menu):
     seen.append(key)
     check(key in legal, f"unsupported or unreviewed visible menu button: {key}")
     tail = menu[match.end(): match.end() + 350]
-    check(legal[key] in tail,
+    expected = "BrowserStockMainMenu::togglePlayMenu" if key == "play" else legal[key]
+    check(expected in tail,
           f"menu button {key} must have a supported native callback {legal[key]}")
 check(menu.count("menu.button(") == len(seen),
       "a desktop menu button was added without the approved localized-action format")
@@ -48,9 +51,17 @@ for match in re.finditer(r'mobileButton\(menu, "([^\"]+)", [^,]+, ([^,]+),', men
     seen.append(key)
     check(key in legal and legal[key] == callback.strip(),
           f"unsupported native mobile action {key}: {callback}")
+for match in re.finditer(r'desktopEntry\(submenu, "([^\"]+)", [^,]+, ([^,]+),', menu):
+    key, callback = match.groups()
+    seen.append(key)
+    check(key in legal and legal[key] == callback.strip(),
+          f"unsupported nested desktop action {key}: {callback}")
+check("closeDesktopMenus();\n            action.run();" in menu,
+      "native submenu actions must close navigation and run their real callback")
 check(set(seen) == set(legal), "missing legal menu action or unapproved action found")
-check(len(seen) == 17, "unexpected menu button count (8 mobile + 9 desktop)")
-check('new MobileButton(icon, "@" + key, action)' in menu,
+check(len(seen) == 18, "unexpected menu button count (8 mobile + 3 desktop parents + 7 submenu actions)")
+check('new MobileButton(icon, "@" + key, action)' in menu and
+      'button.marginLeft(2f).marginRight(2f)' in menu,
       "mobile menu must use the original icon-over-label MobileButton")
 check("markPointerCenter(home.find(\"web-main-custom\"), \"custom\")" in menu,
       "desktop Custom Game real pointer hitbox missing")
@@ -80,6 +91,15 @@ for term in ("data-mindustry-cdp-click-request", "cpu-sample",
     check(term in browser_smoke, f"behavioral test lost {term}")
 check("id: ui_button_stress" in workflow, "real button/hang CI gate missing")
 check("steps.ui_button_stress.outcome" in workflow, "UI failure must block release")
+
+narrow_smoke = (ROOT / "scripts/verify-browser-narrow-menu.sh").read_text(encoding="utf-8")
+for term in ("surface.style.width='50%'", "--cdp-input-bridge", "browser-ui-button-stress.js",
+             "data-mindustry-narrow-menu-stress", "main-menu-size", "desktop-narrow-ru.png"):
+    check(term in narrow_smoke, f"narrow native-menu regression lost {term}")
+check("rectangle clipped" in browser_smoke and "['left','bottom','right','top']" in browser_smoke,
+      "menu acceptance must check whole native actor bounds, not only centers")
+check("id: narrow_menu_stress" in workflow and "steps.narrow_menu_stress.outcome" in workflow,
+      "narrow portal menu clipping must block release")
 
 # Pause is not "Exit game": the browser-safe action goes back to the native
 # main menu and must not leave the player stranded with a JVM-style Quit.

@@ -120,3 +120,65 @@ font/UI atlas textures, whereas baked Web fonts keep separate PNGs. Inline
 resource/content glyphs must use their atlas texture through matching font page
 indices. Verify every registered glyph's UVs/texture and actual mixed text/icon
 rendering in both normal and outline fonts before declaring the UI ready.
+
+## Desktop submenu migration
+
+Start replacing the crowded flat desktop list with MenuFragment's adjacent
+Database submenu: original black6/flatToggleMenut styling, Icon.menu, 11-unit
+label inset, selected parent, 0.15-second fade-in and 0.2-second fade-out.
+Schematics, database, research and key bindings remain reachable with native
+Scene input. Escape and selecting another action close the submenu, and hidden
+children no longer advertise stale click coordinates. The six remaining browser
+launch shortcuts and the combined Play selector still differ from original;
+this is an incremental migration, not complete menu parity.
+
+The unchanged full build at 12b9fe6 passed the 16-type filter JSON field/round-trip
+gate on desktop/Ground Zero and mobile/Onset (run 39073865322). Decimal fixture
+comparisons allow float rounding; block/item identity and integer fields are
+exact. Menu migration validation must additionally exercise real parent clicks,
+child hitboxes, toggle/Escape closing, native dialogs and research drag.
+
+Visual QA of acceptance 39074767764 exposed a mid-word Schematics wrap on the
+mobile portrait tiles. The attempted per-label font scaling regressed shared
+font/icon rendering in compiled screenshot 39075464213 and was removed. Reduce
+horizontal tile margins to give native labels their actual tile width, preserving
+shared font/cache state. The corrected compiled screenshot remains the visual
+gate; a computed width marker alone does not prove the displayed UI is correct.
+
+## Original desktop Play grouping
+
+The desktop sidebar now exposes only the supported original Play, Database and
+Settings parents. Play opens adjacent Campaign, Custom Game and Load Game rows;
+Campaign enters the original 3D PlanetDialog. Custom Game retains the validated
+browser selector and direct campaign recovery paths. Mobile navigation remains
+unchanged. A single submenu switches between Play and Database, using original
+styles/fades and clearing inactive hitboxes. Five adaptive row slots keep both
+submenus inside the minimum portal frame.
+
+Update actual input tests for nested campaign/saves/custom entries, Play toggle
+and Escape, both locale Database visits, and direct-campaign recovery via Custom
+Game. Fresh Java/TeaVM and native browser validation are still required. The
+previous c553908 package passed focused run 39076024060 and screenshot proof
+39076254461 at 92,684,526 unpacked bytes; those results do not certify this change.
+
+The adjacent columns also need to fit when DevTools or portal furniture narrows
+the desktop canvas. Two fixed 230-unit columns exceed a 390-pixel surface;
+a visible center does not prove a complete button is visible. Cap both column
+widths to the actual available scene width and publish/check their full projected
+bounds. A permanent Russian native-input gate shrinks/translates the portal
+surface to half width, exercises every menu action, and captures the open
+Database submenu. Its failure blocks release alongside the normal UI gates.
+
+The first narrow test exposed stale desktop coordinates after a container-only
+resize: Arc Scene follows its own resize listener, while the menu had listened
+only for Mindustry ResizeEvent. Rebuild on actual Scene dimension changes at the
+existing 16-frame menu sampling cadence, clear old hitboxes, and require the
+menu-size marker before the narrow input test begins. Explicit JSBody rectangle
+assignments also avoid the TeaVM parser warnings from object shorthand.
+
+Applied-source inspection found the missing global lifecycle hook: Bootstrap's
+ApplicationListener forwarded setup/update but never resize to the stock UI.
+Forward real logical resizes to UI.resize (margins, Scene viewport, ResizeEvent).
+BrowserApplication still filters backing-DPR-only adjustments, avoiding actor
+rebuilds during adaptive pixel-ratio changes. Validate menu, world HUD, portal
+bounds and orientation with the actual resized Scene before delivering a ZIP.

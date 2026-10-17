@@ -81,7 +81,7 @@ run_production_menu(){
         for(let i=0;i<120;i++){if(fn())return;await new Promise(r=>setTimeout(r,100));}
         throw Error('Native menu pointer failed: '+label);
       };
-      const click=async name=>{
+      const rawClick=async name=>{
         await wait(()=>root.hasAttribute('data-mindustry-main-menu-'+name+'-x'),name+' coordinates');
         const rect=canvas.getBoundingClientRect();
         const x=rect.left+Number(root.getAttribute('data-mindustry-main-menu-'+name+'-x'));
@@ -90,6 +90,15 @@ run_production_menu(){
           canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:411,pointerType:'mouse',clientX:x,clientY:y,button:0,buttons:type==='pointerdown'?1:0}));
           await new Promise(r=>setTimeout(r,100));
         }
+      };
+      const click=async(name)=>{
+        if(root.getAttribute('data-mindustry-main-menu-layout')!=='mobile-grid'){
+          if(['database','research','schematics','controls'].includes(name) && root.getAttribute('data-mindustry-main-menu-database-submenu')!=='open'){
+            await rawClick('database-group');
+            await wait(()=>root.getAttribute('data-mindustry-main-menu-database-submenu')==='open','Localized Database parent');
+          }
+        }
+        await rawClick(name);
       };
       await click('settings');
       await wait(()=>(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('settings'),'Original Settings opened');
@@ -100,7 +109,7 @@ run_production_menu(){
       if(root.getAttribute('data-mindustry-main-menu-page')!=='home')throw Error('Native home did not open');
       await click('play');
       await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='play','Play submenu');
-      await click('back');
+      await click(root.getAttribute('data-mindustry-main-menu-layout')==='mobile-grid'?'back':'play');
       await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='home','Back to home');
       await click('database');
       await wait(()=>root.getAttribute('data-mindustry-database-open')==='yes','Database opened');

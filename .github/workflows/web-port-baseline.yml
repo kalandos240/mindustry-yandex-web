@@ -359,6 +359,11 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-ui-button-stress.sh
 
+      - name: Exercise whole menu rectangles in a narrow translated desktop surface
+        id: narrow_menu_stress
+        continue-on-error: true
+        run: bash scripts/verify-browser-narrow-menu.sh
+
       - name: Upload original menu desktop and mobile screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -749,6 +754,7 @@ jobs:
         if: always()
         run: |
           if [ "${{ steps.ui_button_stress.outcome }}" != "success" ] || \
+             [ "${{ steps.narrow_menu_stress.outcome }}" != "success" ] || \
              [ "${{ steps.settings_nested_stress.outcome }}" != "success" ] || \
              [ "${{ steps.research_mouse_drag.outcome }}" != "success" ] || \
              [ "${{ steps.gameplay_button_stress.outcome }}" != "success" ]; then
