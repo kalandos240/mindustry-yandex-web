@@ -8,7 +8,10 @@
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const wait = async (predicate, message) => {
     for(let i=0; i<160; i++){
-      if(get('web') !== 'ready') throw Error('Game runtime crashed while ' + message);
+      if(get('web') !== 'ready') throw Error('Game runtime crashed while ' + message +
+        '; exception=' + get('error') + '; planet-frame=' +
+        get('planet-frame-phase') + '; planet-failure=' +
+        get('planet-frame-failure') + '; menu-module=' + get('module-phase'));
       if(predicate()) return;
       await sleep(100);
     }
