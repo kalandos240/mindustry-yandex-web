@@ -14,10 +14,13 @@ for i in {1..30}; do
   if curl -fsS "http://127.0.0.1:$PORT/index.html" >/dev/null; then break; fi
   sleep 0.25
 done
-for scenario in groundZero onset; do
+# Both sectors explicitly enable survival waves. Ground Zero's tutorial
+# and Onset's attack mission intentionally disable automatic wave timers;
+# using those to certify ordinary waves would be a false failure.
+for scenario in frozenForest intersect; do
   args=()
   device=desktop
-  if [ "$scenario" = onset ]; then args+=(--emulate-mobile); device=mobile; fi
+  if [ "$scenario" = intersect ]; then args+=(--emulate-mobile); device=mobile; fi
   profile="/tmp/mindustry-wave-hud-$scenario"
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${args[@]}" \
