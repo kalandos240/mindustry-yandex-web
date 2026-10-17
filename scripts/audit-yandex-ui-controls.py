@@ -156,7 +156,7 @@ real_launch = (ROOT / "scripts/browser-real-campaign-launch.js").read_text(encod
 real_shell = (ROOT / "scripts/verify-browser-real-campaign-launch.sh").read_text(encoding="utf-8")
 for marker in ("direct-serpulo", "direct-erekir", "planet-serpulo",
                "planet-erekir", "'campaign-state'", "'campaign-world'",
-               "'cdp-click-request'", "'campaign-preset'"):
+               "cdp-click-request", "'campaign-preset'"):
     check(marker in real_launch, f"Real campaign end-to-end click lost {marker}")
 check(all(scenario in real_shell for scenario in
           ("direct-serpulo", "direct-erekir", "planet-serpulo", "planet-erekir")),
