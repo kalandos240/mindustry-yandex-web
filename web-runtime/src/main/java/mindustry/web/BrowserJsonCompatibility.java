@@ -306,6 +306,13 @@ public final class BrowserJsonCompatibility{
     }
 
     private static <T extends GenerateFilter> void installFilter(Class<T> type, Prov<T> factory){
+        // Register only these known filter classes. Arc rejects unregistered
+        // class names before consulting serializers; RandomItemFilter is not
+        // included in the editor's Maps.allFilterTypes tag registry.
+        String tag = JsonIO.json.getTag(type);
+        JsonIO.json.addClassTag(type.getName(), type);
+        JsonIO.json.addClassTag(tag == null
+            ? arc.util.Strings.camelize(type.getSimpleName().replace("Filter", "")) : tag, type);
         BrowserMapFilterJson.install(type, factory);
         if(verifyFilters){
             T value = factory.get();
