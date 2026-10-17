@@ -112,7 +112,21 @@ jobs:
         working-directory: work/Mindustry
         run: |
           chmod +x gradlew
-          ./gradlew tools:pack '-Pargs=[]' --no-daemon --stacktrace
+          # Maven Central can return HTTP 429 on parallel hosted GitHub runners.
+          # Retry transient upstream dependency resolution with bounded backoff
+          # instead of marking a game/rendering regression before compilation.
+          packed=no
+          for attempt in 1 2 3; do
+            if ./gradlew tools:pack '-Pargs=[]' --no-daemon --stacktrace; then
+              packed=yes
+              break
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Atlas Gradle dependency/build attempt $attempt failed; retrying after rate-limit cooldown"
+              sleep $((attempt * 20))
+            fi
+          done
+          test "$packed" = yes
           test -s core/assets/sprites/sprites.aatls
           test -s core/assets/sprites/sprites.png
           pages="$(find core/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)"
