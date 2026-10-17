@@ -81,6 +81,20 @@ for device in desktop mobile; do
         'First campaign confirmation button is blocked by: '
           +root.getAttribute('data-mindustry-planet-hit-intro-confirm-receiver'));
       await choose('intro-confirm');
+      // CDP native clicks are real mouse/touch inputs, not direct UI actions.
+      // On loaded WebGL startup Arc can miss the first button down/up while
+      // draining queued input; retry the *same exposed stock button* a bounded
+      // number of times, never force selection or mark the test passed.
+      for(let retry=0;retry<2;retry++){
+        for(let tick=0;tick<12;tick++){
+          if(root.getAttribute('data-mindustry-planet-first-confirm')==='serpulo')break;
+          await new Promise(r=>setTimeout(r,100));
+        }
+        if(root.getAttribute('data-mindustry-planet-first-confirm')==='serpulo')break;
+        if(root.getAttribute('data-mindustry-planet-first-chooser')!=='open')break;
+        if(root.getAttribute('data-mindustry-planet-hit-intro-confirm-exposed')!=='yes')break;
+        await choose('intro-confirm');
+      }
       await wait(()=>root.getAttribute('data-mindustry-planet-first-confirm')==='serpulo',
         'Original campaign OK callback was not reached; choice='
           +root.getAttribute('data-mindustry-planet-first-selected')
