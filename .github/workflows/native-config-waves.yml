@@ -1,4 +1,4 @@
-name: Isolate stale hover config race
+name: Capture mobile config blocker
 on:
   push:
     branches: [diagnose-native-config-waves]
@@ -49,6 +49,8 @@ jobs:
           name: native-config-waves-diagnosis
           path: |
             work/diagnose/*.log
+            work/diagnose/*.png
+            work/diagnose/*.html
             /tmp/mindustry-building-config-*.html
             /tmp/mindustry-wave-hud-*.html
       - name: Require actual test outcomes
