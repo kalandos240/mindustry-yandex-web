@@ -30,12 +30,42 @@ public class BrowserPlanetDialog extends PlanetDialog{
     }
 
     @Override
+    public Dialog show(){
+        // In desktop vanilla the first-run portrait chooser selects/centers
+        // the starting sector. Web deliberately omits that obstructed overlay,
+        // so make the REAL stock sectorTop launch panel visible immediately.
+        // Otherwise a fresh player sees only a globe and no way to begin
+        // either campaign without accurately clicking a tiny sector on it.
+        Dialog dialog = super.show();
+        focusStartingSector();
+        return dialog;
+    }
+
+    private void focusStartingSector(){
+        if(mode != Mode.look || state.planet == null || state.planet.getStartSector() == null) return;
+        Sector sector = state.planet.getStartSector();
+        lookAt(sector);
+        selectSector(sector);
+        markStartSectorVisible(state.planet.name, sector.id);
+    }
+
+    @Override
     public void viewPlanet(Planet planet, boolean pan){
-        // Observe the actual stock planet-selection callback. This is not
-        // called by JavaScript and does not change the upstream action.
+        // Keep the native Serpulo/Erekir selector, AND retarget the sector
+        // action to this planet. The starting sector never stays pointing at
+        // a different planet after a browser globe switch.
         markNativeChoice(planet.name);
         super.viewPlanet(planet, pan);
+        focusStartingSector();
     }
+
+    @JSBody(params={"planet","id"},script="""
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-planet-start-sector-planet',planet);
+        r.setAttribute('data-mindustry-planet-start-sector-id',String(id));
+        r.setAttribute('data-mindustry-planet-start-sector-ready','yes');
+        """)
+    private static native void markStartSectorVisible(String planet,int id);
 
     @Override
     void playSelected(){
