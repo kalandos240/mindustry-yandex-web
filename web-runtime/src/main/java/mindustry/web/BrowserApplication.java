@@ -198,6 +198,9 @@ public final class BrowserApplication extends WebApplicationBase{
                 // Chrome test of the exact original HudFragment "skip" wave
                 // action, including real unit-wave state advancement.
                 BrowserWaveHudSmoke.update();
+                // Reproduce the user's campaign HUD Icon.map click in an
+                // active browser world; menu-only PlanetDialog smoke misses it.
+                BrowserHudPlanetSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
