@@ -92,6 +92,19 @@ public final class BrowserVanillaDialogs{
         return initialized;
     }
 
+    /** Stock modal visibility is checked without relying on lagging DOM state.
+     * A closing Escape must not also toggle pause on the same keyboard tap. */
+    public static boolean anyNativeModalShown(){
+        return initialized && (
+            ui.settings != null && ui.settings.isShown()
+            || ui.load != null && ui.load.isShown()
+            || ui.controls != null && ui.controls.isShown()
+            || ui.language != null && ui.language.isShown()
+            || ui.schematics != null && ui.schematics.isShown()
+            || ui.database != null && ui.database.isShown()
+            || ui.planet != null && ui.planet.isShown());
+    }
+
     /** Report visible stock modals on the existing UI sampling cadence, not per frame. */
     public static void sampleVisibility(){
         if(!initialized) return;
