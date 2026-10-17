@@ -23,6 +23,7 @@ import static mindustry.Vars.*;
  */
 public final class BrowserVanillaDialogs{
     private static boolean initialized;
+    private static boolean settingsProbeChecked, settingsProbeEnabled;
 
     private BrowserVanillaDialogs(){}
 
@@ -103,8 +104,19 @@ public final class BrowserVanillaDialogs{
         if(ui.database.isShown()) active.append("database,");
         if(ui.planet != null && ui.planet.isShown()) active.append("planet,");
         markDialogVisibility(active.length() == 0 ? "none" : active.toString());
-        if(ui.settings.isShown()) sampleSettingsNestedControls();
+        if(ui.settings.isShown() && settingsNestedProbeRequested()) sampleSettingsNestedControls();
     }
+
+    private static boolean settingsNestedProbeRequested(){
+        if(!settingsProbeChecked){
+            settingsProbeEnabled = querySettingsNestedSmoke();
+            settingsProbeChecked = true;
+        }
+        return settingsProbeEnabled;
+    }
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustrySettingsNestedSmoke') === '1';")
+    private static native boolean querySettingsNestedSmoke();
 
     /**
      * Only discover ACTUAL visible Arc Scene buttons, not synthetic DOM menu
