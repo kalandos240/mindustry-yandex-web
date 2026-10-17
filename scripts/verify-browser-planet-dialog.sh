@@ -22,6 +22,7 @@ for device in desktop mobile; do
     "${emulation[@]}" \
     --cdp-input-bridge \
     --require 'data-mindustry-web="ready"' \
+    --require 'data-mindustry-planet-meshes="ready"' \
     --require 'data-mindustry-vanilla-planet="stock-PlanetDialog-3d"' \
     --require 'data-mindustry-main-menu-page="home"' \
     --after-ready-eval "(async () => {
