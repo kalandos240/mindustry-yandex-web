@@ -26,9 +26,9 @@ for anchor,label in [
 a=s.index("as_Scene_touchDown =")
 b=s.index("as_Scene_touchDragged =",a)
 part=s[a:b]
-anchor="        $target = $tmp;"
+anchor="        $target = $tmp;" + chr(10) + "        if ($target !== null)"
 assert part.count(anchor)==1
-part=part.replace(anchor,anchor+"\n if(document.documentElement.hasAttribute('data-mindustry-building-config-fixture'))console.info('SCENE_TARGET', $target && $target.constructor.name, $target && $target.$name, document.documentElement.getAttribute('data-mindustry-cdp-click-request'));")
+part=part.replace(anchor,"        $target = $tmp;\n if(document.documentElement.hasAttribute('data-mindustry-building-config-fixture'))console.info('SCENE_TARGET', $target && $target.constructor.name, $target && $target.$name, document.documentElement.getAttribute('data-mindustry-cdp-click-request'));\n        if ($target !== null)")
 s=s[:a]+part+s[b:]
 anchor="ase_ClickListener_touchUp = ($this, $event, $x, $y, $pointer, $button) => {"
 assert s.count(anchor)==1
