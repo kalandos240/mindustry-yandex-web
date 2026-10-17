@@ -35,6 +35,7 @@ jobs:
           python3 scripts/test_yandex_size_budget.py
           python3 scripts/audit-campaign-consistency.py
           python3 scripts/audit-browser-hotpath.py
+          python3 scripts/audit-yandex-ui-controls.py
           for script in scripts/*.sh; do
             bash -n "$script"
           done
@@ -91,6 +92,7 @@ jobs:
           python3 scripts/test_yandex_size_budget.py
           python3 scripts/audit-campaign-consistency.py
           python3 scripts/audit-browser-hotpath.py
+          python3 scripts/audit-yandex-ui-controls.py
           for script in scripts/*.sh; do
             bash -n "$script"
           done
@@ -294,6 +296,14 @@ jobs:
       # Fail fast on native dialog interaction before the long campaign matrices.
       - name: Verify native vanilla dialogs in real desktop and mobile Chrome
         run: bash scripts/verify-browser-vanilla-dialogs.sh
+
+      # Interactive buttons are not certified merely by compiling their dialogs.
+      # Require real Chrome mouse/touch events AND a continuing TeaVM frame loop
+      # after each open/close, including repeat visits and a reduced game viewport.
+      - name: Stress all allowed menu buttons for missed actions and hard freezes
+        id: ui_button_stress
+        continue-on-error: true
+        run: bash scripts/verify-browser-ui-button-stress.sh
 
       # Run the independent game/campaign/portal matrix even if the still-WIP
       # native first-campaign chooser fails; never silently turn it green.
@@ -586,6 +596,14 @@ jobs:
              [ "${{ steps.unit_production.outcome }}" != "success" ] || \
              [ "${{ steps.unit_factory_matrix.outcome }}" != "success" ]; then
             echo "Original building or one of six real unit factories failed: release remains BLOCKED." >&2
+            exit 1
+          fi
+
+      - name: Require responsive permitted UI controls for Yandex release
+        if: always()
+        run: |
+          if [ "${{ steps.ui_button_stress.outcome }}" != "success" ]; then
+            echo "Native menu controls froze, were unreachable, or failed to open/close: release BLOCKED." >&2
             exit 1
           fi
 
