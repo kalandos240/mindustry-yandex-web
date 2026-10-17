@@ -32,3 +32,25 @@ start maps must remain playable after an unrelated deferred map fails. A new
 sector's map must be ready before the active world is reset. Failed loads must
 preserve existing saves. The final unpacked Yandex package must remain below
 100 MB.
+
+## Stabilization evidence (2026-10-17)
+
+Full logs from 39058868543 invalidated the preliminary step-status summary:
+continue-on-error normalized conclusions cannot establish a passing browser test.
+The build is not certified. Remaining failures include building configuration,
+wave HUD, native-modal pause integration and other full-suite gates.
+
+The archived-build replay retained the exact 3D crash stack:
+PlanetDialog.renderOverProjections -> findLauncher ->
+PlanetGenerator.findLaunchCandidate -> preset.generator.map (null).
+FileMapGenerator was constructed before the browser Maps catalog existed.
+The production fix binds ready preset maps before original launcher selection,
+waits asynchronously for missing selected maps and preserves saved-sector resume.
+A controlled replay with that map binding passed sustained globe rendering,
+Serpulo/Erekir switching and Research navigation on desktop and mobile.
+The fresh Java build must pass the same paths without the diagnostic adapter.
+
+Actual screenshot review of the archived build found legacy HTML Settings/mode
+buttons over the original menu and a debug status paragraph across the bottom.
+The native-only cleanup removes those DOM controls, adds an Arc mode selector to
+Play and hides ready-state debug text. New screenshots remain part of validation.

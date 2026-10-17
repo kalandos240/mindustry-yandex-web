@@ -34,13 +34,17 @@ jobs:
         continue-on-error: true
         env:
           MINDUSTRY_CDP_CONSOLE: '1'
-        run: bash scripts/verify-browser-ui-button-stress.sh 2>&1 | tee work/browser-debug/menu.log
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-ui-button-stress.sh 2>&1 | tee work/browser-debug/menu.log
       - name: Reproduce original 3D globe and retain exact throw stack
         id: planets
         continue-on-error: true
         env:
           MINDUSTRY_CDP_CONSOLE: '1'
-        run: bash scripts/verify-browser-planet-dialog.sh 2>&1 | tee work/browser-debug/planets.log
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-planet-dialog.sh 2>&1 | tee work/browser-debug/planets.log
       - name: Upload actual screenshots and diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4
