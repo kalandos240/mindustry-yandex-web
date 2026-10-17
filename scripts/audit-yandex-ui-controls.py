@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Fail closed if unsupported controls return to the Web/Yandex game menu.
+
+Yandex Games requirements, checked against 2026-10-09 official specification:
+1.14 freezes/crashes, 1.8/1.10 screen hitboxes, 1.6.2.6/7 OS shortcuts and
+context menu; 6.7 (recommended) useless "Exit" controls. Not a blanket ban
+on all buttons or a substitute for browser interaction/moderation testing.
+"""
+from pathlib import Path
+import re
+
+ROOT = Path(__file__).resolve().parents[1]
+menu = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserStockMainMenu.java").read_text(encoding="utf-8")
+dialogs = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserVanillaDialogs.java").read_text(encoding="utf-8")
+index = (ROOT / "web-runtime/src/web/index.html").read_text(encoding="utf-8")
+application = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserApplication.java").read_text(encoding="utf-8")
+settings_patch = (ROOT / "scripts/patch-vanilla-settings-web.py").read_text(encoding="utf-8")
+browser_smoke = (ROOT / "scripts/browser-ui-button-stress.js").read_text(encoding="utf-8")
+workflow = (ROOT / ".github/workflows/web-port-baseline.yml").read_text(encoding="utf-8")
+
+def check(ok, message):
+    if not ok:
+        raise SystemExit("Yandex UI controls compliance failed: " + message)
+
+legal = {
+    "play": "BrowserStockMainMenu::openPlay",
+    "customgame": "BrowserStockMainMenu::openPlay",
+    "planets": "BrowserVanillaDialogs::openPlanets",
+    "database": "BrowserStockDatabaseUi::show",
+    "research": "BrowserResearchUi::show",
+    "settings": "BrowserVanillaDialogs::openSettings",
+    "schematics": "BrowserVanillaDialogs::openSchematics",
+    "settings.controls": "BrowserVanillaDialogs::openControls",
+    "loadgame": "BrowserVanillaDialogs::openSaves",
+}
+seen = []
+for match in re.finditer(r'\bmenu\.button\(Core\.bundle\.get\("([^"]+)"', menu):
+    key = match.group(1)
+    seen.append(key)
+    check(key in legal, f"unsupported or unreviewed visible menu button: {key}")
+    tail = menu[match.end(): match.end() + 350]
+    check(legal[key] in tail,
+          f"menu button {key} must have a supported native callback {legal[key]}")
+check(menu.count("menu.button(") == len(seen),
+      "a menu button was added without the approved localized-action format")
+check(set(seen) == set(legal), "missing legal menu action or unapproved action found")
+check(len(seen) == 17, "unexpected menu button count (8 mobile + 9 desktop)")
+check("markPointerCenter(home.find(\"web-main-custom\"), \"custom\")" in menu,
+      "desktop Custom Game real pointer hitbox missing")
+
+# These native dialog actions are required to resolve to real Arc Scene
+# windows, not disabled placeholders or an application exit button.
+for method in ("openSaves", "openSettings", "openControls", "openSchematics", "openPlanets"):
+    check(f"public static void {method}()" in dialogs, f"missing native dialog action {method}")
+check("public boolean openURI(String uri)" in application and
+      'markExternalNavigationBlocked();' in application and
+      'return false;' in application[application.index("public boolean openURI(String uri)"):][:240],
+      "external desktop/browser link handler must remain inactive")
+check("document.addEventListener('contextmenu', event => event.preventDefault()" in index,
+      "long-click/right-click browser context menu must remain suppressed")
+check("document.addEventListener('selectstart', event => event.preventDefault()" in index,
+      "browser text selection must remain suppressed")
+check("hide native fullscreen/vsync/landscape controls" in settings_patch,
+      "desktop fullscreen/orientation controls must remain pruned")
+check("browser file APIs support complete round-trips" in settings_patch,
+      "unsupported desktop ZIP/export/log buttons must remain pruned")
+
+# Require that the behavioral check genuinely uses native trusted clicks and
+# observes completed Java frames; merely searching for a DOM button is insufficient.
+for term in ("data-mindustry-cdp-click-request", "cpu-sample",
+             "main-menu-page", "vanilla-modal-visible", "getBoundingClientRect",
+             "elementFromPoint", "ui-button-stress"):
+    check(term in browser_smoke, f"behavioral test lost {term}")
+check("id: ui_button_stress" in workflow, "real button/hang CI gate missing")
+check("steps.ui_button_stress.outcome" in workflow, "UI failure must block release")
+
+print(f"Yandex UI compliance: {len(seen)} approved main menu control entries, "
+      "unsupported actions excluded, real-click/frame-liveness CI gate wired")
