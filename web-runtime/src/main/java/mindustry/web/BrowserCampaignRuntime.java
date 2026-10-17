@@ -453,8 +453,15 @@ public final class BrowserCampaignRuntime{
         }
         markGeneratorReady(preset.generator.map.file.path());
 
-        diagPhase("reset");
-        logic.reset();
+        // logic.play() sets GameState.playing BEFORE the initial sector save,
+        // launch events and the browser session marker. Any exception there
+        // used to strand the game in playing with active=false; the very next
+        // frame then threw "Production Web entered playing state outside...".
+        // Roll back atomically so the real first failure is visible and the
+        // player can retry rather than being trapped on a dead planet map.
+        try{
+            diagPhase("reset");
+            logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
         if(preset == SectorPresets.groundZero || preset == SectorPresets.onset) preset.quietUnlock();
@@ -514,7 +521,36 @@ public final class BrowserCampaignRuntime{
         active = true;
         markStarted(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             sector.save.file.length());
+        }catch(Throwable launchError){
+            markLaunchFailure(preset.name, launchError.getClass().getName(),
+                String.valueOf(launchError.getMessage()));
+            current = null;
+            active = false;
+            frames = 0;
+            // Reset the original game world AND state, even when the failure
+            // happened after Logic.play() set State.playing.
+            try{
+                if(logic != null) logic.reset();
+            }catch(Throwable resetError){
+                markRecoveryFailure(resetError.getClass().getName());
+                if(state != null) state.set(mindustry.core.GameState.State.menu);
+            }
+            throw launchError;
+        }
     }
+
+    @JSBody(params={"sector","type","message"}, script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-campaign-launch-failure',
+            sector+' / '+type+' / '+message);
+        root.setAttribute('data-mindustry-campaign-launch-result','failed');
+        """)
+    private static native void markLaunchFailure(String sector, String type, String message);
+
+    @JSBody(params={"type"}, script="""
+        document.documentElement.setAttribute('data-mindustry-campaign-recovery-failure',type);
+        """)
+    private static native void markRecoveryFailure(String type);
 
     /** Restore the persisted stock Ground Zero sector save after browser/IndexedDB restart. */
     public static void continueGroundZero(){
