@@ -173,6 +173,9 @@ public final class BrowserApplication extends WebApplicationBase{
                 // Original Dagger->Mace / Stell->Locus stock reconstructor:
                 // real factory unit, CI payload hand-off and live upgrade.
                 BrowserReconstructorSmoke.update();
+                // CI-only native Erekir Tank Assembler: 4 real assembly drones,
+                // stock payload conveyor intake and Vanquish output.
+                BrowserUnitAssemblerSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";
