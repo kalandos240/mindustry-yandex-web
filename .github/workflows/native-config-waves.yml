@@ -26,6 +26,7 @@ jobs:
           cd ../..
           python3 -c 'from zipfile import ZipFile; ZipFile("work/diagnose/mindustry-yandex-release.zip").extractall("web-runtime/build/web")'
           python3 scripts/debug-browser-runtime.py
+          python3 scripts/debug-native-config.py
       - name: Original Sorter configuration and clear
         id: config
         continue-on-error: true
