@@ -20,6 +20,8 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --profile "$profile" --port 9541 --timeout 180 --cdp-input-bridge \
   --require 'data-mindustry-web="ready"' \
   --require 'data-mindustry-planet-meshes="ready"' \
+    --require 'data-mindustry-planet-sector-icons="ready"' \
+    --require 'data-mindustry-planet-sector-icon-count="46"' \
   --require 'data-mindustry-campaign-state="playing"' \
   --after-ready-eval "$(cat "$ROOT_DIR/scripts/browser-hud-planet-stress.js")" \
   --after-ready-require 'data-mindustry-hud-planet-browser="passed"' \
