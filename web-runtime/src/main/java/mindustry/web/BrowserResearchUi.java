@@ -132,6 +132,46 @@ public final class BrowserResearchUi{
         treePane.setFadeScrollBars(false);
         treePane.setScrollingDisabled(false, false);
         treePane.setOverscroll(false, false);
+        if(!mobile){
+            // Desktop tech graph: hold left mouse and drag the map in any
+            // direction, even when the pointer starts over a tech-node icon.
+            // ScrollPane's touch kinetic handling varies by input backend;
+            // use stage-relative pixel deltas for reliable Arc Web mouse pan,
+            // leaving stock node clicks, wheel zoom and mobile pinch intact.
+            treePane.setFlickScroll(false);
+            treePane.addCaptureListener(new InputListener(){
+                private boolean pressed;
+                private float lastX, lastY;
+                @Override
+                public boolean touchDown(InputEvent event, float x, float y,
+                                         int pointer, arc.input.KeyCode button){
+                    if(!open || rootChooserOpen || pointer != 0 ||
+                        button != arc.input.KeyCode.mouseLeft) return false;
+                    pressed = true;
+                    lastX = event.stageX;
+                    lastY = event.stageY;
+                    return true;
+                }
+                @Override
+                public void touchDragged(InputEvent event, float x, float y, int pointer){
+                    if(!pressed || pointer != 0) return;
+                    float dx = event.stageX - lastX;
+                    float dy = event.stageY - lastY;
+                    lastX = event.stageX;
+                    lastY = event.stageY;
+                    treePane.setScrollX(treePane.getScrollX() - dx);
+                    treePane.setScrollY(treePane.getScrollY() + dy);
+                    treePane.updateVisualScroll();
+                    markMousePan(menu ? "menu" : "hud", treePane.getScrollX(),
+                        treePane.getScrollY());
+                }
+                @Override
+                public void touchUp(InputEvent event, float x, float y,
+                                    int pointer, arc.input.KeyCode button){
+                    if(pointer == 0) pressed = false;
+                }
+            });
+        }
         treePane.addCaptureListener(new InputListener(){
             @Override
             public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY){
@@ -241,6 +281,14 @@ public final class BrowserResearchUi{
             hudDetailsWidth = mobile ? 217f : 292f;
         }
     }
+
+    @JSBody(params={"pane","x","y"},script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-research-mouse-pan',pane);
+        root.setAttribute('data-mindustry-research-mouse-pan-x',String(x));
+        root.setAttribute('data-mindustry-research-mouse-pan-y',String(y));
+        """)
+    private static native void markMousePan(String pane, float x, float y);
 
     // As in stock ResearchDialog, previously unlocked branches are revealed
     // when a planet tree is first opened. Other branches still require a tap.
