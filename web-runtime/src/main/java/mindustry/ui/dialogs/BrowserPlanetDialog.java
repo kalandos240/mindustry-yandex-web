@@ -86,9 +86,57 @@ public class BrowserPlanetDialog extends PlanetDialog{
         hide();
     }
 
+    /** Identify the actual stock Arc Scene phase causing the user-reported
+     * planet-map NullPointerException. TeaVM's default NPE stack reports only
+     * its type, so record the last entered UI stage before it is propagated. */
+    @Override
+    void setup(){
+        markPlanetFramePhase("setup-enter");
+        try{
+            super.setup();
+            markPlanetFramePhase("setup-finished");
+        }catch(Throwable crash){
+            markPlanetFrameFailure("setup", crash);
+            throw crash;
+        }
+    }
+
+    @Override
+    public void act(float delta){
+        markPlanetFramePhase("act-enter");
+        try{
+            super.act(delta);
+            markPlanetFramePhase("act-finished");
+        }catch(Throwable crash){
+            markPlanetFrameFailure("act", crash);
+            throw crash;
+        }
+    }
+
+    @JSBody(params={"phase"},script="document.documentElement.setAttribute('data-mindustry-planet-frame-phase',phase);")
+    private static native void markPlanetFramePhase(String phase);
+
+    @JSBody(params={"phase","type"},script="""
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-planet-frame-failure',phase+' / '+type);
+        """)
+    private static native void markPlanetFrameFailureNative(String phase, String type);
+
+    private static void markPlanetFrameFailure(String phase, Throwable error){
+        markPlanetFrameFailureNative(phase,error.getClass().getName()
+            + ": " + String.valueOf(error.getMessage()));
+    }
+
     @Override
     public void draw(){
-        super.draw();
+        markPlanetFramePhase("draw-enter");
+        try{
+            super.draw();
+            markPlanetFramePhase("draw-super-finished");
+        }catch(Throwable crash){
+            markPlanetFrameFailure("draw-super",crash);
+            throw crash;
+        }
         if(!firstFrame){
             firstFrame = true;
             markFirstRender();
