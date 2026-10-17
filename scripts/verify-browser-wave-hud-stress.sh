@@ -24,7 +24,7 @@ for scenario in frozenForest intersect; do
   profile="/tmp/mindustry-wave-hud-$scenario"
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=$scenario&mindustryWaveHudSmoke=1" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=$scenario&mindustryCampaignMapMatrix=1&mindustryWaveHudSmoke=1" \
     --profile "$profile" --port 9532 --timeout 185 --cdp-input-bridge \
     --require 'data-mindustry-web="ready"' \
     --require "data-mindustry-campaign-test=\"$scenario\"" \

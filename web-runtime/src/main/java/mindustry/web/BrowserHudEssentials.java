@@ -1,9 +1,12 @@
 package mindustry.web;
 
 import arc.*;
+import arc.graphics.*;
 import arc.scene.*;
 import arc.scene.event.*;
 import arc.scene.ui.layout.*;
+import arc.scene.ui.ImageButton.*;
+import mindustry.input.*;
 import mindustry.game.EventType.*;
 import mindustry.core.*;
 import mindustry.graphics.*;
@@ -114,11 +117,27 @@ public final class BrowserHudEssentials{
             panel.margin(5f);
             panel.labelWrap(BrowserHudEssentials::statusText).width(mobile ? 174f : 218f).left()
                 .name("web-hud-wave-status");
-            // Same eligibility predicate as vanilla HudFragment.canSkipWave(), but
-            // no network admin branch is required in Yandex single-player mode.
-            panel.button(Icon.play, () -> {
+            // Pinned HudFragment's right-edge wave control, including native
+            // disabled/hover states and actor name. Local play invokes the
+            // original Logic body directly, as the stock offline branch does.
+            ImageButtonStyle rightStyle = new ImageButtonStyle();
+            rightStyle.over = Tex.buttonRightOver;
+            rightStyle.down = Tex.buttonRightDown;
+            rightStyle.up = Tex.buttonRight;
+            rightStyle.disabled = Tex.buttonRightDisabled;
+            rightStyle.imageDisabledColor = Color.clear;
+            rightStyle.imageUpColor = Color.white;
+            panel.button(Icon.play, rightStyle, 30f, () -> {
                 if(canSkipWave()) logic.skipWave();
-            }).size(40f).disabled(b -> !canSkipWave()).name("web-hud-skip-wave");
+            }).growY().fillX().right().width(40f)
+                .disabled(b -> !canSkipWave()).name("skip").get().toBack();
+            panel.update(() -> {
+                if(state != null && state.isPlaying() && ui.hudfrag.shown
+                    && Core.input.keyTap(Binding.skipWave) && canSkipWave()
+                    && !Core.scene.hasDialog() && !Core.scene.hasField()){
+                    logic.skipWave();
+                }
+            });
         }).left();
         waves.update(() -> {
             if(state != null && state.isGame() && (++frameCount & 31) == 0){

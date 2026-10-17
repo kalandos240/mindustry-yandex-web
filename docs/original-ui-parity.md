@@ -5,13 +5,13 @@ work in progress and is not a claim of full visual or behavioral parity.
 
 | Surface | Current implementation | Work remaining |
 | --- | --- | --- |
-| Main menu scenery | Original `MenuRenderer`: generated tiles, cached walls/shadows, flying units | Verify actual browser screenshots and size budget |
+| Main menu scenery | Original `MenuRenderer`: generated tiles, cached walls/shadows, flying units | Desktop/mobile screenshots reviewed; 92,397,953-byte package verified |
 | Main menu logo/version | Original `MenuFragment` drawing geometry | Verify portrait, landscape and reduced portal viewports |
 | Mobile menu widgets | Original `MobileButton`, responsive grid | Restore original navigation grouping as supported screens are ported |
 | Desktop menu | Stock styles; custom list of browser-supported actions | Replace list with original `MenuFragment` structure and animated submenus |
 | Play / Custom Game | Browser selectors and original gameplay entry points | Port original selection dialogs and layout |
 | Planets | Original `PlanetDialog` with browser launch boundary | Procedural sectors, launch/loadout parity, regression tests on the portal |
-| Database | Original `DatabaseDialog` directly, with original search/tabs/categories/details | Verify native Back and Escape in menu and live campaigns |
+| Database | Original `DatabaseDialog` directly, with original search/tabs/categories/details | Native open/close verified in menu and live campaigns on desktop/mobile |
 | Settings / language / keybinds | Original dialogs with browser compatibility patches | Review browser-specific omissions and pixel parity |
 | Schematics | Original `SchematicsDialog` | Full import/export and all native controls regression |
 | Saved games | Original `LoadDialog` subclass; browser persistence | Restore remaining original load/save flow and verify old saves |
@@ -48,9 +48,16 @@ The production fix binds ready preset maps before original launcher selection,
 waits asynchronously for missing selected maps and preserves saved-sector resume.
 A controlled replay with that map binding passed sustained globe rendering,
 Serpulo/Erekir switching and Research navigation on desktop and mobile.
-The fresh Java build must pass the same paths without the diagnostic adapter.
+Fresh package acceptance run 39064432270 passed those paths without the diagnostic adapter, plus actual native menu/globe launches into both worlds, HUD map cross-planet launch and Research/Database close in live campaigns. The checksum-verified package was built from d720693. A separate actual-outcome gate checks every continued test step.
 
 Actual screenshot review of the archived build found legacy HTML Settings/mode
 buttons over the original menu and a debug status paragraph across the bottom.
 The native-only cleanup removes those DOM controls, adds an Arc mode selector to
-Play and hides ready-state debug text. New screenshots remain part of validation.
+Play and hides ready-state debug text. Fresh screenshots confirm those overlays are absent. Follow-up desktop spacing/highlight cleanup from cb8c8c9 compiled and passed desktop/mobile menu and native Settings interaction tests in run 39064596753; screenshot review confirms version text no longer overlaps Play.
+
+The wave-HUD diagnostic stack from run 39065145258 reached
+BrowserCampaignRuntime.maybeStartTestSector before any HUD test: its late-sector
+URLs omitted mindustryCampaignMapMatrix=1. The corrected verifier must launch
+the real survival maps and still require a trusted native HUD click, original
+Logic.runWave progression and a continuing game loop. This fixture correction
+alone does not certify wave gameplay. Sorter configuration remains under diagnosis.
