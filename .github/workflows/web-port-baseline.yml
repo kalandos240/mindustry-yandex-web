@@ -305,6 +305,11 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-ui-button-stress.sh
 
+      - name: Exercise original Settings categories and persisted preferences with trusted Chrome input
+        id: settings_nested_stress
+        continue-on-error: true
+        run: bash scripts/verify-browser-settings-tab-stress.sh
+
       # Keep the browser game scheduler moving after each native Arc Scene
       # button in actual Serpulo campaign and local maps, on both devices.
       # Do not trust mere Java button construction or DOM element presence.
@@ -611,6 +616,7 @@ jobs:
         if: always()
         run: |
           if [ "${{ steps.ui_button_stress.outcome }}" != "success" ] || \
+             [ "${{ steps.settings_nested_stress.outcome }}" != "success" ] || \
              [ "${{ steps.gameplay_button_stress.outcome }}" != "success" ]; then
             echo "Native main menu, HUD or Pause controls froze, were unreachable, or failed to open/close: release BLOCKED." >&2
             exit 1
