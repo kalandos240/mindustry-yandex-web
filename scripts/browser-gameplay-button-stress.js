@@ -140,8 +140,9 @@
   await alive('paused native save');
 
   await click('pause-button-resume', 'Pause Resume');
-  await wait(() => attr(stateKey) === 'playing' &&
-    attr('space-transition') === 'resumed', 'real Resume action');
+  // Clicking native Resume goes directly through the game's state machine;
+  // the separate space-transition marker records keyboard actions only.
+  await wait(() => attr(stateKey) === 'playing', 'real Resume action');
   await alive('resume gameplay');
   await pause();
   await click('pause-button-menu', 'Back to menu');
