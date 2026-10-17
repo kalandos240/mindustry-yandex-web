@@ -64,6 +64,17 @@ public final class BrowserCampaignRuntime{
         return campaignAssetsReadyNative();
     }
 
+    /** Content.init creates FileMapGenerator before the browser map catalog exists. */
+    public static boolean preparePresetGenerator(Sector sector){
+        if(sector == null || sector.preset == null) return true;
+        SectorPreset preset = sector.preset;
+        if(preset.generator != null && preset.generator.map != null) return true;
+        Fi file = Core.files.internal("maps/" + sector.planet.name + "/" + preset.name + "." + mapExtension);
+        if(maps == null || !file.exists() || file.length() < 128) return false;
+        preset.generator = new FileMapGenerator(preset.name, preset);
+        return preset.generator.map != null;
+    }
+
     /** DOM-heavy campaign telemetry is enabled only for explicit browser smoke runs. */
     public static boolean diagnosticsEnabled(){
         if(!diagnosticsQueryCached){
@@ -725,6 +736,22 @@ public final class BrowserCampaignRuntime{
         current.save.setAutosave(true);
         markManualSaved(state.wave, Math.round(state.tick * 1000d), state.updateId, current.save.file.length());
         flushCampaignStorage();
+    }
+
+    /** Adopt the original BaseDialog pause before checking frozen simulation ticks. */
+    public static void adoptNativeDialogPause(){
+        if(!active || !state.isPaused()) return;
+        pauseUpdateId = state.updateId;
+        pausedFrames = 0;
+        markPaused(pauseUpdateId);
+    }
+
+    public static void nativeDialogResumed(){
+        if(!active || !state.isPlaying()) return;
+        if(state.updateId != pauseUpdateId){
+            throw new IllegalStateException("Native dialog advanced the campaign simulation clock");
+        }
+        markPauseResumed(state.updateId);
     }
 
     public static void updatePausedFrame(){

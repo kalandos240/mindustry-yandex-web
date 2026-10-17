@@ -77,12 +77,6 @@ run_production_menu(){
     --require 'data-mindustry-settings-pause-entry="ready"' \
     --after-ready-eval "(async () => {
       const root=document.documentElement, canvas=document.getElementById('mindustry-canvas');
-      const launch=document.getElementById('mindustry-settings-toggle'),panel=document.getElementById('mindustry-settings-overlay');
-      if(!launch||!panel||launch.style.display==='none') throw Error('Menu settings unavailable');
-      launch.click();
-      if(root.getAttribute('data-mindustry-settings-panel')!=='open') throw Error('Settings panel failed to open');
-      panel.querySelectorAll('button')[4].click();
-      if(root.getAttribute('data-mindustry-settings-panel')!=='closed') throw Error('Settings panel failed to close');
       const wait=async(fn,label)=>{
         for(let i=0;i<120;i++){if(fn())return;await new Promise(r=>setTimeout(r,100));}
         throw Error('Native menu pointer failed: '+label);
@@ -97,6 +91,12 @@ run_production_menu(){
           await new Promise(r=>setTimeout(r,100));
         }
       };
+      await click('settings');
+      await wait(()=>(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('settings'),'Original Settings opened');
+      window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
+      await new Promise(r=>setTimeout(r,100));
+      window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
+      await wait(()=>!(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('settings'),'Original Settings closed');
       if(root.getAttribute('data-mindustry-main-menu-page')!=='home')throw Error('Native home did not open');
       await click('play');
       await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='play','Play submenu');

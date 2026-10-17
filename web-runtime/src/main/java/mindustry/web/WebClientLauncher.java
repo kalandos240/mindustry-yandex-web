@@ -302,6 +302,7 @@ public final class WebClientLauncher extends ClientLauncher{
         markUiSyncPhase("ui-load-sync");
         uiShell.loadSync();
         markUiSyncPhase("ui-load-sync-ready");
+        BrowserFonts.verifyContentIconPages();
 
         // Original SectorPreset.loadIcon() is conditional on Icon.terrain.
         // ContentLoader.load() above runs *before* UI.loadSync -> Icon.load(),
@@ -357,6 +358,10 @@ public final class WebClientLauncher extends ClientLauncher{
         markUiSyncPhase("gameplay-runtime");
         BrowserGameplayRuntime.init();
         markUiSyncPhase("gameplay-runtime-ready");
+
+        markUiSyncPhase("original-menu-background");
+        BrowserMenuBackground.install(ui.menuGroup);
+        markUiSyncPhase("original-menu-background-ready");
 
         markUiSyncPhase("vanilla-local-dialogs");
         BrowserVanillaDialogs.install();

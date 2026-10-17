@@ -652,6 +652,22 @@ public final class BrowserLocalMapRuntime{
         markResumed(frozenUpdateId);
     }
 
+    /** Adopt the original BaseDialog pause before checking frozen simulation ticks. */
+    public static void adoptNativeDialogPause(){
+        if(!active || !state.isPaused()) return;
+        pauseUpdateId = state.updateId;
+        pausedFrames = 0;
+        markPaused(pauseUpdateId);
+    }
+
+    public static void nativeDialogResumed(){
+        if(!active || !state.isPlaying()) return;
+        if(state.updateId != pauseUpdateId){
+            throw new IllegalStateException("Native dialog advanced the local simulation clock");
+        }
+        markResumed(state.updateId);
+    }
+
     public static void updatePausedFrame(){
         if(!active || current == null || !state.isPaused() || state.gameOver){
             throw new IllegalStateException("Browser paused frame requires an active paused local session");

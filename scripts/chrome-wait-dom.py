@@ -154,6 +154,9 @@ def cdp_command(ws: WebSocket, message_id: int, method: str, params: dict | None
     ws.send_text(json.dumps(message))
     while True:
         payload = json.loads(ws.recv_text())
+        if os.environ.get("MINDUSTRY_CDP_CONSOLE") == "1" and payload.get("method") == "Runtime.consoleAPICalled":
+            arguments = payload.get("params", {}).get("args", [])
+            sys.stderr.write("Chrome console: " + " ".join(str(arg.get("value", arg.get("description", ""))) for arg in arguments) + "\n")
         if payload.get("id") != message_id:
             continue
         if "error" in payload:
@@ -172,17 +175,23 @@ def evaluate(ws: WebSocket, message_id: int, expression: str) -> str:
     return str(result.get("value", ""))
 
 
-def evaluate_await(ws: WebSocket, message_id: int, expression: str) -> str:
-    payload = cdp_command(
-        ws,
-        message_id,
-        "Runtime.evaluate",
-        {
-            "expression": expression,
-            "returnByValue": True,
-            "awaitPromise": True,
-        },
-    )
+def evaluate_await(ws: WebSocket, message_id: int, expression: str, timeout: float | None = None) -> str:
+    previous_timeout = ws.sock.gettimeout()
+    if timeout is not None:
+        ws.sock.settimeout(max(0.1, timeout))
+    try:
+        payload = cdp_command(
+            ws,
+            message_id,
+            "Runtime.evaluate",
+            {
+                "expression": expression,
+                "returnByValue": True,
+                "awaitPromise": True,
+            },
+        )
+    finally:
+        ws.sock.settimeout(previous_timeout)
     details = payload.get("result", {}).get("exceptionDetails")
     if details:
         text = details.get("text", "Runtime.evaluate failed")
@@ -311,6 +320,7 @@ def main() -> int:
         help="Promise-aware JavaScript expression to run once required DOM markers are ready.",
     )
     parser.add_argument("--after-ready-require", action="append", default=[])
+    parser.add_argument("--screenshot", help="Save a PNG of the final verified browser surface.")
     parser.add_argument("--chrome", default="google-chrome")
     parser.add_argument("--cdp-input-bridge", action="store_true",
                         help="Use trusted CDP mouse/touch clicks during after-ready eval.")
@@ -390,6 +400,9 @@ def main() -> int:
     try:
         ws = WebSocket(target_websocket(args.port, launch_url, deadline))
         message_id = 1
+        if os.environ.get("MINDUSTRY_CDP_CONSOLE") == "1":
+            cdp_command(ws, message_id, "Runtime.enable")
+            message_id += 1
 
         if args.emulate_mobile:
             # Apply device characteristics before index.html executes so production
@@ -512,7 +525,7 @@ def main() -> int:
                     continue
 
                 if args.after_ready_eval:
-                    eval_result = evaluate_await(ws, message_id, args.after_ready_eval)
+                    eval_result = evaluate_await(ws, message_id, args.after_ready_eval, deadline - time.monotonic())
                     message_id += 1
                     last_html = evaluate(
                         ws,
@@ -536,6 +549,12 @@ def main() -> int:
                     else ""
                 )
                 sys.stderr.write(f"Chrome required markers ready{phase} in {elapsed:.3f}s after {polls} DOM poll(s).\n")
+                if args.screenshot:
+                    screenshot = cdp_command(ws, message_id, "Page.captureScreenshot", {"format": "png"})
+                    message_id += 1
+                    destination = Path(args.screenshot)
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(base64.b64decode(screenshot["result"]["data"]))
                 sys.stdout.write("<!DOCTYPE html>\n" + last_html + "\n")
                 return 0
             time.sleep(0.1)
@@ -555,7 +574,7 @@ def main() -> int:
         missing = [marker for marker in required if marker not in last_html]
         if not missing:
             if args.after_ready_eval:
-                eval_result = evaluate_await(ws, message_id, args.after_ready_eval)
+                eval_result = evaluate_await(ws, message_id, args.after_ready_eval, deadline - time.monotonic())
                 message_id += 1
                 last_html = evaluate(ws, message_id, "document.documentElement.outerHTML")
                 message_id += 1
@@ -574,6 +593,12 @@ def main() -> int:
                 else ""
             )
             sys.stderr.write(f"Chrome required markers ready{phase} at deadline edge in {elapsed:.3f}s after {polls} DOM poll(s).\n")
+            if args.screenshot:
+                screenshot = cdp_command(ws, message_id, "Page.captureScreenshot", {"format": "png"})
+                message_id += 1
+                destination = Path(args.screenshot)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(base64.b64decode(screenshot["result"]["data"]))
             sys.stdout.write("<!DOCTYPE html>\n" + last_html + "\n")
             return 0
 

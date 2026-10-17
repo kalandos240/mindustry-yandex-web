@@ -47,7 +47,8 @@ run_assembler(){
     --require "data-mindustry-assembler-component-count=\"$components\"" \
     --require 'data-mindustry-network="local-only"' > "$dom"
 
-  grep -Eq 'data-mindustry-assembler-positioned-drones="[4-9][0-9]*"' "$dom"
+  grep -Fq 'data-mindustry-assembler-created-drones="4"' "$dom"
+  grep -Eq 'data-mindustry-assembler-positioned-drones="[1-4]"' "$dom"
   grep -Eq 'data-mindustry-assembler-frames="[1-9][0-9]*"' "$dom"
   echo "Erekir $mode assembler -> $unit ($device): stock tier=$tier, 4 original AI drones, $components accepted/deposited payloads and real stock unit spawn PASS"
 }

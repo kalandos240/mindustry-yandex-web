@@ -42,9 +42,16 @@ for match in re.finditer(r'\bmenu\.button\(Core\.bundle\.get\("([^"]+)"', menu):
     check(legal[key] in tail,
           f"menu button {key} must have a supported native callback {legal[key]}")
 check(menu.count("menu.button(") == len(seen),
-      "a menu button was added without the approved localized-action format")
+      "a desktop menu button was added without the approved localized-action format")
+for match in re.finditer(r'mobileButton\(menu, "([^\"]+)", [^,]+, ([^,]+),', menu):
+    key, callback = match.groups()
+    seen.append(key)
+    check(key in legal and legal[key] == callback.strip(),
+          f"unsupported native mobile action {key}: {callback}")
 check(set(seen) == set(legal), "missing legal menu action or unapproved action found")
 check(len(seen) == 17, "unexpected menu button count (8 mobile + 9 desktop)")
+check('new MobileButton(icon, "@" + key, action)' in menu,
+      "mobile menu must use the original icon-over-label MobileButton")
 check("markPointerCenter(home.find(\"web-main-custom\"), \"custom\")" in menu,
       "desktop Custom Game real pointer hitbox missing")
 
@@ -205,6 +212,14 @@ for real_planet_test in (
     check('data-mindustry-planet-sector-icons="ready"' in source and
           'data-mindustry-planet-sector-icon-count="46"' in source,
           "Native planet Chrome acceptance can wrongly pass with null SectorPreset.uiIcon: " + real_planet_test)
+
+check('Sector findLauncher(Sector to)' in planet_map and
+      'BrowserCampaignRuntime.preparePresetGenerator(to)' in planet_map and
+      'return super.findLauncher(to)' in planet_map,
+      "Original globe must bind preset maps before the stock launch-candidate renderer")
+check('public static boolean preparePresetGenerator(Sector sector)' in
+      (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserCampaignRuntime.java").read_text(),
+      "FileMapGenerator created before maps initialization must be rebound")
 
 print(f"Yandex UI compliance: {len(seen)} approved main menu entries, "
       f"{len(pause_keys)} pause controls, native 3D Campaign from Play, "

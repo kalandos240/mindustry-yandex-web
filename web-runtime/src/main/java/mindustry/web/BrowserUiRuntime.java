@@ -35,6 +35,7 @@ public final class BrowserUiRuntime{
 
     private static boolean initialized;
     private static TextButton localContinueButton;
+    private static TextButton localModeButton;
     private static int hudResearchPointerFrames;
     private static int hudDatabasePointerFrames;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
@@ -97,6 +98,13 @@ public final class BrowserUiRuntime{
         buildLocalGameOverOverlay();
         BrowserResearchUi.init();
         BrowserStockDatabaseUi.init();
+
+        // InputHandler.add() mounts its config/inventory group before the
+        // browser mounts PlacementFragment. Restore the native popup priority
+        // after all HUD fragments exist, so the mobile palette cannot cover
+        // ItemSelection buttons for a building near the bottom of the screen.
+        Element configRoot = Core.scene.find("web-native-config-root");
+        if(configRoot != null) configRoot.toFront();
 
         // The original MobileInput is built into a dedicated HUD WidgetGroup.
         // In the lean Web shell, additional stock and browser HUD overlays are
@@ -189,6 +197,14 @@ public final class BrowserUiRuntime{
         root.row();
 
         Table mapButtons = new Table();
+        // Native mode choice belongs to Custom Game, never above the main menu.
+        localModeButton = root.button(localModeLabel(), Icon.settings, () -> {
+            applySettingAction(5, BrowserLocalMapRuntime.customModeCode() == 0 ? 1 : 0);
+            syncLocalModeUi();
+        }).width(mobile ? 320f : 380f).height(mobile ? 52f : 46f)
+            .name("web-custom-mode").get();
+        root.row();
+
         mapButtons.defaults().growX().height(mobile ? 52f : 46f).pad(2f);
         for(String slug : BrowserLocalMapRuntime.slugs()){
             mapButtons.button(BrowserLocalMapRuntime.displayName(slug), () -> BrowserLocalMapRuntime.start(slug));
@@ -606,6 +622,12 @@ public final class BrowserUiRuntime{
     public static void syncLocalModeUi(){
         if(!initialized) return;
         setLocalModeUi(BrowserLocalMapRuntime.customModeCode());
+        if(localModeButton != null) localModeButton.setText(localModeLabel());
+    }
+
+    private static String localModeLabel(){
+        return Core.bundle.get(BrowserLocalMapRuntime.customModeCode() == 1
+            ? "mode.sandbox.name" : "mode.survival.name");
     }
 
     @JSBody(params = {"source"}, script = "const r=document.documentElement;r.setAttribute('data-mindustry-hud-commands','stock-PlacementFragment');r.setAttribute('data-mindustry-hud-command-toggle',source);r.setAttribute('data-mindustry-hud-command-mode','off');")

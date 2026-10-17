@@ -8,15 +8,43 @@ import arc.util.serialization.Json.*;
 import mindustry.game.*;
 import mindustry.io.JsonIO;
 import mindustry.type.*;
+import mindustry.maps.filters.*;
+import mindustry.content.*;
+import arc.struct.*;
+import org.teavm.jso.JSBody;
 
 /** Browser-only JSON factories for value types that TeaVM cannot reflectively construct/inspect reliably. */
 public final class BrowserJsonCompatibility{
     private static boolean installed;
+    private static boolean verifyFilters;
+    private static int verifiedFilters;
 
     private BrowserJsonCompatibility(){}
 
     public static void install(){
         if(installed) return;
+        verifyFilters = filterSmokeRequested();
+
+        // Map genfilters are polymorphic Serializable values. A missing TeaVM
+        // constructor made Maps.readFilters() discard the saved list and apply
+        // default decoration/ore filters instead. Preserve the original schema
+        // and algorithms, replacing unavailable constructor/field reflection.
+        installFilter(BlendFilter.class, BlendFilter::new);
+        installFilter(ClearFilter.class, ClearFilter::new);
+        installFilter(CoreSpawnFilter.class, CoreSpawnFilter::new);
+        installFilter(DistortFilter.class, DistortFilter::new);
+        installFilter(EnemySpawnFilter.class, EnemySpawnFilter::new);
+        installFilter(LogicFilter.class, LogicFilter::new);
+        installFilter(MedianFilter.class, MedianFilter::new);
+        installFilter(MirrorFilter.class, MirrorFilter::new);
+        installFilter(NoiseFilter.class, NoiseFilter::new);
+        installFilter(OreFilter.class, OreFilter::new);
+        installFilter(OreMedianFilter.class, OreMedianFilter::new);
+        installFilter(RandomItemFilter.class, RandomItemFilter::new);
+        installFilter(RiverNoiseFilter.class, RiverNoiseFilter::new);
+        installFilter(ScatterFilter.class, ScatterFilter::new);
+        installFilter(SpawnPathFilter.class, SpawnPathFilter::new);
+        installFilter(TerrainFilter.class, TerrainFilter::new);
 
         JsonIO.json.setSerializer(Rules.TeamRules.class, new Serializer<Rules.TeamRules>(){
             @Override
@@ -274,7 +302,68 @@ public final class BrowserJsonCompatibility{
         });
 
         installed = true;
+        if(verifyFilters) verifyFilterFields();
     }
+
+    private static <T extends GenerateFilter> void installFilter(Class<T> type, Prov<T> factory){
+        // Register only these known filter classes. Arc rejects unregistered
+        // class names before consulting serializers; RandomItemFilter is not
+        // included in the editor's Maps.allFilterTypes tag registry.
+        String tag = JsonIO.json.getTag(type);
+        JsonIO.json.addClassTag(type.getName(), type);
+        JsonIO.json.addClassTag(tag == null
+            ? arc.util.Strings.camelize(type.getSimpleName().replace("Filter", "")) : tag, type);
+        BrowserMapFilterJson.install(type, factory);
+        if(verifyFilters){
+            T value = factory.get();
+            value.seed = 314159;
+            String encoded = JsonIO.json.toJson(value, GenerateFilter.class);
+            GenerateFilter restored = JsonIO.read(GenerateFilter.class, encoded);
+            if(restored.getClass() != type || restored.seed != value.seed){
+                throw new IllegalStateException("Map filter JSON lost type/seed: " + type.getName()
+                    + ", restored=" + restored.getClass().getName() + ", seed=" + restored.seed + ", json=" + encoded);
+            }
+            verifiedFilters++;
+        }
+    }
+
+    private static void verifyFilterFields(){
+        // Same polymorphic Seq format as Map.tags.genfilters; nondefault values
+        // detect a successful constructor followed by silently ignored fields.
+        String fixture = "[{class:mindustry.maps.filters.ScatterFilter,seed:17,chance:0.375,flooronto:snow,floor:sand,block:stone-wall},"
+            + "{class:mindustry.maps.filters.OreFilter,seed:23,scl:73,threshold:0.42,ore:ore-lead,target:stone},"
+            + "{class:mindustry.maps.filters.MirrorFilter,seed:31,angle:90,rotate:true},"
+            + "{class:mindustry.maps.filters.RandomItemFilter,seed:37,chance:0.8,drops:[{item:copper,amount:17},{item:lead,amount:9}]},"
+            + "{class:mindustry.maps.filters.LogicFilter,seed:41,code:\"print 42\",loop:true}]";
+        Seq<GenerateFilter> filters = JsonIO.read(Seq.class, fixture);
+        for(int pass = 0; pass < 2; pass++){
+            if(filters.size != 5 || !(filters.get(0) instanceof ScatterFilter scatter)
+                || scatter.seed != 17 || scatter.chance != 0.375f || scatter.flooronto != Blocks.snow
+                || scatter.floor != Blocks.sand || scatter.block != Blocks.stoneWall
+                || !(filters.get(1) instanceof OreFilter ore) || ore.seed != 23
+                || ore.scl != 73f || Math.abs(ore.threshold - 0.42f) > 0.000001f || ore.ore != Blocks.oreLead || ore.target != Blocks.stone
+                || !(filters.get(2) instanceof MirrorFilter mirror) || mirror.seed != 31
+                || mirror.angle != 90 || !mirror.rotate
+                || !(filters.get(3) instanceof RandomItemFilter random) || random.seed != 37
+                || Math.abs(random.chance - 0.8f) > 0.000001f || random.drops.size != 2
+                || random.drops.get(0).item != Items.copper || random.drops.get(0).amount != 17
+                || random.drops.get(1).item != Items.lead || random.drops.get(1).amount != 9
+                || !(filters.get(4) instanceof LogicFilter logicFilter) || logicFilter.seed != 41
+                || !"print 42".equals(logicFilter.code) || !logicFilter.loop){
+                throw new IllegalStateException("Map filter JSON lost saved parameters, pass=" + pass
+                    + ", restored=" + JsonIO.write(filters));
+            }
+            filters = JsonIO.read(Seq.class, JsonIO.write(filters));
+        }
+        if(verifiedFilters != 16) throw new IllegalStateException("Incomplete original map filter registry");
+        markFiltersVerified(verifiedFilters);
+    }
+
+    @JSBody(script="return new URLSearchParams(location.search).get('mindustryFilterSmoke') === '1';")
+    private static native boolean filterSmokeRequested();
+
+    @JSBody(params={"count"}, script="const r=document.documentElement;r.setAttribute('data-mindustry-filter-json','verified');r.setAttribute('data-mindustry-filter-json-types',String(count));r.setAttribute('data-mindustry-filter-json-fields','preserved');")
+    private static native void markFiltersVerified(int count);
 
     private static <T> void installFields(Class<T> type, Prov<T> factory){
         JsonIO.json.setSerializer(type, new Serializer<T>(){

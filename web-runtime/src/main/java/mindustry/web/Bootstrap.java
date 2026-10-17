@@ -21,6 +21,13 @@ public final class Bootstrap{
     private Bootstrap(){}
 
     public static void main(String[] args){
+        // Match upstream.lock; the browser does not run desktop version.properties loading.
+        Version.number = 8;
+        Version.build = 159;
+        Version.revision = 7;
+        Version.type = "web";
+        Version.modifier = "web";
+        Version.commitHash = "c9686eb";
         try{
             installAndVerifyFiles();
             installAndVerifySettings();
@@ -35,6 +42,7 @@ public final class Bootstrap{
             private final WebClientLauncher launcher = new WebClientLauncher();
             private int frames;
             private boolean frameVerified;
+            private int verifiedPixels;
 
             @Override
             public void init(){
@@ -113,7 +121,7 @@ public final class Bootstrap{
                     throw new IllegalStateException("Mindustry browser content.init campaign/tech-tree state failed runtime initialization");
                 }
 
-                BrowserCanvas.setStatus("initialized", "Mindustry clientSetup initialized; vanilla content.init/load, campaign metadata, tech trees, specialized block factories and real content regions ready; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; content-regions@atlas; settings@localStorage; waiting for first rendered sprite frame...");
+                BrowserCanvas.setStatus("initialized", Core.bundle.get("loading", "Loading..."));
             }
 
             @Override
@@ -126,6 +134,7 @@ public final class Bootstrap{
                         if(nonBlackPixels < 16){
                             throw new IllegalStateException("WebGL framebuffer did not contain the rendered vanilla sprite; sampled non-black pixels=" + nonBlackPixels);
                         }
+                        verifiedPixels = nonBlackPixels;
                         frameVerified = true;
                     }catch(Throwable error){
                         BrowserCanvas.setStatus("error", "Mindustry Web sprite frame failed: " + describe(error));
@@ -134,12 +143,20 @@ public final class Bootstrap{
                 }
 
                 if(++frames == 3){
+                    markBootstrapProof(verifiedPixels);
                     String glVersion = Core.gl20.glGetString(GL20.GL_VERSION);
                     BrowserCanvas.setStatus("ready", "Mindustry core " + Version.buildString() + " + vanilla content.init/load + Arc GL20 ready; campaign metadata/tech-tree/block-factory runtime verified; binary-png@Core.files; texture-upload@WebGL; vanilla-atlas@WebGL; content-regions@atlas; sprite-frame@WebGL; framebuffer-readback@WebGL; settings@localStorage: " + glVersion);
                 }
             }
         }, config);
     }
+
+    @JSBody(params={"pixels"},script="""
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-bootstrap-proof','binary-png texture-upload vanilla-atlas content-regions sprite-frame framebuffer-readback settings-roundtrip');
+        r.setAttribute('data-mindustry-bootstrap-nonblack-pixels',String(pixels));
+        """)
+    private static native void markBootstrapProof(int pixels);
 
     private static void renderVanillaSpriteFrame(){
         int width = Core.graphics.getWidth();

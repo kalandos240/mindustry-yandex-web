@@ -34,6 +34,18 @@
   };
 
   await wait(() => value('main-menu-page') === 'home', 'stock home menu');
+  await wait(() => value('menu-background') === 'original-MenuRenderer',
+    'actual original terrain, shadows and flying menu units rendered');
+  const firstMenuFrame = Number(value('menu-background-frames'));
+  await wait(() => Number(value('menu-background-frames')) > firstMenuFrame,
+    'original menu animation keeps rendering');
+  if(value('menu-logo') !== 'original-MenuFragment') throw Error('Missing original top-centered menu logo');
+
+  for(const id of ['mindustry-settings-toggle','mindustry-settings-overlay','mindustry-local-mode']){
+    if(document.getElementById(id)) throw Error('Legacy DOM widget obscures original menu: '+id);
+  }
+  if(document.getElementById('mindustry-web-status').textContent.trim())
+    throw Error('Debug status obscures the ready game menu');
   const isMobile = value('main-menu-layout') === 'mobile-grid';
   const legalButtons = ['play', 'research', 'database', 'settings',
     'schematics', 'controls', 'saves', 'planets'];
@@ -118,11 +130,17 @@
   await action('controls', 'vanilla-controls-open', 'controls');
   await action('schematics', 'vanilla-schematics-open', 'schematics');
   await overlay('research', 'research-open');
-  await overlay('database', 'database-open');
+  await action('database', 'vanilla-database-open', 'database');
   // A second click-after-close cycle detects stale Arc modal touch capture,
   // unhandled key-up states and freezes that initial startup smoke can miss.
   await action('settings', 'vanilla-settings-open', 'settings');
   await play('play');
+
+  await click('play');
+  await wait(() => value('main-menu-page') === 'play', 'Play before Escape');
+  await escape();
+  await wait(() => value('main-menu-page') === 'home', 'Escape closes Play submenu');
+  await alive('native Play submenu Escape');
 
   // Planet chooser, 3D globe switching and the native first-run confirmation
   // are tested by verify-browser-planet-dialog.sh on both devices; clicking

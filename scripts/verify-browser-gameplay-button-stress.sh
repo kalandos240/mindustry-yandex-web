@@ -45,7 +45,10 @@ run_buttons(){
     grep -Fq 'data-mindustry-pause-visible-controls="7"' "$dom"
     grep -Fq 'data-mindustry-local-map-save="ready"' "$dom"
   fi
-  grep -Eq 'data-mindustry-gameplay-button-clicks="([1-9][0-9]+)"' "$dom"
+  # Five dialog opens plus save/resume/menu; campaign adds HUD/Pause Research.
+  local expected_clicks=8
+  if [ "$scenario" = campaign ]; then expected_clicks=10; fi
+  grep -Fq "data-mindustry-gameplay-button-clicks=\"$expected_clicks\"" "$dom"
   echo "$scenario/$device: real HUD, pause menu buttons, save, dialogs, Resume and Back PASS"
 }
 run_buttons campaign desktop mindustryCampaignSmoke=groundZero
