@@ -16,7 +16,10 @@
   const wait=async(fn,label)=>{
     for(let i=0;i<240;i++){
       if(get('web')==='error')
-        throw Error('Mindustry web crashed at '+label+': '+(get('web-error')||'unknown'));
+        throw Error('Mindustry web crashed at '+label+': '+(get('error')||'unknown')+
+          '; planet-frame='+get('planet-frame-phase')+
+          '; planet-failure='+get('planet-frame-failure')+
+          '; module='+get('module-phase'));
       if(fn())return;
       await sleep(100);
     }
