@@ -184,6 +184,10 @@ public final class BrowserHudEssentials{
                 if(mobile && !small) items.bottom().marginBottom(5f);
                 bosses.marginTop(small ? 144f : mobile ? 50f : 85f);
                 bossCell.width(small ? Core.scene.getWidth() - 20f : mobile ? 220f : 320f).height(small ? 20f : mobile ? 34f : 52f);
+                // Cell mutations do not invalidate an already laid-out child table.
+                // Recompute its width after a portal resize before laying out parents.
+                panel.invalidateHierarchy();
+                mapActor.invalidateHierarchy();
                 minimap.invalidateHierarchy();
                 details.invalidateHierarchy();
                 waves.invalidateHierarchy();
