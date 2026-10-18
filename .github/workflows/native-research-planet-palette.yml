@@ -1,0 +1,26 @@
+name: Native research planet and palette acceptance
+on:
+  push:
+    branches: [native-research-planet-palette-acceptance]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39094825154
+          github-token: ${{ github.token }}
+          path: work/exact
+      - run: |
+          mkdir -p web-runtime/build/web
+          unzip -q work/exact/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Erekir globe selects original research root and remains usable
+        run: bash scripts/verify-browser-planet-dialog.sh
+      - name: Ground Zero native research and palette
+        run: bash scripts/verify-browser-palette-visibility.sh
