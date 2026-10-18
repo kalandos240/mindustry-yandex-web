@@ -6,6 +6,7 @@ import arc.scene.*;
 import arc.scene.event.*;
 import arc.scene.ui.layout.*;
 import arc.scene.ui.ImageButton.*;
+import arc.scene.ui.ScrollPane;
 import mindustry.input.*;
 import mindustry.game.EventType.*;
 import mindustry.core.*;
