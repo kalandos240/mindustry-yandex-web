@@ -33,7 +33,7 @@ public final class BrowserHudLayout{
                 cell.height(height / Scl.scl(1f));
                 frame.invalidateHierarchy();
             }
-            info.setScrollingDisabled(true, false);
+            info.setScrollingDisabled(false, false);
             info.setOverscroll(false, false);
         }
         float scale = small ? Math.min(1f, Math.min(
