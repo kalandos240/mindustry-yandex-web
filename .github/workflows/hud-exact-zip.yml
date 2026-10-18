@@ -1,0 +1,56 @@
+name: Exact HUD ZIP diagnosis
+on:
+  push:
+    branches: [responsive-hud-exact-zip-diagnosis]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39091350622
+          github-token: ${{ github.token }}
+          path: work/exact-zip
+      - name: Extract unchanged runtime and enable exception diagnostics
+        run: |
+          mkdir -p web-runtime/build/web
+          unzip -q work/exact-zip/mindustry-yandex-release.zip -d web-runtime/build/web
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/chrome-wait-dom.py')
+          s=p.read_text()
+          anchor='        if payload.get("id") != message_id:'
+          s=s.replace(anchor, '        if payload.get("method") == "Runtime.exceptionThrown":\n            sys.stderr.write("CHROME_EXCEPTION:"+json.dumps(payload.get("params", {}))+"\\n")\n'+anchor)
+          p.write_text(s)
+          PY
+      - name: Diagnose live campaign planet crash
+        continue-on-error: true
+        env:
+          MINDUSTRY_CDP_CONSOLE: '1'
+        run: bash scripts/verify-browser-hud-planet-stress.sh
+      - name: Native building configuration
+        continue-on-error: true
+        run: bash scripts/verify-browser-building-config-stress.sh
+      - name: Original custom catalog
+        continue-on-error: true
+        run: bash scripts/verify-browser-custom-game.sh
+      - name: Native menu
+        continue-on-error: true
+        run: bash scripts/verify-browser-ui-button-stress.sh
+      - name: Native resize
+        continue-on-error: true
+        run: bash scripts/verify-browser-resize-orientation.sh
+      - name: Portal bounds
+        continue-on-error: true
+        run: bash scripts/verify-browser-portal-bounds.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exact-hud-diagnostics
+          path: work/menu-ui/*.png
