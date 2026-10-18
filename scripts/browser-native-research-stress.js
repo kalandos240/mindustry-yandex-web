@@ -6,6 +6,11 @@
  const tap=async(x,y)=>{const id='native-research-'+(++seq);r.setAttribute('data-mindustry-cdp-click-request',JSON.stringify({id,x,y}));await wait(()=>get('cdp-click-ack')===id,'trusted click');};
  const click=async key=>{await wait(()=>get('native-research-'+key+'-exposed')==='yes',key+' exposed');const a=JSON.parse(get('native-research-'+key)),b=c.getBoundingClientRect();if(a[0]<-.5||a[1]<-.5||a[2]>b.width+.5||a[3]>b.height+.5)throw Error('Native research clipped '+key+': '+a);await tap(b.left+(a[0]+a[2])/2,b.bottom-(a[1]+a[3])/2);};
  const campaign=new URLSearchParams(location.search).has('mindustryCampaignSmoke');
+ const headers=()=>{
+  const b=c.getBoundingClientRect(),a=JSON.parse(get('native-research-title')),d=JSON.parse(get('native-research-items'));
+  for(const [key,box] of [['title',a],['items',d]])if(!box||box[0]<-.5||box[1]<-.5||box[2]>b.width+.5||box[3]>b.height+.5)throw Error('Native research header clipped '+key+': '+box);
+  if(Math.min(a[2],d[2])-Math.max(a[0],d[0])>1&&Math.min(a[3],d[3])-Math.max(a[1],d[1])>1)throw Error('Native research resource header overlaps tree title');
+ };
  await wait(()=>get('research-implementation')==='original-ResearchDialog','original class installed');
  if(campaign)await wait(()=>get('campaign-state')==='playing'&&get('campaign-save')==='valid','actual campaign and sector save');
  if(!campaign&&get('main-menu-layout')!=='mobile-grid'){
@@ -22,6 +27,7 @@
  if(narrow){const surface=document.getElementById('mindustry-game-surface'),old=Number(get('resize-count'));surface.style.width='50%';surface.style.marginLeft='7%';await wait(()=>Number(get('resize-count'))>old&&get('container-match')==='true','initial narrow surface');}
  await open();
  await wait(()=>Number(get('research-tree-visible-nodes'))>2,'native visible nodes');
+ await wait(()=>get('native-research-items'),'native resource header');headers();
  if(campaign){
   const transitions=Number(get('space-transition-count')||0);
   window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,code:'Space',key:' '}));await sleep(150);window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,code:'Space',key:' '}));
@@ -68,6 +74,7 @@
  surface.style.width=narrow?'41%':'82%';surface.style.marginLeft='7%';
  await wait(()=>Number(get('resize-count'))>resize&&get('container-match')==='true','dialog follows portal resize');
  const frame=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>frame,'live modal after resize');
+ headers();
  await click('back');await wait(()=>get('research-open')==='no','original Back');
  await open();
  window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,code:'Escape',key:'Escape'}));await sleep(150);window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,code:'Escape',key:'Escape'}));

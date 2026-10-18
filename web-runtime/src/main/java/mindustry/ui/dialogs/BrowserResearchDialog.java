@@ -15,6 +15,7 @@ import static mindustry.Vars.*;
 public class BrowserResearchDialog extends ResearchDialog{
     private int sampleFrames;
     private boolean queryChecked, diagnostics, fixture;
+    private float footerSceneWidth = -1f;
 
     public BrowserResearchDialog(){
         name = "web-native-research";
@@ -26,15 +27,33 @@ public class BrowserResearchDialog extends ResearchDialog{
     }
 
     private void fitFooter(){
+        footerSceneWidth = Core.scene.getWidth();
         float width = Math.min(210f, (Core.scene.getWidth() / arc.scene.ui.layout.Scl.scl(1f) - 20f) / 2f);
         for(var cell : buttons.getCells()) if(cell.get() instanceof Button) cell.width(width);
         buttons.invalidateHierarchy();
     }
 
+    private void fitHeaders(){
+        Element title = titleTable.find("web-research-choose-tree");
+        if(title == null || itemDisplay.getChildren().isEmpty()) return;
+        Element inventory = itemDisplay.getChildren().first();
+        // Native portrait margin can be reset by ItemsDisplay.rebuild(). A
+        // narrow landscape portal needs the same separation as a phone.
+        boolean collide = title.visible && inventory.getPrefWidth() + title.getWidth()/2f + 8f > Core.scene.getWidth()/2f;
+        float margin = collide ? title.getHeight() + arc.scene.ui.layout.Scl.scl(8f) : 0f;
+        if(Math.abs(itemDisplay.getMarginTop() - margin) > 0.5f){
+            itemDisplay.marginTop(margin / arc.scene.ui.layout.Scl.scl(1f));
+            itemDisplay.invalidateHierarchy();
+        }
+    }
+
     @Override
     public void act(float delta){
         super.act(delta);
-        if(!isShown() || (++sampleFrames & 15) != 0) return;
+        if(!isShown()) return;
+        if(footerSceneWidth != Core.scene.getWidth()) fitFooter();
+        fitHeaders();
+        if((++sampleFrames & 15) != 0) return;
         if(!queryChecked){ diagnostics = requested(); queryChecked = true; }
         int visible = 0;
         for(var node : nodes) if(node.visible) visible++;
@@ -51,6 +70,7 @@ public class BrowserResearchDialog extends ResearchDialog{
         markPurchase(Blocks.conveyor.unlocked(), player.team().core() == null ? -1 : player.team().core().items.get(Items.copper),
             Blocks.conveyor.techNode.finishedRequirements[0].amount);
         report("title", titleTable.find("web-research-choose-tree"));
+        report("items", itemDisplay.getChildren().isEmpty() ? null : itemDisplay.getChildren().first());
         report("view", view);
         report("conveyor", view.find("web-research-node-conveyor"));
         report("drill", view.find("web-research-node-mechanical-drill"));
