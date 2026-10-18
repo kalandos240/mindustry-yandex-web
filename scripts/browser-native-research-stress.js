@@ -18,6 +18,7 @@
  }
  const prefix=campaign?'hud-research':'main-menu-research';
  const open=async()=>{
+  const settled=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>settled,'native entry after modal/layout settles');
   if(!campaign&&get('main-menu-layout')!=='mobile-grid'&&get('main-menu-database-submenu')!=='open'){
    await wait(()=>get('main-menu-database-group-x'),'Database parent after resize');const b=c.getBoundingClientRect();await tap(b.left+Number(get('main-menu-database-group-x')),b.bottom-Number(get('main-menu-database-group-y')));
   }
