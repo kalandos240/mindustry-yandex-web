@@ -677,6 +677,8 @@ public final class BrowserCampaignRuntime{
         diagPhase("resume-clock");
         long loadedTickMillis = Math.round(state.tick * 1000d);
         if(state.wave != expectedWave || loadedTickMillis != expectedTickMillis){
+            diagPhase("resume-clock-mismatch:w=" + expectedWave + "/" + state.wave
+                + ",t=" + expectedTickMillis + "/" + loadedTickMillis);
             throw new IllegalStateException(
                 "Campaign resume changed saved wave/tick: expected wave=" + expectedWave +
                 ", tickMillis=" + expectedTickMillis + ", actual wave=" + state.wave +
