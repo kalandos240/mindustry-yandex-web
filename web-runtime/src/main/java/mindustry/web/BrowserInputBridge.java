@@ -146,6 +146,13 @@ public final class BrowserInputBridge{
             // Portal settings/other editable DOM inputs are not Arc controls.
             if(isHtmlEditor(event)) return;
             const code = event.code || '';
+            if(document.documentElement.getAttribute('data-mindustry-settings-panel') === 'open'){
+                if(code === 'Escape' && typeof globalThis.__mindustryCloseSettings === 'function'){
+                    globalThis.__mindustryCloseSettings();
+                }
+                event.preventDefault();
+                return;
+            }
             const repeat = !!event.repeat || downCodes.has(code);
             downCodes.add(code);
             keyDown(code, event.key || '', repeat);
@@ -155,6 +162,10 @@ public final class BrowserInputBridge{
         window.addEventListener('keyup', event => {
             if(isHtmlEditor(event)) return;
             downCodes.delete(event.code);
+            if(document.documentElement.getAttribute('data-mindustry-settings-panel') === 'open'){
+                event.preventDefault();
+                return;
+            }
             keyUp(event.code || '');
             if (shouldPreventKey(event)) event.preventDefault();
         }, {passive: false});

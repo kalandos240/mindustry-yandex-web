@@ -20,6 +20,7 @@ import static mindustry.Vars.*;
  */
 public final class BrowserCampaignRuntime{
     private static boolean active;
+    private static boolean gameOverFreeze;
     private static boolean testChecked;
     private static boolean diagnostics;
     private static boolean diagnosticsQueryCached;
@@ -379,6 +380,7 @@ public final class BrowserCampaignRuntime{
         crossroadsObjectivesStaged = false;
         originObjectivesStaged = false;
         coreReadyMarked = false;
+        gameOverFreeze = false;
         pauseUpdateId = 0L;
         pausedFrames = 0;
         pauseSmokeArmed = false;
@@ -568,6 +570,7 @@ public final class BrowserCampaignRuntime{
         crossroadsObjectivesStaged = false;
         originObjectivesStaged = false;
         coreReadyMarked = false;
+        gameOverFreeze = false;
         pauseUpdateId = 0L;
         pausedFrames = 0;
         pauseSmokeArmed = false;
@@ -651,6 +654,14 @@ public final class BrowserCampaignRuntime{
         }
     }
 
+    private static void updateGameOverFrame(){
+        // Never advance simulation with a missing player core. The native Scene
+        // stays alive so the defeat dialog remains clickable on desktop/mobile.
+        BrowserUiRuntime.showGameOver();
+        renderer.update();
+        ui.update();
+    }
+
     /** Normal user Back: checkpoint the live sector before returning to the lean menu. */
     public static void returnToMenu(){
         if(!active || current == null) return;
@@ -658,23 +669,42 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("c:back");
         }
 
-        int savedWave = state.wave;
-        long savedTickMillis = Math.round(state.tick * 1000d);
-        writeCurrentSectorSave();
-        if(current.save == null || current.save.file == null || !current.save.file.exists()
-        || current.save.file.length() < 128 || current.save.meta == null){
-            throw new IllegalStateException("c:back-save");
-        }
+        if(state.gameOver || gameOverFreeze){
+            // A defeated sector has no core to restore. Never overwrite the last
+            // valid checkpoint with a coreless world, which would soft-lock Continue.
+            // Clear only this sector's save; other campaign sectors and research stay.
+            if(current.save != null){
+                if(current.save.file != null){
+                    Fi sidecar = current.save.file.sibling(current.save.file.name() + ".items");
+                    if(sidecar.exists()) sidecar.delete();
+                }
+                current.save.delete();
+                current.save = null;
+            }
+            current.info.hasCore = false;
+            current.saveInfo();
+            Core.settings.forceSave();
+            markCampaignDefeatExit();
+            flushCampaignStorage();
+        }else{
+            int savedWave = state.wave;
+            long savedTickMillis = Math.round(state.tick * 1000d);
+            writeCurrentSectorSave();
+            if(current.save == null || current.save.file == null || !current.save.file.exists()
+            || current.save.file.length() < 128 || current.save.meta == null){
+                throw new IllegalStateException("c:back-save");
+            }
 
-        SaveMeta meta = current.save.meta;
-        if(meta == null || meta.version != 13 || meta.rules == null || meta.rules.sector == null
-        || meta.rules.sector.id != current.id || meta.rules.sector.planet != current.planet){
-            throw new IllegalStateException("c:back-meta");
-        }
+            SaveMeta meta = current.save.meta;
+            if(meta == null || meta.version != 13 || meta.rules == null || meta.rules.sector == null
+            || meta.rules.sector.id != current.id || meta.rules.sector.planet != current.planet){
+                throw new IllegalStateException("c:back-meta");
+            }
 
-        markSectorInventory("back");
-        markBackAutoSaved(savedWave, savedTickMillis, current.save.file.length());
-        flushCampaignStorage();
+            markSectorInventory("back");
+            markBackAutoSaved(savedWave, savedTickMillis, current.save.file.length());
+            flushCampaignStorage();
+        }
 
         active = false;
         current = null;
@@ -696,6 +726,7 @@ public final class BrowserCampaignRuntime{
         crossroadsObjectivesStaged = false;
         originObjectivesStaged = false;
         coreReadyMarked = false;
+        gameOverFreeze = false;
         pauseUpdateId = 0L;
         pausedFrames = 0;
         pauseSmokeArmed = false;
@@ -1262,6 +1293,13 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("c:frame-sector");
         }
 
+        if(gameOverFreeze || state.gameOver){
+            if(!gameOverFreeze) markCampaignDefeated();
+            gameOverFreeze = true;
+            updateGameOverFrame();
+            return;
+        }
+
         if(captureSmoke){
             // CI stages only the stock victory predicates; Logic.checkGameState() must still
             // dispatch Call.sectorCapture(). Wave sectors use winWave, while attack sectors
@@ -1396,6 +1434,12 @@ public final class BrowserCampaignRuntime{
             logic.updateWebPlayingCore();
         }catch(Throwable error){
             throw new IllegalStateException("campaign-frame: logic.updateWebPlayingCore", error);
+        }
+        if(state.gameOver){
+            gameOverFreeze = true;
+            markCampaignDefeated();
+            updateGameOverFrame();
+            return;
         }
         diagPhase("logic-ready");
 
@@ -2256,6 +2300,15 @@ public final class BrowserCampaignRuntime{
         setRuntimeDomAttribute("data-mindustry-campaign-back-wave", String.valueOf(wave));
         setRuntimeDomAttribute("data-mindustry-campaign-back-tick-ms", String.valueOf(tickMillis));
         setRuntimeDomAttribute("data-mindustry-campaign-back-bytes", String.valueOf(bytes));
+    }
+
+    private static void markCampaignDefeated(){
+        setRuntimeDomAttribute("data-mindustry-campaign-gameover", "ready");
+        setRuntimeDomAttribute("data-mindustry-campaign-state", "gameover");
+    }
+
+    private static void markCampaignDefeatExit(){
+        setRuntimeDomAttribute("data-mindustry-campaign-defeat-exit", "ready");
     }
 
     private static void markReturnedToMenu(){

@@ -37,6 +37,7 @@ public final class BrowserUiRuntime{
     private static TextButton localContinueButton;
     private static int hudResearchPointerFrames;
     private static int hudDatabasePointerFrames;
+    private static Table gameOverOverlay;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
@@ -338,13 +339,13 @@ public final class BrowserUiRuntime{
     }
 
     private static void returnToMenuWithAd(){
-        BrowserStockMainMenu.showHome();
         BrowserYandex.beginMenuFullscreenAdv();
         if(BrowserCampaignRuntime.active()){
             BrowserCampaignRuntime.returnToMenu();
         }else{
             BrowserLocalMapRuntime.returnToMenu();
         }
+        BrowserStockMainMenu.showHome();
         BrowserYandex.showMenuFullscreenAdv();
     }
 
@@ -417,9 +418,11 @@ public final class BrowserUiRuntime{
         overlay.setFillParent(true);
         overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> BrowserLocalMapRuntime.active() && state.isGame() && state.gameOver);
+        overlay.visible(() -> (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
+            && state.isGame() && state.gameOver);
 
         Table dialog = new Table(Tex.pane2);
+        overlay.name = "web-gameover-overlay";
         dialog.name = "web-gameover-dialog";
         dialog.defaults().pad(8f);
         dialog.image(Icon.cancel).size(42f).padTop(12f).row();
@@ -431,7 +434,16 @@ public final class BrowserUiRuntime{
             .name("web-gameover-back").padBottom(12f);
         overlay.add(dialog).center();
         ui.hudGroup.addChild(overlay);
+        gameOverOverlay = overlay;
         markGameOverUiReady();
+    }
+
+    /** Ensure defeat controls sit above stock mobile touch/placement HUD controls. */
+    public static void showGameOver(){
+        if(gameOverOverlay != null && gameOverOverlay.parent != null){
+            gameOverOverlay.toFront();
+            markGameOverShown();
+        }
     }
 
     public static boolean initialized(){
@@ -504,4 +516,7 @@ public final class BrowserUiRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-gameover-ui', 'ready');")
     private static native void markGameOverUiReady();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-gameover-visible', 'ready');")
+    private static native void markGameOverShown();
 }

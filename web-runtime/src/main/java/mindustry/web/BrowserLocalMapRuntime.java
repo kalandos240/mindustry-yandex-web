@@ -405,6 +405,7 @@ public final class BrowserLocalMapRuntime{
         }
 
         if(gameOverFreeze || state.gameOver){
+            if(!gameOverFreeze) markGameOver(state.won ? state.rules.defaultTeam.name : state.rules.waveTeam.name, state.wave);
             gameOverFreeze = true;
             updateGameOverFrame();
             return;
@@ -715,8 +716,8 @@ public final class BrowserLocalMapRuntime{
     }
 
     private static void updateGameOverFrame(){
-        diagPhase("gameover-control");
-        control.update();
+        // Only graphics + Scene are needed; Control expects a live player core.
+        BrowserUiRuntime.showGameOver();
         diagPhase("gameover-renderer");
         renderer.update();
         diagPhase("gameover-ui");
