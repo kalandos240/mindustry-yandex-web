@@ -567,34 +567,34 @@ public final class BrowserUiRuntime{
 
         // Match the original dialog: Resume / Settings on one row. Both
         // operations call the existing campaign/local pause state machines.
-        dialog.button(Core.bundle.get("resume", "Resume"), Icon.play,
+        dialog.button(Core.bundle.get("resume", "Resume"), Icon.play, 32f,
             BrowserUiRuntime::resumeActiveSession)
             .size(width, height).name("web-pause-resume");
-        dialog.button(Core.bundle.get("settings", "Settings"), Icon.settings,
+        dialog.button(Core.bundle.get("settings", "Settings"), Icon.settings, 32f,
             BrowserVanillaDialogs::openSettings)
             .size(width, height).name("web-pause-settings");
         dialog.row();
 
-        dialog.button(Core.bundle.get("savegame", "Save Game"), Icon.save,
+        dialog.button(Core.bundle.get("savegame", "Save Game"), Icon.save, 32f,
             BrowserUiRuntime::saveActiveSession)
             .size(width, height).name("web-pause-save");
         // Original mobile PausedDialog has Research in campaign mode. Keep
         // the very same research screen available while the sector is paused.
-        dialog.button(Core.bundle.get("research", "Research"), Icon.tree,
+        dialog.button(Core.bundle.get("research", "Research"), Icon.tree, 32f,
             BrowserResearchUi::show)
             .size(width, height).name("web-pause-research")
             .visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
         dialog.row();
 
-        dialog.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
+        dialog.button(Core.bundle.get("schematics", "Schematics"), Icon.paste, 32f,
             BrowserVanillaDialogs::openSchematics)
             .size(width, height).name("web-pause-schematics");
-        dialog.button(Core.bundle.get("settings.controls", "Controls"), Icon.move,
+        dialog.button(Core.bundle.get("settings.controls", "Controls"), Icon.move, 32f,
             BrowserVanillaDialogs::openControls)
             .size(width, height).name("web-pause-controls");
         dialog.row();
 
-        dialog.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
+        dialog.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save, 32f,
             BrowserVanillaDialogs::openSaves)
             .width(width * 2f + 10f).height(height)
             .colspan(2).name("web-pause-saves");
@@ -603,7 +603,7 @@ public final class BrowserUiRuntime{
         // A browser game cannot be exited like a native desktop program.
         // This action safely saves/returns to the game menu (and schedules
         // eligible Yandex ads), so never advertise a misleading "Quit".
-        dialog.button(Core.bundle.get("back", "Back"), Icon.left,
+        dialog.button(Core.bundle.get("back", "Back"), Icon.left, 32f,
             BrowserUiRuntime::returnToMenuWithAd)
             .width(width * 2f + 10f).height(height)
             .colspan(2).name("web-pause-menu").padBottom(15f);

@@ -62,6 +62,8 @@ public final class BrowserHudLayout{
         report("health", "web-hud-player-health", false);
         report("guardian", "web-hud-guardian-health", false);
         report("items", "web-hud-core-items", false);
+        report("resource-icon", "web-core-item-copper", false);
+        report("resource-count", "web-core-count-copper", false);
         report("placement", "web-placement-frame", false);
         report("category", "category-distribution", true);
         report("conveyor", "block-conveyor", true);

@@ -8,6 +8,12 @@
     const b=c.getBoundingClientRect(),keys=['minimap','waves','health','items','placement'];
     if(get('hud-layout-guardian-exposed')==='yes')keys.push('guardian');
     for(const k of keys){const a=rect(k);if(!a||!(a[0]>=-0.5&&a[1]>=-0.5&&a[2]<=b.width+0.5&&a[3]<=b.height+0.5&&a[2]>a[0]&&a[3]>a[1]))throw Error('HUD clipped '+k+': '+a+' in '+b.width+'x'+b.height);}
+    const itemBounds=rect('items');
+    for(const k of ['resource-icon','resource-count']){
+      const a=rect(k);
+      if(!a||a[0]<itemBounds[0]-0.5||a[1]<itemBounds[1]-0.5||a[2]>itemBounds[2]+0.5||a[3]>itemBounds[3]+0.5)
+        throw Error('First native resource clipped inside item pane '+k+': '+a+' / '+itemBounds);
+    }
     for(let i=0;i<keys.length;i++)for(let j=i+1;j<keys.length;j++){
       const a=rect(keys[i]),d=rect(keys[j]);
       if(Math.min(a[2],d[2])-Math.max(a[0],d[0])>1&&Math.min(a[3],d[3])-Math.max(a[1],d[1])>1)throw Error('HUD overlap '+keys[i]+'/'+keys[j]+': '+a+' / '+d);
