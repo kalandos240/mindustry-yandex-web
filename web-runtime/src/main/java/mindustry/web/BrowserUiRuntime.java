@@ -37,6 +37,7 @@ public final class BrowserUiRuntime{
 
     private static boolean initialized;
     private static boolean hudOnlyPause;
+    private static boolean captionDiagnostics;
     private static TextButton localContinueButton;
     private static TextButton localModeButton;
     private static int hudResearchPointerFrames;
@@ -540,14 +541,60 @@ public final class BrowserUiRuntime{
         BrowserYandex.showMenuFullscreenAdv();
     }
 
-    /**
-     * Recreate the native PausedDialog arrangement with the pinned Mindustry
-     * icon atlas / pane styles. This is deliberately an Arc Scene dialog, not
-     * an HTML overlay: all pointer/touch handling stays with stock InputHandler.
-     * The heavyweight desktop dialog dependencies (Host/Mods/Editor) remain
-     * unreachable in the self-contained Yandex single-player client.
-     */
+    /** Reuse actors and listeners when the portal changes between wide and narrow. */
+    private static float fitPauseCaption(TextButton button, float width, float baseHeight){
+        boolean stacked = width < 170f;
+        Image icon = null;
+        for(Element child : button.getChildren()){
+            if(child instanceof Image image){ icon = image; break; }
+        }
+        if(icon == null) return baseHeight;
+        Label label = button.getLabel();
+        label.setWrap(false);
+        label.setFontScale(1f);
+        String originalText = label.getText().toString().replace('\n', ' ');
+        label.setText(originalText);
+        float available = Math.max(1f, width - (stacked ? 24f : 54f));
+        float measured = label.getPrefWidth();
+        if(stacked){
+            // Scale only enough to retain complete words. A phrase can wrap
+            // at its spaces, with the button height following its real metrics.
+            measured = 1f;
+            String text = label.getText().toString();
+            for(int start = 0; start < text.length();){
+                int end = text.indexOf(' ', start);
+                if(end < 0) end = text.length();
+                if(end > start){
+                    label.setText(text.substring(start, end));
+                    measured = Math.max(measured, label.getPrefWidth());
+                }
+                start = end + 1;
+            }
+            label.setText(text);
+        }
+        label.setFontScale(Math.min(1f, Math.max(1f, available - 3f) / Math.max(1f, measured)));
+        // Arc's wrapped Label lays text out twice, the second time at its
+        // glyph bounds; a final soft sign can then wrap by itself. Explicit
+        // word boundaries retain complete words in both layout passes.
+        if(stacked && label.getPrefWidth() > available){
+            label.setText(originalText.replace(' ', '\n'));
+        }
+        label.setWrap(false);
+        label.setWidth(available);
+        float textHeight = label.getPrefHeight();
+        // clearChildren preserves the original click listeners; clear would
+        // silently remove Resume/Save/etc. when resizing the game container.
+        button.clearChildren();
+        button.margin(6f);
+        var iconCell = button.add(icon).size(stacked ? 24f : 32f);
+        if(stacked){ iconCell.padBottom(2f); button.row(); }
+        else iconCell.padRight(6f);
+        button.add(label).width(available).height(textHeight).fill();
+        return Math.max(baseHeight, stacked ? 38f + textHeight : textHeight + 12f);
+    }
+
     private static void buildLocalPauseOverlay(){
+        captionDiagnostics = captionSmokeRequested();
         Table overlay = new Table();
         overlay.setFillParent(true);
         overlay.setBackground(Styles.black6);
@@ -650,16 +697,8 @@ public final class BrowserUiRuntime{
                 float buttonWidth = Math.min(width, Math.max(70f, (sw - 70f) / 2f));
                 for(String action : paired){
                     TextButton button = dialog.find("web-pause-" + action);
-                    Label label = button.getLabel();
-                    label.setWrap(false);
-                    label.setFontScale(1f);
-                    float textWidth = label.getPrefWidth();
-                    float decorationWidth = button.getPrefWidth() - textWidth;
-                    label.setFontScale(Math.min(1f, Math.max(0.65f,
-                        (buttonWidth - decorationWidth) / Math.max(1f, textWidth))));
-                    label.setWrap(true);
-                    button.getLabelCell().minWidth(0f);
-                    dialog.getCell(button).width(buttonWidth);
+                    float fittedHeight = fitPauseCaption(button, buttonWidth, height);
+                    dialog.getCell(button).width(buttonWidth).height(fittedHeight);
                 }
                 for(String action : wide){
                     TextButton button = dialog.find("web-pause-" + action);
@@ -702,7 +741,33 @@ public final class BrowserUiRuntime{
             new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
         Vec2 screen = Core.scene.getViewport().project(center);
         markPauseHitPointNative(action, screen.x, screen.y);
+        if(captionDiagnostics && button instanceof TextButton textButton){
+            textButton.validate();
+            Label label = textButton.getLabel();
+            label.validate();
+            int lines = 0;
+            float lastY = 0f;
+            for(var run : label.getGlyphLayout().runs){
+                if(lines == 0 || Math.abs(run.y - lastY) > 0.1f){ lines++; lastY = run.y; }
+            }
+            Vec2 lower = label.localToAscendantCoordinates(button, new Vec2());
+            Vec2 upper = label.localToAscendantCoordinates(button, new Vec2(label.getWidth(), label.getHeight()));
+            boolean contained = lower.x >= -0.5f && lower.y >= -0.5f
+                && upper.x <= button.getWidth() + 0.5f && upper.y <= button.getHeight() + 0.5f
+                && label.getGlyphLayout().height <= label.getHeight() + 0.5f
+                && label.getGlyphLayout().width <= label.getWidth() + 0.5f;
+            markPauseCaption(action, label.getText().toString(), lines, contained);
+        }
     }
+
+    @JSBody(script = "return new URLSearchParams(location.search).has('mindustryCaptionSmoke');")
+    private static native boolean captionSmokeRequested();
+
+    @JSBody(params = {"action", "caption", "lines", "contained"}, script = """
+        const r=document.documentElement, p='data-mindustry-pause-caption-'+action;
+        r.setAttribute(p, JSON.stringify({text:caption,lines:lines,contained:contained}));
+        """)
+    private static native void markPauseCaption(String action, String caption, int lines, boolean contained);
 
     @JSBody(params = {"action", "x", "y"}, script = """
         const r = document.documentElement;
