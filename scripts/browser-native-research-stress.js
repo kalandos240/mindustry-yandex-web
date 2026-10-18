@@ -22,7 +22,7 @@
  }
  const prefix=campaign?'hud-research':'main-menu-research';
  const open=async()=>{
-  const settled=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>settled,'native entry after modal/layout settles');
+  const settled=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>=settled+2,'native entry after modal/layout settles');
   if(!campaign&&get('main-menu-layout')!=='mobile-grid'&&get('main-menu-database-submenu')!=='open'){
    await wait(()=>get('main-menu-database-group-x'),'Database parent after resize');const b=c.getBoundingClientRect();await tap(b.left+Number(get('main-menu-database-group-x')),b.bottom-Number(get('main-menu-database-group-y')));
   }
@@ -53,7 +53,7 @@
    const dx=Math.max(-b.width*.35,Math.min(b.width*.35,b.width*.5-x)),dy=Math.max(-b.height*.2,Math.min(b.height*.2,b.height*.5-y)),id='native-find-node-'+attempt;
    const frame=Number(get('cpu-sample'));
    r.setAttribute('data-mindustry-cdp-drag-request',JSON.stringify({id,x0:b.left+b.width*.5,y0:b.top+b.height*.5,x1:b.left+b.width*.5+dx,y1:b.top+b.height*.5-dy,steps:10}));
-   await wait(()=>get('cdp-drag-ack')===id,'pan to native conveyor');await wait(()=>Number(get('cpu-sample'))>frame,'node bounds after pan');
+   await wait(()=>get('cdp-drag-ack')===id,'pan to native conveyor');await wait(()=>Number(get('cpu-sample'))>=frame+2,'node bounds after pan');
   }
   await wait(()=>get('native-research-copper')==='500','real core inventory fixture');
   if(get('native-research-conveyor-unlocked')!=='no')throw Error('Conveyor must start locked');
@@ -78,13 +78,13 @@
  const surface=document.getElementById('mindustry-game-surface'),resize=Number(get('resize-count'));
  surface.style.width=narrow?'41%':'82%';surface.style.marginLeft='7%';
  await wait(()=>Number(get('resize-count'))>resize&&get('container-match')==='true','dialog follows portal resize');
- const frame=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>frame,'live modal after resize');
+ const frame=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>=frame+2,'live modal after resize');
  headers();
  await click('back');await wait(()=>get('research-open')==='no','original Back');
  await open();
  window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,code:'Escape',key:'Escape'}));await sleep(150);window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,code:'Escape',key:'Escape'}));
  await wait(()=>get('research-open')==='no','native Escape');
- if(campaign){const old=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>old,'live game after research');if(get('campaign-state')!=='playing')throw Error('Campaign did not remain playing');}
+ if(campaign){const old=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>=old+2,'live game after research');if(get('campaign-state')!=='playing')throw Error('Campaign did not remain playing');}
  // Leave the original dialog visible in the evidence screenshot.
  await open();
  r.setAttribute('data-mindustry-native-research-test','passed');
