@@ -368,7 +368,7 @@ require(CAMPAIGN_UI, "ui.menuGroup.addChild(campaignUiTick)", "Serpulo updater i
 require(CAMPAIGN_UI, "ui.menuGroup.addChild(erekirUiTick)", "Erekir updater is not paused by hidden Play submenu")
 
 # WebAudio saturation and decode cache are explicitly bounded on mobile.
-require(BROWSER_AUDIO, "if((++settingsPoll & 31) == 0)", "browser audio settings cadence")
+require(BROWSER_AUDIO, "if((++settingsPoll & 31) == 0 || mindustry.Vars.ui != null", "browser audio settings cadence")
 require(BROWSER_AUDIO, "if(validationSmokeRequested()){", "browser audio CI-only validation")
 require(BROWSER_AUDIO_JS, "if(!state.ctx || state.unlocked || state.unlocking) return;", "browser audio one-shot unlock")
 require(BROWSER_AUDIO_JS, "state.maxVoices = inputMode === 'mobile' ? 48 : 0", "mobile SFX voice cap")
@@ -449,8 +449,10 @@ require(CAMPAIGN_RUNTIME, 'markSectorInventory("resume");', "cold campaign resou
 BROWSER_I18N = (WEB_JAVA / "BrowserI18n.java").read_text(encoding="utf-8")
 require(BROWSER_I18N, "I18NBundle.setSimpleFormatter(true)", "TeaVM avoids unsupported java.text Currency CYP")
 INVENTORY_SMOKE = (SCRIPTS / "verify-browser-campaign-save-resume.sh").read_text(encoding="utf-8")
-require(INVENTORY_SMOKE, 'data-mindustry-campaign-resume-copper="137"', "cold restart core copper equality")
-require(INVENTORY_SMOKE, 'data-mindustry-campaign-resume-lead="73"', "cold restart core lead equality")
+require(INVENTORY_SMOKE, 'expected_copper=137', "nonempty cold restart copper fixture")
+require(INVENTORY_SMOKE, 'data-mindustry-campaign-resume-copper=\\\"$expected_copper', "cold restart core copper equality")
+require(INVENTORY_SMOKE, 'expected_lead=73', "nonempty cold restart lead fixture")
+require(INVENTORY_SMOKE, 'data-mindustry-campaign-resume-lead=\\\"$expected_lead', "cold restart core lead equality")
 PAGE = (ROOT / "web-runtime/src/web/index.html").read_text(encoding="utf-8")
 require(BROWSER_UI, 'name("web-custom-mode")', "native custom mode belongs to Play selector")
 require(BROWSER_UI, 'dialog.name = "web-pause-dialog"', "stock Arc Scene pause dialog")
