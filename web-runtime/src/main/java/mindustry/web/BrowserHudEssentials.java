@@ -86,7 +86,9 @@ public final class BrowserHudEssentials{
         }
         items.visible(() -> state != null && state.isGame() && !state.gameOver
             && ui.hudfrag.shown && Core.settings.getBool("coreitems", true));
-        items.add(ui.hudfrag.coreItems).name("web-hud-core-items");
+        ScrollPane itemPane = new ScrollPane(ui.hudfrag.coreItems, Styles.smallPane);
+        itemPane.setOverscroll(false, false);
+        var itemCell = items.add(itemPane).name("web-hud-core-items");
         parent.addChild(items);
 
         // Original guardian health feedback, independent of the core-items
@@ -172,7 +174,13 @@ public final class BrowserHudEssentials{
                 var statusCell = panel.getCell(statusPane);
                 statusCell.width(small ? Math.max(90f, Math.min(218f, Core.scene.getWidth() - 150f)) : mobile ? 174f : 218f);
                 if(small) statusCell.height(52f); else statusCell.minHeight(0f).maxHeight(Float.POSITIVE_INFINITY);
-                items.top().marginTop(5f);
+                itemPane.setScrollingDisabled(!small, !small);
+                if(small){
+                    itemCell.width(Math.max(1f, Math.min(330f, Core.scene.getWidth() - 10f))).height(28f);
+                }else{
+                    itemCell.minWidth(0f).maxWidth(Float.POSITIVE_INFINITY).minHeight(0f).maxHeight(Float.POSITIVE_INFINITY);
+                }
+                items.top().marginTop(small ? 2f : 5f);
                 if(mobile && !small) items.bottom().marginBottom(5f);
                 bosses.marginTop(small ? 130f : mobile ? 50f : 85f);
                 bossCell.width(small ? Core.scene.getWidth() - 20f : mobile ? 220f : 320f).height(small ? 20f : mobile ? 34f : 52f);

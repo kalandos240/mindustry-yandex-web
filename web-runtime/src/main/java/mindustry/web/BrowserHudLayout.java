@@ -13,6 +13,7 @@ import static mindustry.Vars.*;
 public final class BrowserHudLayout{
     private static boolean checked, diagnostics;
     private static int frames;
+    private static boolean inventoryFixture;
 
     private BrowserHudLayout(){}
 
@@ -46,6 +47,11 @@ public final class BrowserHudLayout{
     public static void sample(){
         if(!checked){ diagnostics = requested(); checked = true; }
         if(!diagnostics || state == null || !state.isGame() || (++frames & 15) != 0) return;
+        if(!inventoryFixture && player.team().core() != null){
+            // Test-only world fixture: exercise the native multi-row item list.
+            for(var item : content.items()) player.team().core().items.add(item, 500);
+            inventoryFixture = true;
+        }
         report("minimap", "web-hud-minimap", true);
         report("waves", "web-hud-wave-panel", false);
         report("health", "web-hud-player-health", false);
