@@ -169,6 +169,20 @@ public final class BrowserUiRuntime{
         root.add(campaignStarts).padBottom(4f);
         root.row();
 
+        TextButton nativeCustom = root.button(Core.bundle.get("customgame", "Custom Game"),
+            Icon.terrain, BrowserVanillaDialogs::openCustomGame)
+            .width(mobile ? 320f : 380f).height(mobile ? 54f : 46f)
+            .name("web-custom-native").get();
+        nativeCustom.update(() -> {
+            if(!state.isMenu() || !BrowserStockMainMenu.contentOpen() || nativeCustom.getWidth() <= 1f) return;
+            Vec2 center = nativeCustom.localToStageCoordinates(new Vec2(nativeCustom.getWidth()/2f, nativeCustom.getHeight()/2f));
+            Element hit = Core.scene.hit(center.x, center.y, true);
+            if(hit != nativeCustom && (hit == null || !hit.isDescendantOf(nativeCustom))) return;
+            Vec2 screen = Core.scene.getViewport().project(center);
+            markNativeCustomHitPoint(screen.x, screen.y);
+        });
+        root.row();
+
         // Keep the legacy campaign-UI compatibility injection anchor intact
         // below; it adds stock progression actions during the build overlay.
         root.update(() -> {
@@ -206,19 +220,6 @@ public final class BrowserUiRuntime{
         root.row();
 
         mapButtons.defaults().growX().height(mobile ? 52f : 46f).pad(2f);
-        TextButton nativeCustom = mapButtons.button(Core.bundle.get("customgame", "Custom Game"),
-            Icon.terrain, BrowserVanillaDialogs::openCustomGame)
-            .width(mobile ? 320f : 380f).height(mobile ? 54f : 46f)
-            .name("web-custom-native").get();
-        nativeCustom.update(() -> {
-            if(!state.isMenu() || !BrowserStockMainMenu.contentOpen() || nativeCustom.getWidth() <= 1f) return;
-            Vec2 center = nativeCustom.localToStageCoordinates(new Vec2(nativeCustom.getWidth()/2f, nativeCustom.getHeight()/2f));
-            Element hit = Core.scene.hit(center.x, center.y, true);
-            if(hit != nativeCustom && (hit == null || !hit.isDescendantOf(nativeCustom))) return;
-            Vec2 screen = Core.scene.getViewport().project(center);
-            markNativeCustomHitPoint(screen.x, screen.y);
-        });
-        mapButtons.row();
         for(String slug : BrowserLocalMapRuntime.slugs()){
             mapButtons.button(BrowserLocalMapRuntime.displayName(slug), () -> BrowserLocalMapRuntime.start(slug));
             if(BrowserLocalMapRuntime.supportsAttack(slug)){

@@ -48,6 +48,7 @@ public final class BrowserVanillaDialogs{
         // Save-slot management reuses native LoadDialog but redirects its load action
         // to the already validated browser-local Continue state machine.
         ui.load = new BrowserVanillaSavesDialog();
+        ui.picker = new ColorPicker();
         ui.custom = new CustomGameDialog();
         MapPlayDialog.webPlay = BrowserLocalMapRuntime::startNative;
 
