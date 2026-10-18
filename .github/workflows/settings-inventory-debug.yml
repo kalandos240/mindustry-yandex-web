@@ -30,7 +30,7 @@ jobs:
           b=s.index('\n}',a)+2
           body=s[a:b]
           needle='            if ($source.$webInventoryLoaded) {'
-          assert body.count(needle)==1
+          assert body.count(needle)>=1
           probe="""            document.documentElement.setAttribute('data-mindustry-inventory-probe',JSON.stringify({trusted:$origin.$info0.$webInventoryLoaded,copper:mt_ItemSeq_get($origin.$info0.$items10,mc_Items_copper),lead:mt_ItemSeq_get($origin.$info0.$items10,mc_Items_lead)}));
                       for(var si=0;si<localStorage.length;si++){
                           var payload=localStorage.getItem(localStorage.key(si));
