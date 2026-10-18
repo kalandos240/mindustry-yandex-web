@@ -275,3 +275,51 @@ native interaction throws. The broader full game matrix on this head is pending.
 Visual follow-up: in the 390-by-371 desktop game surface, the minimap, wave HUD
 and build palette compete for space. The navigation fix does not resolve this
 remaining HUD layout work; a passing menu/button gate is not full visual parity.
+
+## Compact original HUD and placement controls
+
+Compact layout follows the actual Arc Scene width/height, including an embedded
+portal surface resized independently of the browser window. The original Minimap,
+CoreItemsDisplay, health Bars and PlacementFragment keep their native rendering,
+values and input handlers. Compact scenes reserve separate regions for resources,
+waves, minimap, player health, guardian health and the build palette.
+
+Resource rows reflow to the available width and scroll vertically. The viewport
+fits a complete original item row; additional resources remain accessible. The
+wave/mission text also scrolls without replacing the original wave control.
+The original placement actor graph scales to the remaining Scene bounds. Its
+information/cost panel has a fixed compact height and scrolls independently;
+its scrollbar cannot increase the palette width and move categories under the
+pointer. Child tables explicitly invalidate their cached layouts after resize.
+
+Native desktop Research/Database actions now bind to the existing browser dialogs
+at construction, including category rebuilds. Previously, clicking before the
+periodic annotation/rebind pass could call an absent desktop dialog and stop the
+frame loop. The live planet test also refreshes native button coordinates until
+the dialog opens, after the initial responsive layout has settled.
+
+The new browser gate launches a real Archipelago world, fills the real core with
+every item and spawns a real unit with the boss status, only when its diagnostic
+query is requested. It checks native actor bounds and pairwise overlap, real
+category/conveyor input, stable category position after selection, portal resize,
+full minimap open/Escape and continued simulation on desktop, mobile and a
+320-pixel-wide surface. The normal game does not enable these world fixtures.
+
+The latest compiled candidate occupies 93,737,977 unpacked bytes, leaving
+6,262,023 bytes below the 100,000,000-byte portal limit. Focused acceptance:
+https://github.com/kalandos240/mindustry-yandex-web/actions/runs/39092141103
+This focused run passed the three-surface HUD bounds/input/resize checks, native
+wave controls and actual enemy spawning, live Erekir HUD map -> Serpulo selector
+-> original sector Launch -> playable Ground Zero, desktop/mobile Sorter
+configuration, original custom catalog and edited-rule launches on three
+surfaces, repeated native menu/dialog input, orientation continuity and translated
+portal bounds. The unchanged ZIP also passed five fresh native cross-planet
+transitions after the previous candidate failed five early-click attempts:
+https://github.com/kalandos240/mindustry-yandex-web/actions/runs/39092523619
+Playable experimental artifact:
+https://github.com/kalandos240/mindustry-yandex-web/actions/runs/39092141103/artifacts/12123635285
+The three final HUD screenshots were visually reviewed, including the
+320-pixel-wide portal surface. The full 46-map/gameplay matrix has not been
+recertified on this head. Full original HUD/Research dialog
+migration and final whole-interface 1:1 comparison remain unfinished. The earlier
+intermittent narrow live-loop timeout still has no established root cause.
