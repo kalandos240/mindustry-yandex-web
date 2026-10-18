@@ -81,7 +81,38 @@
     await click('pause-button-' + name, 'pause/' + name);
     await wait(() => modal(kind), 'pause/' + name + ' opens stock modal');
     await alive(name + ' dialog opened');
-    await escape();
+    if (name === 'settings' && params.has('mindustrySettingsNestedSmoke')) {
+      await click('settings-hit-sound', 'Settings Sound');
+      await wait(() => attr('settings-native-page') === 'sound', 'Sound page');
+      for (const key of ['musicvol','sfxvol','ambientvol']) {
+        const prefix = 'settings-hit-setting-' + key;
+        const p = await position(prefix,key);
+        const previous = attr('settings-value-setting-' + key);
+        const id = 'volume-drag-' + (++clicks);
+        const write = Storage.prototype.setItem;
+        let writes = 0;
+        Storage.prototype.setItem = function(key,value) {
+          if (this === localStorage && String(value).startsWith('MWS1|')) writes++;
+          return write.call(this,key,value);
+        };
+        // Drag a real Arc Slider through Chrome input, including pointer-up.
+        root.setAttribute('data-mindustry-cdp-drag-request', JSON.stringify({
+          id,x0:p.x,y0:p.y,x1:p.x+(Number(previous)<50?120:60),y1:p.y,steps:18
+        }));
+        await wait(() => attr('cdp-drag-ack') === id, 'trusted drag ' + key);
+        await wait(() => attr('settings-value-setting-' + key) !== previous, 'changed ' + key);
+        await alive('paused drag ' + key);
+        Storage.prototype.setItem = write;
+        if (writes > 1) throw Error('Settings persisted during live drag: ' + key + ' writes=' + writes);
+        if (writes !== 1) throw Error('Settings drag did not persist on release: ' + key + ' writes=' + writes);
+        ensurePaused();
+      }
+      await click('settings-hit-back', 'Sound Back button');
+      await wait(() => attr('settings-native-page') === 'root', 'Sound Back');
+    }
+    if (name === 'settings' && params.has('mindustrySettingsNestedSmoke')) {
+      await click('settings-hit-back', 'Settings Back button');
+    } else await escape();
     await wait(() => !modal(kind), 'pause/' + name + ' dialog closes');
     ensurePaused();
     await alive(name + ' dialog dismissed');

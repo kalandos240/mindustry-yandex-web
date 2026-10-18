@@ -19,7 +19,8 @@ replacements = [
             // Web bootstrap reaches the stock Logic frame loop without any multiplayer
             // server object. Browser settings persistence remains active regardless.
             if(netServer != null) netServer.admins.forceSave();
-            Core.settings.forceSave();
+            // Browser autosave defers synchronous settings I/O while a slider is held.
+            Core.settings.autosave();
         }
 ''',
         "menu settings/admin save",
@@ -68,7 +69,8 @@ web_methods = '''    /** CI-only one-shot campaign predicate; production never a
 
         if(Core.settings.modified()){
             if(netServer != null) netServer.admins.forceSave();
-            Core.settings.forceSave();
+            // Browser autosave defers synchronous settings I/O while a slider is held.
+            Core.settings.autosave();
         }
 
         PerfCounter.stateUpdate.end(PerfCounter.entityUpdate.latestValueNs());

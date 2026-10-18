@@ -1,0 +1,85 @@
+name: Verify cold campaign persistence on isolated Chrome
+on:
+  push:
+    branches: [settings-inventory-fix]
+    paths: ['.github/workflows/settings-inventory-recheck.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39169482852
+          github-token: ${{ github.token }}
+          path: work/package
+      - name: Verify exact compiled package
+        run: |
+          mkdir -p web-runtime/build/web
+          (cd work/package && sha256sum -c mindustry-yandex-release.zip.sha256)
+          unzip -q work/package/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Populated inventory survives cold restart
+        run: bash scripts/verify-browser-campaign-save-resume.sh
+      - name: Empty inventory remains empty
+        run: INVENTORY_EMPTY=1 bash scripts/verify-browser-campaign-save-resume.sh
+      - name: Research spending is preserved
+        run: INVENTORY_DEVICES=desktop INVENTORY_SPENT=partial bash scripts/verify-browser-campaign-save-resume.sh
+      - name: Fully spent inventory stays empty
+        run: INVENTORY_DEVICES=mobile INVENTORY_SPENT=all bash scripts/verify-browser-campaign-save-resume.sh
+      - name: Native Erekir Go resumes saved clock
+        run: CLOCK_DEVICES=mobile CLOCK_SECTORS=onset bash scripts/verify-browser-save-clock-go.sh
+      - name: Verify fixtures restored unchanged game and archive limits
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import hashlib,json
+          with ZipFile('work/package/mindustry-yandex-release.zip') as z:
+              assert z.testzip() is None
+              assert sum(i.file_size for i in z.infolist())<100_000_000
+              assert len(z.read('mindustry.js'))<=41_200_000
+              assert z.read('mindustry.js')==Path('web-runtime/build/web/mindustry.js').read_bytes()
+          root=Path('web-runtime/build/web')
+          manifest={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
+          Path('work/package-manifest.json').write_text(json.dumps(manifest))
+          print('Verified game bytes:',sum(p.stat().st_size for p in root.rglob('*') if p.is_file()))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-yandex-save-settings-2026-10-19
+          path: web-runtime/build/web/
+          compression-level: 9
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-save-settings-2026-10-19
+          path: work/roundtrip
+      - name: Verify downloadable ZIP is the identical complete game
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          root=Path('work/roundtrip')
+          actual={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
+          assert actual==json.loads(Path('work/package-manifest.json').read_text())
+          assert (root/'index.html').is_file()
+          print('Downloadable game ZIP roundtrip PASS:',len(actual),'files')
+          PY
+      - name: Collect cold browser diagnostics
+        if: always()
+        run: |
+          mkdir -p work/cold-diagnostics
+          cp /tmp/mindustry-campaign-*-dom.html work/cold-diagnostics/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-cold-browser-evidence
+          path: |
+            work/cold-diagnostics/
+            work/clock-*.html
+            work/clock-*.png

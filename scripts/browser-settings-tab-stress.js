@@ -32,14 +32,20 @@
       const rect = canvas.getBoundingClientRect();
       const px = rect.left + rect.width * .5;
       const py = rect.top + rect.height * .5;
-      for (let n = 0; n < 20 && !root.hasAttribute(k + '-x'); n++) {
-        if (n >= 2) {
+      let scrolled = false;
+      for (let n = 0; n < 28 && !root.hasAttribute(k + '-x'); n++) {
+        if (n >= 8 && n % 3 === 2) {
+          scrolled = true;
           canvas.dispatchEvent(new WheelEvent('wheel', {
             bubbles:true, cancelable:true, clientX:px, clientY:py,
-            deltaY:n < 10 ? 115 : -115
+            deltaY:n < 20 ? 115 : -115
           }));
         }
         await sleep(375);
+      }
+      if (scrolled) {
+        await alive('scroll settling ' + name);
+        await alive('scroll settled ' + name);
       }
     }
     await wait(() => root.hasAttribute('data-mindustry-' + prefix + '-x'),
@@ -86,6 +92,34 @@
     await wait(() => attr('settings-native-page') === tab,
       'native ' + tab + ' SettingsTable attached');
     await alive('Settings/' + tab);
+    if (tab === 'sound') {
+      for (const key of ['musicvol','sfxvol','ambientvol']) {
+        const previous = attr('settings-value-setting-' + key);
+        const pos = await position('settings-hit-setting-' + key, 'Sound/' + key);
+        const id = 'menu-slider-' + (++count);
+        const write = Storage.prototype.setItem;
+        let writes = 0;
+        Storage.prototype.setItem = function(key,value) {
+          if (this === localStorage && String(value).startsWith('MWS1|')) writes++;
+          return write.call(this,key,value);
+        };
+        root.setAttribute('data-mindustry-cdp-drag-request', JSON.stringify({
+          id,x0:pos.x,y0:pos.y,x1:pos.x+60,y1:pos.y,steps:18
+        }));
+        await wait(() => attr('cdp-drag-ack') === id, 'menu slider drag ' + key);
+        await wait(() => attr('settings-value-setting-' + key) !== previous,
+          'volume changes ' + key);
+        await alive('volume changed ' + key);
+        Storage.prototype.setItem = write;
+        if (writes > 1) throw Error('Settings persisted during live drag: ' + key + ' writes=' + writes);
+        if (writes !== 1) throw Error('Settings drag did not persist on release: ' + key + ' writes=' + writes);
+        for (const [edge, expected] of [['min','0'],['max','100']]) {
+          await click('settings-hit-setting-' + key + '-' + edge, 'Sound/' + key + '/' + edge);
+          await wait(() => attr('settings-value-setting-' + key) === expected, 'volume endpoint ' + key + '=' + expected);
+          await alive('volume endpoint ' + key + '=' + expected);
+        }
+      }
+    }
     if (tab === 'game') {
       // The actual SettingsTable.CheckSetting for Hints is a stock Button,
       // not an HTML checkbox. Click twice and observe persisted Core.settings.

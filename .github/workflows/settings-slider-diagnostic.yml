@@ -1,0 +1,50 @@
+name: Reproduce paused slider input on the previous runtime
+on:
+  push:
+    branches: [settings-inventory-fix]
+    paths: ['.github/workflows/settings-slider-diagnostic.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  paused-settings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39165188731
+          github-token: ${{ github.token }}
+          path: work/previous-runtime
+      - name: Extract previous runtime without recompiling
+        run: |
+          mkdir -p web-runtime/build/web
+          unzip -q work/previous-runtime/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Prove previous main menu also rewrites settings on drag frames
+        run: |
+          set +e
+          bash scripts/verify-browser-settings-tab-stress.sh > work/previous-settings-menu.log 2>&1
+          result=$?
+          set -e
+          cat work/previous-settings-menu.log
+          test "$result" -ne 0
+          grep -Fq 'Settings persisted during live drag:' work/previous-settings-menu.log
+      - name: Prove previous runtime rewrites settings on drag frames
+        run: |
+          set +e
+          bash scripts/verify-browser-gameplay-button-stress.sh > work/previous-settings-drag.log 2>&1
+          result=$?
+          set -e
+          cat work/previous-settings-drag.log
+          test "$result" -ne 0
+          grep -Fq 'Settings persisted during live drag:' work/previous-settings-drag.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: previous-runtime-paused-slider-evidence
+          path: |
+            work/settings-*.png
+            work/settings-*.html
+            work/previous-settings-*.log

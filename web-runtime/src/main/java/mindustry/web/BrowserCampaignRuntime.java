@@ -632,6 +632,27 @@ public final class BrowserCampaignRuntime{
         sector.planet.setLastSector(sector);
         mindustry.entities.Effect.webResetEffectBudget();
         diagPhase("sector-load");
+        // CI-only: reproduce a nonempty stale SectorInfo, which bypassed the
+        // old entirely-empty inventory recovery. SaveIO must win for each item.
+        if(inventoryResumeSmoke()){
+            sector.info.webInventoryLoaded = false;
+            sector.info.items.clear();
+            sector.info.items.add(Items.copper, 31);
+            sector.info.items.add(Items.lead, 19);
+        }
+        String spend = inventorySpendSmoke();
+        if(!spend.isEmpty()){
+            setRuntimeDomAttribute("data-mindustry-campaign-metadata-trusted", String.valueOf(sector.info.webInventoryLoaded));
+            setRuntimeDomAttribute("data-mindustry-campaign-metadata-copper", String.valueOf(sector.info.items.get(Items.copper)));
+            setRuntimeDomAttribute("data-mindustry-campaign-metadata-lead", String.valueOf(sector.info.items.get(Items.lead)));
+            if(!sector.info.webInventoryLoaded || sector.info.items.get(Items.copper) != 137
+                || sector.info.items.get(Items.lead) != 73){
+                throw new IllegalStateException("Cold campaign inventory metadata did not round-trip");
+            }
+            sector.removeItem(Items.copper, 137);
+            sector.removeItem(Items.lead, "all".equals(spend) ? 73 : 54);
+            Core.settings.forceSave();
+        }
         sector.save.load(world.makeSectorContext(sector));
         diagPhase("resume-world-loaded");
         sector.save.setAutosave(true);
@@ -667,7 +688,6 @@ public final class BrowserCampaignRuntime{
         player.set(state.rules.defaultTeam.core());
         Core.camera.position.set(state.rules.defaultTeam.core());
 
-        recoverEmptySectorInventory(sector);
         markSectorInventory("resume");
         state.set(mindustry.core.GameState.State.playing);
         if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != sector){
@@ -792,6 +812,9 @@ public final class BrowserCampaignRuntime{
         }
 
         long beforeUpdateId = state.updateId;
+        // Keep vanilla audio/preferences responsive while simulation is frozen.
+        // Calling Control.update() here would also advance saves/input/gameplay.
+        control.sound.update();
         renderer.update();
         ui.update();
 
@@ -1270,10 +1293,20 @@ public final class BrowserCampaignRuntime{
     // building data. Sector.items() otherwise switches to SectorInfo.items as
     // soon as logic.reset() returns to the menu, where stale totals looked like
     // all resources had vanished even though the world save existed.
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryInventoryResumeSmoke') === '1';")
+    private static native boolean inventoryResumeSmoke();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryInventorySpendSmoke') || '';")
+    private static native String inventorySpendSmoke();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryInventoryEmptySmoke') === '1';")
+    private static native boolean inventoryEmptySmoke();
+
     private static void snapshotSectorInventory(Sector sector){
         if(sector == null || state.rules == null || state.rules.defaultTeam.core() == null) return;
         sector.info.items.clear();
         sector.info.items.add(state.rules.defaultTeam.items());
+        sector.info.webInventoryLoaded = true;
         sector.saveInfo();
         // Serialize the SectorInfo snapshot into the browser file cache now,
         // before the IndexedDB flush barrier of Back / manual Save.
@@ -1304,82 +1337,6 @@ public final class BrowserCampaignRuntime{
             .writeBytes(rows.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8), false);
     }
 
-    private static boolean restoreCoreItemCheckpoint(Sector sector){
-        if(sector.save == null || sector.save.file == null) return false;
-        Fi checkpoint = sector.save.file.sibling(sector.save.file.name() + ".items");
-        if(!checkpoint.exists()) return false; // prior release or new sector
-        try{
-            String[] rows = checkpoint.readString().split("\\n");
-            if(rows.length == 0) return false;
-            String[] header = rows[0].split("\\|");
-            if(header.length != 6 || !"items-v1".equals(header[0])
-                || !sector.planet.name.equals(header[1])
-                || Integer.parseInt(header[2]) != sector.id
-                || Integer.parseInt(header[3]) != state.wave
-                || Long.parseLong(header[4]) != Math.round(state.tick * 1000d)
-                || Long.parseLong(header[5]) != sector.save.file.length()) return false;
-
-            // Validate the *whole* snapshot before changing a single item.
-            // One malformed row must never half-restore a live core.
-            int[] restored = new int[content.items().size];
-            int total = 0;
-            for(int i = 1; i < rows.length; i++){
-                if(rows[i].isEmpty()) continue;
-                int delimiter = rows[i].indexOf(':');
-                if(delimiter <= 0) return false;
-                int id = Integer.parseInt(rows[i].substring(0, delimiter));
-                int amount = Integer.parseInt(rows[i].substring(delimiter + 1));
-                if(id < 0 || id >= restored.length || amount <= 0
-                    || amount > state.rules.defaultTeam.core().storageCapacity
-                    || restored[id] != 0) return false;
-                restored[id] = amount;
-                total += amount;
-            }
-            if(total <= 0) return false;
-            var live = state.rules.defaultTeam.items();
-            for(Item item : content.items()){
-                if(restored[item.id] > 0) live.set(item, restored[item.id]);
-            }
-            sector.info.items.clear();
-            sector.info.items.add(live);
-            sector.saveInfo();
-            return true;
-        }catch(Exception malformed){
-            // Corrupt or stale auxiliary data must never block loading a
-            // healthy SaveIO world; the stock SectorInfo remains fallback.
-            return false;
-        }
-    }
-
-    // SaveIO remains authoritative. Restore a matching checkpoint only if
-    // the loaded core is *entirely* empty; never top up partial inventories.
-    private static void recoverEmptySectorInventory(Sector sector){
-        if(sector == null || state.rules == null || state.rules.defaultTeam.core() == null) return;
-        var stored = sector.info.items;
-        var live = state.rules.defaultTeam.items();
-        int liveTotal = 0, savedTotal = 0;
-        for(Item item : content.items()){
-            liveTotal += live.get(item);
-            savedTotal += Math.max(0, stored.get(item));
-        }
-        if(liveTotal != 0) return;
-        // A mismatched/invalid sidecar must NOT revive stale SectorInfo.items:
-        // a player may have legitimately spent every item and saved again.
-        // Legacy saves with no sidecar can still use the original fallback.
-        if(sector.save != null && sector.save.file != null &&
-            sector.save.file.sibling(sector.save.file.name() + ".items").exists()){
-            restoreCoreItemCheckpoint(sector);
-            return;
-        }
-        // Backwards-compatible fallback for saves written by older ports.
-        if(savedTotal > 0){
-            for(Item item : content.items()){
-                int count = stored.get(item);
-                if(count > 0) live.set(item, count);
-            }
-        }
-    }
-
     private static void writeCurrentSectorSave(){
         snapshotSectorInventory(current);
         control.saves.saveSector(current);
@@ -1395,8 +1352,9 @@ public final class BrowserCampaignRuntime{
         // Deterministic cross-process save regression: verify actual core
         // inventory, not merely SaveIO wave/tick or ZIP byte length.
         if(saveSmoke && current.preset == SectorPresets.groundZero){
-            state.rules.defaultTeam.items().set(Items.copper, 137);
-            state.rules.defaultTeam.items().set(Items.lead, 73);
+            boolean empty = inventoryEmptySmoke();
+            state.rules.defaultTeam.items().set(Items.copper, empty ? 0 : 137);
+            state.rules.defaultTeam.items().set(Items.lead, empty ? 0 : 73);
         }
         writeCurrentSectorSave();
         markSectorInventory("checkpoint");

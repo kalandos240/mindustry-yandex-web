@@ -20,11 +20,11 @@ for device in desktop mobile; do
   flags=()
   if [ "$device" = mobile ]; then flags+=(--emulate-mobile); fi
   profile="/tmp/mindustry-native-settings-$device"
-  dom="/tmp/mindustry-native-settings-$device.html"
+  dom="$ROOT_DIR/work/settings-$device.html"
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${flags[@]}" \
     --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustrySettingsNestedSmoke=1" \
-    --profile "$profile" --port 9519 --timeout 230 --cdp-input-bridge \
+    --profile "$profile" --port 9519 --timeout 230 --cdp-input-bridge --screenshot "$ROOT_DIR/work/settings-$device.png" \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-vanilla-dialogs="ready"' \
     --after-ready-eval "$(cat "$ROOT_DIR/scripts/browser-settings-tab-stress.js")" \
@@ -36,8 +36,8 @@ for device in desktop mobile; do
   # open Settings, four category tabs, Hints toggle+restore, Language,
   # plus Controls on desktop. The previous >=10 regex always failed AFTER
   # the browser had already reported successful native interaction.
-  expected=8
-  if [ "$device" = desktop ]; then expected=9; fi
+  expected=17
+  if [ "$device" = desktop ]; then expected=18; fi
   grep -Fq "data-mindustry-settings-nested-clicks=\"$expected\"" "$dom"
   echo "$device: $expected trusted real clicks: Settings tabs, Hints restore, Language/Controls PASS"
 done
