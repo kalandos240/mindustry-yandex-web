@@ -1,0 +1,78 @@
+name: Final native menu acceptance and verified ZIP
+on:
+  push:
+    branches: [native-menu-final-acceptance]
+    paths: ['.github/workflows/native-menu-final-acceptance.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verified-native-menu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require prior exact-runtime gameplay and visual checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import subprocess,json
+          def api(path):return json.loads(subprocess.check_output(['gh','api','repos/kalandos240/mindustry-yandex-web/'+path],text=True))
+          steps=api('actions/runs/39086614356/jobs')['jobs'][0]['steps']
+          required=[
+            'Verify original map-filter JSON and actual WebGL bootstrap proof',
+            'Original custom catalog, modes, customized rules and actual launch',
+            'Verify native vanilla dialogs in real desktop and mobile Chrome',
+            'Exercise whole menu rectangles in a narrow translated desktop surface',
+            'Capture original catalog, mode and rule dialogs with real input',
+            'Native Play opens live original 3D planets',
+            'Real sector launches after unrelated deferred-map failure',
+            'Actual desktop and mobile orientation and resize continuity',
+            'Actual translated portal bounds and native HUD input']
+          for name in required:
+              matches=[s for s in steps if s['name']==name]
+              assert len(matches)==1 and matches[0]['conclusion']=='success',name
+              print(name+': PASS')
+          assert api('actions/runs/39086742263')['conclusion']=='success','five fresh narrow launches'
+          print('Five fresh narrow launches: PASS')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39086211050
+          github-token: ${{ github.token }}
+          path: work/candidate
+      - name: Verify and extract unchanged compiled runtime
+        run: |
+          (cd work/candidate && sha256sum -c mindustry-yandex-release.zip.sha256)
+          python3 - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('work/candidate/mindustry-yandex-release.zip') as z:
+              assert sum(i.file_size for i in z.infolist())==93670150
+              z.extractall('web-runtime/build/web')
+          PY
+      - name: Native desktop/mobile menu actions including repeated Save dialog
+        run: bash scripts/verify-browser-ui-button-stress.sh
+      - name: Whole Russian narrow menu including repeated Save dialog
+        run: bash scripts/verify-browser-narrow-menu.sh
+      - name: Prepare verified playable delivery
+        run: |
+          mkdir -p delivery
+          cp work/candidate/mindustry-yandex-release.zip work/candidate/mindustry-yandex-release.zip.sha256 delivery/
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          Path('delivery/size-report.json').write_text(json.dumps({'unpackedBytes':93670150,'limitBytes':100000000,'headroomBytes':6329850,'compiledRun':39086211050,'exactRuntimeChecksRun':39086614356,'fiveFreshNarrowLaunchesRun':39086742263},indent=2))
+          Path('delivery/PLAYTEST.txt').write_text('Direct original menu UI playtest. Desktop Custom Game opens the stock catalog directly. Mobile Campaign opens original 3D planets and independent Custom Game opens the catalog. Original saves retained. Runtime ZIP unchanged from compiled source 075585095f605d50ffc84199de2b1a86f82d8c42. Prior exact-ZIP gameplay/visual/resize checks and five fresh narrow launches verified before rerunning all menu actions with native Save reopen. Full game matrix on this head is pending. One initial narrow live-loop timeout has not reproduced; root cause remains open. Known narrow desktop HUD overlap and remaining original HUD/Research migration are outstanding. Draft PR: https://github.com/kalandos240/mindustry-yandex-web/pull/169\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-yandex-native-menu-playtest
+          path: delivery/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-menu-final-input-screenshots
+          path: work/menu-ui/*.png
+          if-no-files-found: ignore
