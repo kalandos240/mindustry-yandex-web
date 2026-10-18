@@ -382,3 +382,26 @@ checks also passed; exact-ZIP acceptance run 39097396561 concluded successfully.
 
 This does not complete the full original HUD or final whole-interface 1:1
 comparison, and does not recertify the entire 46-map/gameplay matrix on this head.
+
+
+### Native mobile toolbar and short pause menus (2026-10-18)
+
+Restore the stock mobile top-left Menu, hide/show HUD, Schematics, pause/play,
+and Research/Database actions. Keep desktop native controls unchanged and remove
+the temporary extra mobile Research cell from PlacementFragment. Inline pause
+uses the existing clock-safe campaign/local state machines. The native Arc pause
+menu scrolls vertically and takes priority over mobile command controls.
+Compact resources, waves, player health and guardian health reserve space below
+the toolbar; native placement fitting reserves 222 scene units on compact mobile.
+
+The first compiled build measured 41,130,553 raw JS bytes, gzip 3,742,861,
+and 93,871,422 unpacked bytes, with no forbidden desktop/network markers.
+Its ~48 KB addition is native toolbar, responsive pause and sampled UI diagnostics.
+Increase the raw JS guard from 41,100,000 to 41,200,000; keep the 4,000,000-byte
+gzip guard and 100,000,000-byte unpacked cap unchanged. Later modal focus and
+scrollbar padding refinements remain subject to these bounds.
+
+Focused acceptance includes real Chrome mobile touch actions in campaign/local
+worlds, hidden HUD recovery, inline pause/play and frozen-clock saving, all pause
+buttons on desktop/mobile, compact touch scrolling, original HUD overlap checks,
+keyboard pause, and native saved Onset Go. Screenshots accompany the verified ZIP.

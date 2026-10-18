@@ -324,3 +324,4 @@ jobs:
             work/clock-*.png
 
 # Pause modal takes priority over native mobile command controls.
+# Account for the measured native HUD code in the raw JS guard.

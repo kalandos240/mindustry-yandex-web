@@ -647,7 +647,7 @@ public final class BrowserUiRuntime{
             if(viewport[0] != sw || viewport[1] != sh){
                 viewport[0] = sw;
                 viewport[1] = sh;
-                float buttonWidth = Math.min(width, Math.max(70f, (sw - 50f) / 2f));
+                float buttonWidth = Math.min(width, Math.max(70f, (sw - 70f) / 2f));
                 for(String action : paired){
                     TextButton button = dialog.find("web-pause-" + action);
                     button.getLabel().setWrap(true);
@@ -661,8 +661,11 @@ public final class BrowserUiRuntime{
                     dialog.getCell(button).width(buttonWidth * 2f + 10f);
                 }
                 dialog.invalidateHierarchy();
-                scrollCell.width(Math.min(sw - 10f, dialog.getPrefWidth()))
-                    .height(Math.min(sh - 10f, dialog.getPrefHeight()));
+                float contentHeight = dialog.getPrefHeight();
+                float barWidth = contentHeight > sh - 10f
+                    ? Math.max(scroll.getStyle().vScroll.getMinWidth(), scroll.getStyle().vScrollKnob.getMinWidth()) : 0f;
+                scrollCell.width(Math.min(sw - 10f, dialog.getPrefWidth() + barWidth))
+                    .height(Math.min(sh - 10f, contentHeight));
                 overlay.invalidateHierarchy();
             }
             if((++sampling[0] & 15) != 0) return;
