@@ -12,8 +12,9 @@
  await click('planet-hit-'+planet);
  await wait(()=>v('planet-start-sector-planet')===planet&&v('planet-hit-launch-exposed')==='yes','saved-sector Go');
  sample=Number(v('cpu-sample'));await wait(()=>Number(v('cpu-sample'))>=sample+2,'Go layout');
+ globalThis.__mindustryThrowCount=0;
  await click('planet-hit-launch');
  await wait(()=>v('campaign-resume')==='ready'&&v('campaign-state')==='playing','saved sector loaded');
- const frame=Number(v('campaign-update-id'));await wait(()=>Number(v('campaign-update-id'))>frame,'world simulation continues');
+ const frame=Number(v('cpu-sample'));await wait(()=>Number(v('cpu-sample'))>=frame+2,'world and HUD continue after resume');
  r.setAttribute('data-mindustry-cold-sector-go','passed');return 'Native saved-sector Go resumes after a cold browser restart';
 })()

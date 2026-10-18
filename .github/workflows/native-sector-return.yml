@@ -24,6 +24,23 @@ jobs:
           mkdir -p web-runtime/build/web
           unzip -q work/release/mindustry-yandex-release.zip -d web-runtime/build/web
           python3 scripts/debug-browser-runtime.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('web-runtime/build/web/mindustry.js')
+          s=p.read_text()
+          start=s.index('mw_BrowserCampaignRuntime_saveCampaignCheckpoint =')
+          at=s.index('        if (mw_BrowserCampaignRuntime_current === null)',start)
+          fixture="""        if(new URLSearchParams(location.search).has('lostCore') && !globalThis.__lostCoreFixture){
+                      globalThis.__lostCoreFixture=true;
+                      const core=mg_Team_core(m_Vars_state.$rules2.$defaultTeam);
+                      mw_Tile_setBlock(core.$tile5,mc_Blocks_air);
+                      if($rt_suspending()) throw new Error('Lost-core fixture unexpectedly suspended');
+                      console.info('LOST_CORE_FIXTURE',mg_Team_core(m_Vars_state.$rules2.$defaultTeam)===null);
+                  }
+          """
+          s=s[:at]+fixture+s[at:]
+          p.write_text(s)
+          PY
       - name: Native Onset Ground Zero and back through saved-sector Go buttons
         env:
           MINDUSTRY_CDP_CONSOLE: '1'
