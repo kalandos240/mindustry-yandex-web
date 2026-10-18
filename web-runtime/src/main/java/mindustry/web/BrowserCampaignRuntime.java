@@ -578,6 +578,13 @@ public final class BrowserCampaignRuntime{
         """)
     private static native void markRecoveryFailure(String type);
 
+    @JSBody(params={"sector","bytes"}, script="""
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-campaign-lost-sector-relaunch',sector);
+        r.setAttribute('data-mindustry-campaign-lost-sector-backup-bytes',String(bytes));
+        """)
+    private static native void markLostSectorRelaunch(String sector, int bytes);
+
     /** Restore the persisted stock Ground Zero sector save after browser/IndexedDB restart. */
     public static void continueGroundZero(){
         continuePreset(SectorPresets.groundZero);
@@ -626,14 +633,35 @@ public final class BrowserCampaignRuntime{
         mindustry.entities.Effect.webResetEffectBudget();
         diagPhase("sector-load");
         sector.save.load(world.makeSectorContext(sector));
+        diagPhase("resume-world-loaded");
         sector.save.setAutosave(true);
         state.rules.sector = sector;
         state.rules.cloudColor = sector.planet.landCloudColor;
 
-        if(state.rules.defaultTeam.core() == null || world.width() <= 0 || world.height() <= 0){
+        if(world.width() <= 0 || world.height() <= 0){
             throw new IllegalStateException("c:resume-world:" + preset.name);
         }
+        if(state.rules.defaultTeam.core() == null){
+            diagPhase("resume-missing-core");
+            // Match Control.playSector's clearSectorOnLose path. A valid
+            // Erekir save can contain no player core after defeat. Preserve
+            // those bytes before the new landing replaces the active slot.
+            if(sector.planet.clearSectorOnLose || sector.planet.campaignRules.clearSectorOnLose){
+                Fi source = sector.save.file;
+                Fi preserved = source.sibling(source.name() + ".lost-backup");
+                preserved.writeBytes(source.readBytes());
+                long preservedBytes = preserved.length();
+                if(preservedBytes != source.length()) throw new IllegalStateException("c:lost-sector-backup");
+                Sector origin = sector.info.origin == null ? sector : sector.info.origin;
+                logic.reset();
+                markLostSectorRelaunch(preset.name, (int)preservedBytes);
+                startPreset(preset, origin);
+                return;
+            }
+            throw new IllegalStateException("c:resume-core:" + preset.name);
+        }
 
+        diagPhase("resume-player");
         player.team(state.rules.defaultTeam);
         if(!player.isAdded()) player.add();
         player.set(state.rules.defaultTeam.core());
@@ -646,6 +674,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("c:resume-play:" + preset.name);
         }
 
+        diagPhase("resume-clock");
         long loadedTickMillis = Math.round(state.tick * 1000d);
         if(state.wave != expectedWave || loadedTickMillis != expectedTickMillis){
             throw new IllegalStateException(
@@ -2079,7 +2108,7 @@ public final class BrowserCampaignRuntime{
 
         }
 
-        if(diagnostics) markFrame(frames, state.updateId, state.wave);
+        if(diagnostics || diagnosticsEnabled()) markFrame(frames, state.updateId, state.wave);
         if(pauseSmoke && !pauseSmokeArmed && frames >= 3){
             pauseSmokeArmed = true;
             markPauseSmokeArmed();

@@ -32,8 +32,9 @@ public final class BrowserPlanetBridge{
             return;
         }
         // Wait BEFORE checkpointing/resetting the currently active world.
-        if(!BrowserCampaignRuntime.hasSectorSave(sector.preset)
-        && BrowserCampaignAssets.defer(sector.preset, () -> launchSector(sector))) return;
+        // A saved Erekir sector may need the packaged map for a new landing
+        // after losing its core. Fetch before replacing the active world.
+        if(BrowserCampaignAssets.defer(sector.preset, () -> launchSector(sector))) return;
         try{
             // In vanilla the player can launch a different sector FROM the
             // active 3D planet map. The old Web guard silently rejected it.
@@ -114,7 +115,9 @@ public final class BrowserPlanetBridge{
             // a second error in stock exception-dialog construction must
             // never become a fatal browser frame exception.
             try{
-                ui.showException(error);
+                // UI.showException silently returns when the lean Web UI has
+                // no desktop loadfrag. This stock dialog has no such dependency.
+                ui.showErrorMessage(arc.Core.bundle.get("error.title") + "\n" + detail);
             }catch(Throwable dialogFailure){
                 markError(detail + " / exception-dialog: " + dialogFailure.getClass().getName());
             }
