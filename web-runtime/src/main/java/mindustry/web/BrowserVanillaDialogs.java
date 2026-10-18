@@ -68,9 +68,8 @@ public final class BrowserVanillaDialogs{
         try{
             ui.planet = new BrowserPlanetDialog();
             markPlanetStage("planet-constructed");
-            // Upstream ResearchDialog eagerly dereferences desktop-only UI
-            // dependencies. Keep the existing fully functional TechTree until
-            // those dependencies have been adapted, without blocking 3D planets.
+            constructorPhase = "research";
+            ui.research = new BrowserResearchDialog();
             markPlanetStage("planet-ready");
         }catch(Throwable failure){
             markPlanetStage(constructorPhase + "-failed-" + failure.getClass().getName()
@@ -107,6 +106,7 @@ public final class BrowserVanillaDialogs{
             || ui.schematics != null && ui.schematics.isShown()
             || ui.database != null && ui.database.isShown()
             || ui.custom != null && ui.custom.isShown()
+            || ui.research != null && ui.research.isShown()
             || ui.planet != null && ui.planet.isShown());
     }
 
