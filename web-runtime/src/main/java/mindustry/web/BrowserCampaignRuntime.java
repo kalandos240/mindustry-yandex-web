@@ -642,6 +642,9 @@ public final class BrowserCampaignRuntime{
         }
         String spend = inventorySpendSmoke();
         if(!spend.isEmpty()){
+            setRuntimeDomAttribute("data-mindustry-campaign-metadata-trusted", String.valueOf(sector.info.webInventoryLoaded));
+            setRuntimeDomAttribute("data-mindustry-campaign-metadata-copper", String.valueOf(sector.info.items.get(Items.copper)));
+            setRuntimeDomAttribute("data-mindustry-campaign-metadata-lead", String.valueOf(sector.info.items.get(Items.lead)));
             if(!sector.info.webInventoryLoaded || sector.info.items.get(Items.copper) != 137
                 || sector.info.items.get(Items.lead) != 73){
                 throw new IllegalStateException("Cold campaign inventory metadata did not round-trip");
@@ -1303,6 +1306,7 @@ public final class BrowserCampaignRuntime{
         if(sector == null || state.rules == null || state.rules.defaultTeam.core() == null) return;
         sector.info.items.clear();
         sector.info.items.add(state.rules.defaultTeam.items());
+        sector.info.webInventoryLoaded = true;
         sector.saveInfo();
         // Serialize the SectorInfo snapshot into the browser file cache now,
         // before the IndexedDB flush barrier of Back / manual Save.

@@ -80,7 +80,10 @@ public final class BrowserSettings extends Settings{
     @Override
     public synchronized void loadValues(){
         values.clear();
-        String payload = storageGet(storageKey);
+        Fi durable = storageFile();
+        String payload = durable.exists()
+            ? new String(durable.readBytes(), java.nio.charset.StandardCharsets.UTF_8)
+            : storageGet(storageKey);
         if(payload == null || payload.isEmpty()) return;
         if(!payload.startsWith(header)){
             throw new IllegalStateException("Unsupported Mindustry Web settings format");
@@ -144,9 +147,17 @@ public final class BrowserSettings extends Settings{
             appendPart(payload, encoded);
         }
 
-        if(!storageSet(storageKey, payload.toString())){
-            throw new IllegalStateException("Browser localStorage is unavailable");
-        }
+        String encoded = payload.toString();
+        // localStorage may still be awaiting its browser-process disk commit at
+        // page termination. Mirror preferences/sector metadata in the same
+        // IndexedDB transaction stream and flush barrier as the MSAV files.
+        storageFile().writeBytes(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8), false);
+        // Keep the existing portal/legacy settings key as a best-effort mirror.
+        storageSet(storageKey, encoded);
+    }
+
+    private Fi storageFile(){
+        return Core.files.local("settings/" + storageKey + ".mws1");
     }
 
     private static void appendPart(StringBuilder out, String value){
@@ -193,7 +204,7 @@ public final class BrowserSettings extends Settings{
         throw new IllegalStateException("Invalid hexadecimal settings byte");
     }
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-settings-write-policy','modified-only-manual');")
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-settings-write-policy','modified-only-manual'); document.documentElement.setAttribute('data-mindustry-settings-persistence','indexeddb-with-msav');")
     private static native void markWritePolicy();
 
     @JSBody(params = {"key"}, script = "try { return window.localStorage.getItem(key); } catch (e) { return null; }")

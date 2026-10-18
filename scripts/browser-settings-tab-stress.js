@@ -38,7 +38,7 @@
           scrolled = true;
           canvas.dispatchEvent(new WheelEvent('wheel', {
             bubbles:true, cancelable:true, clientX:px, clientY:py,
-            deltaY:n < 10 ? 115 : -115
+            deltaY:n < 20 ? 115 : -115
           }));
         }
         await sleep(375);

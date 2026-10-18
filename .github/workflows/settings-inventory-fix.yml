@@ -361,3 +361,5 @@ jobs:
 # Remove the superseded empty-inventory replay; explicit campaign metadata preserves spending.
 
 # Main-menu Logic must honor the same pointer-release autosave policy as paused gameplay.
+
+# Persist campaign metadata in the same IndexedDB transaction stream as MSAV files.

@@ -30,6 +30,7 @@
 
     const cloudKey = 'mindustryWebCheckpointV1';
     const settingsKey = 'mindustry.web.settings.v1';
+    const settingsPath = 'settings/' + settingsKey + '.mws1';
     const cloudBudgetBytes = 190 * 1024;
     const cloudFilePattern = /^saves\/(?:web-local-survival|sector-(?:serpulo|erekir)-\d+)\.msav$/;
 
@@ -557,7 +558,9 @@
         if(!storage) return null;
 
         let settings = '';
-        try{ settings = localStorage.getItem(settingsKey) || ''; }catch(_ignored){}
+        const durableSettings = storage.get(settingsPath);
+        if(durableSettings) settings = new TextDecoder().decode(durableSettings);
+        if(!settings) try{ settings = localStorage.getItem(settingsKey) || ''; }catch(_ignored){}
         if(settings && !settings.startsWith('MWS1|')) settings = '';
 
         let lastSector = '';
@@ -682,7 +685,9 @@
                 if(typeof snapshot.settings !== 'string' || !snapshot.settings.startsWith('MWS1|')){
                     throw new Error('Invalid cloud settings payload');
                 }
-                localStorage.setItem(settingsKey, snapshot.settings);
+                const settingsBytes = new TextEncoder().encode(snapshot.settings);
+                storage.put(settingsPath, settingsBytes, settingsBytes.byteLength);
+                try{ localStorage.setItem(settingsKey, snapshot.settings); }catch(_ignored){}
             }
 
             let restoredFiles = 0;

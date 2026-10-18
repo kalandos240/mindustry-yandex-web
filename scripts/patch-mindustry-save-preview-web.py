@@ -73,5 +73,15 @@ if old not in text:
     raise SystemExit("Saves.savePreview Web patch no longer matches pinned upstream")
 
 text = text.replace(old, new, 1)
+
+# SaveVersion.prepare updates SectorInfo/settings while serializing the world.
+# Commit that metadata immediately after the MSAV, in the same browser task,
+# rather than waiting for a later render frame which may never run on exit.
+old_save = '            SaveIO.save(file);\n            meta = SaveIO.getMeta(file);'
+new_save = '            SaveIO.save(file);\n            Core.settings.manualSave(); // Web: atomic MSAV + IndexedDB settings mirror.\n            meta = SaveIO.getMeta(file);'
+if text.count(old_save) != 1:
+    raise SystemExit("SaveSlot metadata durability anchor changed")
+text = text.replace(old_save, new_save, 1)
+
 PATH.write_text(text, encoding="utf-8")
 print("Applied browser save metadata reuse + pruned unused save preview loader/generation")
