@@ -28,7 +28,19 @@ body = body.replace("        webBody.clearChildren();", """        cont.clearChi
 body = body.replace("        addCloseButton();", """        float webButtonWidth = Math.max(1f, Math.min(210f, (Core.scene.getWidth() - 40f) / 2f));
         addCloseButton(webButtonWidth);""")
 body = body.replace("}).size(210f, 64f);", "}).size(webButtonWidth, 64f);")
+body = body.replace("        show();", "        show();\n        webFit(this);", 1)
 text = text[:start] + body + text[end:]
+text = text.replace("        d.show();", "        d.show();\n        webFit(d);", 1)
+helper = """
+    private static void webFit(BaseDialog dialog){
+        float width = Math.max(1f, Core.scene.getWidth() - Core.scene.marginLeft - Core.scene.marginRight);
+        float height = Math.max(1f, Core.scene.getHeight() - Core.scene.marginTop - Core.scene.marginBottom);
+        dialog.setSize(Math.min(dialog.getWidth(), width), Math.min(dialog.getHeight(), height));
+        dialog.validate();
+        dialog.centerWindow();
+    }
+"""
+text = text[:text.rfind("}")] + helper + "}\n"
 path.write_text(text)
 print("Kept stock CustomGameDialog/MapPlayDialog with local browser launch callback")
 
