@@ -214,14 +214,15 @@ require(GAMEPLAY, "else if(databaseOpen) BrowserStockDatabaseUi.hide()", "Escape
 require(GAMEPLAY, "&& !researchOpen && !databaseOpen", "Space does not pause underneath research overlay")
 require((WEB_JAVA / "BrowserStockDatabaseUi.java").read_text(encoding="utf-8"),
     "public static boolean isOpen()", "database overlay exposes live visibility")
-RESEARCH_BROWSER_SMOKE = (ROOT / "scripts/verify-browser-research-actions.sh").read_text(encoding="utf-8")
+RESEARCH_BROWSER_SMOKE = (SCRIPTS / "browser-native-research-stress.js").read_text(encoding="utf-8")
+RESEARCH_BROWSER_RUNNER = (SCRIPTS / "verify-browser-native-research.sh").read_text(encoding="utf-8")
 require(RESEARCH_BROWSER_SMOKE,
-    'data-mindustry-research-escape="passed"', "real Chrome menu and campaign Escape overlay regressions")
-require(RESEARCH_BROWSER_SMOKE,
-    "desktop-menu desktop-campaign mobile-menu mobile-campaign", "real mobile campaign Research HUD touch must be tested")
+    "'native Escape'", "real Chrome menu and campaign Escape overlay regressions")
+require(RESEARCH_BROWSER_RUNNER,
+    "desktop-menu mobile-menu desktop-narrow-menu desktop-campaign mobile-campaign", "real mobile campaign Research HUD touch must be tested")
 require(BROWSER_UI, "markHudResearchHitPoint(screen.x, screen.y)", "campaign HUD Research button exports exact Arc Scene hit point")
-require(RESEARCH_BROWSER_SMOKE, "data-mindustry-hud-research", "campaign research input targets existing native HUD control")
-require(RESEARCH_BROWSER_SMOKE,
+require(RESEARCH_BROWSER_SMOKE, "hud-research", "campaign research input targets existing native HUD control")
+require(RESEARCH_BROWSER_RUNNER,
     "--emulate-mobile", "real Chrome mobile viewport is exercised for stock research interaction")
 require((ROOT / "scripts/verify-browser-locales.sh").read_text(encoding="utf-8"),
     'data-mindustry-database-escape="passed"', "real Chrome native database Escape close regression")
@@ -432,7 +433,7 @@ require(BROWSER_UI, "findStockDatabaseControl(inputTable)", "bind the existing l
 require(BROWSER_UI, "button.clicked(BrowserStockDatabaseUi::show)", "native book opens real ContentLoader database")
 require(DATABASE_UI, "ui.database.isShown()", "use real modal Database during menu AND gameplay")
 require(DATABASE_UI, "!state.isMenu() && (!state.isGame() || state.gameOver)", "original Database remains accessible during campaign")
-require(RESEARCH_BROWSER_SMOKE, 'data-mindustry-native-database-campaign', "Chrome clicks original book icon and Escape-closes database during campaign")
+require(RESEARCH_BROWSER_SMOKE, "before-copper===progress", "native purchase deducts exactly the invested core resources")
 require(BROWSER_UI, "nativeButton.clicked(BrowserResearchUi::show)", "original research icon opens browser TechTree, not missing desktop dialog")
 require(BROWSER_UI, 'nativeButton.name = "web-research-hud"', "existing native button exports real Arc pointer coordinates")
 require(BROWSER_UI, "if(mobile){", "keep a single native-style mobile research button")
@@ -466,8 +467,7 @@ require(BROWSER_UI, "markStockPauseUiReady", "pause dialog diagnostics")
 require(BROWSER_UI, "BrowserResearchUi::show", "menu and gameplay research actions")
 if "TextButton drillResearch =" in BROWSER_UI or "drillResearchUiFrames" in BROWSER_UI:
     failures.append("research: obsolete one-click Mechanical Drill HUD purchase must be removed")
-require((ROOT / "scripts/verify-browser-research-actions.sh").read_text(encoding="utf-8"),
-    'data-mindustry-research-tree-selected="mechanical-drill"', "real browser campaign research drills into stock tutorial TechNode")
+require(RESEARCH_BROWSER_SMOKE, "native spend unlocks Conveyor", "original research click unlocks a real technology")
 MAIN_MENU = (WEB_JAVA / "BrowserStockMainMenu.java").read_text(encoding="utf-8")
 require(BROWSER_UI, "BrowserStockMainMenu.install(ui.menuGroup, root)", "stock menu boot wiring")
 require(BROWSER_UI, "BrowserStockMainMenu.showHome()", "reset menu chrome after gameplay")

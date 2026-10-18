@@ -17,6 +17,11 @@
  if(narrow){const surface=document.getElementById('mindustry-game-surface'),old=Number(get('resize-count'));surface.style.width='50%';surface.style.marginLeft='7%';await wait(()=>Number(get('resize-count'))>old&&get('container-match')==='true','initial narrow surface');}
  await open();
  await wait(()=>Number(get('research-tree-visible-nodes'))>2,'native visible nodes');
+ if(campaign){
+  const transitions=Number(get('space-transition-count')||0);
+  window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,code:'Space',key:' '}));await sleep(150);window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,code:'Space',key:' '}));
+  if(Number(get('space-transition-count')||0)!==transitions)throw Error('Space leaked through native research modal');
+ }
  if(!campaign){
   await click('title');await click('root-erekir');await wait(()=>get('research-tree-root')==='core-bastion','Erekir tree');
   await click('title');await click('root-serpulo');await wait(()=>get('research-tree-root')==='core-shard','Serpulo tree');
