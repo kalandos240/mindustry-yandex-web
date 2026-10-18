@@ -33,6 +33,8 @@ public final class BrowserStockPlacement{
             // Build the upstream Mindustry actor graph, not a Web-only clone.
             stage = "build-PlacementFragment";
             PlacementFragment.webFit = BrowserHudLayout::fitPlacement;
+            mindustry.input.DesktopInput.webResearch = BrowserResearchUi::show;
+            mindustry.input.DesktopInput.webDatabase = BrowserStockDatabaseUi::show;
             ui.hudfrag.blockfrag.build(parent);
             stage = "verify-inputTable";
             // The native inputTable owns stock placement/configuration controls.

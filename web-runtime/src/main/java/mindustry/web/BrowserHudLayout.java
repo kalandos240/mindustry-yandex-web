@@ -47,15 +47,17 @@ public final class BrowserHudLayout{
     public static void sample(){
         if(!checked){ diagnostics = requested(); checked = true; }
         if(!diagnostics || state == null || !state.isGame() || (++frames & 15) != 0) return;
-        if(!inventoryFixture && player.team().core() != null){
+        if(!inventoryFixture && BrowserLocalMapRuntime.active() && player.team().core() != null){
             // Test-only world fixture: exercise the native multi-row item list.
             for(var item : content.items()) player.team().core().items.add(item, 500);
-            mindustry.content.UnitTypes.dagger.spawn(state.rules.waveTeam,
-                world.width()*tilesize/2f, world.height()*tilesize/2f)
-                .apply(mindustry.content.StatusEffects.boss, Float.MAX_VALUE);
+            var boss = mindustry.content.UnitTypes.dagger.spawn(state.rules.waveTeam,
+                world.width()*tilesize/2f, world.height()*tilesize/2f);
+            boss.maxHealth = boss.health = 500000f;
+            boss.apply(mindustry.content.StatusEffects.boss, Float.MAX_VALUE);
             inventoryFixture = true;
         }
         report("minimap", "web-hud-minimap", true);
+        markFixture(inventoryFixture && state.teams.bosses.any());
         report("waves", "web-hud-wave-panel", false);
         report("health", "web-hud-player-health", false);
         report("guardian", "web-hud-guardian-health", false);
@@ -83,6 +85,9 @@ public final class BrowserHudLayout{
 
     @JSBody(script="return new URLSearchParams(location.search).get('mindustryHudLayoutSmoke') === '1';")
     private static native boolean requested();
+
+    @JSBody(params={"ready"}, script="document.documentElement.setAttribute('data-mindustry-hud-layout-fixture',ready?'ready':'waiting');")
+    private static native void markFixture(boolean ready);
 
     @JSBody(params={"compact","block","fullMap"}, script="var r=document.documentElement;r.setAttribute('data-mindustry-hud-layout',compact?'compact':'normal');r.setAttribute('data-mindustry-hud-layout-block',block);r.setAttribute('data-mindustry-hud-layout-map-open',fullMap?'yes':'no');")
     private static native void markState(boolean compact, String block, boolean fullMap);

@@ -22,6 +22,7 @@
     await wait(()=>get('cdp-click-ack')===id,'native click '+key);
   };
   await wait(()=>get('local-map-state')==='playing'&&get('hud-layout-placement'),'real campaign HUD');
+  await wait(()=>get('hud-layout-fixture')==='ready','real resource and boss fixture');
   const surface=document.getElementById('mindustry-game-surface');
   if(new URLSearchParams(location.search).get('hudNarrow')==='1'){
     const old=Number(get('resize-count'));surface.style.width='50%';surface.style.marginLeft='7%';
