@@ -9,8 +9,8 @@ for device in ${CLOCK_DEVICES:-desktop mobile}; do
  args=()
  if [ "$device" = mobile ]; then args+=(--emulate-mobile); fi
  for target in ${CLOCK_SECTORS:-groundZero onset}; do
-  planet=serpulo;tick=216000.123456;expected=216000123
-  if [ "$target" = onset ]; then planet=erekir;tick=16777217.123456;expected=16777217123; fi
+  planet=serpulo;tick=216000.99949999998;expected=216000999
+  if [ "$target" = onset ]; then planet=erekir;tick=9999999.999499999;expected=9999999999; fi
   profile="/tmp/clock-save-$device-$target"
   python3 "$ROOT/scripts/prepare-save-clock-fixture.py"
   python3 "$ROOT/scripts/chrome-wait-dom.py" "${args[@]}" --url "http://127.0.0.1:8146/index.html?lang=ru&mindustryCampaignSmoke=$target&mindustryCampaignSaveSmoke=1&clockFixtureTick=$tick" --profile "$profile" --port 9746 --timeout 150 --require 'data-mindustry-web="ready"' --require 'data-mindustry-campaign-save-flush="ready"' > "$ROOT/work/clock-$device-$target-save.html"

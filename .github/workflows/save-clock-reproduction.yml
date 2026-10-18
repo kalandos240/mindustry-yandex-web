@@ -1,0 +1,41 @@
+name: Reproduce reported resume clock on previous ZIP
+on:
+  push:
+    branches: [native-save-clock-boundary-reproduction]
+    paths: ['.github/workflows/save-clock-reproduction.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-saved-sector-go-verified
+          run-id: 39100403832
+          github-token: ${{ github.token }}
+          path: work/release
+      - name: Extract previous exact ZIP
+        run: |
+          mkdir -p web-runtime/build/web
+          unzip -q work/release/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Reproduce actual native Go rejection of a long played save
+        env:
+          CLOCK_DEVICES: desktop
+          CLOCK_SECTORS: groundZero
+        run: |
+          if bash scripts/verify-browser-save-clock-go.sh > work/old-clock.log 2>&1; then
+            echo 'Previous build unexpectedly accepted long-played checkpoint'
+            exit 1
+          fi
+          grep -F 'groundZero / resume-clock / java.lang.IllegalStateException / null' work/old-clock.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: previous-zip-clock-reproduction
+          path: |
+            work/old-clock.log
+            work/clock-*.html
