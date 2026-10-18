@@ -59,7 +59,10 @@
   if(get('native-research-conveyor-unlocked')!=='no')throw Error('Conveyor must start locked');
   const before=Number(get('native-research-copper'));
   await click('conveyor');
-  if(get('input-mode')==='mobile')await click('invest');
+  if(get('input-mode')==='mobile'){
+   const card=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>=card+2,'native mobile information-card pan completes');
+   await click('invest');
+  }
   await wait(()=>get('native-research-conveyor-unlocked')==='yes','native spend unlocks Conveyor');
   const copper=Number(get('native-research-copper')),progress=Number(get('native-research-progress'));
   if(!(copper<before&&before-copper===progress&&progress>0))throw Error('Original research cost mismatch '+before+' -> '+copper+' progress '+progress);
