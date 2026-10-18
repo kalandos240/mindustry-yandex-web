@@ -552,8 +552,6 @@ public final class BrowserUiRuntime{
         overlay.setFillParent(true);
         overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
-            && state.isPaused() && !hudOnlyPause && !state.gameOver && !Core.scene.hasDialog());
 
         float width = mobile ? 137f : 208f;
         float height = mobile ? 57f : 54f;
@@ -617,6 +615,22 @@ public final class BrowserUiRuntime{
         var scrollCell = overlay.add(scroll).center();
         float[] viewport = {-1f, -1f};
         boolean[] wasVisible = {false};
+        // Invisible Arc actors do not receive update callbacks. Observe both
+        // transitions in the visibility provider, including modal dismissal.
+        overlay.visible(() -> {
+            boolean show = (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
+                && state.isPaused() && !hudOnlyPause && !state.gameOver && !Core.scene.hasDialog();
+            if(show != wasVisible[0]){
+                wasVisible[0] = show;
+                if(show){
+                    scroll.setScrollY(0f);
+                    scroll.updateVisualScroll();
+                }else{
+                    markPauseHidden();
+                }
+            }
+            return show;
+        });
         String[] paired = {"resume", "settings", "save", "research", "schematics", "controls"};
         String[] wide = {"saves", "menu"};
 
@@ -626,16 +640,6 @@ public final class BrowserUiRuntime{
         // at one sample per 16 Scene frames rather than every frame.
         int[] sampling = {0};
         overlay.update(() -> {
-            if(!overlay.visible){
-                if(wasVisible[0]) markPauseHidden();
-                wasVisible[0] = false;
-                return;
-            }
-            if(!wasVisible[0]){
-                scroll.setScrollY(0f);
-                scroll.updateVisualScroll();
-                wasVisible[0] = true;
-            }
             float sw = Core.scene.getWidth(), sh = Core.scene.getHeight();
             if(viewport[0] != sw || viewport[1] != sh){
                 viewport[0] = sw;
@@ -728,6 +732,22 @@ public final class BrowserUiRuntime{
         var scrollCell = overlay.add(scroll).center();
         float[] viewport = {-1f, -1f};
         boolean[] wasVisible = {false};
+        // Invisible Arc actors do not receive update callbacks. Observe both
+        // transitions in the visibility provider, including modal dismissal.
+        overlay.visible(() -> {
+            boolean show = (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
+                && state.isPaused() && !hudOnlyPause && !state.gameOver && !Core.scene.hasDialog();
+            if(show != wasVisible[0]){
+                wasVisible[0] = show;
+                if(show){
+                    scroll.setScrollY(0f);
+                    scroll.updateVisualScroll();
+                }else{
+                    markPauseHidden();
+                }
+            }
+            return show;
+        });
         String[] paired = {"resume", "settings", "save", "research", "schematics", "controls"};
         String[] wide = {"saves", "menu"};
 

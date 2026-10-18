@@ -3,6 +3,9 @@ on:
   push:
     branches: [native-mobile-hud-fix]
     paths: ['.github/workflows/native-mobile-hud-fix.yml']
+concurrency:
+  group: native-mobile-hud-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

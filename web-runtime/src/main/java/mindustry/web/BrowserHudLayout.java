@@ -38,7 +38,7 @@ public final class BrowserHudLayout{
         }
         float scale = small ? Math.min(1f, Math.min(
             Math.max(1f, Core.scene.getWidth() - 10f) / Math.max(1f, frame.getWidth()),
-            Math.max(1f, Core.scene.getHeight() - 176f) / Math.max(1f, frame.getHeight()))) : 1f;
+            Math.max(1f, Core.scene.getHeight() - (mobile ? 222f : 176f)) / Math.max(1f, frame.getHeight()))) : 1f;
         frame.setTransform(small);
         frame.setOrigin(frame.getWidth(), 0f);
         frame.setScale(scale);
