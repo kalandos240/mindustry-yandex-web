@@ -208,4 +208,30 @@ verify-browser-custom-game.sh is a mandatory release gate. It uses trusted Chrom
 clicks on actual Scene actors on desktop/mobile, verifies all 18 textures, opens
 a map, selects Survival, edits the wave timer in the stock rules dialog, then
 starts the map and checks both customized rules and a continuing game heartbeat.
-Fresh compiled acceptance is required before certifying this change.
+The narrow Russian case uses real wheel input to reach Archipelago after Ancient
+Caldera in the original alphabetical catalog. It requires the entire selected
+card and every action button to fit, rather than accepting a visible center.
+
+The baked catalog contains 18 maps, including 15 survival-capable maps and three
+attack maps (Veins, Glacier and Passage). Native launching validates core teams
+before resetting the world, showing the original localized missing-core message
+for invalid customized rules instead of leaving a broken session.
+
+MapPlayDialog fits the actual Scene bounds and scrolls its body while keeping
+Back/Play reachable. It also refits when resized underneath CustomRulesDialog,
+preserving the edited Rules. Rule checkboxes wrap within the available width on
+phones. The build now rejects TeaVM JSBody parse errors even when the compiler
+would otherwise return success.
+
+Exact-ZIP acceptance: https://github.com/kalandos240/mindustry-yandex-web/actions/runs/39085530684
+The unchanged compiled runtime occupies 93,672,298 unpacked bytes (6,327,702 bytes
+below the portal limit). This focused acceptance covers the original custom-game
+flow on desktop, mobile and a translated 390-pixel-wide portal, customized rules
+surviving a covered-dialog resize and live launch, native dialogs/menu input,
+3D planets, orientation/resize continuity and translated portal HUD input.
+Nine native catalog/map/rules screenshots accompany the run. The broader full
+game matrix previously passed on PR 166; it has not been recertified on this head.
+
+This is still a draft UI migration. The temporary combined Play/recovery wrapper,
+remaining HUD/Research dialogs and final whole-interface 1:1 comparison remain
+outstanding; this change does not claim complete original UI parity.
