@@ -69,6 +69,9 @@ public final class WebFontBaker{
         field.setAccessible(true);
         for(String slug : (String[])field.get(null)){
             mindustry.maps.Map map = mindustry.io.MapIO.createMap(Fi.get("core/assets/maps/default/" + slug + ".msav"), false);
+            // Tile.array() in the pinned preview decoder uses world.tiles.width.
+            // Supply this map's dimensions rather than an empty/previous world.
+            mindustry.Vars.world.tiles = new mindustry.world.Tiles(map.width, map.height);
             Pixmap preview = mindustry.io.MapIO.generatePreview(map);
             try{
                 PixmapIO.writePng(output.child(slug + ".png"), preview);

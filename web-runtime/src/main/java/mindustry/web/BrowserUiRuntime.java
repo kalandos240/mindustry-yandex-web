@@ -173,7 +173,9 @@ public final class BrowserUiRuntime{
             Icon.terrain, BrowserVanillaDialogs::openCustomGame)
             .width(mobile ? 320f : 380f).height(mobile ? 54f : 46f)
             .name("web-custom-native").get();
+        final int[] nativeCustomSample = {0};
         nativeCustom.update(() -> {
+            if((++nativeCustomSample[0] & 15) != 0) return;
             if(!state.isMenu() || !BrowserStockMainMenu.contentOpen() || nativeCustom.getWidth() <= 1f) return;
             Vec2 center = nativeCustom.localToStageCoordinates(new Vec2(nativeCustom.getWidth()/2f, nativeCustom.getHeight()/2f));
             Element hit = Core.scene.hit(center.x, center.y, true);

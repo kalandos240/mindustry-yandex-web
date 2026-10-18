@@ -182,3 +182,30 @@ Forward real logical resizes to UI.resize (margins, Scene viewport, ResizeEvent)
 BrowserApplication still filters backing-DPR-only adjustments, avoiding actor
 rebuilds during adaptive pixel-ratio changes. Validate menu, world HUD, portal
 bounds and orientation with the actual resized Scene before delivering a ZIP.
+
+
+## Original custom-game dialogs
+
+The final Bootstrap resize hook passed focused acceptance 39079805483: normal
+and narrow Russian menu input, native 3D navigation, desktop/mobile orientation
+and portal-constrained HUD input. The candidate used 92,703,199 unpacked bytes.
+
+CustomGameDialog, MapPlayDialog and CustomRulesDialog now use the pinned stock
+widgets. The existing combined selector retains campaign recovery and save
+entry points, with a visible button opening the original map catalog; removing
+that temporary wrapper is still outstanding. Local map launching goes through
+BrowserLocalMapRuntime, preserving the edited Rules instead of reapplying a
+preset and discarding user changes. Online PvP remains unavailable.
+
+WebFontBaker also runs the original MapIO.generatePreview decoder on the build
+JVM for exactly Maps.defaultMapNames. It packages original PNG previews and the
+stock cache fields (enemy spawn count and core teams), so stock survival/attack
+validation uses map data. The browser caches textures on first catalog open;
+world loading does not decode 18 previews on an input frame. The original color
+picker is initialized for the ambient-light control.
+
+verify-browser-custom-game.sh is a mandatory release gate. It uses trusted Chrome
+clicks on actual Scene actors on desktop/mobile, verifies all 18 textures, opens
+a map, selects Survival, edits the wave timer in the stock rules dialog, then
+starts the map and checks both customized rules and a continuing game heartbeat.
+Fresh compiled acceptance is required before certifying this change.
