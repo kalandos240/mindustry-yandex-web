@@ -287,18 +287,30 @@ jobs:
             work/release/EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt
           if-no-files-found: error
 
-      - name: Native sound sliders and settings navigation
-        run: bash scripts/verify-browser-settings-tab-stress.sh
-      - name: Campaign inventory cold restart
-        run: bash scripts/verify-browser-campaign-save-resume.sh
-      - name: Empty inventory does not resurrect spent resources
-        run: INVENTORY_EMPTY=1 bash scripts/verify-browser-campaign-save-resume.sh
-      - name: Partial research costs in menu survive loading the older MSAV
-        run: INVENTORY_DEVICES=desktop INVENTORY_SPENT=partial bash scripts/verify-browser-campaign-save-resume.sh
-      - name: Fully spent campaign inventory does not resurrect old MSAV items
-        run: INVENTORY_DEVICES=mobile INVENTORY_SPENT=all bash scripts/verify-browser-campaign-save-resume.sh
-      - name: Native gameplay menu controls
-        run: bash scripts/verify-browser-gameplay-button-stress.sh
+      - name: Native sound sliders, campaign persistence and paused gameplay
+        run: |
+          # Immutable staged assets, separate HTTP/CDP ports and Chrome profiles.
+          # Keep the clock fixture (which edits staged JS) strictly after all three.
+          bash scripts/verify-browser-settings-tab-stress.sh > work/settings-validation.log 2>&1 &
+          settings_pid=$!
+          (
+            set -e
+            bash scripts/verify-browser-campaign-save-resume.sh
+            INVENTORY_EMPTY=1 bash scripts/verify-browser-campaign-save-resume.sh
+            INVENTORY_DEVICES=desktop INVENTORY_SPENT=partial bash scripts/verify-browser-campaign-save-resume.sh
+            INVENTORY_DEVICES=mobile INVENTORY_SPENT=all bash scripts/verify-browser-campaign-save-resume.sh
+          ) > work/inventory-validation.log 2>&1 &
+          inventory_pid=$!
+          bash scripts/verify-browser-gameplay-button-stress.sh > work/settings-gameplay-validation.log 2>&1 &
+          gameplay_pid=$!
+          failed=0
+          if ! wait "$settings_pid"; then failed=1; fi
+          cat work/settings-validation.log
+          if ! wait "$inventory_pid"; then failed=1; fi
+          cat work/inventory-validation.log
+          if ! wait "$gameplay_pid"; then failed=1; fi
+          cat work/settings-gameplay-validation.log
+          test "$failed" -eq 0
       - name: Native Go resumes saved Erekir sector
         run: CLOCK_DEVICES=mobile CLOCK_SECTORS=onset bash scripts/verify-browser-save-clock-go.sh
       - name: Verify packaged JavaScript is unchanged by save fixtures
@@ -322,6 +334,9 @@ jobs:
         with:
           name: settings-inventory-evidence
           path: |
+            work/settings-validation.log
+            work/settings-gameplay-validation.log
+            work/inventory-validation.log
             work/settings-*.html
             work/settings-*.png
             work/menu-ui/*.png
@@ -344,3 +359,5 @@ jobs:
 # Persist full SectorInfo without reflection and preserve research/export resource changes.
 
 # Remove the superseded empty-inventory replay; explicit campaign metadata preserves spending.
+
+# Main-menu Logic must honor the same pointer-release autosave policy as paused gameplay.

@@ -22,6 +22,15 @@ jobs:
         run: |
           mkdir -p web-runtime/build/web
           unzip -q work/previous-runtime/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Prove previous main menu also rewrites settings on drag frames
+        run: |
+          set +e
+          bash scripts/verify-browser-settings-tab-stress.sh > work/previous-settings-menu.log 2>&1
+          result=$?
+          set -e
+          cat work/previous-settings-menu.log
+          test "$result" -ne 0
+          grep -Fq 'Settings persisted during live drag:' work/previous-settings-menu.log
       - name: Prove previous runtime rewrites settings on drag frames
         run: |
           set +e
@@ -38,4 +47,4 @@ jobs:
           path: |
             work/settings-*.png
             work/settings-*.html
-            work/previous-settings-drag.log
+            work/previous-settings-*.log

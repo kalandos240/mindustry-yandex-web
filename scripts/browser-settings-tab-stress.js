@@ -89,10 +89,24 @@
     if (tab === 'sound') {
       for (const key of ['musicvol','sfxvol','ambientvol']) {
         const previous = attr('settings-value-setting-' + key);
-        await click('settings-hit-setting-' + key, 'Sound/' + key);
+        const pos = await position('settings-hit-setting-' + key, 'Sound/' + key);
+        const id = 'menu-slider-' + (++count);
+        const write = Storage.prototype.setItem;
+        let writes = 0;
+        Storage.prototype.setItem = function(key,value) {
+          if (this === localStorage && String(value).startsWith('MWS1|')) writes++;
+          return write.call(this,key,value);
+        };
+        root.setAttribute('data-mindustry-cdp-drag-request', JSON.stringify({
+          id,x0:pos.x,y0:pos.y,x1:pos.x+60,y1:pos.y,steps:18
+        }));
+        await wait(() => attr('cdp-drag-ack') === id, 'menu slider drag ' + key);
         await wait(() => attr('settings-value-setting-' + key) !== previous,
           'volume changes ' + key);
         await alive('volume changed ' + key);
+        Storage.prototype.setItem = write;
+        if (writes > 1) throw Error('Settings persisted during live drag: ' + key + ' writes=' + writes);
+        if (writes !== 1) throw Error('Settings drag did not persist on release: ' + key + ' writes=' + writes);
         for (const [edge, expected] of [['min','0'],['max','100']]) {
           await click('settings-hit-setting-' + key + '-' + edge, 'Sound/' + key + '/' + edge);
           await wait(() => attr('settings-value-setting-' + key) === expected, 'volume endpoint ' + key + '=' + expected);
