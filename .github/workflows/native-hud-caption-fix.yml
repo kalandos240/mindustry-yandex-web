@@ -331,3 +331,5 @@ jobs:
 # Keep game-over visibility independent of the pause modal.
 # Fit resources to their actual pane and retain text space beside pause icons.
 # Preserve unconstrained native item columns outside compact mode.
+
+# Diagnostic object fields use the TeaVM-supported explicit ES5 syntax.

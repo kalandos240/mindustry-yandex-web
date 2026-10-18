@@ -541,13 +541,6 @@ public final class BrowserUiRuntime{
         BrowserYandex.showMenuFullscreenAdv();
     }
 
-    /**
-     * Recreate the native PausedDialog arrangement with the pinned Mindustry
-     * icon atlas / pane styles. This is deliberately an Arc Scene dialog, not
-     * an HTML overlay: all pointer/touch handling stays with stock InputHandler.
-     * The heavyweight desktop dialog dependencies (Host/Mods/Editor) remain
-     * unreachable in the self-contained Yandex single-player client.
-     */
     /** Reuse actors and listeners when the portal changes between wide and narrow. */
     private static float fitPauseCaption(TextButton button, float width, float baseHeight){
         boolean stacked = width < 170f;
@@ -763,7 +756,7 @@ public final class BrowserUiRuntime{
 
     @JSBody(params = {"action", "caption", "lines", "contained"}, script = """
         const r=document.documentElement, p='data-mindustry-pause-caption-'+action;
-        r.setAttribute(p, JSON.stringify({text:caption,lines,contained}));
+        r.setAttribute(p, JSON.stringify({text:caption,lines:lines,contained:contained}));
         """)
     private static native void markPauseCaption(String action, String caption, int lines, boolean contained);
 
