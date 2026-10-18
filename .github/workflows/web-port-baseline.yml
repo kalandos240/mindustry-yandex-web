@@ -208,7 +208,13 @@ jobs:
           test -s core/build/classes/java/main/mindustry/core/Version.class
 
       - name: Compile current Mindustry and Arc bytecode with TeaVM
-        run: work/Arc/gradlew -p web-runtime generateJavaScript stageWeb --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          work/Arc/gradlew -p web-runtime generateJavaScript stageWeb --no-daemon --stacktrace | tee work/teavm-compile.log
+          if grep -Fq 'Error in @JSBody' work/teavm-compile.log; then
+            echo 'TeaVM rejected a browser annotation script: release BLOCKED.' >&2
+            exit 1
+          fi
 
       - name: Remove TeaVM runtime documentation link
         run: python3 scripts/sanitize-teavm-runtime-links.py

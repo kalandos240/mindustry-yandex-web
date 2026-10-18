@@ -23,7 +23,7 @@ public final class BrowserStockCustomGameUi{
         int previews = 0;
         for(Map map : BrowserLocalMapRuntime.catalog()) if(map.texture != null) previews++;
         markPage(page, previews);
-        final String maze = maps.all().find(m -> m.file.nameWithoutExtension().equals("maze")).name();
+        final String firstMap = maps.all().find(m -> m.file.nameWithoutExtension().equals("archipelago")).name();
         Core.scene.root.forEach(actor -> {
             if(!(actor instanceof Button button) || !button.visible || !button.isDescendantOf(top)
                 || button.getWidth() <= 1f || button.getHeight() <= 1f) return;
@@ -37,18 +37,20 @@ public final class BrowserStockCustomGameUi{
             }
             if(name == null){
                 boolean[] match = {false};
-                String label = page.equals("catalog") ? maze : page.equals("rules") ? Core.bundle.get("rules.wavetimer") : "";
+                String label = page.equals("catalog") ? firstMap : page.equals("rules") ? Core.bundle.get("rules.wavetimer") : "";
                 if(!label.isEmpty()) button.forEach(child -> {
                     if(child instanceof Label text && text.getText().toString().equals(label)) match[0] = true;
                 });
-                if(match[0]) name = page.equals("catalog") ? "maze" : "wave-timer";
+                if(match[0]) name = page.equals("catalog") ? "first-map" : "wave-timer";
             }
             if(name == null) return;
             Vec2 center = button.localToStageCoordinates(new Vec2(button.getWidth()/2f, button.getHeight()/2f));
             Element hit = Core.scene.hit(center.x, center.y, true);
             if(hit != button && (hit == null || !hit.isDescendantOf(button))) return;
             Vec2 screen = Core.scene.getViewport().project(center);
-            markPoint(name, screen.x, screen.y);
+            Vec2 lower = Core.scene.getViewport().project(button.localToStageCoordinates(new Vec2()));
+            Vec2 upper = Core.scene.getViewport().project(button.localToStageCoordinates(new Vec2(button.getWidth(), button.getHeight())));
+            markPoint(name, screen.x, screen.y, lower.x, lower.y, upper.x, upper.y);
         });
     }
 
@@ -58,6 +60,11 @@ public final class BrowserStockCustomGameUi{
     @JSBody(params={"page","previews"}, script="document.documentElement.setAttribute('data-mindustry-custom-page',page);document.documentElement.setAttribute('data-mindustry-custom-previews',String(previews));")
     private static native void markPage(String page, int previews);
 
-    @JSBody(params={"name","x","y"}, script="document.documentElement.setAttribute('data-mindustry-custom-'+name+'-x',String(x));document.documentElement.setAttribute('data-mindustry-custom-'+name+'-y',String(y));")
-    private static native void markPoint(String name, float x, float y);
+    @JSBody(params={"name","x","y","left","bottom","right","top"}, script="""
+        const r=document.documentElement, p='data-mindustry-custom-'+name+'-';
+        r.setAttribute(p+'x',String(x));r.setAttribute(p+'y',String(y));
+        r.setAttribute(p+'left',String(left));r.setAttribute(p+'bottom',String(bottom));
+        r.setAttribute(p+'right',String(right));r.setAttribute(p+'top',String(top));
+        """)
+    private static native void markPoint(String name, float x, float y, float left, float bottom, float right, float top);
 }
