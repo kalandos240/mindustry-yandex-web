@@ -35,7 +35,7 @@ public final class BrowserHudPlanetSmoke{
                     markOpened();
                 }
             }
-            return;
+            if(ui.planet.isShown()) return;
         }
         if(!state.isPlaying() || ui.hudGroup == null) return;
         Element table = Core.scene.root.find("inputTable");
@@ -49,6 +49,9 @@ public final class BrowserHudPlanetSmoke{
         if(point.x <= 0f || point.y <= 0f
         || point.x >= Core.graphics.getWidth()
         || point.y >= Core.graphics.getHeight()) return;
+        // The responsive placement graph can finish scaling after the first
+        // game frame. Keep the native hitpoint current until the dialog opens.
+        if(frames < 64) return;
         armed = true;
         markHitpoint(point.x,point.y);
     }

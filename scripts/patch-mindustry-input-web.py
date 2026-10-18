@@ -163,6 +163,14 @@ for old, new, label, expected in visibility_replacements:
     if count != expected:
         raise SystemExit(f"Expected {expected} pinned DesktopInput {label} checks, found {count}")
     desktop_text = desktop_text.replace(old, new)
+# Route lazy browser dialogs at button construction time, including the first
+# frames and native category rebuilds before the UI annotation/rebind tick.
+desktop_text = replace_once(desktop_text, 'public class DesktopInput extends InputHandler{',
+    'public class DesktopInput extends InputHandler{\n    public static Runnable webResearch, webDatabase;', 'desktop dialog callbacks')
+for field, callback in [('research', 'webResearch'), ('database', 'webDatabase')]:
+    desktop_text = replace_once(desktop_text, f'            ui.{field}.show();',
+        f'            if({callback} != null) {callback}.run(); else if(ui.{field} != null) ui.{field}.show();',
+        'native '+field+' action')
 desktop_path.write_text(desktop_text, encoding="utf-8")
 
 # Stock InputHandler and Control make more gameplay code reachable than the earlier
