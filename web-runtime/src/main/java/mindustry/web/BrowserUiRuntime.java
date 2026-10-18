@@ -495,7 +495,7 @@ public final class BrowserUiRuntime{
         overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
         overlay.visible(() -> (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
-            && state.isPaused() && !state.gameOver);
+            && state.isPaused() && !state.gameOver && !Core.scene.hasDialog());
 
         float width = mobile ? 137f : 208f;
         float height = mobile ? 57f : 54f;

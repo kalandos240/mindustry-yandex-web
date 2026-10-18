@@ -79,6 +79,7 @@ public class BrowserResearchDialog extends ResearchDialog{
         report("title", titleTable.find("web-research-choose-tree"));
         report("items", itemDisplay.getChildren().isEmpty() ? null : itemDisplay.getChildren().first());
         report("view", view);
+        report("pause-menu", Core.scene.root.find("web-pause-dialog"));
         report("conveyor", view.find("web-research-node-conveyor"));
         report("drill", view.find("web-research-node-mechanical-drill"));
         report("invest", view.find("web-research-invest-conveyor"));
@@ -95,12 +96,13 @@ public class BrowserResearchDialog extends ResearchDialog{
     }
 
     private static void report(String key, Element actor){
-        if(actor == null || actor.getWidth() <= 1f || actor.getHeight() <= 1f){ markRect(key, 0,0,0,0,false); return; }
+        if(actor == null || actor.getWidth() <= 1f || actor.getHeight() <= 1f){ markRect(key, 0,0,0,0,false); markVisible(key,false); return; }
         Vec2 lo = actor.localToStageCoordinates(new Vec2());
         Vec2 hi = actor.localToStageCoordinates(new Vec2(actor.getWidth(), actor.getHeight()));
         Element hit = Core.scene.hit((lo.x+hi.x)/2f, (lo.y+hi.y)/2f, true);
         boolean visible = actor.visible;
         for(Group p = actor.parent; p != null; p = p.parent) visible &= p.visible;
+        markVisible(key,visible);
         Core.scene.getViewport().project(lo);
         Core.scene.getViewport().project(hi);
         markRect(key,lo.x,lo.y,hi.x,hi.y,visible && (hit == actor || hit != null && hit.isDescendantOf(actor)));
@@ -110,6 +112,8 @@ public class BrowserResearchDialog extends ResearchDialog{
     private static native boolean requested();
     @JSBody(params={"open"},script="document.documentElement.setAttribute('data-mindustry-research-open',open?'yes':'no');")
     private static native void markOpen(boolean open);
+    @JSBody(params={"key","visible"},script="document.documentElement.setAttribute('data-mindustry-native-research-'+key+'-visible',visible?'yes':'no');")
+    private static native void markVisible(String key,boolean visible);
     @JSBody(params={"root","selected","visible","x","y","scale"},script="""
         const r=document.documentElement;
         r.setAttribute('data-mindustry-research-tree-root',root);

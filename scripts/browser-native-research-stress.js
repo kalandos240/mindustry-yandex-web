@@ -33,6 +33,7 @@
  await open();
  await wait(()=>Number(get('research-tree-visible-nodes'))>2,'native visible nodes');
  await wait(()=>get('native-research-items'),'native resource header');headers();
+ if(campaign&&get('native-research-pause-menu-visible')!=='no')throw Error('Web pause menu visible beneath original research modal');
  if(campaign){
   const transitions=Number(get('space-transition-count')||0);
   window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,code:'Space',key:' '}));await sleep(150);window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,code:'Space',key:' '}));
