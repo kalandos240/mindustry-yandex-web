@@ -304,3 +304,4 @@ echo "Applied Web single-thread asset, SpriteBatch, FogControl and Pathfinder sc
 echo "Applied Web-only Mindustry startup/single-player/save/input/gameplay patches"
 
 python3 "$ROOT_DIR/scripts/patch-mindustry-hud-items-web.py"
+python3 "$ROOT_DIR/scripts/patch-mindustry-research-web.py"

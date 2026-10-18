@@ -48,11 +48,9 @@ public class BrowserPlanetDialog extends PlanetDialog{
 
     @Override
     void addTech(){
-        // Reuse the fully verified browser TechTree while the stock
-        // ResearchDialog's eager desktop dependencies are being adapted.
-        // The original planet view keeps its native tree button and icon.
+        // Keep the original planet dialog beneath ResearchDialog: native
+        // getPrefRoot() reads the visible globe's selected planet.
         buttons.button("@techtree", mindustry.gen.Icon.tree, () -> {
-            hide();
             BrowserResearchUi.show();
         }).size(200f, 54f).visible(() -> mode == Mode.look).pad(2).bottom().name("web-planet-tech");
     }

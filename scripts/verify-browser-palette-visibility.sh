@@ -104,7 +104,7 @@ profile="/tmp/mindustry-palette-visible-ground-zero"
 dom="/tmp/mindustry-palette-visible-ground-zero.html"
 rm -rf "$profile"
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1" \
+  --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1&mindustryNativeResearchSmoke=1" \
   --profile "$profile" \
   --port 9297 \
   --timeout 90 \
@@ -143,6 +143,11 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
         clientX:x,clientY:y,button:0,buttons:type==='pointerdown'?1:0}));
       await new Promise(r=>setTimeout(r,120));
     }
+    for(let i=0;i<100 && root.getAttribute('data-mindustry-native-research-drill-exposed')!=='yes';i++)await new Promise(r=>setTimeout(r,100));
+    const drill=JSON.parse(root.getAttribute('data-mindustry-native-research-drill')||'null');
+    if(!drill)throw Error('Original Mechanical Drill node missing');
+    const dx=rect.left+(drill[0]+drill[2])/2,dy=rect.bottom-(drill[1]+drill[3])/2;
+    canvas.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,cancelable:true,pointerId:509,pointerType:'mouse',clientX:dx,clientY:dy,buttons:0}));
     for(let i=0;i<80;i++){
       if(root.getAttribute('data-mindustry-research-open')==='yes' &&
          root.getAttribute('data-mindustry-research-tree-selected')==='mechanical-drill') break;
@@ -150,7 +155,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     }
     if(root.getAttribute('data-mindustry-research-open')!=='yes' ||
        root.getAttribute('data-mindustry-research-tree-selected')!=='mechanical-drill'){
-      throw Error('Ground Zero native Research button did not focus Mechanical Drill TechTree');
+      throw Error('Ground Zero native Research button did not expose the original selectable Mechanical Drill node');
     }
     root.setAttribute('data-mindustry-ground-zero-native-research-smoke','passed');
     return true;

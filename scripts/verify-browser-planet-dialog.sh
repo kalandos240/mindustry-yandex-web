@@ -134,9 +134,20 @@ for device in desktop mobile; do
       await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='serpulo',
         'Serpulo view change after callback: current='+root.getAttribute('data-mindustry-planet-viewed'));
       await sustained3d('Serpulo after switching from Erekir');
+      await expose('erekir');
+      await choose('erekir');
+      await wait(()=>root.getAttribute('data-mindustry-planet-viewed')==='erekir','Erekir before native research');
       await wait(()=>root.hasAttribute('data-mindustry-planet-hit-tech-x'),'Native TechTree button');
       await choose('tech');
       await wait(()=>root.getAttribute('data-mindustry-research-open')==='yes','TechTree opens from original planet UI');
+      await wait(()=>root.getAttribute('data-mindustry-research-tree-root')==='core-bastion','Original ResearchDialog inherits Erekir from the visible globe');
+      window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,code:'Escape',key:'Escape'}));
+      await new Promise(r=>setTimeout(r,120));
+      window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,code:'Escape',key:'Escape'}));
+      await wait(()=>root.getAttribute('data-mindustry-research-open')==='no','Escape closes research above the planet');
+      await expose('serpulo');
+      await choose('serpulo');
+      await sustained3d('Original globe remains usable after closing research');
       if(root.getAttribute('data-mindustry-web')==='error')throw Error('Planet interaction broke frame loop');
       root.setAttribute('data-mindustry-planet-smoke','passed');
       return 'Original 3D PlanetDialog rendered in WebGL';

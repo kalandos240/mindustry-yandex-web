@@ -245,7 +245,7 @@ def cdp_input_bridge(port: int, url: str, deadline: float, mobile: bool, stop: t
                     + json.dumps(status) + ")")
                 message_id += 1
 
-            # Genuine Chrome left-mouse press/move/release for the spatial
+            # Genuine Chrome mouse/touch press/move/release for the spatial
             # TechTree viewport. This is a test-only devtools request, not
             # an HTML replacement for Arc's desktop mouse gesture handler.
             drag_request = evaluate(ws, message_id,
@@ -259,31 +259,44 @@ def cdp_input_bridge(port: int, url: str, deadline: float, mobile: bool, stop: t
                     start_x, start_y = float(drag["x0"]), float(drag["y0"])
                     end_x, end_y = float(drag["x1"]), float(drag["y1"])
                     steps = int(drag.get("steps", 10))
-                    if mobile or steps < 2 or steps > 40 or any(
+                    if steps < 2 or steps > 40 or any(
                         not 0 <= v <= 10000 for v in (start_x, start_y, end_x, end_y)
                     ):
-                        raise ValueError("Invalid desktop CDP drag request")
-                    for typ, x, y, button, buttons in [
-                        ("mouseMoved", start_x, start_y, "none", 0),
-                        ("mousePressed", start_x, start_y, "left", 1),
-                    ]:
-                        cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
-                            "type": typ, "x": x, "y": y, "button": button,
-                            "buttons": buttons, "clickCount": 1})
+                        raise ValueError("Invalid CDP drag request")
+                    if mobile:
+                        for step in range(steps + 1):
+                            fraction = step / steps
+                            cdp_command(ws, message_id, "Input.dispatchTouchEvent", {
+                                "type": "touchStart" if step == 0 else "touchMove",
+                                "touchPoints": [{"x": start_x + (end_x-start_x)*fraction,
+                                    "y": start_y + (end_y-start_y)*fraction, "id": 0}]})
+                            message_id += 1
+                            time.sleep(0.018)
+                        cdp_command(ws, message_id, "Input.dispatchTouchEvent", {
+                            "type": "touchEnd", "touchPoints": []})
                         message_id += 1
-                    for step in range(1, steps + 1):
-                        fraction = step / steps
-                        x = start_x + (end_x - start_x) * fraction
-                        y = start_y + (end_y - start_y) * fraction
+                    else:
+                        for typ, x, y, button, buttons in [
+                            ("mouseMoved", start_x, start_y, "none", 0),
+                            ("mousePressed", start_x, start_y, "left", 1),
+                        ]:
+                            cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
+                                "type": typ, "x": x, "y": y, "button": button,
+                                "buttons": buttons, "clickCount": 1})
+                            message_id += 1
+                        for step in range(1, steps + 1):
+                            fraction = step / steps
+                            x = start_x + (end_x - start_x) * fraction
+                            y = start_y + (end_y - start_y) * fraction
+                            cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
+                                "type": "mouseMoved", "x": x, "y": y, "button": "left",
+                                "buttons": 1, "clickCount": 1})
+                            message_id += 1
+                            time.sleep(0.018)
                         cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
-                            "type": "mouseMoved", "x": x, "y": y, "button": "left",
-                            "buttons": 1, "clickCount": 1})
+                            "type": "mouseReleased", "x": end_x, "y": end_y,
+                            "button": "left", "buttons": 0, "clickCount": 1})
                         message_id += 1
-                        time.sleep(0.018)
-                    cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
-                        "type": "mouseReleased", "x": end_x, "y": end_y,
-                        "button": "left", "buttons": 0, "clickCount": 1})
-                    message_id += 1
                     drag_status = drag_id
                 except Exception as error:
                     drag_status = "ERROR: " + str(error)[:220]

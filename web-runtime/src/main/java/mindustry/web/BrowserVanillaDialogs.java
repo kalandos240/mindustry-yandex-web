@@ -68,9 +68,8 @@ public final class BrowserVanillaDialogs{
         try{
             ui.planet = new BrowserPlanetDialog();
             markPlanetStage("planet-constructed");
-            // Upstream ResearchDialog eagerly dereferences desktop-only UI
-            // dependencies. Keep the existing fully functional TechTree until
-            // those dependencies have been adapted, without blocking 3D planets.
+            constructorPhase = "research";
+            ui.research = new BrowserResearchDialog();
             markPlanetStage("planet-ready");
         }catch(Throwable failure){
             markPlanetStage(constructorPhase + "-failed-" + failure.getClass().getName()
@@ -107,6 +106,7 @@ public final class BrowserVanillaDialogs{
             || ui.schematics != null && ui.schematics.isShown()
             || ui.database != null && ui.database.isShown()
             || ui.custom != null && ui.custom.isShown()
+            || ui.research != null && ui.research.isShown()
             || ui.planet != null && ui.planet.isShown());
     }
 
@@ -120,6 +120,7 @@ public final class BrowserVanillaDialogs{
         if(ui.controls.isShown()) active.append("controls,");
         if(ui.language.isShown()) active.append("language,");
         if(ui.schematics.isShown()) active.append("schematics,");
+        if(ui.research.isShown()) active.append("research,");
         if(ui.database.isShown()) active.append("database,");
         BrowserStockDatabaseUi.sample();
         BrowserStockCustomGameUi.sample();
@@ -313,7 +314,7 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-saves', 'stock-LoadDialog-browser-safe');
         r.setAttribute('data-mindustry-vanilla-custom', 'stock-CustomGameDialog');
         r.setAttribute('data-mindustry-vanilla-planet', 'stock-PlanetDialog-3d');
-        r.setAttribute('data-mindustry-vanilla-research', 'browser-TechTree-preserved');
+        r.setAttribute('data-mindustry-vanilla-research', 'stock-ResearchDialog');
         """)
     private static native void markInstalled();
 
