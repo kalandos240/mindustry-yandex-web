@@ -152,6 +152,16 @@ public final class BrowserVanillaDialogs{
             ui.settings.sound.parent != null ? "sound" :
             ui.settings.dev.parent != null ? "dev" : "root";
         markSettingsPage(page, Core.settings.getBool("hints", true));
+        if("sound".equals(page)){
+            ui.settings.sound.forEach(actor -> {
+                if(!(actor instanceof Slider slider) || slider.name == null) return;
+                Vec2 point = slider.localToStageCoordinates(new Vec2(slider.getWidth() * 0.3f, slider.getHeight() / 2f));
+                if(Core.scene.hit(point.x, point.y, true) != slider) return;
+                Vec2 screen = Core.scene.getViewport().project(point);
+                markSettingsHitPoint(slider.name, screen.x, screen.y);
+                markSettingsValue(slider.name, Core.settings.getInt(slider.name.substring(8)));
+            });
+        }
         if(!"root".equals(page) && !"game".equals(page)) return;
         String[] names = {"game", "graphics", "sound", "language", "controls", "dev"};
         String[] labels = {
@@ -209,6 +219,9 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-settings-hit-' + name + '-y',String(y));
         """)
     private static native void markSettingsHitPoint(String name,float x,float y);
+
+    @JSBody(params = {"name", "value"}, script = "document.documentElement.setAttribute('data-mindustry-settings-value-' + name, String(value));")
+    private static native void markSettingsValue(String name, int value);
 
     public static void openPlanets(){
         markPlanetStage("called");

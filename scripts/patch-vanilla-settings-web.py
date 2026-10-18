@@ -98,5 +98,8 @@ src = src[:start] + '''            // Web: ZIP backup/import and OS log-folder o
 
 # The methods below are kept in upstream source, but are unreachable after their
 # button actions have been pruned. TeaVM can omit their ZIP/OS dependencies.
+replace('                Slider slider = new Slider(min, max, step, false);',
+        '                Slider slider = new Slider(min, max, step, false);\n                slider.name = "setting-" + name;',
+        "native slider identity")
 PATH.write_text(src, encoding="utf-8")
 print("Vanilla SettingsMenuDialog: original Sound/Game/Graphics/Data/Language/Controls/Dev UI; browser-only actions removed")

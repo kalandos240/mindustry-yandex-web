@@ -86,6 +86,15 @@
     await wait(() => attr('settings-native-page') === tab,
       'native ' + tab + ' SettingsTable attached');
     await alive('Settings/' + tab);
+    if (tab === 'sound') {
+      for (const key of ['musicvol','sfxvol','ambientvol']) {
+        const previous = attr('settings-value-setting-' + key);
+        await click('settings-hit-setting-' + key, 'Sound/' + key);
+        await wait(() => attr('settings-value-setting-' + key) !== previous,
+          'volume changes ' + key);
+        await alive('volume changed ' + key);
+      }
+    }
     if (tab === 'game') {
       // The actual SettingsTable.CheckSetting for Hints is a stock Button,
       // not an HTML checkbox. Click twice and observe persisted Core.settings.

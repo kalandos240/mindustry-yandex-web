@@ -36,8 +36,8 @@ for device in desktop mobile; do
   # open Settings, four category tabs, Hints toggle+restore, Language,
   # plus Controls on desktop. The previous >=10 regex always failed AFTER
   # the browser had already reported successful native interaction.
-  expected=8
-  if [ "$device" = desktop ]; then expected=9; fi
+  expected=11
+  if [ "$device" = desktop ]; then expected=12; fi
   grep -Fq "data-mindustry-settings-nested-clicks=\"$expected\"" "$dom"
   echo "$device: $expected trusted real clicks: Settings tabs, Hints restore, Language/Controls PASS"
 done
