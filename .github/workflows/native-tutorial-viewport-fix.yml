@@ -320,3 +320,5 @@ jobs:
             work/clock-*.png
             work/firefox-*.png
             work/firefox-*.html
+
+# Recheck compact HUD reading region using transformed native actors.

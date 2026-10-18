@@ -6,6 +6,7 @@ root = Path(__file__).resolve().parents[1]
 p = root / 'work/Mindustry/core/src/mindustry/entities/comp/WorldLabelComp.java'
 s = p.read_text()
 s = s.replace('import arc.graphics.*;', 'import arc.*;\nimport arc.math.*;\nimport arc.graphics.*;', 1)
+s = s.replace('    public static final byte', '    public static arc.scene.Element webHudHealth, webHudPlacement;\n\n    public static final byte', 1)
 old = '        layout.setText(font, text);\n'
 new = '''        layout.setText(font, text);
 
@@ -22,7 +23,30 @@ new = '''        layout.setText(font, text);
         boolean fit = Core.app.isWeb() && centerX + layout.width / 2f >= left - edge
             && centerX - layout.width / 2f <= right + edge && textTop >= bottom - edge
             && textTop - layout.height <= top + edge;
-        float wrapWidth = Core.camera.width * 0.65f;
+        // Compact HUDs leave a reading area below health and beside/above
+        // construction. Use actual transformed actor bounds, not device pixels.
+        // Cache actors: do not scan the Scene tree for every rendered label.
+        if(fit && Core.scene != null && Vars.ui != null && Vars.ui.hudfrag != null
+            && Vars.ui.hudfrag.shown && (Core.scene.getWidth() < 600f || Core.scene.getHeight() < 480f)){
+            if(webHudHealth == null || webHudHealth.parent == null) webHudHealth = Core.scene.root.find("web-hud-player-health");
+            if(webHudPlacement == null || webHudPlacement.parent == null) webHudPlacement = Core.scene.root.find("web-placement-frame");
+            float cameraLeft = Core.camera.position.x - Core.camera.width / 2f;
+            float cameraBottom = Core.camera.position.y - Core.camera.height / 2f;
+            if(webHudHealth != null && webHudHealth.getHeight() > 1f){
+                var lower = webHudHealth.localToStageCoordinates(Tmp.v1.set(0f, 0f));
+                top = Math.min(top, cameraBottom + lower.y / Core.scene.getHeight() * Core.camera.height - edge);
+            }
+            if(webHudPlacement != null && webHudPlacement.getWidth() > 1f){
+                var lower = webHudPlacement.localToStageCoordinates(Tmp.v1.set(0f, 0f));
+                var upper = webHudPlacement.localToStageCoordinates(Tmp.v2.set(webHudPlacement.getWidth(), webHudPlacement.getHeight()));
+                if(lower.x > Core.scene.getWidth() * 0.2f){
+                    right = Math.min(right, cameraLeft + lower.x / Core.scene.getWidth() * Core.camera.width - edge);
+                }else{
+                    bottom = Math.max(bottom, cameraBottom + upper.y / Core.scene.getHeight() * Core.camera.height + edge);
+                }
+            }
+        }
+        float wrapWidth = Math.max(1f, Math.min(Core.camera.width * 0.65f, right - left - 2f));
         boolean wrap = fit && layout.width > wrapWidth;
         if(wrap){
             layout.setText(font, text, Color.white, wrapWidth, lineAlign, true);
