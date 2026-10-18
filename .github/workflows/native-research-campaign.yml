@@ -1,0 +1,39 @@
+name: Native research campaign input diagnosis
+on:
+  push:
+    branches: [native-research-campaign-diagnosis]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 325f3f1d4e9affd0446c72fc48c74702fe3926dd
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39094825154
+          github-token: ${{ github.token }}
+          path: work/exact
+      - run: |
+          mkdir -p web-runtime/build/web
+          unzip -q work/exact/mindustry-yandex-release.zip -d web-runtime/build/web
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/browser-native-research-stress.js')
+          s=p.read_text().replace(' const open=async()=>{', " const open=async()=>{const settled=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>settled,'modal settles before reading the live HUD');")
+          p.write_text(s)
+          PY
+      - name: Native research repeated campaign input after resize
+        env:
+          MINDUSTRY_RESEARCH_TARGETS: desktop-campaign mobile-campaign
+        run: bash scripts/verify-browser-native-research.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-research-campaign-diagnosis
+          path: work/menu-ui/*.png
