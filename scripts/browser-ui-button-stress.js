@@ -49,7 +49,8 @@
   const isMobile = value('main-menu-layout') === 'mobile-grid';
   const legalButtons = ['play', 'research', 'database', 'settings',
     'schematics', 'controls', 'saves', 'planets'];
-  if (!isMobile) legalButtons.push('custom');
+  if(isMobile) legalButtons.splice(legalButtons.indexOf('planets'),1);
+  legalButtons.push('custom');
   // Probe the actual original Arc Scene button centers. This deliberately
   // fails if a control is clipped beneath a sticky banner or outside iframe.
   const point = async name => {
@@ -163,8 +164,9 @@
     await alive(name + ' Back');
   };
   await alive('first menu frame');
-  await play('play');
-  if (!isMobile) await play('custom');
+  if(!isMobile) await play('play');
+  await action('custom', 'vanilla-custom-open', 'custom');
+  await action('custom', 'vanilla-custom-open', 'custom');
   await action('settings', 'vanilla-settings-open', 'settings');
   await action('saves', 'vanilla-saves-open', 'saves');
   await action('controls', 'vanilla-controls-open', 'controls');
@@ -174,13 +176,16 @@
   // A second click-after-close cycle detects stale Arc modal touch capture,
   // unhandled key-up states and freezes that initial startup smoke can miss.
   await action('settings', 'vanilla-settings-open', 'settings');
-  await play('play');
+  await action('saves', 'vanilla-saves-open', 'saves');
+  if(!isMobile) await play('play');
 
+  if(!isMobile){
   await click('play');
   await wait(() => value('main-menu-page') === 'play', 'Play before Escape');
   await escape();
   await wait(() => value('main-menu-page') === 'home', 'Escape closes Play submenu');
   await alive('native Play submenu Escape');
+  }
 
   // Planet chooser, 3D globe switching and the native first-run confirmation
   // are tested by verify-browser-planet-dialog.sh on both devices; clicking

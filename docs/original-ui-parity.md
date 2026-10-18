@@ -235,3 +235,43 @@ game matrix previously passed on PR 166; it has not been recertified on this hea
 This is still a draft UI migration. The temporary combined Play/recovery wrapper,
 remaining HUD/Research dialogs and final whole-interface 1:1 comparison remain
 outstanding; this change does not claim complete original UI parity.
+
+## Direct original menu navigation
+
+The next change removes the combined Play/recovery panel from player navigation.
+Desktop Play > Custom Game opens the stock catalog directly. Mobile uses the
+original Campaign caption/action for its play icon and an independent Custom
+Game icon; Campaign opens PlanetDialog and Custom Game opens CustomGameDialog.
+Load Game still opens the original save dialog. The hidden old panel remains
+only as an overlay-script compatibility anchor, with no menu route to open it.
+
+Real campaign acceptance now launches both planets through the original sector
+Launch button. The two historical `direct-*` scenario names retain the unrelated
+deferred-map failure-status marker case, but no longer depend on removed recovery buttons.
+Navigation checks require native custom-dialog open/close/reopen and keep full
+actor bounds; mobile Campaign needs one click and desktop Campaign needs two.
+Fresh compiled runtime: 93,670,150 unpacked bytes, 6,329,850 bytes below the
+100,000,000-byte limit. Exact-runtime gameplay/visual evidence is recorded in run 39086614356:
+https://github.com/kalandos240/mindustry-yandex-web/actions/runs/39086614356
+It covers the direct native catalog/rules/live launch on three surface sizes,
+menu bounds and repeated modal visits, original 3D planets and four actual sector
+launches, orientation/resize and translated portal HUD input. New menu/catalog
+screenshots confirm the intermediate list is no longer visible behind dialogs.
+That run's mobile interaction succeeded but its shell postcondition required at
+least ten clicks after the shorter navigation needed nine. Add a second native
+Save dialog visit, retaining the existing click-count/bounds/liveness checks.
+Final acceptance run 39087430671 verifies every prior gameplay/visual step and
+the five fresh narrow launches before rerunning desktop/mobile and narrow menu
+input with the Save reopen, then delivering the unchanged ZIP:
+https://github.com/kalandos240/mindustry-yandex-web/actions/runs/39087430671
+
+The first compiled run had one narrow live-loop timeout. It did not reproduce
+in the exact-ZIP acceptance, an isolated narrow run, or five fresh narrow profiles
+in run 39086742263. Its root cause is not established. Keep this as an open
+intermittent diagnostic item rather than claiming a confirmed runtime fix. The
+Chrome harness now records capped state markers and a failure screenshot when
+native interaction throws. The broader full game matrix on this head is pending.
+
+Visual follow-up: in the 390-by-371 desktop game surface, the minimap, wave HUD
+and build palette compete for space. The navigation fix does not resolve this
+remaining HUD layout work; a passing menu/button gate is not full visual parity.

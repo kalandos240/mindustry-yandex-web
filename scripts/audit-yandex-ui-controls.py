@@ -23,10 +23,9 @@ def check(ok, message):
         raise SystemExit("Yandex UI controls compliance failed: " + message)
 
 legal = {
-    "play": "BrowserStockMainMenu::openPlay",
+    "play": "BrowserStockMainMenu::togglePlayMenu",
     "database.button": "BrowserStockMainMenu::toggleDatabaseMenu",
-    "customgame": "BrowserStockMainMenu::openPlay",
-    "planets": "BrowserVanillaDialogs::openPlanets",
+    "customgame": "BrowserVanillaDialogs::openCustomGame",
     "campaign": "BrowserVanillaDialogs::openPlanets",
     "database": "BrowserStockDatabaseUi::show",
     "research": "BrowserResearchUi::show",
@@ -163,10 +162,12 @@ check("id: native_building_config" in workflow and
 # iframe pointer coordinates, as a hard Yandex release & preview condition.
 play_menu = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserUiRuntime.java").read_text(encoding="utf-8")
 campaign_chrome = (ROOT / "scripts/browser-play-campaign-stress.js").read_text(encoding="utf-8")
-for marker in ('"web-play-campaign-planets"', 'BrowserVanillaDialogs::openPlanets',
-               "markPlayCampaignHitPoint(", "'data-mindustry-play-campaign-x'"):
-    check(marker in play_menu, f"Play > Campaign stock 3D UI lost {marker}")
-for marker in ("main-menu-play", "'play-campaign'", "vanilla-planet-frame",
+for marker in ('desktopEntry(submenu, "campaign", Icon.play, BrowserVanillaDialogs::openPlanets',
+               'mobileButton(menu, "campaign", Icon.play, BrowserVanillaDialogs::openPlanets'):
+    check(marker in menu, f"Original campaign menu entry lost {marker}")
+check('contentOpen = true' not in menu and 'BrowserStockMainMenu::openPlay' not in menu,
+      "combined recovery selector returned to player navigation")
+for marker in ("main-menu-play", "'main-menu-planets'", "vanilla-planet-frame",
                "planet-first-chooser", "cdp-click-request", "cpu-sample"):
     check(marker in campaign_chrome, f"Play > Campaign Chrome input lost {marker}")
 check("id: play_campaign_navigation" in workflow and
@@ -192,10 +193,8 @@ check('id: real_campaign_launch' in workflow and
       'steps.real_campaign_launch.outcome' in workflow and
       "steps.real_campaign_launch.outcome == 'success'" in workflow,
       "Real menu and 3D sector launch must hard-block release and certified preview")
-check('"web-play-serpulo"' in play_menu and '"web-play-erekir"' in play_menu and
-      'BrowserCampaignRuntime::playGroundZero' in play_menu and
-      'BrowserCampaignRuntime::playOnset' in play_menu,
-      "Missing actual Serpulo/Erekir campaign start buttons in Play")
+check("'planet-hit-launch'" in real_launch and "'data-mindustry-campaign-assets','error'" in real_launch,
+      "Original sector launch must be tested after unrelated deferred-map failure")
 planet_bridge = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserPlanetBridge.java").read_text(encoding="utf-8")
 check("BrowserCampaignRuntime.returnToMenu();" in planet_bridge and
       "BrowserCampaignRuntime.active()" in planet_bridge,

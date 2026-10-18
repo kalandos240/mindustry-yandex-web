@@ -50,9 +50,11 @@
   await wait(() => get('main-menu-page')==='home', 'Home Arc menu');
   await frame('Home');
   await click('main-menu-play', 'Home Play');
-  await wait(() => get('main-menu-page')==='play', 'Play native panel');
-  await frame('Play submenu');
-  await click('play-campaign', 'Campaign - Planets native TextButton');
+  if(get('input-mode')!=='mobile'){
+    await wait(() => get('main-menu-page')==='play', 'Play native panel');
+    await frame('Play submenu');
+    await click('main-menu-planets', 'Original Campaign entry');
+  }
   await wait(() => get('vanilla-planet-open')==='yes', 'original 3D PlanetDialog callback');
   await wait(() => get('vanilla-planet-frame')==='rendered', 'real 3D planet mesh render');
   await wait(() => get('planet-first-chooser')==='closed',
@@ -72,7 +74,7 @@
   await wait(() => Number(get('planet-render-frames')) > firstStableFrame,
     'completed original 3D frames continue beyond initial opening');
   await frame('3D sector projections stay alive beyond initial render');
-  if(get('main-menu-page') !== (get('input-mode')==='mobile'?'play':'home')){
+  if(get('main-menu-page') !== 'home'){
     throw Error('Planet dialog left native navigation in an unexpected state');
   }
   r.setAttribute('data-mindustry-play-campaign-smoke','passed');

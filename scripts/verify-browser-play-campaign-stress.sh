@@ -38,6 +38,8 @@ for device in desktop mobile; do
     --after-ready-require 'data-mindustry-vanilla-planet-frame="rendered"' \
     --after-ready-require 'data-mindustry-planet-first-chooser="closed"' \
     --after-ready-require 'data-mindustry-web="ready"' > "$dom"
-  grep -q 'data-mindustry-play-campaign-clicks="2"' "$dom"
+  clicks=2
+  if [ "$device" = mobile ]; then clicks=1; fi
+  grep -q "data-mindustry-play-campaign-clicks=\"$clicks\"" "$dom"
   echo "$device: home Play -> native Campaign Planets, first-run chooser and true Java heartbeat PASS"
 done

@@ -56,17 +56,17 @@
   await wait(()=>get('main-menu-page')==='home','stock Home');
   await heartbeat('Home');
   await click('main-menu-play','Home > Play');
-  await wait(()=>get('main-menu-page')==='play','actual Play menu');
-  await heartbeat('Play');
-  if(scenario.startsWith('direct-')){
-    if(get('input-mode')!=='mobile') await click('main-menu-custom','Play > Custom Game recovery selector');
-    // Start maps are eager. Simulate an unrelated background-map failure;
-    // neither campaign's native start button may depend on all 46 maps.
-    root.setAttribute('data-mindustry-campaign-assets','error');
-    await heartbeat('unrelated campaign warmup failure');
-    await click('play-direct-'+planet,'native Play > '+planet+' Campaign');
-  }else{
-    await click('play-campaign','Play > Planets');
+  if(get('input-mode')!=='mobile'){
+    await wait(()=>get('main-menu-page')==='play','actual Play submenu');
+    await click('main-menu-planets','Original Campaign entry');
+  }
+  {
+    if(scenario.startsWith('direct-')){
+      // The combined recovery selector was removed. Both original sector
+      // launch paths must still work after unrelated deferred-map failure.
+      root.setAttribute('data-mindustry-campaign-assets','error');
+      await heartbeat('unrelated campaign warmup failure');
+    }
     await wait(()=>get('vanilla-planet-open')==='yes','actual 3D globe opened');
     await wait(()=>get('vanilla-planet-frame')==='rendered','3D globe rendered');
     await wait(()=>get('planet-start-sector-ready')==='yes',
