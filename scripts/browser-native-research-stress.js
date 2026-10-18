@@ -69,11 +69,11 @@
   if(!(copper<before&&before-copper===progress&&progress>0))throw Error('Original research cost mismatch '+before+' -> '+copper+' progress '+progress);
  }
  const b=c.getBoundingClientRect();
+ // Root selection changes the tree before its chooser finishes hiding.
+ // Both mouse wheel and touch drag must target the settled native graph.
+ const settled=Number(get('cpu-sample'));
+ await wait(()=>Number(get('cpu-sample'))>=settled+2,'root chooser close before graph gestures');
  if(get('input-mode')!=='mobile'){
-  // Root selection changes the tree before its chooser finishes hiding.
-  // Wait for native modal actions and telemetry before sending wheel input.
-  const settled=Number(get('cpu-sample'));
-  await wait(()=>Number(get('cpu-sample'))>=settled+2,'root chooser close before wheel');
   const scale=JSON.parse(get('research-native-pan'))[2],wheel='native-research-zoom';
   r.setAttribute('data-mindustry-cdp-scroll-request',JSON.stringify({id:wheel,x:b.left+b.width*.5,y:b.top+b.height*.4,deltaY:120}));
   await wait(()=>get('cdp-scroll-ack')===wheel,'trusted native wheel');

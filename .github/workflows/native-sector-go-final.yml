@@ -1,0 +1,81 @@
+name: Exact sector Go final acceptance
+on:
+  push:
+    branches: [native-sector-go-final-acceptance]
+    paths: ['.github/workflows/native-sector-go-final.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require actual cold Go, round-trip, resource and byte-exact backup results
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,urllib.request
+          required={117593472202:[24,25,26],117594606518:[5]}
+          for job,steps in required.items():
+              req=urllib.request.Request(f'https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/jobs/{job}',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req) as response: data=json.load(response)
+              for number in steps:
+                  step=next(s for s in data['steps'] if s['number']==number)
+                  assert step['conclusion']=='success',step
+                  print(step['name']+': PASS')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39099773308
+          github-token: ${{ github.token }}
+          path: work/release
+      - name: Extract unchanged compiled game
+        run: |
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          mkdir -p web-runtime/build/web
+          unzip -q work/release/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Original research with settled mouse and touch gesture targets
+        run: bash scripts/verify-browser-native-research.sh
+      - name: Confirm package integrity and record acceptance scope
+        run: |
+          python3 scripts/audit-web-performance.py
+          python3 scripts/yandex_size_budget.py
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          with ZipFile('work/release/mindustry-yandex-release.zip') as z:
+              assert z.read('mindustry.js')==Path('web-runtime/build/web/mindustry.js').read_bytes()
+          PY
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          cat > work/release/SECTOR-GO-ACCEPTANCE.txt <<'EOF'
+          Experimental native sector Go recovery build, not an approved portal release.
+          Compiled game source: 0aed6065b89ddcf2241d9a2c63512fcd921e2328.
+          ZIP SHA-256: 01159ffd8795796036efb35efbb8eb0e6951cb89bb3634c0da80bcf5dcf69039.
+          93,799,615 unpacked bytes; hard cap: 100,000,000.
+          Passed healthy desktop/mobile cold-menu Go for both starting sectors,
+          native saved-sector round trips and exact cold checkpoint resources/wave/tick
+          in run 39099773308, steps 24,25,26.
+          Passed desktop/mobile lost-Onset Go, byte-exact original MSAV preservation,
+          storage flush and continued world simulation in run 39100155688, step 5.
+          This run also passed the original research roots, real purchases/deductions,
+          wheel/touch graph gestures, close/reopen and resize on the unchanged ZIP.
+          Test-only destroyed-core seed instrumentation is absent from the ZIP.
+          Whole-interface 1:1 parity and the full 46-sector matrix remain unfinished.
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-saved-sector-go-verified
+          path: |
+            work/release/mindustry-yandex-release.zip
+            work/release/mindustry-yandex-release.zip.sha256
+            work/release/mindustry-yandex-release-report.txt
+            work/release/SECTOR-GO-ACCEPTANCE.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sector-go-final-native-evidence
+          path: work/menu-ui/*.png
