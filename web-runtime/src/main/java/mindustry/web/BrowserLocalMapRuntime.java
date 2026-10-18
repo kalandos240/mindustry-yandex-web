@@ -208,7 +208,20 @@ public final class BrowserLocalMapRuntime{
 
     /** Original MapPlayDialog supplies the selected mode and customized rule object. */
     public static void startNative(Map map, Rules rules){
-        if(rules == null || rules.pvp || rules.editor) throw new IllegalArgumentException("Unsupported local game rules");
+        if(rules == null || rules.defaultTeam == null || rules.waveTeam == null || rules.pvp || rules.editor){
+            ui.showErrorMessage("@rules.invaliddata");
+            return;
+        }
+        // CustomRulesDialog permits choosing any player/enemy team. Match
+        // World.loadMap's native validation before resetting the live menu state.
+        if(!map.teams.contains(rules.defaultTeam.id)){
+            ui.showErrorMessage(Core.bundle.format("map.nospawn", rules.defaultTeam.coloredName()));
+            return;
+        }
+        if(rules.attackMode && !map.teams.contains(rules.waveTeam.id)){
+            ui.showErrorMessage(Core.bundle.format("map.nospawn.attack", rules.waveTeam.coloredName()));
+            return;
+        }
         start(map, savedMode(rules), rules);
     }
 

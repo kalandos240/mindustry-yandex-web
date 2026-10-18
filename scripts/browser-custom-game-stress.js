@@ -15,6 +15,12 @@
     const id='custom-'+(++seq);r.setAttribute('data-mindustry-cdp-click-request',JSON.stringify({id,x:b.left+x,y:b.bottom-y}));
     await wait(()=>get('cdp-click-ack')===id,'trusted click '+prefix);
   };
+  if(new URLSearchParams(location.search).get('mindustryCustomNarrow')==='1'){
+    const surface=document.getElementById('mindustry-game-surface'),before=Number(get('resize-count'));
+    surface.style.marginLeft='7%';surface.style.width='50%';
+    await wait(()=>Number(get('resize-count'))>before&&get('main-menu-size')===surface.clientWidth+'x'+surface.clientHeight&&get('container-match')==='true','native narrow scene resize');
+    if(!(c.clientWidth>=300&&c.clientWidth<=400)||get('main-menu-layout')!=='desktop-sidebar')throw Error('Narrow fixture did not preserve desktop input');
+  }
   await click('main-menu-play');
   if(get('main-menu-layout')!=='mobile-grid')await click('main-menu-custom');
   await click('custom-native');
@@ -22,6 +28,7 @@
   if(get('custom-previews')!=='18')throw Error('Expected 18 real map previews');
   await click('custom-first-map');
   await wait(()=>get('custom-page')==='map','stock map mode dialog');
+  await click('custom-sandbox');
   await click('custom-survival');
   await click('custom-customize');
   await wait(()=>get('custom-page')==='rules','stock custom rules');
