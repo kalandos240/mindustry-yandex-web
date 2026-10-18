@@ -26,7 +26,7 @@ public class BrowserResearchDialog extends ResearchDialog{
     }
 
     private void fitFooter(){
-        float width = Math.min(210f, (Core.scene.getWidth() / mindustry.ui.Scl.scl(1f) - 20f) / 2f);
+        float width = Math.min(210f, (Core.scene.getWidth() / arc.scene.ui.layout.Scl.scl(1f) - 20f) / 2f);
         for(var cell : buttons.getCells()) if(cell.get() instanceof Button) cell.width(width);
         buttons.invalidateHierarchy();
     }
@@ -53,6 +53,7 @@ public class BrowserResearchDialog extends ResearchDialog{
         report("title", titleTable.find("web-research-choose-tree"));
         report("view", view);
         report("conveyor", view.find("web-research-node-conveyor"));
+        report("drill", view.find("web-research-node-mechanical-drill"));
         report("invest", view.find("web-research-invest-conveyor"));
         report("root-serpulo", Core.scene.root.find("web-research-root-core-shard"));
         report("root-erekir", Core.scene.root.find("web-research-root-core-bastion"));

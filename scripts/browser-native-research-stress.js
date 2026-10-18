@@ -36,7 +36,14 @@
   const copper=Number(get('native-research-copper')),progress=Number(get('native-research-progress'));
   if(!(copper<before&&before-copper===progress&&progress>0))throw Error('Original research cost mismatch '+before+' -> '+copper+' progress '+progress);
  }
- const before=JSON.parse(get('research-native-pan')),b=c.getBoundingClientRect(),id='native-research-drag';
+ const b=c.getBoundingClientRect();
+ if(get('input-mode')!=='mobile'){
+  const scale=JSON.parse(get('research-native-pan'))[2],wheel='native-research-zoom';
+  r.setAttribute('data-mindustry-cdp-scroll-request',JSON.stringify({id:wheel,x:b.left+b.width*.5,y:b.top+b.height*.4,deltaY:120}));
+  await wait(()=>get('cdp-scroll-ack')===wheel,'trusted native wheel');
+  await wait(()=>JSON.parse(get('research-native-pan'))[2]<scale,'original wheel zoom');
+ }
+ const before=JSON.parse(get('research-native-pan')),id='native-research-drag';
  r.setAttribute('data-mindustry-cdp-drag-request',JSON.stringify({id,x0:b.left+b.width*.65,y0:b.top+b.height*.45,x1:b.left+b.width*.4,y1:b.top+b.height*.65,steps:12}));
  await wait(()=>get('cdp-drag-ack')===id,'trusted native graph drag');
  await wait(()=>{const a=JSON.parse(get('research-native-pan')||'null');return a&&Math.abs(a[0]-before[0])>2&&Math.abs(a[1]-before[1])>2;},'native graph pans both axes');
