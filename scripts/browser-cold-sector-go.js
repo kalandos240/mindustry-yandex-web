@@ -28,5 +28,17 @@
   r.setAttribute('data-mindustry-lost-backup-exact','passed');
  }
  const frame=Number(v('campaign-update-id'));await wait(()=>Number(v('campaign-update-id'))>frame,'world simulation continues');
+ await sleep(4500);
+ if(v('input-mode')!=='mobile'){
+  window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,code:'KeyD',key:'d'}));
+  await sleep(700);
+  window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,code:'KeyD',key:'d'}));
+ }else{
+  const b=c.getBoundingClientRect(),id='lost-sector-movement';
+  r.setAttribute('data-mindustry-cdp-drag-request',JSON.stringify({id,x0:b.left+b.width*.45,y0:b.top+b.height*.50,x1:b.left+b.width*.6,y1:b.top+b.height*.50,steps:12}));
+  await wait(()=>v('cdp-drag-ack')===id,'mobile movement gesture');
+ }
+ await sleep(1000);
+ if(v('web')!=='ready')throw Error('Game stopped after player movement');
  r.setAttribute('data-mindustry-cold-sector-go','passed');return 'Native saved-sector Go resumes after a cold browser restart';
 })()

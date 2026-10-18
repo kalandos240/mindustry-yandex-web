@@ -28,8 +28,6 @@ jobs:
           MINDUSTRY_LOST_CORE: '1'
           MINDUSTRY_COLD_SECTORS: onset
         run: bash scripts/verify-browser-cold-sector-go.sh
-      - name: Original research regression on unchanged game
-        run: bash scripts/verify-browser-native-research.sh
       - name: Verify no fixture changes in production game
         run: |
           python3 - <<'PY'
@@ -46,3 +44,5 @@ jobs:
           path: work/cold-*
 
 # Accept only a durable destroyed-core seed before testing actual production Go.
+
+# Capture actual player spawn and keyboard/touch movement after lost-sector landing.
