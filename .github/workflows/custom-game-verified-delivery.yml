@@ -1,0 +1,43 @@
+name: Deliver verified original custom game build
+on:
+  push:
+    branches: [custom-game-verified-delivery]
+    paths: ['.github/workflows/custom-game-verified-delivery.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verified-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require exact-ZIP acceptance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          result=$(gh api repos/kalandos240/mindustry-yandex-web/actions/runs/39085530684 --jq '.conclusion')
+          test "$result" = success
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39084767301
+          github-token: ${{ github.token }}
+          path: candidate
+      - name: Verify and prepare unchanged runtime ZIP
+        run: |
+          cd candidate
+          sha256sum -c mindustry-yandex-release.zip.sha256
+          mkdir ../delivery
+          cp mindustry-yandex-release.zip mindustry-yandex-release.zip.sha256 ../delivery/
+          python3 - <<'PY'
+          import zipfile,json,pathlib
+          p=pathlib.Path('mindustry-yandex-release.zip')
+          with zipfile.ZipFile(p) as z: unpacked=sum(i.file_size for i in z.infolist())
+          assert unpacked == 93672298 and unpacked <= 100000000
+          pathlib.Path('../delivery/size-report.json').write_text(json.dumps({'unpackedBytes':unpacked,'zipBytes':p.stat().st_size,'limitBytes':100000000,'exactZipAcceptance':'https://github.com/kalandos240/mindustry-yandex-web/actions/runs/39085530684'},indent=2))
+          pathlib.Path('../delivery/PLAYTEST.txt').write_text('Original custom-game UI playtest. Exact ZIP accepted by run 39085530684: native custom catalog/modes/edited rules and live launch on desktop/mobile/narrow Russian surface, native dialogs, menu input, 3D planets, resize/orientation, translated portal HUD. Runtime ZIP unchanged from compiled candidate f0040517. Full game matrix on this head is not certified. Temporary combined Play/recovery wrapper and remaining original UI migration are outstanding. Draft PR: https://github.com/kalandos240/mindustry-yandex-web/pull/168\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-yandex-custom-game-playtest
+          path: delivery/*
+          if-no-files-found: error
