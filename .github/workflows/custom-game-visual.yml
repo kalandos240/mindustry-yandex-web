@@ -1,0 +1,66 @@
+name: Original custom game visual review from extracted candidate
+on:
+  push:
+    branches: [custom-game-visual-v2]
+    paths: ['.github/workflows/custom-game-visual.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39084767301
+          github-token: ${{ github.token }}
+          path: work/candidate
+      - name: Extract the exact candidate and verify its digest
+        run: |
+          (cd work/candidate && sha256sum -c mindustry-yandex-release.zip.sha256)
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+          with zipfile.ZipFile('work/candidate/mindustry-yandex-release.zip') as z:
+              assert sum(i.file_size for i in z.infolist()) <= 100000000
+              z.extractall('web-runtime/build/web')
+          p=Path('scripts/browser-custom-game-stress.js')
+          s=p.read_text()
+          for phase,anchor in [
+              ('catalog',"  await click('custom-first-map');"),
+              ('map',"  await click('custom-survival');"),
+              ('rules',"  await click('custom-wave-timer');"),
+          ]:
+              s=s.replace(anchor, "  if(new URLSearchParams(location.search).get('customVisual')==='"+phase+"'){await sleep(500);r.setAttribute('data-mindustry-custom-game-visual','"+phase+"');return 'visual '+ '"+phase+"';}\n"+anchor)
+          Path('work/custom-visual.js').write_text(s)
+          PY
+      - name: Capture original catalog, mode and rule dialogs with real input
+        run: |
+          python3 -m http.server 8134 --bind 127.0.0.1 --directory web-runtime/build/web >/tmp/custom-visual-http.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for device in desktop mobile desktop-narrow; do
+            args=()
+            if [ "$device" = mobile ]; then args+=(--emulate-mobile); fi
+            narrow=0
+            if [ "$device" = desktop-narrow ]; then narrow=1; fi
+            for phase in catalog map rules; do
+              python3 scripts/chrome-wait-dom.py "${args[@]}" \
+                --url "http://127.0.0.1:8134/index.html?lang=ru&mindustryCustomSmoke=1&mindustryCustomNarrow=$narrow&customVisual=$phase" \
+                --profile "/tmp/custom-visual-$device-$phase" --port 9661 --timeout 120 --cdp-input-bridge \
+                --screenshot "work/menu-ui/custom-$device-$phase.png" \
+                --require 'data-mindustry-web="ready"' --require 'data-mindustry-vanilla-dialogs="ready"' \
+                --after-ready-eval "$(cat work/custom-visual.js)" \
+                --after-ready-require "data-mindustry-custom-game-visual=\"$phase\"" \
+                > "work/custom-visual-$device-$phase.html"
+            done
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-custom-game-visual-proof
+          path: work/menu-ui/custom-*.png
+          if-no-files-found: ignore
