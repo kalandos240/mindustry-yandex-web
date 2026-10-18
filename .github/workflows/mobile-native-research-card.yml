@@ -1,0 +1,31 @@
+name: Original mobile research card bounds
+on:
+  push:
+    branches: [native-research-mobile-card-diagnosis]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39096218930
+          github-token: ${{ github.token }}
+          path: work/exact
+      - run: |
+          mkdir -p web-runtime/build/web
+          unzip -q work/exact/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Settled original mobile purchase-card bounds
+        env:
+          MINDUSTRY_RESEARCH_TARGETS: mobile-campaign
+        run: bash scripts/verify-browser-native-research.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-native-research-card
+          path: work/menu-ui/*.png
