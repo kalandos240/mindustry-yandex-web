@@ -1,0 +1,55 @@
+name: Inspect persisted campaign inventory metadata
+on:
+  push:
+    branches: [settings-inventory-fix]
+    paths: ['.github/workflows/settings-inventory-debug.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39167825692
+          github-token: ${{ github.token }}
+          path: work/previous-runtime
+      - name: Extract release into diagnostic fixture
+        run: |
+          mkdir -p web-runtime/build/web
+          unzip -q work/previous-runtime/mindustry-yandex-release.zip -d web-runtime/build/web
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('web-runtime/build/web/mindustry.js')
+          s=p.read_text()
+          a=s.index('mw_BrowserCampaignRuntime_continuePreset =')
+          b=s.index('\n}',a)+2
+          body=s[a:b]
+          needle='            if ($source.$webInventoryLoaded) {'
+          assert body.count(needle)==1
+          probe="""            document.documentElement.setAttribute('data-mindustry-inventory-probe',JSON.stringify({trusted:$origin.$info0.$webInventoryLoaded,copper:mt_ItemSeq_get($origin.$info0.$items10,mc_Items_copper),lead:mt_ItemSeq_get($origin.$info0.$items10,mc_Items_lead)}));
+                      for(var si=0;si<localStorage.length;si++){
+                          var payload=localStorage.getItem(localStorage.key(si));
+                          if(!payload||!payload.startsWith('MWS1|'))continue;
+                          var cursor=5;
+                          function part(){var colon=payload.indexOf(':',cursor),length=Number(payload.slice(cursor,colon));cursor=colon+1;var value=payload.slice(cursor,cursor+length);cursor+=length;return value;}
+                          while(cursor<payload.length){var type=payload[cursor++],key=part(),value=part();if(key==='serpulo-s-170-info')document.documentElement.setAttribute('data-mindustry-inventory-binary',value);}
+                      }
+          """
+          body=body.replace(needle,probe+needle)
+          p.write_text(s[:a]+body+s[b:])
+          PY
+      - name: Observe cold metadata decode and menu spending
+        run: MINDUSTRY_CDP_CONSOLE=1 INVENTORY_DEVICES=desktop INVENTORY_SPENT=partial bash scripts/verify-browser-campaign-save-resume.sh > work/metadata-debug.log 2>&1
+      - name: Print diagnostics
+        if: always()
+        run: cat work/metadata-debug.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metadata-debug-evidence
+          path: work/metadata-debug.log

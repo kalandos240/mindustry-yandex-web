@@ -32,14 +32,20 @@
       const rect = canvas.getBoundingClientRect();
       const px = rect.left + rect.width * .5;
       const py = rect.top + rect.height * .5;
-      for (let n = 0; n < 20 && !root.hasAttribute(k + '-x'); n++) {
-        if (n >= 2) {
+      let scrolled = false;
+      for (let n = 0; n < 28 && !root.hasAttribute(k + '-x'); n++) {
+        if (n >= 8 && n % 3 === 2) {
+          scrolled = true;
           canvas.dispatchEvent(new WheelEvent('wheel', {
             bubbles:true, cancelable:true, clientX:px, clientY:py,
             deltaY:n < 10 ? 115 : -115
           }));
         }
         await sleep(375);
+      }
+      if (scrolled) {
+        await alive('scroll settling ' + name);
+        await alive('scroll settled ' + name);
       }
     }
     await wait(() => root.hasAttribute('data-mindustry-' + prefix + '-x'),
