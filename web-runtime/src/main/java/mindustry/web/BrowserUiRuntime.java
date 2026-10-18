@@ -7,6 +7,8 @@ import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import mindustry.core.*;
+import mindustry.game.EventType.StateChangeEvent;
+import mindustry.graphics.Pal;
 import mindustry.input.*;
 import mindustry.maps.Map;
 import mindustry.gen.*;
@@ -34,6 +36,7 @@ public final class BrowserUiRuntime{
     }
 
     private static boolean initialized;
+    private static boolean hudOnlyPause;
     private static TextButton localContinueButton;
     private static TextButton localModeButton;
     private static int hudResearchPointerFrames;
@@ -374,6 +377,82 @@ public final class BrowserUiRuntime{
         markStockResearchBound();
     }
 
+    /** Native mobile actions remain reachable while the other HUD panels are hidden. */
+    private static void buildMobileHudToolbar(Table root){
+        root.top().left();
+        Table toolbar = new Table(Styles.black6);
+        toolbar.name = "mobile buttons";
+        toolbar.defaults().size(48f);
+        ImageButton menu = toolbar.button(Icon.menu, Styles.clearNonei, () -> {
+            hudOnlyPause = false;
+            if(!state.isPaused()) pauseActiveSession();
+        }).name("web-hud-toolbar-menu").get();
+        ImageButton flip = toolbar.button(Icon.downOpen, Styles.clearNonei,
+            () -> ui.hudfrag.shown = !ui.hudfrag.shown).name("web-hud-toolbar-flip").get();
+        flip.update(() -> flip.getStyle().imageUp = ui.hudfrag.shown ? Icon.downOpen : Icon.upOpen);
+        ImageButton schematics = toolbar.button(Icon.paste, Styles.clearNonei,
+            BrowserVanillaDialogs::openSchematics).name("web-hud-toolbar-schematics").get();
+        ImageButton pause = toolbar.button(Icon.pause, Styles.clearNonei, () -> {
+            if(state.isPaused()) resumeActiveSession();
+            else if(!state.rules.pauseDisabled){
+                hudOnlyPause = true;
+                pauseActiveSession();
+            }
+        }).name("web-hud-toolbar-pause").get();
+        pause.update(() -> {
+            pause.setDisabled(state.rules.pauseDisabled || (state.isCampaign() && state.afterGameOver));
+            pause.getStyle().imageUp = state.isPaused() ? Icon.play : Icon.pause;
+        });
+        ImageButton research = toolbar.button(Icon.tree, Styles.clearNonei, () -> {
+            if(state.isCampaign()) BrowserResearchUi.show();
+            else BrowserStockDatabaseUi.show();
+        }).name("web-research-hud").get();
+        research.update(() -> {
+            research.getStyle().imageUp = state.isCampaign() ? Icon.tree : Icon.book;
+            if(Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
+            Vec2 center = research.localToStageCoordinates(new Vec2(
+                research.getWidth() / 2f, research.getHeight() / 2f));
+            Vec2 screen = Core.scene.getViewport().project(center);
+            markHudResearchHitPoint(screen.x, screen.y);
+        });
+        toolbar.image().color(Pal.gray).width(4f).fillY();
+        root.add(toolbar).left().row();
+        var line = root.image().color(Pal.gray).height(4f).width(244f).left();
+        ImageButton[] buttons = {menu, flip, schematics, pause, research};
+        String[] actions = {"menu", "flip", "schematics", "pause", "research"};
+        float[] lastSize = {-1f};
+        int[] frames = {0};
+        root.update(() -> {
+            float size = BrowserHudLayout.compact() ? 44f : 48f;
+            if(lastSize[0] != size){
+                lastSize[0] = size;
+                for(ImageButton button : buttons) toolbar.getCell(button).size(size);
+                line.width(size * 5f + 4f);
+                root.invalidateHierarchy();
+            }
+            if((++frames[0] & 15) != 0) return;
+            for(int i = 0; i < buttons.length; i++){
+                Vec2 center = buttons[i].localToStageCoordinates(new Vec2(
+                    buttons[i].getWidth() / 2f, buttons[i].getHeight() / 2f));
+                Vec2 screen = Core.scene.getViewport().project(center);
+                markMobileHudPoint(actions[i], screen.x, screen.y, ui.hudfrag.shown, hudOnlyPause);
+            }
+        });
+        Events.on(StateChangeEvent.class, event -> {
+            if(event.to != GameState.State.paused) hudOnlyPause = false;
+        });
+    }
+
+    @JSBody(params = {"action", "x", "y", "shown", "inlinePause"}, script = """
+        if(!new URLSearchParams(location.search).has('mindustryMobileHudSmoke')) return;
+        const r=document.documentElement;
+        r.setAttribute('data-mindustry-mobile-hud-'+action+'-x', String(x));
+        r.setAttribute('data-mindustry-mobile-hud-'+action+'-y', String(y));
+        r.setAttribute('data-mindustry-mobile-hud-shown', String(shown));
+        r.setAttribute('data-mindustry-mobile-hud-inline-pause', String(inlinePause));
+        """)
+    private static native void markMobileHudPoint(String action, float x, float y, boolean shown, boolean inlinePause);
+
     private static void buildLocalHudControls(){
         // The user's native lower-right DesktopInput panel already has
         // Research (tree), Database, Schematics and Planet Map buttons.
@@ -385,29 +464,7 @@ public final class BrowserUiRuntime{
         root.visible(() -> state.isGame() && !state.gameOver);
 
         if(mobile){
-            // A free-floating bottom-right button is underneath MobileInput's
-            // real PlacementFragment touch panel. Mount our single missing
-            // Research action INTO that native inputTable instead, next to its
-            // existing hammer/rotate controls. This also respects Yandex
-            // banners, portrait widths, and Arc Scene's actual hit-testing.
-            int[] frames = {0};
-            root.update(() -> {
-                if((++frames[0] & 15) != 0 || Core.scene == null) return;
-                Element inputTable = Core.scene.root.find("inputTable");
-                if(!(inputTable instanceof Table nativeTable)) return;
-                if(nativeTable.find("web-research-hud") != null) return;
-                ImageButton research = nativeTable.button(Icon.tree, Styles.clearNonei,
-                    BrowserResearchUi::show).size(48f).name("web-research-hud").get();
-                research.visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
-                research.update(() -> {
-                    if(!research.visible || Core.scene == null || (++hudResearchPointerFrames & 15) != 0) return;
-                    Vec2 center = research.localToStageCoordinates(new Vec2(
-                        research.getWidth() / 2f, research.getHeight() / 2f));
-                    Vec2 screen = Core.scene.getViewport().project(center);
-                    markHudResearchHitPoint(screen.x, screen.y);
-                });
-                nativeTable.invalidateHierarchy();
-            });
+            buildMobileHudToolbar(root);
         }else{
             // The stock PlacementFragment arrives after InputHandler.add();
             // bind lazily, once, as soon as its original actor is in the Scene.
@@ -456,6 +513,7 @@ public final class BrowserUiRuntime{
     }
 
     private static void resumeActiveSession(){
+        hudOnlyPause = false;
         if(BrowserCampaignRuntime.active()){
             BrowserCampaignRuntime.resume();
         }else{
@@ -494,8 +552,6 @@ public final class BrowserUiRuntime{
         overlay.setFillParent(true);
         overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
-            && state.isPaused() && !state.gameOver && !Core.scene.hasDialog());
 
         float width = mobile ? 137f : 208f;
         float height = mobile ? 57f : 54f;
@@ -511,34 +567,34 @@ public final class BrowserUiRuntime{
 
         // Match the original dialog: Resume / Settings on one row. Both
         // operations call the existing campaign/local pause state machines.
-        dialog.button(Core.bundle.get("resume", "Resume"), Icon.play,
+        dialog.button(Core.bundle.get("resume", "Resume"), Icon.play, 32f,
             BrowserUiRuntime::resumeActiveSession)
             .size(width, height).name("web-pause-resume");
-        dialog.button(Core.bundle.get("settings", "Settings"), Icon.settings,
+        dialog.button(Core.bundle.get("settings", "Settings"), Icon.settings, 32f,
             BrowserVanillaDialogs::openSettings)
             .size(width, height).name("web-pause-settings");
         dialog.row();
 
-        dialog.button(Core.bundle.get("savegame", "Save Game"), Icon.save,
+        dialog.button(Core.bundle.get("savegame", "Save Game"), Icon.save, 32f,
             BrowserUiRuntime::saveActiveSession)
             .size(width, height).name("web-pause-save");
         // Original mobile PausedDialog has Research in campaign mode. Keep
         // the very same research screen available while the sector is paused.
-        dialog.button(Core.bundle.get("research", "Research"), Icon.tree,
+        dialog.button(Core.bundle.get("research", "Research"), Icon.tree, 32f,
             BrowserResearchUi::show)
             .size(width, height).name("web-pause-research")
             .visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
         dialog.row();
 
-        dialog.button(Core.bundle.get("schematics", "Schematics"), Icon.paste,
+        dialog.button(Core.bundle.get("schematics", "Schematics"), Icon.paste, 32f,
             BrowserVanillaDialogs::openSchematics)
             .size(width, height).name("web-pause-schematics");
-        dialog.button(Core.bundle.get("settings.controls", "Controls"), Icon.move,
+        dialog.button(Core.bundle.get("settings.controls", "Controls"), Icon.move, 32f,
             BrowserVanillaDialogs::openControls)
             .size(width, height).name("web-pause-controls");
         dialog.row();
 
-        dialog.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save,
+        dialog.button(Core.bundle.get("loadgame", "Saved Games"), Icon.save, 32f,
             BrowserVanillaDialogs::openSaves)
             .width(width * 2f + 10f).height(height)
             .colspan(2).name("web-pause-saves");
@@ -547,19 +603,79 @@ public final class BrowserUiRuntime{
         // A browser game cannot be exited like a native desktop program.
         // This action safely saves/returns to the game menu (and schedules
         // eligible Yandex ads), so never advertise a misleading "Quit".
-        dialog.button(Core.bundle.get("back", "Back"), Icon.left,
+        dialog.button(Core.bundle.get("back", "Back"), Icon.left, 32f,
             BrowserUiRuntime::returnToMenuWithAd)
             .width(width * 2f + 10f).height(height)
             .colspan(2).name("web-pause-menu").padBottom(15f);
 
-        overlay.add(dialog).center();
+        ScrollPane scroll = new ScrollPane(dialog);
+        scroll.setScrollingDisabled(true, false);
+        scroll.setOverscroll(false, false);
+        scroll.setFadeScrollBars(false);
+        var scrollCell = overlay.add(scroll).center();
+        float[] viewport = {-1f, -1f};
+        boolean[] wasVisible = {false};
+        // Invisible Arc actors do not receive update callbacks. Observe both
+        // transitions in the visibility provider, including modal dismissal.
+        overlay.visible(() -> {
+            boolean show = (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
+                && state.isPaused() && !hudOnlyPause && !state.gameOver && !Core.scene.hasDialog();
+            if(show != wasVisible[0]){
+                wasVisible[0] = show;
+                if(show){
+                    // A modal pause menu must also cover the native mobile
+                    // command controls, which normally sit above other HUD actors.
+                    overlay.toFront();
+                    scroll.setScrollY(0f);
+                    scroll.updateVisualScroll();
+                }else{
+                    markPauseHidden();
+                }
+            }
+            return show;
+        });
+        String[] paired = {"resume", "settings", "save", "research", "schematics", "controls"};
+        String[] wide = {"saves", "menu"};
+
         // The stock menu is not active while playing, so its visibility
         // sampler cannot observe Settings/Controls/Saves shown from Pause.
         // Update native Arc hitboxes and the real dialog visibility here,
         // at one sample per 16 Scene frames rather than every frame.
         int[] sampling = {0};
         overlay.update(() -> {
-            if(!overlay.visible || (++sampling[0] & 15) != 0) return;
+            float sw = Core.scene.getWidth(), sh = Core.scene.getHeight();
+            if(viewport[0] != sw || viewport[1] != sh){
+                viewport[0] = sw;
+                viewport[1] = sh;
+                float buttonWidth = Math.min(width, Math.max(70f, (sw - 70f) / 2f));
+                for(String action : paired){
+                    TextButton button = dialog.find("web-pause-" + action);
+                    Label label = button.getLabel();
+                    label.setWrap(false);
+                    label.setFontScale(1f);
+                    float textWidth = label.getPrefWidth();
+                    float decorationWidth = button.getPrefWidth() - textWidth;
+                    label.setFontScale(Math.min(1f, Math.max(0.65f,
+                        (buttonWidth - decorationWidth) / Math.max(1f, textWidth))));
+                    label.setWrap(true);
+                    button.getLabelCell().minWidth(0f);
+                    dialog.getCell(button).width(buttonWidth);
+                }
+                for(String action : wide){
+                    TextButton button = dialog.find("web-pause-" + action);
+                    button.getLabel().setWrap(true);
+                    button.getLabelCell().minWidth(0f);
+                    dialog.getCell(button).width(buttonWidth * 2f + 10f);
+                }
+                dialog.invalidateHierarchy();
+                float contentHeight = dialog.getPrefHeight();
+                float barWidth = contentHeight > sh - 10f
+                    ? Math.max(scroll.getStyle().vScroll.getMinWidth(), scroll.getStyle().vScrollKnob.getMinWidth()) : 0f;
+                scrollCell.width(Math.min(sw - 10f, dialog.getPrefWidth() + barWidth))
+                    .height(Math.min(sh - 10f, contentHeight));
+                overlay.invalidateHierarchy();
+            }
+            if((++sampling[0] & 15) != 0) return;
             markPauseHitPoint(dialog.find("web-pause-resume"), "resume");
             markPauseHitPoint(dialog.find("web-pause-settings"), "settings");
             markPauseHitPoint(dialog.find("web-pause-save"), "save");
@@ -597,6 +713,9 @@ public final class BrowserUiRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-dialog-visible','yes');")
     private static native void markPauseVisible();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-dialog-visible','no');")
+    private static native void markPauseHidden();
 
     /**
      * The original game-over screen has a dedicated, modal action instead of

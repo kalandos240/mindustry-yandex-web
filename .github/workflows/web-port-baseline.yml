@@ -402,6 +402,21 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-gameplay-button-stress.sh
 
+      - name: Verify native mobile toolbar and compact pause touch scrolling
+        id: mobile_hud
+        continue-on-error: true
+        run: bash scripts/verify-browser-mobile-hud.sh
+
+      - name: Upload mobile toolbar interaction evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-mobile-hud-evidence
+          path: |
+            work/menu-ui/mobile-hud-*.png
+            work/mobile-hud-*.html
+          if-no-files-found: warn
+
       # Run the independent game/campaign/portal matrix even if the still-WIP
       # native first-campaign chooser fails; never silently turn it green.
       - name: Verify original 3D planet map in desktop and mobile Chrome
@@ -494,7 +509,7 @@ jobs:
       # This lets a human actually test the latest game while long CI runs.
       - name: Package interim 3D-planet playtest archive
         id: playtest_preview
-        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.play_campaign_navigation.outcome == 'success' && steps.native_hud_planet.outcome == 'success' && steps.real_campaign_launch.outcome == 'success' && steps.research_mouse_drag.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_wave_hud.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
+        if: ${{ steps.ui_button_stress.outcome == 'success' && steps.settings_nested_stress.outcome == 'success' && steps.gameplay_button_stress.outcome == 'success' && steps.mobile_hud.outcome == 'success' && steps.planet_navigation.outcome == 'success' && steps.play_campaign_navigation.outcome == 'success' && steps.native_hud_planet.outcome == 'success' && steps.real_campaign_launch.outcome == 'success' && steps.research_mouse_drag.outcome == 'success' && steps.production_mechanics.outcome == 'success' && steps.native_wave_hud.outcome == 'success' && steps.native_building_config.outcome == 'success' && steps.unit_production.outcome == 'success' && steps.unit_factory_matrix.outcome == 'success' && steps.unit_assembler.outcome == 'success' && steps.unit_assembler_advanced.outcome == 'success' }}
         run: |
           python3 scripts/package-yandex-release.py
           (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
@@ -775,6 +790,7 @@ jobs:
              [ "${{ steps.hud_layout.outcome }}" != "success" ] || \
              [ "${{ steps.settings_nested_stress.outcome }}" != "success" ] || \
              [ "${{ steps.research_mouse_drag.outcome }}" != "success" ] || \
+             [ "${{ steps.mobile_hud.outcome }}" != "success" ] || \
              [ "${{ steps.gameplay_button_stress.outcome }}" != "success" ]; then
             echo "Native main menu, HUD or Pause controls froze, were unreachable, or failed to open/close: release BLOCKED." >&2
             exit 1

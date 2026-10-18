@@ -38,7 +38,7 @@ public final class BrowserHudLayout{
         }
         float scale = small ? Math.min(1f, Math.min(
             Math.max(1f, Core.scene.getWidth() - 10f) / Math.max(1f, frame.getWidth()),
-            Math.max(1f, Core.scene.getHeight() - 176f) / Math.max(1f, frame.getHeight()))) : 1f;
+            Math.max(1f, Core.scene.getHeight() - (mobile ? 222f : 176f)) / Math.max(1f, frame.getHeight()))) : 1f;
         frame.setTransform(small);
         frame.setOrigin(frame.getWidth(), 0f);
         frame.setScale(scale);
@@ -62,6 +62,8 @@ public final class BrowserHudLayout{
         report("health", "web-hud-player-health", false);
         report("guardian", "web-hud-guardian-health", false);
         report("items", "web-hud-core-items", false);
+        report("resource-icon", "web-core-item-copper", false);
+        report("resource-count", "web-core-count-copper", false);
         report("placement", "web-placement-frame", false);
         report("category", "category-distribution", true);
         report("conveyor", "block-conveyor", true);

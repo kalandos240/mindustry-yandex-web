@@ -165,10 +165,10 @@ public final class BrowserHudEssentials{
                 mapCell.size(mapSize + 10f);
                 minimap.marginTop(small ? 44f : mobile ? 125f : 5f);
                 details.top().right().marginTop(mobile ? 275f : 155f).marginRight(5f);
-                if(small) details.left().marginTop(110f).marginLeft(5f);
+                if(small) details.left().marginTop(mobile ? 154f : 110f).marginLeft(5f);
                 positionCell.height(small ? 0.01f : positionCell.get().getPrefHeight());
                 healthCell.width(small ? Math.min(258f, Core.scene.getWidth() - 105f) : mobile ? 150f : 180f);
-                waves.marginTop(small ? 44f : mobile ? 195f : 145f);
+                waves.marginTop(small ? (mobile ? 90f : 44f) : mobile ? 195f : 145f);
                 Table panel = waves.find("web-hud-wave-panel");
                 ScrollPane statusPane = panel.find("web-hud-wave-status-scroll");
                 var statusCell = panel.getCell(statusPane);
@@ -176,13 +176,14 @@ public final class BrowserHudEssentials{
                 if(small) statusCell.height(52f); else statusCell.minHeight(0f).maxHeight(Float.POSITIVE_INFINITY);
                 itemPane.setScrollingDisabled(true, !small);
                 if(small){
-                    itemCell.width(Math.max(1f, Math.min(350f, Core.scene.getWidth() - 10f))).height(40f);
+                    itemCell.width(Math.max(1f, Math.min(350f, Core.scene.getWidth() - (mobile ? 100f : 10f)))).height(40f);
                 }else{
                     itemCell.minWidth(0f).maxWidth(Float.POSITIVE_INFINITY).minHeight(0f).maxHeight(Float.POSITIVE_INFINITY);
                 }
-                items.top().marginTop(small ? 2f : 5f);
+                items.top().marginTop(small ? (mobile ? 48f : 2f) : 5f);
+                if(small && mobile) items.left().marginLeft(5f);
                 if(mobile && !small) items.bottom().marginBottom(5f);
-                bosses.marginTop(small ? 144f : mobile ? 50f : 85f);
+                bosses.marginTop(small ? (mobile ? 190f : 144f) : mobile ? 50f : 85f);
                 bossCell.width(small ? Core.scene.getWidth() - 20f : mobile ? 220f : 320f).height(small ? 20f : mobile ? 34f : 52f);
                 // Cell mutations do not invalidate an already laid-out child table.
                 // Recompute its width after a portal resize before laying out parents.

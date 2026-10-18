@@ -20,7 +20,9 @@ REPORT = ROOT / "work" / "web-performance-report.txt"
 JS_BASELINE = 23_155_354
 # Native ResearchDialog adds about 75 KB to the former compact-HUD runtime.
 # Retain tight code growth/gzip limits and the independent hard 100 MB package cap.
-JS_LIMIT = 41_100_000
+# Original mobile toolbar and responsive Arc pause controls add ~50 KB raw.
+# Keep the separate 4 MB gzip and 100 MB unpacked release limits unchanged.
+JS_LIMIT = 41_200_000
 JS_GZIP_BASELINE = 2_649_677
 JS_GZIP_LIMIT = 4_000_000
 YANDEX_UNPACKED_LIMIT = 100_000_000  # Yandex requires decimal MB, not 100 MiB.
