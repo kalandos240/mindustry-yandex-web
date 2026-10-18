@@ -29,7 +29,7 @@ jobs:
           MINDUSTRY_CDP_CONSOLE: '1'
         run: |
           set -o pipefail
-          bash scripts/verify-browser-hud-planet-stress.sh 2>&1 | tee work/native-sector-return.log
+          bash scripts/verify-browser-cold-sector-go.sh 2>&1 | tee work/native-sector-return.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -38,3 +38,4 @@ jobs:
             work/native-sector-return.log
             /tmp/mindustry-hud-planet.html
             work/menu-ui/*.png
+            work/cold-*
