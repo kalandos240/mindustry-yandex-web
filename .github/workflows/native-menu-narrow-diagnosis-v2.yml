@@ -1,0 +1,36 @@
+name: Narrow native custom launch diagnosis
+on:
+  push:
+    branches: [native-menu-narrow-diagnosis-v2]
+    paths: ['.github/workflows/native-menu-narrow-diagnosis-v2.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  narrow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39086211050
+          github-token: ${{ github.token }}
+          path: candidate
+      - name: Verify and extract
+        run: |
+          (cd candidate && sha256sum -c mindustry-yandex-release.zip.sha256)
+          python3 - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('candidate/mindustry-yandex-release.zip') as z:z.extractall('web-runtime/build/web')
+          PY
+      - name: Actual narrow native custom launch
+        run: |
+          mkdir -p work
+          python3 -m http.server 8134 --bind 127.0.0.1 --directory web-runtime/build/web >/tmp/narrow-http.log 2>&1 &
+          python3 scripts/chrome-wait-dom.py --url 'http://127.0.0.1:8134/index.html?lang=ru&mindustryCustomSmoke=1&mindustryCustomNarrow=1' --profile /tmp/narrow-native-diagnosis --port 9641 --timeout 150 --cdp-input-bridge --screenshot work/narrow.png --require 'data-mindustry-web="ready"' --require 'data-mindustry-vanilla-dialogs="ready"' --after-ready-eval "$(cat scripts/browser-custom-game-stress.js)" --after-ready-require 'data-mindustry-custom-game-stress="passed"' > work/narrow.html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-narrow-diagnosis
+          path: work/narrow*
