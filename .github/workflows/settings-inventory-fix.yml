@@ -291,8 +291,12 @@ jobs:
         run: bash scripts/verify-browser-settings-tab-stress.sh
       - name: Campaign inventory cold restart
         run: bash scripts/verify-browser-campaign-save-resume.sh
+      - name: Empty inventory does not resurrect spent resources
+        run: INVENTORY_EMPTY=1 bash scripts/verify-browser-campaign-save-resume.sh
       - name: Native gameplay menu controls
         run: bash scripts/verify-browser-gameplay-button-stress.sh
+      - name: Native Go resumes saved Erekir sector
+        run: CLOCK_DEVICES=mobile CLOCK_SECTORS=onset bash scripts/verify-browser-save-clock-go.sh
       - name: Verify packaged JavaScript is unchanged by save fixtures
         run: |
           python3 - <<'PYCODE'
@@ -314,6 +318,8 @@ jobs:
         with:
           name: settings-inventory-evidence
           path: |
+            work/settings-*.html
+            work/settings-*.png
             work/menu-ui/*.png
             work/mobile-hud-*.html
             work/pause-captions-*.html

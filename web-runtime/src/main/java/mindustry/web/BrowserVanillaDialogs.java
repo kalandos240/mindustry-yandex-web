@@ -152,6 +152,14 @@ public final class BrowserVanillaDialogs{
             ui.settings.sound.parent != null ? "sound" :
             ui.settings.dev.parent != null ? "dev" : "root";
         markSettingsPage(page, Core.settings.getBool("hints", true));
+        ui.settings.buttons.forEach(actor -> {
+            if(!(actor instanceof TextButton button)) return;
+            Vec2 point = button.localToStageCoordinates(new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
+            Element hit = Core.scene.hit(point.x, point.y, true);
+            if(hit != button && (hit == null || !hit.isDescendantOf(button))) return;
+            Vec2 screen = Core.scene.getViewport().project(point);
+            markSettingsHitPoint("back", screen.x, screen.y);
+        });
         if("sound".equals(page)){
             ui.settings.sound.forEach(actor -> {
                 if(!(actor instanceof Slider slider) || slider.name == null) return;
@@ -159,6 +167,10 @@ public final class BrowserVanillaDialogs{
                 if(Core.scene.hit(point.x, point.y, true) != slider) return;
                 Vec2 screen = Core.scene.getViewport().project(point);
                 markSettingsHitPoint(slider.name, screen.x, screen.y);
+                Vec2 low = Core.scene.getViewport().project(slider.localToStageCoordinates(new Vec2(1f, slider.getHeight() / 2f)));
+                Vec2 high = Core.scene.getViewport().project(slider.localToStageCoordinates(new Vec2(slider.getWidth() - 1f, slider.getHeight() / 2f)));
+                markSettingsHitPoint(slider.name + "-min", low.x, low.y);
+                markSettingsHitPoint(slider.name + "-max", high.x, high.y);
                 markSettingsValue(slider.name, Core.settings.getInt(slider.name.substring(8)));
             });
         }

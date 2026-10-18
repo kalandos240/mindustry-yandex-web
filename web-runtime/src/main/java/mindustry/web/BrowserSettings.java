@@ -67,7 +67,11 @@ public final class BrowserSettings extends Settings{
 
     @Override
     public synchronized void autosave(){
-        if(modified && shouldAutosave){
+        // Arc changes slider preferences on every pointer move. localStorage
+        // rewrites the whole campaign/settings payload synchronously; doing that
+        // every drag frame can starve input/rendering on slower devices. Commit
+        // once after release. Explicit manual/checkpoint saves remain immediate.
+        if(modified && shouldAutosave && (Core.input == null || !Core.input.isTouched())){
             forceSave();
         }
     }

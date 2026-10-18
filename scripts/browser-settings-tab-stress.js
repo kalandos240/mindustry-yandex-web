@@ -93,6 +93,11 @@
         await wait(() => attr('settings-value-setting-' + key) !== previous,
           'volume changes ' + key);
         await alive('volume changed ' + key);
+        for (const [edge, expected] of [['min','0'],['max','100']]) {
+          await click('settings-hit-setting-' + key + '-' + edge, 'Sound/' + key + '/' + edge);
+          await wait(() => attr('settings-value-setting-' + key) === expected, 'volume endpoint ' + key + '=' + expected);
+          await alive('volume endpoint ' + key + '=' + expected);
+        }
       }
     }
     if (tab === 'game') {

@@ -715,6 +715,9 @@ public final class BrowserLocalMapRuntime{
 
         long beforeUpdateId = state.updateId;
         diagPhase("pause-renderer");
+        // Keep vanilla audio/preferences responsive while simulation is frozen.
+        // Calling Control.update() here would also advance saves/input/gameplay.
+        control.sound.update();
         renderer.update();
         diagPhase("pause-ui");
         ui.update();

@@ -22,8 +22,15 @@ jobs:
         run: |
           mkdir -p web-runtime/build/web
           unzip -q work/previous-runtime/mindustry-yandex-release.zip -d web-runtime/build/web
-      - name: Actual paused-world settings drag and resume
-        run: bash scripts/verify-browser-gameplay-button-stress.sh
+      - name: Prove previous runtime rewrites settings on drag frames
+        run: |
+          set +e
+          bash scripts/verify-browser-gameplay-button-stress.sh > work/previous-settings-drag.log 2>&1
+          result=$?
+          set -e
+          cat work/previous-settings-drag.log
+          test "$result" -ne 0
+          grep -Fq 'Settings persisted during live drag:' work/previous-settings-drag.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -31,3 +38,4 @@ jobs:
           path: |
             work/settings-*.png
             work/settings-*.html
+            work/previous-settings-drag.log

@@ -799,6 +799,9 @@ public final class BrowserCampaignRuntime{
         }
 
         long beforeUpdateId = state.updateId;
+        // Keep vanilla audio/preferences responsive while simulation is frozen.
+        // Calling Control.update() here would also advance saves/input/gameplay.
+        control.sound.update();
         renderer.update();
         ui.update();
 

@@ -26,10 +26,10 @@ public final class BrowserAudio extends Audio{
         Core.app.addListener(new ApplicationListener(){
             @Override
             public void update(){
-                // Lean Web UI has no continuously dragged stock audio settings dialog.
-                // Avoid a Settings map/string lookup every render frame; refresh about
-                // twice per second so externally persisted changes still converge.
-                if((++settingsPoll & 31) == 0){
+                // Native settings sliders preview their volume immediately, including
+                // from a paused game. Outside settings retain the cheaper polling cadence.
+                if((++settingsPoll & 31) == 0 || mindustry.Vars.ui != null
+                    && mindustry.Vars.ui.settings != null && mindustry.Vars.ui.settings.isShown()){
                     sfxVolume = settingVolume("sfxvol", 100);
                 }
             }
