@@ -409,8 +409,8 @@
                 };
                 const sync = () => {
                     const loop = root.getAttribute('data-mindustry-gameplay-loop') || '';
-                    const playing = ['playing','paused'].includes(root.getAttribute('data-mindustry-campaign-state')) ||
-                        ['playing','paused'].includes(root.getAttribute('data-mindustry-local-map-state'));
+                    const playing = ['playing','paused','gameover'].includes(root.getAttribute('data-mindustry-campaign-state')) ||
+                        ['playing','paused','gameover'].includes(root.getAttribute('data-mindustry-local-map-state'));
                     const menu = loop.indexOf('menu') >= 0 && !playing;
                     const settingsOpen = root.getAttribute('data-mindustry-settings-panel') === 'open';
                     button.style.display = menu && !settingsOpen ? '' : 'none';
