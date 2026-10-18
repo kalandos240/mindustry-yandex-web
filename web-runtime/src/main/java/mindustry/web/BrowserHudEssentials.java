@@ -50,17 +50,23 @@ public final class BrowserHudEssentials{
         minimap.touchable = Touchable.childrenOnly;
         minimap.visible(() -> state != null && state.isGame() && !state.gameOver
             && ui.hudfrag.shown && Core.settings.getBool("minimap", true));
-        minimap.add(new Minimap()).name("web-hud-minimap");
+        Minimap mapActor = new Minimap();
+        var mapCell = minimap.add(mapActor).name("web-hud-minimap");
+        Table details = new Table();
+        details.setFillParent(true);
+        details.touchable = Touchable.childrenOnly;
+        details.visible(() -> minimap.visible);
+        parent.addChild(details);
         // Restore the position and health indicators adjacent to the stock map.
         // These values come from the actual player Unit, not browser estimates.
-        minimap.row();
-        minimap.label(() -> player.tileX() + "," + player.tileY())
+        details.label(() -> player.tileX() + "," + player.tileY())
             .style(Styles.outlineLabel)
-            .visible(() -> Core.settings.getBool("position", true))
+            .visible(() -> !BrowserHudLayout.compact() && Core.settings.getBool("position", true))
             .name("web-hud-position");
-        minimap.row();
-        minimap.add(new Bar(
-            () -> player.dead() ? Core.bundle.get("respawning", "Respawning") : player.unit().type().localizedName,
+        details.row();
+        var healthCell = details.add(new Bar(
+            () -> (player.dead() ? Core.bundle.get("respawning", "Respawning") : player.unit().type().localizedName)
+                + (BrowserHudLayout.compact() && Core.settings.getBool("position", true) ? "  " + player.tileX() + "," + player.tileY() : ""),
             () -> Pal.health,
             () -> player.dead() ? 0f : player.unit().healthf()
         )).width(mobile ? 150f : 180f).height(27f).padTop(4f).name("web-hud-player-health");
@@ -92,7 +98,7 @@ public final class BrowserHudEssentials{
         bosses.visible(() -> state != null && state.isGame() && state.rules != null
             && state.rules.waves && state.boss() != null
             && !(mobile && Core.graphics.isPortrait()) && ui.hudfrag.shown);
-        bosses.add(new Bar(
+        var bossCell = bosses.add(new Bar(
             () -> Core.bundle.get("guardian", "Guardian"),
             () -> Pal.health,
             () -> {
@@ -115,8 +121,14 @@ public final class BrowserHudEssentials{
         waves.visible(() -> state != null && state.isGame() && !state.gameOver && ui.hudfrag.shown);
         waves.table(Styles.black6, panel -> {
             panel.margin(5f);
-            panel.labelWrap(BrowserHudEssentials::statusText).width(mobile ? 174f : 218f).left()
-                .name("web-hud-wave-status");
+            arc.scene.ui.Label status = new arc.scene.ui.Label(BrowserHudEssentials::statusText);
+            status.setWrap(true);
+            ScrollPane statusPane = new ScrollPane(status, Styles.smallPane);
+            statusPane.setScrollingDisabled(true, false);
+            statusPane.setOverscroll(false, false);
+            panel.add(statusPane).width(mobile ? 174f : 218f).left()
+                .name("web-hud-wave-status-scroll");
+            status.name = "web-hud-wave-status";
             // Pinned HudFragment's right-edge wave control, including native
             // disabled/hover states and actor name. Local play invokes the
             // original Logic body directly, as the stock offline branch does.
@@ -138,8 +150,35 @@ public final class BrowserHudEssentials{
                     logic.skipWave();
                 }
             });
-        }).left();
+        }).left().name("web-hud-wave-panel");
+        final float[] layoutSize = {-1f, -1f};
         waves.update(() -> {
+            if(Core.scene != null && (layoutSize[0] != Core.scene.getWidth() || layoutSize[1] != Core.scene.getHeight())){
+                layoutSize[0] = Core.scene.getWidth();
+                layoutSize[1] = Core.scene.getHeight();
+                boolean small = BrowserHudLayout.compact();
+                float mapSize = small ? 70f : 140f;
+                mapActor.getCells().first().size(mapSize);
+                mapCell.size(mapSize + 10f);
+                minimap.marginTop(small ? 32f : mobile ? 125f : 5f);
+                details.top().right().marginTop(mobile ? 275f : 155f).marginRight(5f);
+                if(small) details.left().marginTop(98f).marginLeft(5f);
+                healthCell.width(small ? Math.min(258f, Core.scene.getWidth() - 105f) : mobile ? 150f : 180f);
+                waves.marginTop(small ? 32f : mobile ? 195f : 145f);
+                Table panel = waves.find("web-hud-wave-panel");
+                ScrollPane statusPane = panel.find("web-hud-wave-status-scroll");
+                var statusCell = panel.getCell(statusPane);
+                statusCell.width(small ? Math.max(90f, Math.min(218f, Core.scene.getWidth() - 150f)) : mobile ? 174f : 218f);
+                if(small) statusCell.height(52f); else statusCell.minHeight(0f).maxHeight(Float.POSITIVE_INFINITY);
+                items.top().marginTop(5f);
+                if(mobile && !small) items.bottom().marginBottom(5f);
+                bosses.marginTop(small ? 130f : mobile ? 50f : 85f);
+                bossCell.width(small ? Core.scene.getWidth() - 20f : mobile ? 220f : 320f).height(small ? 20f : mobile ? 34f : 52f);
+                minimap.invalidateHierarchy();
+                details.invalidateHierarchy();
+                waves.invalidateHierarchy();
+            }
+            BrowserHudLayout.sample();
             if(state != null && state.isGame() && (++frameCount & 31) == 0){
                 boolean textured = renderer != null && renderer.minimap != null
                     && renderer.minimap.getRegion() != null;

@@ -365,6 +365,11 @@ jobs:
         continue-on-error: true
         run: bash scripts/verify-browser-ui-button-stress.sh
 
+      - name: Verify responsive original HUD bounds and input
+        id: hud_layout
+        continue-on-error: true
+        run: bash scripts/verify-browser-hud-layout.sh
+
       - name: Verify original custom map catalog, modes and customized rule launch
         id: custom_game_ui
         continue-on-error: true
@@ -767,6 +772,7 @@ jobs:
           if [ "${{ steps.ui_button_stress.outcome }}" != "success" ] || \
              [ "${{ steps.narrow_menu_stress.outcome }}" != "success" ] || \
              [ "${{ steps.custom_game_ui.outcome }}" != "success" ] || \
+             [ "${{ steps.hud_layout.outcome }}" != "success" ] || \
              [ "${{ steps.settings_nested_stress.outcome }}" != "success" ] || \
              [ "${{ steps.research_mouse_drag.outcome }}" != "success" ] || \
              [ "${{ steps.gameplay_button_stress.outcome }}" != "success" ]; then

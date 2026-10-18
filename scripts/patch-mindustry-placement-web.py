@@ -138,5 +138,7 @@ for old, new in replacements.items():
     if occurrences != expected:
         raise SystemExit(f"Pinned vanilla PlacementFragment anchor count changed: {old}: {occurrences} != {expected}")
     source = source.replace(old, new)
+source = source.replace('            full.table(frame -> {', '            full.table(frame -> {\n                frame.name = "web-placement-frame";', 1)
+source = source.replace('                frame.update(() -> {', '                frame.update(() -> {\n                    mindustry.web.BrowserHudLayout.fitPlacement(frame);', 1)
 path.write_text(source, encoding="utf-8")
 print("Preserved stock PlacementFragment with null-safe unmounted desktop dialogs")
