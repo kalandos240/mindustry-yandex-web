@@ -4,6 +4,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="$ROOT_DIR/web-runtime/build/web"
 PORT=8085
+inventory_empty="${INVENTORY_EMPTY:-0}"
+expected_copper=137
+expected_lead=73
+if [ "$inventory_empty" = 1 ]; then expected_copper=0; expected_lead=0; fi
 
 command -v google-chrome >/dev/null
 [ -s "$WEB_DIR/index.html" ]
@@ -51,7 +55,7 @@ run_campaign_cold_restart(){
   # No mindustryMobile override is used, even for the mobile path.
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     "${device_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignSaveSmoke=1&mindustryInventoryEmptySmoke=$inventory_empty" \
     --profile "$profile" \
     --port "$save_cdp" \
     --timeout 90 \
@@ -67,8 +71,8 @@ run_campaign_cold_restart(){
     --require 'data-mindustry-campaign-sector-id="170"' \
     --require 'data-mindustry-campaign-save="valid"' \
     --require 'data-mindustry-campaign-checkpoint="ready"' \
-    --require 'data-mindustry-campaign-checkpoint-copper="137"' \
-    --require 'data-mindustry-campaign-checkpoint-lead="73"' \
+    --require "data-mindustry-campaign-checkpoint-copper=\"$expected_copper\"" \
+    --require "data-mindustry-campaign-checkpoint-lead=\"$expected_lead\"" \
     --require 'data-mindustry-campaign-save-flush="ready"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$save_dom"
@@ -118,7 +122,7 @@ run_campaign_cold_restart(){
   # prove the exact persisted checkpoint survives a cold menu boot in between.
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     "${device_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignContinueSmoke=groundZero" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignContinueSmoke=groundZero&mindustryInventoryResumeSmoke=1" \
     --profile "$profile" \
     --port "$resume_cdp" \
     --timeout 90 \
@@ -131,8 +135,8 @@ run_campaign_cold_restart(){
     --require 'data-mindustry-campaign-test="groundZero"' \
     --require 'data-mindustry-campaign-resume-smoke="requested"' \
     --require 'data-mindustry-campaign-resume="ready"' \
-    --require 'data-mindustry-campaign-resume-copper="137"' \
-    --require 'data-mindustry-campaign-resume-lead="73"' \
+    --require "data-mindustry-campaign-resume-copper=\"$expected_copper\"" \
+    --require "data-mindustry-campaign-resume-lead=\"$expected_lead\"" \
     --require 'data-mindustry-campaign-resume-source="indexed-sector-save"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-sector-id="170"' \
@@ -177,7 +181,7 @@ run_campaign_cold_restart(){
     local before after
     before="$(attr "$save_dom" "data-mindustry-campaign-checkpoint-$item")"
     after="$(attr "$resume_dom" "data-mindustry-campaign-resume-$item")"
-    if [ "$before" != "$after" ] || [ "$before" -le 0 ]; then
+    if [ "$before" != "$after" ] || [ "$before" -lt 0 ]; then
       echo "Campaign cold-restart lost $item ($label): checkpoint=$before resumed=$after" >&2
       exit 1
     fi

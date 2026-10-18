@@ -23,13 +23,13 @@ run_buttons(){
   local scenario="$1" device="$2" seed="$3"
   local args=()
   if [ "$device" = mobile ]; then args+=(--emulate-mobile); fi
-  local uri="http://127.0.0.1:$PORT/index.html?lang=en&$seed"
+  local uri="http://127.0.0.1:$PORT/index.html?lang=en&mindustrySettingsNestedSmoke=1&$seed"
   local profile="/tmp/mindustry-gameplay-buttons-$scenario-$device"
-  local dom="/tmp/mindustry-gameplay-buttons-$scenario-$device.html"
+  local dom="$ROOT_DIR/work/settings-gameplay-$scenario-$device.html"
   rm -rf "$profile"
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" "${args[@]}" \
     --url "$uri" --profile "$profile" --port 9518 \
-    --timeout 240 --cdp-input-bridge \
+    --timeout 240 --cdp-input-bridge --screenshot "$ROOT_DIR/work/settings-gameplay-$scenario-$device.png" \
     --require 'data-mindustry-web="ready"' \
     --require 'data-mindustry-pause-settings-entry="ready"' \
     --require 'data-mindustry-vanilla-dialogs="ready"' \
@@ -46,8 +46,8 @@ run_buttons(){
     grep -Fq 'data-mindustry-local-map-save="ready"' "$dom"
   fi
   # Five dialog opens plus save/resume/menu; campaign adds HUD/Pause Research.
-  local expected_clicks=8
-  if [ "$scenario" = campaign ]; then expected_clicks=10; fi
+  local expected_clicks=16
+  if [ "$scenario" = campaign ]; then expected_clicks=18; fi
   grep -Fq "data-mindustry-gameplay-button-clicks=\"$expected_clicks\"" "$dom"
   echo "$scenario/$device: real HUD, pause menu buttons, save, dialogs, Resume and Back PASS"
 }

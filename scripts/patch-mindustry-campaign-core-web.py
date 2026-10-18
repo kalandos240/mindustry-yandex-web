@@ -19,6 +19,13 @@ new_load = """                    SectorInfo info = state.rules.sector.info;
                     info.waveSpacing = state.rules.waveSpacing;
                     info.winWave = state.rules.winWave;
                     info.attack = state.rules.attackMode;
+                    // SaveIO just restored the authoritative building inventory. A
+                    // stale/missing settings-backed SectorInfo must not erase it,
+                    // including partly spent and legitimately empty inventories.
+                    info.items.clear();
+                    if(state.rules.defaultTeam.core() != null){
+                        info.items.add(state.rules.defaultTeam.items());
+                    }
                     info.write();"""
 if text.count(old_load) != 1:
     raise SystemExit("Campaign saved-sector metadata authority anchor changed")

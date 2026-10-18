@@ -632,6 +632,13 @@ public final class BrowserCampaignRuntime{
         sector.planet.setLastSector(sector);
         mindustry.entities.Effect.webResetEffectBudget();
         diagPhase("sector-load");
+        // CI-only: reproduce a nonempty stale SectorInfo, which bypassed the
+        // old entirely-empty inventory recovery. SaveIO must win for each item.
+        if(inventoryResumeSmoke()){
+            sector.info.items.clear();
+            sector.info.items.add(Items.copper, 31);
+            sector.info.items.add(Items.lead, 19);
+        }
         sector.save.load(world.makeSectorContext(sector));
         diagPhase("resume-world-loaded");
         sector.save.setAutosave(true);
@@ -1270,6 +1277,12 @@ public final class BrowserCampaignRuntime{
     // building data. Sector.items() otherwise switches to SectorInfo.items as
     // soon as logic.reset() returns to the menu, where stale totals looked like
     // all resources had vanished even though the world save existed.
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryInventoryResumeSmoke') === '1';")
+    private static native boolean inventoryResumeSmoke();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryInventoryEmptySmoke') === '1';")
+    private static native boolean inventoryEmptySmoke();
+
     private static void snapshotSectorInventory(Sector sector){
         if(sector == null || state.rules == null || state.rules.defaultTeam.core() == null) return;
         sector.info.items.clear();
@@ -1395,8 +1408,9 @@ public final class BrowserCampaignRuntime{
         // Deterministic cross-process save regression: verify actual core
         // inventory, not merely SaveIO wave/tick or ZIP byte length.
         if(saveSmoke && current.preset == SectorPresets.groundZero){
-            state.rules.defaultTeam.items().set(Items.copper, 137);
-            state.rules.defaultTeam.items().set(Items.lead, 73);
+            boolean empty = inventoryEmptySmoke();
+            state.rules.defaultTeam.items().set(Items.copper, empty ? 0 : 137);
+            state.rules.defaultTeam.items().set(Items.lead, empty ? 0 : 73);
         }
         writeCurrentSectorSave();
         markSectorInventory("checkpoint");

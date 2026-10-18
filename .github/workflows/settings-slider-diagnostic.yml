@@ -1,0 +1,33 @@
+name: Reproduce paused slider input on the previous runtime
+on:
+  push:
+    branches: [settings-inventory-fix]
+    paths: ['.github/workflows/settings-slider-diagnostic.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  paused-settings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39165188731
+          github-token: ${{ github.token }}
+          path: work/previous-runtime
+      - name: Extract previous runtime without recompiling
+        run: |
+          mkdir -p web-runtime/build/web
+          unzip -q work/previous-runtime/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Actual paused-world settings drag and resume
+        run: bash scripts/verify-browser-gameplay-button-stress.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: previous-runtime-paused-slider-evidence
+          path: |
+            work/settings-*.png
+            work/settings-*.html
