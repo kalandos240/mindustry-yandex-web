@@ -323,3 +323,62 @@ The three final HUD screenshots were visually reviewed, including the
 recertified on this head. Full original HUD/Research dialog
 migration and final whole-interface 1:1 comparison remain unfinished. The earlier
 intermittent narrow live-loop timeout still has no established root cause.
+
+## Original ResearchDialog
+
+Replace the custom browser research overlay and graph with the pinned original
+ResearchDialog. Its dependency graph is now available: PlanetDialog is installed
+first, with the original DatabaseDialog and ContentInfoDialog already present.
+The browser facade opens/closes the stock modal; native View, BranchTreeLayout,
+technology visibility, root chooser, requirement/objective cards, progress,
+resource aggregation, purchases, unlock events and settings persistence remain
+upstream implementations. The native footer buttons fit compact Scene widths
+and use their preferred text height, preserving readable translated captions.
+When space is insufficient beside the centered tree title, the original global
+resource panel moves below it; its margin is restored after native rebuilds.
+
+Keep PlanetDialog open beneath ResearchDialog, as in the original UI. Its current
+planet selects the research root, including Erekir opened from the main-menu
+globe. Closing research returns to the original usable globe. The old custom
+graph, custom expand/collapse observer and superseded drag test are removed.
+
+The new native-input acceptance checks actual stock root-selector buttons,
+mouse-wheel zoom and both-axis graph drag, native Back/Escape/reopen, translated
+portal resize, and real desktop/mobile purchases against a real saved sector's
+core inventory. A query-scoped fixture supplies copper; it does not change
+technology flags or invoke purchases directly. Ordinary games do not enable it.
+The Chrome harness now delivers trusted mobile touch drags as well as desktop
+mouse drags. Layout checks wait a full coordinate-sampling interval after resize
+and native close animations, avoiding stale button/title rectangles. Header
+non-overlap and footer-label containment remain blocking checks.
+Ground Zero's palette test now selects the original Mechanical Drill node
+instead of requiring the removed custom overlay's automatic selection.
+
+The raw JavaScript ceiling increases from 41,000,000 to 41,100,000 bytes for this
+intentional original-UI dependency (the first compiled version grew about 75 KB).
+The 4,000,000-byte gzip ceiling, forbidden desktop/service graph checks and hard
+100,000,000-byte unpacked package limit remain unchanged.
+
+Hide the Web pause overlay while any native Scene dialog is open. Opening
+ResearchDialog pauses simulation itself; it must not expose the separate Web
+pause menu behind the native research tree. Native-input acceptance asserts
+that this underlying menu is invisible during campaign research.
+
+The final ZIP has SHA-256
+`f8ab367b195b27f6baeccb60cd982d26f119e23bc2c9f4372d832b46a5a06c42`:
+52,703,149 ZIP bytes, 93,790,210 unpacked bytes and 6,209,790 bytes below the
+100,000,000-byte cap. Its compiled source matches PR #171's runtime; the build
+branch adds only its acceptance workflow. Exact-ZIP acceptance run
+39097396561 reuses that archive without rebuilding or altering game files.
+
+Desktop/mobile/narrow original research input and real purchases, exact core
+deductions, wheel/drag, Back/Escape/reopen/resize, native planet context,
+Ground Zero research/palette, compact HUD, waves, cross-planet sector launch,
+building configuration and custom-game edited-rule launch passed. The first
+wheel check ran while the native root chooser could still be closing; the
+same ZIP passed after the harness waited for the native close animation.
+Final menu/repeated-dialog, resize/orientation and translated portal-bound
+checks also passed; exact-ZIP acceptance run 39097396561 concluded successfully.
+
+This does not complete the full original HUD or final whole-interface 1:1
+comparison, and does not recertify the entire 46-map/gameplay matrix on this head.
