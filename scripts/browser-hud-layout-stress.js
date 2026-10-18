@@ -2,7 +2,7 @@
   const r=document.documentElement,c=document.getElementById('mindustry-canvas');
   const get=k=>r.getAttribute('data-mindustry-'+k), sleep=ms=>new Promise(f=>setTimeout(f,ms));
   const wait=async(f,label)=>{for(let i=0;i<240;i++){if(get('web')==='error')throw Error(get('error'));if(f())return;await sleep(100);}throw Error('HUD layout: '+label);};
-  const alive=async()=>{const before=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>before,'live game frames');};
+  const alive=async()=>{const before=Number(get('cpu-sample')),world=Number(get('local-map-frames'));await wait(()=>Number(get('cpu-sample'))>before&&Number(get('local-map-frames'))>world,'live game frames and simulation');};
   const rect=k=>JSON.parse(get('hud-layout-'+k)||'null');
   const check=()=>{
     const b=c.getBoundingClientRect(),keys=['minimap','waves','health','items','placement'];
