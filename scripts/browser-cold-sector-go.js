@@ -12,11 +12,21 @@
  await click('planet-hit-'+planet);
  await wait(()=>v('planet-start-sector-planet')===planet&&v('planet-hit-launch-exposed')==='yes','saved-sector Go');
  sample=Number(v('cpu-sample'));await wait(()=>Number(v('cpu-sample'))>=sample+2,'Go layout');
+ const lostExpected=new URLSearchParams(location.search).has('expectLostCore');
+ const storage=globalThis.__mindustryStorage;
+ const savedPath=lostExpected?storage.paths().find(p=>p.endsWith('.msav')&&!p.includes('backup')):null;
+ const savedBytes=savedPath?new Uint8Array(storage.get(savedPath)):null;
+ if(lostExpected&&(!savedBytes||savedBytes.length<128))throw Error('Lost-sector source checkpoint missing');
  globalThis.__mindustryThrowCount=0;
  await click('planet-hit-launch');
  const lost=new URLSearchParams(location.search).has('expectLostCore');
  await wait(()=>v('campaign-state')==='playing'&&(lost?v('campaign-lost-sector-relaunch')==='onset':v('campaign-resume')==='ready'),'saved sector loaded');
- if(lost&&!(Number(v('campaign-lost-sector-backup-bytes'))>128))throw Error('Missing preserved lost-sector backup');
+ if(lost){
+  const backup=new Uint8Array(storage.get(savedPath+'.lost-backup')||[]);
+  if(backup.length!==savedBytes.length||backup.some((byte,i)=>byte!==savedBytes[i]))throw Error('Lost-sector backup differs from original MSAV');
+  await storage.flush();
+  r.setAttribute('data-mindustry-lost-backup-exact','passed');
+ }
  const frame=Number(v('campaign-update-id'));await wait(()=>Number(v('campaign-update-id'))>frame,'world simulation continues');
  r.setAttribute('data-mindustry-cold-sector-go','passed');return 'Native saved-sector Go resumes after a cold browser restart';
 })()

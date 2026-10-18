@@ -1,0 +1,44 @@
+name: Exact saved-sector recovery and backup proof
+on:
+  push:
+    branches: [native-sector-go-proof]
+    paths: ['.github/workflows/native-sector-go-proof.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39099773308
+          github-token: ${{ github.token }}
+          path: work/release
+      - name: Extract exact final game
+        run: |
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          mkdir -p web-runtime/build/web
+          unzip -q work/release/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Real native lost-sector Go and exact preserved MSAV bytes
+        env:
+          MINDUSTRY_LOST_CORE: '1'
+          MINDUSTRY_COLD_SECTORS: onset
+        run: bash scripts/verify-browser-cold-sector-go.sh
+      - name: Verify no fixture changes in production game
+        run: |
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          with ZipFile('work/release/mindustry-yandex-release.zip') as z:
+              assert z.read('mindustry.js') == Path('web-runtime/build/web/mindustry.js').read_bytes()
+          PY
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exact-lost-sector-go-evidence
+          path: work/cold-*
