@@ -79,6 +79,20 @@ for filename in ("CustomRulesDialog.java", "ColorPicker.java"):
     }
 """
     if filename == "CustomRulesDialog.java":
+        checks = """        // A category's wide numeric rows must not stretch checkbox hitboxes
+        // beyond the portal. Keep natural desktop widths; wrap only as needed.
+        float maxCheckWidth = Math.max(1f, arc.Core.scene.getWidth() - 80f);
+        cont.forEach(actor -> {
+            if(actor instanceof CheckBox box && box.parent instanceof Table table){
+                box.getLabel().setWrap(false);
+                float natural = box.getPrefWidth();
+                box.getLabel().setWrap(true);
+                Cell<?> cell = table.getCell(box);
+                if(cell != null) cell.minWidth(Math.min(natural, maxCheckWidth)).maxWidth(maxCheckWidth);
+            }
+        });
+"""
+        method = method.replace("        int count = buttons.getCells().size;", checks + "        int count = buttons.getCells().size;")
         source = source.replace("        shown(this::setup);", "        shown(this::setup);\n        shown(this::webFitButtons);", 1)
     else:
         source = source.replace("        addCloseButton();", "        addCloseButton(Math.max(1f, Math.min(210f, (arc.Core.scene.getWidth() - 40f) / 2f)));", 1)
