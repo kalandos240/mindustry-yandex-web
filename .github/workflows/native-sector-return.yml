@@ -35,6 +35,7 @@ jobs:
                       const core=mg_Team_core(m_Vars_state.$rules2.$defaultTeam);
                       mw_Tile_setBlock(core.$tile5,mc_Blocks_air);
                       if($rt_suspending()) throw new Error('Lost-core fixture unexpectedly suspended');
+                      setTimeout(()=>mc_GameState_set(m_Vars_state,mc_GameState$State_paused),0);
                       console.info('LOST_CORE_FIXTURE',mg_Team_core(m_Vars_state.$rules2.$defaultTeam)===null);
                   }
           """
@@ -56,5 +57,3 @@ jobs:
             /tmp/mindustry-hud-planet.html
             work/menu-ui/*.png
             work/cold-*
-
-# The destroyed-core seed may end its live session after its durable flush.
