@@ -14,7 +14,8 @@ replacements = {
         float available = arc.Core.scene.getWidth() - Scl.scl(20f);
         // The compact HUD shares its row with the minimap. Use the actual
         // ScrollPane-assigned widget width, which can be less than the Scene.
-        if(getWidth() > 1f) available = Math.min(available, getWidth() - Scl.scl(8f));
+        boolean compact = arc.Core.scene.getWidth() < 600f || arc.Core.scene.getHeight() < 480f;
+        if(compact && getWidth() > 1f) available = Math.min(available, getWidth() - Scl.scl(8f));
         return Math.max(1, Math.min(4, (int)(available / Scl.scl(84f))));
     }''',
     '    void rebuild(){': '    void rebuild(){\n        webColumns = webColumnCount();',

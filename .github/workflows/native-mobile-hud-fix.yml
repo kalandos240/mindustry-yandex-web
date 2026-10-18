@@ -327,3 +327,4 @@ jobs:
 # Account for the measured native HUD code in the raw JS guard.
 # Keep game-over visibility independent of the pause modal.
 # Fit resources to their actual pane and retain text space beside pause icons.
+# Preserve unconstrained native item columns outside compact mode.
