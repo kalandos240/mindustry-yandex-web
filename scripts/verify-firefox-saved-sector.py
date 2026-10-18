@@ -51,6 +51,12 @@ async def main():
                     await page.evaluate("""()=>new MutationObserver(ms=>{for(const m of ms){if(m.attributeName==='data-mindustry-cdp-click-request')window.__firefoxNativeClick(JSON.parse(document.documentElement.getAttribute(m.attributeName)));}}).observe(document.documentElement,{attributes:true,attributeFilter:['data-mindustry-cdp-click-request']})""")
                     result = await page.evaluate((ROOT / 'scripts/browser-save-clock-go.js').read_text())
                     assert await page.get_attribute('html', 'data-mindustry-cold-sector-go') == 'passed'
+                    for width, height in [(1280, 800), (390, 371), (320, 320), (390, 844)]:
+                        await page.set_viewport_size({'width': width, 'height': height})
+                        await page.wait_for_timeout(2500)
+                        assert await page.get_attribute('html', 'data-mindustry-campaign-state') == 'playing'
+                        assert not await page.get_attribute('html', 'data-mindustry-campaign-launch-failure')
+                        await page.screenshot(path=str(ROOT / f'work/firefox-{sector}-{width}x{height}.png'))
                     await page.screenshot(path=str(ROOT / f'work/firefox-{sector}.png'))
                     (ROOT / f'work/firefox-{sector}.html').write_text(await page.content())
                     print(f'Firefox {sector}: wave=3 tickMillis={expected} PASS: {result}', flush=True)

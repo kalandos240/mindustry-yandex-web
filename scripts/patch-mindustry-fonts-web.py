@@ -82,6 +82,7 @@ print(f"Patched Web font lifecycle in {path}")
 # This post-overlay source-fix stage already runs after apply-port.sh in CI/build
 # assembly. Keep browser-only source fixes at the same deterministic point.
 root = Path(__file__).resolve().parents[1]
+subprocess.run([sys.executable, str(root / "scripts" / "patch-world-label-viewport-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-maps-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-coreblock-ui-web.py")], check=True)
 subprocess.run([sys.executable, str(root / "scripts" / "patch-mindustry-minimap-web.py")], check=True)
