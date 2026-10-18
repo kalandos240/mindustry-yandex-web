@@ -1,0 +1,40 @@
+name: Native placement pointer geometry diagnosis
+on:
+  push:
+    branches: [responsive-hud-pointer-diagnosis]
+    paths: ['.github/workflows/hud-pointer-diagnosis.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  pointer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39090460048
+          github-token: ${{ github.token }}
+          path: work/candidate
+      - name: Verify digest and extract exact runtime
+        run: |
+          (cd work/candidate && sha256sum -c mindustry-yandex-release.zip.sha256)
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          with zipfile.ZipFile('work/candidate/mindustry-yandex-release.zip') as z:z.extractall('web-runtime/build/web')
+          p=Path('scripts/browser-hud-layout-stress.js')
+          s=p.read_text().replace("const categoryBefore=rect('category');","const categoryBefore=rect('category'),placementBefore=rect('placement');")
+          s=s.replace("throw Error('Native category moved under the pointer after block selection')","throw Error('Category moved: '+JSON.stringify({categoryBefore,categoryAfter,placementBefore,placementAfter:rect('placement')}))")
+          Path('work/pointer.js').write_text(s)
+          PY
+      - name: Real native selection and before-after geometry
+        run: |
+          python3 -m http.server 8138 --bind 127.0.0.1 --directory web-runtime/build/web >/tmp/hud-http.log 2>&1 &
+          python3 scripts/chrome-wait-dom.py --url 'http://127.0.0.1:8138/index.html?lang=ru&mindustryMapSmoke=archipelago&mindustryHudLayoutSmoke=1' --profile /tmp/hud-pointer --port 9672 --timeout 150 --cdp-input-bridge --screenshot work/pointer.png --require 'data-mindustry-web="ready"' --after-ready-eval "$(cat work/pointer.js)" --after-ready-require 'data-mindustry-hud-layout-test="passed"' > work/pointer.html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-pointer-diagnosis
+          path: work/pointer*
