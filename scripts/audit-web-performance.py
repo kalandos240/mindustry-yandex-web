@@ -18,7 +18,9 @@ REPORT = ROOT / "work" / "web-performance-report.txt"
 # The latest measured full-planet build is 39,612,437 raw / 3,607,052 gzip,
 # leaving about 1.4 MB JS and 0.39 MB gzip headroom for the current milestone.
 JS_BASELINE = 23_155_354
-JS_LIMIT = 41_000_000
+# Native ResearchDialog adds about 75 KB to the former compact-HUD runtime.
+# Retain tight code growth/gzip limits and the independent hard 100 MB package cap.
+JS_LIMIT = 41_100_000
 JS_GZIP_BASELINE = 2_649_677
 JS_GZIP_LIMIT = 4_000_000
 YANDEX_UNPACKED_LIMIT = 100_000_000  # Yandex requires decimal MB, not 100 MiB.

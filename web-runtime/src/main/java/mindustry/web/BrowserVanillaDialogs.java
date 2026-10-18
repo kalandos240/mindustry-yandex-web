@@ -313,7 +313,7 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-saves', 'stock-LoadDialog-browser-safe');
         r.setAttribute('data-mindustry-vanilla-custom', 'stock-CustomGameDialog');
         r.setAttribute('data-mindustry-vanilla-planet', 'stock-PlanetDialog-3d');
-        r.setAttribute('data-mindustry-vanilla-research', 'browser-TechTree-preserved');
+        r.setAttribute('data-mindustry-vanilla-research', 'stock-ResearchDialog');
         """)
     private static native void markInstalled();
 

@@ -170,8 +170,6 @@ public final class BrowserApplication extends WebApplicationBase{
                 BrowserRtsCommandSmoke.update();
                 // CI-only real touch selection and orders through stock MobileInput.
                 BrowserMobileRtsSmoke.update();
-                // Real Scene pointer navigation for the vanilla research tree (CI only).
-                BrowserResearchTreeSmoke.update();
                 // Only when explicitly requested by the Erekir stress gate.
                 BrowserFactoryFreezeSmoke.update();
                 // CI only: inspect every registered vanilla block/building factory

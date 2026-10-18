@@ -26,12 +26,6 @@ public final class BrowserResearchUi{
     public static void escape(){ close(); }
     public static void close(){ if(ui.research != null) ui.research.hide(); }
     public static boolean isOpen(){ return ui != null && ui.research != null && ui.research.isShown(); }
-    public static String activeRootContent(){ return ui.research == null ? "" : ui.research.lastNode.content.name; }
-    public static String selectedContent(){
-        if(ui.research == null) return "";
-        var hovered = ui.research.view.hoverNode;
-        return hovered != null && hovered.userObject instanceof TechNode node ? node.content.name : activeRootContent();
-    }
     public static void refresh(){ if(isOpen()) ui.research.rebuildItems(); }
 
     @JSBody(params={"nodes","roots"},script="""
