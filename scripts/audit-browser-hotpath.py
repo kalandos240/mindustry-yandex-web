@@ -425,9 +425,9 @@ require(YANDEX_JS, "if(state.bannerShowing)", "do not overlap ads when sticky hi
 # TechTree research from the active HUD and menu using real Arc click paths.
 require(BROWSER_UI, "BrowserResearchUi.init();", "research dialog in browser UI startup")
 require(BROWSER_UI, "findStockResearchControl(inputTable)", "bind exactly the existing DesktopInput Research tree button")
-require(BROWSER_UI, 'inputTable instanceof Table nativeTable', "mobile research icon mounts within native PlacementFragment")
-require(BROWSER_UI, 'nativeTable.button(Icon.tree, Styles.clearNonei', "no floating research button beneath mobile build palette")
-require(BROWSER_UI, 'nativeTable.invalidateHierarchy()', "mobile research column can relayout after addition")
+require(BROWSER_UI, 'buildMobileHudToolbar(root);', "native mobile toolbar includes Research without bottom duplicate")
+require(BROWSER_UI, 'toolbar.button(Icon.tree, Styles.clearNonei', "mobile research uses native top toolbar")
+require(BROWSER_UI, 'line.width(size * 5f + 4f)', "native mobile toolbar reflows for compact portals")
 require(BROWSER_UI, "findStockDatabaseControl(inputTable)", "bind the existing lower-right Database book button")
 require(BROWSER_UI, "button.clicked(BrowserStockDatabaseUi::show)", "native book opens real ContentLoader database")
 require(DATABASE_UI, "ui.database.isShown()", "use real modal Database during menu AND gameplay")
