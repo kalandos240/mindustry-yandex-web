@@ -59,7 +59,7 @@ public final class BrowserHudEssentials{
         parent.addChild(details);
         // Restore the position and health indicators adjacent to the stock map.
         // These values come from the actual player Unit, not browser estimates.
-        details.label(() -> player.tileX() + "," + player.tileY())
+        var positionCell = details.label(() -> player.tileX() + "," + player.tileY())
             .style(Styles.outlineLabel)
             .visible(() -> !BrowserHudLayout.compact() && Core.settings.getBool("position", true))
             .name("web-hud-position");
@@ -163,6 +163,7 @@ public final class BrowserHudEssentials{
                 minimap.marginTop(small ? 32f : mobile ? 125f : 5f);
                 details.top().right().marginTop(mobile ? 275f : 155f).marginRight(5f);
                 if(small) details.left().marginTop(98f).marginLeft(5f);
+                positionCell.height(small ? 0f : positionCell.get().getPrefHeight());
                 healthCell.width(small ? Math.min(258f, Core.scene.getWidth() - 105f) : mobile ? 150f : 180f);
                 waves.marginTop(small ? 32f : mobile ? 195f : 145f);
                 Table panel = waves.find("web-hud-wave-panel");
