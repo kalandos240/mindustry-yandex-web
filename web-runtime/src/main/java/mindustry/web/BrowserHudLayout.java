@@ -50,11 +50,15 @@ public final class BrowserHudLayout{
         if(!inventoryFixture && player.team().core() != null){
             // Test-only world fixture: exercise the native multi-row item list.
             for(var item : content.items()) player.team().core().items.add(item, 500);
+            mindustry.content.UnitTypes.dagger.spawn(state.rules.waveTeam,
+                world.width()*tilesize/2f, world.height()*tilesize/2f)
+                .apply(mindustry.content.StatusEffects.boss, Float.MAX_VALUE);
             inventoryFixture = true;
         }
         report("minimap", "web-hud-minimap", true);
         report("waves", "web-hud-wave-panel", false);
         report("health", "web-hud-player-health", false);
+        report("guardian", "web-hud-guardian-health", false);
         report("items", "web-hud-core-items", false);
         report("placement", "web-placement-frame", false);
         report("category", "category-distribution", true);
@@ -69,7 +73,9 @@ public final class BrowserHudLayout{
         Vec2 upper = actor.localToStageCoordinates(new Vec2(actor.getWidth(), actor.getHeight()));
         Vec2 center = actor.localToStageCoordinates(new Vec2(actor.getWidth()/2f, actor.getHeight()/2f));
         Element hit = Core.scene.hit(center.x, center.y, true);
-        boolean exposed = !action || hit == actor || hit != null && hit.isDescendantOf(actor);
+        boolean visible = actor.visible;
+        for(Group parent = actor.parent; parent != null; parent = parent.parent) visible &= parent.visible;
+        boolean exposed = visible && (!action || hit == actor || hit != null && hit.isDescendantOf(actor));
         Core.scene.getViewport().project(lower);
         Core.scene.getViewport().project(upper);
         markRect(key, lower.x, lower.y, upper.x, upper.y, exposed);

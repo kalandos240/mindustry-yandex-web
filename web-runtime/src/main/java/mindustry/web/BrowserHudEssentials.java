@@ -166,7 +166,7 @@ public final class BrowserHudEssentials{
                 minimap.marginTop(small ? 44f : mobile ? 125f : 5f);
                 details.top().right().marginTop(mobile ? 275f : 155f).marginRight(5f);
                 if(small) details.left().marginTop(110f).marginLeft(5f);
-                positionCell.height(small ? 0f : positionCell.get().getPrefHeight());
+                positionCell.height(small ? 0.01f : positionCell.get().getPrefHeight());
                 healthCell.width(small ? Math.min(258f, Core.scene.getWidth() - 105f) : mobile ? 150f : 180f);
                 waves.marginTop(small ? 44f : mobile ? 195f : 145f);
                 Table panel = waves.find("web-hud-wave-panel");

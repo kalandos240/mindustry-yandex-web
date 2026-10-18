@@ -6,6 +6,7 @@
   const rect=k=>JSON.parse(get('hud-layout-'+k)||'null');
   const check=()=>{
     const b=c.getBoundingClientRect(),keys=['minimap','waves','health','items','placement'];
+    if(get('hud-layout-guardian-exposed')==='yes')keys.push('guardian');
     for(const k of keys){const a=rect(k);if(!a||!(a[0]>=-0.5&&a[1]>=-0.5&&a[2]<=b.width+0.5&&a[3]<=b.height+0.5&&a[2]>a[0]&&a[3]>a[1]))throw Error('HUD clipped '+k+': '+a+' in '+b.width+'x'+b.height);}
     for(let i=0;i<keys.length;i++)for(let j=i+1;j<keys.length;j++){
       const a=rect(keys[i]),d=rect(keys[j]);
