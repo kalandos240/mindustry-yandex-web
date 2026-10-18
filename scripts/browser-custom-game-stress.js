@@ -26,6 +26,23 @@
   await click('custom-native');
   await wait(()=>get('custom-page')==='catalog','stock catalog');
   if(get('custom-previews')!=='18')throw Error('Expected 18 real map previews');
+  // Native catalog sorting uses display names: Ancient Caldera precedes
+  // Archipelago. In the one-column portal, scroll through the actual pane.
+  const mapVisible=()=>{
+    if(!r.hasAttribute('data-mindustry-custom-first-map-x'))return false;
+    const b=c.getBoundingClientRect(),v=['left','bottom','right','top'].map(e=>Number(get('custom-first-map-'+e)));
+    return v[0]>=-0.5&&v[1]>=-0.5&&v[2]<=b.width+0.5&&v[3]<=b.height+0.5;
+  };
+  if(new URLSearchParams(location.search).get('mindustryCustomNarrow')==='1'){
+    for(let i=0;i<16&&!mapVisible();i++){
+      const b=c.getBoundingClientRect(),id='catalog-wheel-'+(++seq);
+      r.setAttribute('data-mindustry-cdp-scroll-request',JSON.stringify({id,x:b.left+b.width/2,y:b.top+b.height/2,deltaY:100}));
+      await wait(()=>get('cdp-scroll-ack')===id||String(get('cdp-scroll-ack')).startsWith('ERROR:'),'native catalog wheel');
+      if(get('cdp-scroll-ack')!==id)throw Error(get('cdp-scroll-ack'));
+      await sleep(600);
+    }
+  }
+  await wait(mapVisible,'whole selected card after native catalog scrolling');
   await click('custom-first-map');
   await wait(()=>get('custom-page')==='map','stock map mode dialog');
   await click('custom-sandbox');

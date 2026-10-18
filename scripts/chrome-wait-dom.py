@@ -206,7 +206,7 @@ def cdp_input_bridge(port: int, url: str, deadline: float, mobile: bool, stop: t
     ws = None
     try:
         ws = WebSocket(target_websocket(port, url, deadline))
-        message_id, last_request, last_drag_request = 1, None, None
+        message_id, last_request, last_drag_request, last_scroll_request = 1, None, None, None
         while not stop.is_set() and time.monotonic() < deadline:
             request = evaluate(ws, message_id,
                 "document.documentElement.getAttribute('data-mindustry-cdp-click-request') || ''")
@@ -290,6 +290,33 @@ def cdp_input_bridge(port: int, url: str, deadline: float, mobile: bool, stop: t
                 evaluate(ws, message_id,
                     "document.documentElement.setAttribute('data-mindustry-cdp-drag-ack',"
                     + json.dumps(drag_status) + ")")
+                message_id += 1
+            scroll_request = evaluate(ws, message_id,
+                "document.documentElement.getAttribute('data-mindustry-cdp-scroll-request') || ''")
+            message_id += 1
+            if scroll_request and scroll_request != last_scroll_request:
+                last_scroll_request = scroll_request
+                try:
+                    wheel = json.loads(scroll_request)
+                    wheel_id = str(wheel["id"])
+                    x, y, delta = float(wheel["x"]), float(wheel["y"]), float(wheel["deltaY"])
+                    if mobile or not (0 <= x <= 10000 and 0 <= y <= 10000 and abs(delta) <= 2000):
+                        raise ValueError("Invalid desktop CDP wheel request")
+                    cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
+                        "type": "mouseMoved", "x": x, "y": y, "button": "none", "buttons": 0})
+                    message_id += 1
+                    # Let native Scene enter handling acquire the actual ScrollPane focus.
+                    time.sleep(0.10)
+                    cdp_command(ws, message_id, "Input.dispatchMouseEvent", {
+                        "type": "mouseWheel", "x": x, "y": y, "deltaX": 0, "deltaY": delta,
+                        "button": "none", "buttons": 0})
+                    message_id += 1
+                    wheel_status = wheel_id
+                except Exception as error:
+                    wheel_status = "ERROR: " + str(error)[:220]
+                evaluate(ws, message_id,
+                    "document.documentElement.setAttribute('data-mindustry-cdp-scroll-ack',"
+                    + json.dumps(wheel_status) + ")")
                 message_id += 1
             stop.wait(0.07)
     except Exception as error:
