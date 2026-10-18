@@ -21,9 +21,8 @@
     await wait(()=>Number(get('resize-count'))>before&&get('main-menu-size')===surface.clientWidth+'x'+surface.clientHeight&&get('container-match')==='true','native narrow scene resize');
     if(!(c.clientWidth>=300&&c.clientWidth<=400)||get('main-menu-layout')!=='desktop-sidebar')throw Error('Narrow fixture did not preserve desktop input');
   }
-  await click('main-menu-play');
-  if(get('main-menu-layout')!=='mobile-grid')await click('main-menu-custom');
-  await click('custom-native');
+  if(get('main-menu-layout')!=='mobile-grid')await click('main-menu-play');
+  await click('main-menu-custom');
   await wait(()=>get('custom-page')==='catalog','stock catalog');
   if(get('custom-previews')!=='18')throw Error('Expected 18 real map previews');
   // Native catalog sorting uses display names: Ancient Caldera precedes

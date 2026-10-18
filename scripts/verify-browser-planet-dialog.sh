@@ -53,8 +53,9 @@ for device in desktop mobile; do
         await wait(()=>root.getAttribute('data-mindustry-cdp-click-ack')===id,'Play parent native click');
         await wait(()=>root.getAttribute('data-mindustry-main-menu-play-submenu')==='open','Play submenu shown');
       }
-      await wait(()=>root.hasAttribute('data-mindustry-main-menu-planets-x'),'Planet menu hitpoint');
-      const rect=canvas.getBoundingClientRect(), x=Number(root.getAttribute('data-mindustry-main-menu-planets-x')), y=Number(root.getAttribute('data-mindustry-main-menu-planets-y'));
+      const entry=root.getAttribute('data-mindustry-main-menu-layout')==='mobile-grid'?'play':'planets';
+      await wait(()=>root.hasAttribute('data-mindustry-main-menu-'+entry+'-x'),'Planet menu hitpoint');
+      const rect=canvas.getBoundingClientRect(), x=Number(root.getAttribute('data-mindustry-main-menu-'+entry+'-x')), y=Number(root.getAttribute('data-mindustry-main-menu-'+entry+'-y'));
       if(!(x>0&&x<rect.width&&y>0&&y<rect.height))throw Error('Planet button outside canvas '+x+','+y);
       let nativeClickSequence=0;
       const nativeClick=async(x,y)=>{

@@ -23,9 +23,9 @@ import static mindustry.Vars.*;
  * large icon buttons in a grid. Both use the pinned Icon and Styles classes.
  * The heavyweight online/Mods/Editor paths stay omitted intentionally.
  *
- * The existing fully functional campaign/custom-map selector is reused as
- * the mobile Play content and desktop Custom Game recovery selector. It
- * still owns the direct campaign recovery actions and local saves.
+ * Campaign and Custom Game open the original dialogs directly on both devices.
+ * The old combined launch panel is retained only as an inactive build-overlay
+ * compatibility anchor; it is not part of player navigation.
  */
 public final class BrowserStockMainMenu{
     private static boolean contentOpen;
@@ -135,10 +135,10 @@ public final class BrowserStockMainMenu{
             home.table(menu -> {
                 menu.name = "web-main-mobile-buttons";
                 menu.defaults().size(tileSize).pad(5f).padTop(4f);
-                mobileButton(menu, "play", Icon.play, BrowserStockMainMenu::openPlay, "play");
+                mobileButton(menu, "campaign", Icon.play, BrowserVanillaDialogs::openPlanets, "play");
                 mobileButton(menu, "loadgame", Icon.download, BrowserVanillaDialogs::openSaves, "saves");
                 if(portrait) menu.row();
-                mobileButton(menu, "planets", Icon.planet, BrowserVanillaDialogs::openPlanets, "planets");
+                mobileButton(menu, "customgame", Icon.rightOpenOut, BrowserVanillaDialogs::openCustomGame, "custom");
                 mobileButton(menu, "settings", Icon.settings, BrowserVanillaDialogs::openSettings, "settings");
                 menu.row();
                 mobileButton(menu, "schematics", Icon.paste, BrowserVanillaDialogs::openSchematics, "schematics");
@@ -215,7 +215,7 @@ public final class BrowserStockMainMenu{
         submenu.defaults().width(desktopColumnWidth).height(desktopRowHeight);
         if(play){
             desktopEntry(submenu, "campaign", Icon.play, BrowserVanillaDialogs::openPlanets, "planets");
-            desktopEntry(submenu, "customgame", Icon.terrain, BrowserStockMainMenu::openPlay, "custom");
+            desktopEntry(submenu, "customgame", Icon.terrain, BrowserVanillaDialogs::openCustomGame, "custom");
             desktopEntry(submenu, "loadgame", Icon.download, BrowserVanillaDialogs::openSaves, "saves");
         }else{
             submenu.add().height(desktopRowHeight).row();
@@ -323,12 +323,6 @@ public final class BrowserStockMainMenu{
         if(name==='planets'){root.setAttribute('data-mindustry-play-campaign-x',String(x));root.setAttribute('data-mindustry-play-campaign-y',String(y));}
         """)
     private static native void markMenuHitPoint(String name, float x, float y, float left, float bottom, float right, float top);
-
-    private static void openPlay(){
-        closeDesktopMenus();
-        contentOpen = true;
-        markPage("play");
-    }
 
     public static void showHome(){
         closeDesktopMenus();

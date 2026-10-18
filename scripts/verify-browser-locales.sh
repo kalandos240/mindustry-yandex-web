@@ -107,10 +107,12 @@ run_production_menu(){
       window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,cancelable:true,code:'Escape',key:'Escape'}));
       await wait(()=>!(root.getAttribute('data-mindustry-vanilla-modal-visible')||'').includes('settings'),'Original Settings closed');
       if(root.getAttribute('data-mindustry-main-menu-page')!=='home')throw Error('Native home did not open');
-      await click('play');
-      await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='play','Play submenu');
-      await click(root.getAttribute('data-mindustry-main-menu-layout')==='mobile-grid'?'back':'play');
-      await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='home','Back to home');
+      if(root.getAttribute('data-mindustry-main-menu-layout')!=='mobile-grid'){
+        await click('play');
+        await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='play','Play submenu');
+        await click('play');
+        await wait(()=>root.getAttribute('data-mindustry-main-menu-page')==='home','Back to home');
+      }
       await click('database');
       await wait(()=>root.getAttribute('data-mindustry-database-open')==='yes','Database opened');
       await wait(()=>root.hasAttribute('data-mindustry-database-close-x'),'Database close coordinates');
