@@ -103,6 +103,12 @@ check("id: narrow_menu_stress" in workflow and "steps.narrow_menu_stress.outcome
 # Pause is not "Exit game": the browser-safe action goes back to the native
 # main menu and must not leave the player stranded with a JVM-style Quit.
 hud_source = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserUiRuntime.java").read_text(encoding="utf-8")
+gameover_source = hud_source.split("private static void buildLocalGameOverOverlay()", 1)[1].split(
+    "public static boolean initialized()", 1
+)[0]
+check(gameover_source.count("overlay.visible(") == 1 and "state.gameOver" in gameover_source
+      and "hudOnlyPause" not in gameover_source and "state.isPaused()" not in gameover_source,
+      "game-over overlay must never take the pause menu visibility predicate")
 pause_source = hud_source.split("private static void buildLocalPauseOverlay()", 1)[1].split(
     "private static void markPauseHitPoint(", 1
 )[0]

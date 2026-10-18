@@ -325,3 +325,4 @@ jobs:
 
 # Pause modal takes priority over native mobile command controls.
 # Account for the measured native HUD code in the raw JS guard.
+# Keep game-over visibility independent of the pause modal.

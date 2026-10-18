@@ -650,7 +650,14 @@ public final class BrowserUiRuntime{
                 float buttonWidth = Math.min(width, Math.max(70f, (sw - 70f) / 2f));
                 for(String action : paired){
                     TextButton button = dialog.find("web-pause-" + action);
-                    button.getLabel().setWrap(true);
+                    Label label = button.getLabel();
+                    label.setWrap(false);
+                    label.setFontScale(1f);
+                    float textWidth = label.getPrefWidth();
+                    float decorationWidth = button.getPrefWidth() - textWidth;
+                    label.setFontScale(Math.min(1f, Math.max(0.65f,
+                        (buttonWidth - decorationWidth) / Math.max(1f, textWidth))));
+                    label.setWrap(true);
                     button.getLabelCell().minWidth(0f);
                     dialog.getCell(button).width(buttonWidth);
                 }
@@ -731,35 +738,7 @@ public final class BrowserUiRuntime{
             BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 240f : 300f, mobile ? 58f : 52f)
             .name("web-gameover-back").padBottom(12f);
-        ScrollPane scroll = new ScrollPane(dialog);
-        scroll.setScrollingDisabled(true, false);
-        scroll.setOverscroll(false, false);
-        scroll.setFadeScrollBars(false);
-        var scrollCell = overlay.add(scroll).center();
-        float[] viewport = {-1f, -1f};
-        boolean[] wasVisible = {false};
-        // Invisible Arc actors do not receive update callbacks. Observe both
-        // transitions in the visibility provider, including modal dismissal.
-        overlay.visible(() -> {
-            boolean show = (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
-                && state.isPaused() && !hudOnlyPause && !state.gameOver && !Core.scene.hasDialog();
-            if(show != wasVisible[0]){
-                wasVisible[0] = show;
-                if(show){
-                    // A modal pause menu must also cover the native mobile
-                    // command controls, which normally sit above other HUD actors.
-                    overlay.toFront();
-                    scroll.setScrollY(0f);
-                    scroll.updateVisualScroll();
-                }else{
-                    markPauseHidden();
-                }
-            }
-            return show;
-        });
-        String[] paired = {"resume", "settings", "save", "research", "schematics", "controls"};
-        String[] wide = {"saves", "menu"};
-
+        overlay.add(dialog).center();
         ui.hudGroup.addChild(overlay);
         markGameOverUiReady();
     }
