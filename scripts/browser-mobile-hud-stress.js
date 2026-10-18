@@ -10,6 +10,17 @@
   const bridge=async(kind,p)=>{const id='mobile-hud-'+(++seq);r.setAttribute('data-mindustry-cdp-'+kind+'-request',JSON.stringify({id,...p}));await wait(()=>get('cdp-'+kind+'-ack')===id,'trusted '+kind);};
   const point=key=>{const b=c.getBoundingClientRect(),x=Number(get(key+'-x')),y=Number(get(key+'-y'));if(!(x>0&&y>0&&x<b.width&&y<b.height))throw Error('Clipped '+key+' '+x+','+y+' in '+b.width+'x'+b.height);return{x:b.left+x,y:b.bottom-y};};
   const click=async key=>{await wait(()=>get(key+'-x')!==null,key+' actual bounds');await bridge('click',point(key));};
+  const checkCaptions=async()=>{
+    const keys=['resume','settings','save','schematics','controls','saves','menu'];
+    if(campaign)keys.push('research');
+    for(const k of keys){
+      await wait(()=>get('pause-caption-'+k)!==null,'rendered caption '+k);
+      const a=JSON.parse(get('pause-caption-'+k));
+      if(!a.contained||a.lines<1)throw Error('Caption outside native button '+k+': '+JSON.stringify(a));
+      if(!a.text.includes(' ')&&a.lines!==1)throw Error('Word broken inside caption '+k+': '+JSON.stringify(a));
+      if(a.lines>2)throw Error('Too many caption lines '+k+': '+JSON.stringify(a));
+    }
+  };
   const toolbar=action=>click('mobile-hud-'+action);
   const escape=async()=>{window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,code:'Escape',key:'Escape'}));await sleep(180);window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,code:'Escape',key:'Escape'}));};
   const modal=name=>(get('vanilla-modal-visible')||'').split(',').includes(name);
@@ -32,7 +43,7 @@
   const frozen=get(campaign?'campaign-pause-update-id':'local-map-pause-update-id');
   await sleep(600);await alive();
   if(frozen!==get(campaign?'campaign-pause-update-id':'local-map-pause-update-id'))throw Error('Frozen simulation changed');
-  await toolbar('menu');await wait(()=>get('pause-dialog-visible')==='yes','menu from inline pause');await alive();
+  await toolbar('menu');await wait(()=>get('pause-dialog-visible')==='yes','menu from inline pause');await alive();await checkCaptions();
   await click('pause-button-save');await wait(()=>get(campaign?'campaign-manual-save':'local-map-save')==='ready','actual saved paused game');
   await click('pause-button-resume');await wait(()=>get(state)==='playing'&&!paused(),'Resume from menu');await alive();
   await toolbar('pause');await wait(()=>paused(),'second inline pause');
@@ -44,8 +55,10 @@
   await wait(()=>Number(get('resize-count'))>old&&get('container-match')==='true','320px portal resize');
   await alive();await alive();
   for(const k of ['menu','flip','schematics','pause','research'])point('mobile-hud-'+k);
-  await toolbar('menu');await wait(()=>get('pause-dialog-visible')==='yes','compact pause menu');await alive();
+  await toolbar('menu');await wait(()=>get('pause-dialog-visible')==='yes','compact pause menu');await alive();await checkCaptions();
   point('pause-button-resume');point('pause-button-settings');
+  await click('pause-button-settings');await wait(()=>modal('settings'),'compact Settings callback after reflow');
+  await escape();await wait(()=>!modal('settings'),'compact Settings closes');await alive();await checkCaptions();
   const before=Number(get('pause-button-menu-y'));
   const b=c.getBoundingClientRect();
   await bridge('drag',{x0:b.left+25,y0:b.bottom-45,x1:b.left+25,y1:b.top+45,steps:18});
@@ -56,7 +69,7 @@
   await escape();await wait(()=>!modal('saves'),'close short Saved Games');await alive();
   // Opening a subdialog resets the menu to its first row. Scroll back to the final row.
   await bridge('drag',{x0:b.left+25,y0:b.bottom-45,x1:b.left+25,y1:b.top+45,steps:18});
-  await alive();await alive();point('pause-button-menu');
+  await alive();await alive();point('pause-button-menu');await checkCaptions();
   r.setAttribute('data-mindustry-mobile-hud-test','passed');
   return 'Real mobile toolbar, hidden HUD recovery, safe inline pause, native dialogs and compact touch scrolling passed';
 })()

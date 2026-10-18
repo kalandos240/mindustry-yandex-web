@@ -7,7 +7,7 @@ trap 'kill "$server" 2>/dev/null || true' EXIT
 for mode in campaign local; do
   if [ "$mode" = campaign ]; then seed=mindustryCampaignSmoke=groundZero; else seed=mindustryMapSmoke=maze; fi
   python3 "$ROOT/scripts/chrome-wait-dom.py" --emulate-mobile \
-    --url "http://127.0.0.1:8142/index.html?lang=ru&$seed&mindustryMobileHudSmoke=1" \
+    --url "http://127.0.0.1:8142/index.html?lang=ru&$seed&mindustryMobileHudSmoke=1&mindustryCaptionSmoke=1" \
     --profile "/tmp/mobile-hud-$mode" --port 9684 --timeout 240 --cdp-input-bridge \
     --require 'data-mindustry-web="ready"' \
     --after-ready-eval "$(cat "$ROOT/scripts/browser-mobile-hud-stress.js")" \
