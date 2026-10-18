@@ -1,0 +1,316 @@
+name: Original ResearchDialog acceptance
+on:
+  push:
+    branches: [native-research-acceptance-v6]
+    paths: ['.github/workflows/native-research-acceptance.yml']
+permissions:
+  contents: read
+jobs:
+  web-runtime:
+    runs-on: ubuntu-latest
+    # This job intentionally executes several full Chrome cold-restart persistence
+    # pairs. Fog/weather gates add two more real v13 save/restore cycles, so keep
+    # enough headroom for shared-runner startup variance without weakening checks.
+    timeout-minutes: 110
+
+    steps:
+      - name: Checkout port repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Static-check release and browser test harness
+        run: |
+          python3 -m py_compile scripts/*.py
+          python3 scripts/test_yandex_size_budget.py
+          node scripts/test-campaign-map-loading.js
+          python3 scripts/audit-campaign-consistency.py
+          python3 scripts/audit-browser-hotpath.py
+          python3 scripts/audit-yandex-ui-controls.py
+          for script in scripts/*.sh; do
+            bash -n "$script"
+          done
+
+      - name: Bootstrap pinned upstream sources
+        run: bash scripts/bootstrap.sh
+
+      - name: Verify pinned built-in Attack map list
+        run: |
+          python3 scripts/verify-pinned-attack-maps.py
+          python3 scripts/generate-map-filter-codec.py --check
+
+      - name: Audit complete English and Russian localization
+        run: |
+          python3 scripts/audit-i18n.py
+          cat work/web-i18n-report.txt
+
+      - name: Generate pinned vanilla sprite atlas
+        working-directory: work/Mindustry
+        run: |
+          chmod +x gradlew
+          # Maven Central can return HTTP 429 on parallel hosted GitHub runners.
+          # Retry transient upstream dependency resolution with bounded backoff
+          # instead of marking a game/rendering regression before compilation.
+          packed=no
+          for attempt in 1 2 3; do
+            if ./gradlew tools:pack '-Pargs=[]' --no-daemon --stacktrace; then
+              packed=yes
+              break
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Atlas Gradle dependency/build attempt $attempt failed; retrying after rate-limit cooldown"
+              sleep $((attempt * 20))
+            fi
+          done
+          test "$packed" = yes
+          test -s core/assets/sprites/sprites.aatls
+          test -s core/assets/sprites/sprites.png
+          pages="$(find core/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)"
+          echo "Vanilla AATLS bytes: $(wc -c < core/assets/sprites/sprites.aatls)"
+          echo "Vanilla atlas pages: $pages"
+          test "$pages" -gt 0
+
+      - name: Bake browser-safe Mindustry UI fonts
+        run: |
+          bash scripts/install-web-font-baker.sh
+          cd work/Mindustry
+          chmod +x gradlew
+          ./gradlew tools:webFontBake --no-daemon --stacktrace
+          for name in default outline monospace icon iconLarge tech logic; do
+            test -s "core/assets/webfonts/$name.fnt"
+            test -s "core/assets/webfonts/$name-0.png"
+            pages="$(find core/assets/webfonts -maxdepth 1 -type f -name "$name-*.png" | wc -l)"
+            echo "Baked font $name: fnt=$(wc -c < "core/assets/webfonts/$name.fnt") bytes pages=$pages"
+            test "$pages" -gt 0
+          done
+
+      - name: Apply current Web compatibility overlays
+        run: |
+          bash scripts/apply-port.sh
+          python3 scripts/patch-arc-fi-web.py work/Arc/arc-core/src/arc/files/Fi.java
+          python3 scripts/patch-mindustry-block-reflection.py work/Mindustry/core/src/mindustry/world/Block.java
+          python3 scripts/patch-mindustry-fonts-web.py work/Mindustry/core/src/mindustry/ui/Fonts.java
+          python3 scripts/patch-mindustry-no-links-web.py
+          python3 scripts/patch-vanilla-schematics-web.py
+          python3 scripts/patch-vanilla-database-web.py
+          python3 scripts/patch-vanilla-planet-web.py
+          python3 scripts/patch-vanilla-settings-web.py
+          python3 scripts/patch-mindustry-external-urls-web.py
+
+      - name: Verify applied local gameplay overlays
+        run: |
+          logic='work/Mindustry/core/src/mindustry/core/Logic.java'
+          local_runtime='web-runtime/src/main/java/mindustry/web/BrowserLocalMapRuntime.java'
+          browser_app='web-runtime/src/main/java/mindustry/web/BrowserApplication.java'
+          grep -Fq 'Local attack-mode maps are supported on Web; preserve the selected map rule.' "$local_runtime"
+          grep -Fq 'int countAlive = state.teams.getActive().count(t -> t.isAlive() && t.team != Team.derelict);' "$logic"
+          grep -Fq 'stock buildAi/rtsAi/prebuildAi/fillItems are now supported by the Web loop.' "$local_runtime"
+          grep -Fq 'if(data.rtsAi == null) data.rtsAi = new RtsAI(data);' "$logic"
+          grep -Fq 'if(data.buildAi == null) data.buildAi = new BaseBuilderAI(data);' "$logic"
+          grep -Fq 'Vars.state.isPlaying() && !Vars.state.gameOver' "$browser_app"
+          echo 'Local Attack + stock Team AI + Yandex Game Over lifecycle applied before TeaVM compile'
+
+      - name: Verify applied Web renderer hot-path patch
+        run: |
+          sprite='work/Arc/arc-core/src/arc/graphics/g2d/SpriteBatch.java'
+          grep -Fq 'int[] sortOrder = new int[0], sortScratch = new int[0];' "$sprite"
+          grep -Fq 'int[] runs = contiguous;' "$sprite"
+          grep -Fq 'dst[out++] = za <= zb ? src[a++] : src[b++];' "$sprite"
+          grep -Fq 'System.arraycopy(requests, pos, copy, ptr, length);' "$sprite"
+          if grep -Fq 'long[] sortKeys' "$sprite"; then
+            echo 'Web SpriteBatch regressed to TeaVM long-key sorting.' >&2
+            exit 1
+          fi
+          if grep -Fq 'commonPool = new ForkJoinHolder();' "$sprite"; then
+            echo 'Web SpriteBatch unexpectedly initializes the JVM ForkJoin sorter.' >&2
+            exit 1
+          fi
+
+      - name: Compile Arc Web backend
+        working-directory: work/Arc
+        run: |
+          chmod +x gradlew
+          ./gradlew :arc-core:compileJava :backends:backend-web:compileJava --no-daemon --stacktrace
+
+      - name: Compile Mindustry core bytecode for TeaVM reachability
+        working-directory: work/Mindustry
+        run: |
+          chmod +x gradlew
+          ./gradlew core:compileJava --no-daemon --stacktrace
+          test -s core/build/classes/java/main/mindustry/core/Version.class
+
+      - name: Compile current Mindustry and Arc bytecode with TeaVM
+        run: |
+          set -o pipefail
+          work/Arc/gradlew -p web-runtime generateJavaScript stageWeb --no-daemon --stacktrace 2>&1 | tee work/teavm-compile.log
+          if grep -Fq 'Error in @JSBody' work/teavm-compile.log; then exit 1; fi
+
+      - name: Remove TeaVM runtime documentation link
+        run: python3 scripts/sanitize-teavm-runtime-links.py
+
+      - name: Verify exact 100 MB Yandex unpacked size budget
+        run: |
+          python3 scripts/test_yandex_size_budget.py
+          node scripts/test-campaign-map-loading.js
+          python3 scripts/yandex_size_budget.py
+
+      - name: Upload Yandex size-budget report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yandex-size-budget
+          path: |
+            work/release/mindustry-yandex-size-budget.txt
+            work/release/mindustry-yandex-size-budget.json
+          if-no-files-found: warn
+
+      - name: Validate staged browser smoke package
+        run: |
+          test -s web-runtime/build/web/index.html
+          test -s web-runtime/build/web/mindustry.js
+          test -z "$(find web-runtime/build/web -type f -name '*.map' -print -quit)"
+          test -s web-runtime/build/web/yandex-platform.js
+          test -s web-runtime/build/web/browser-storage.js
+          test -s web-runtime/build/web/browser-audio.js
+          test -s web-runtime/build/web/assets-manifest.js
+          test -s web-runtime/build/web/assets/sounds/ui/uiButton.ogg
+          test -s web-runtime/build/web/assets/logicids.dat
+          test -s web-runtime/build/web/licenses/Mindustry-GPL-3.0.txt
+          test -s web-runtime/build/web/licenses/Arc-Apache-2.0.txt
+          test -s web-runtime/build/web/licenses/SOURCE-NOTICE.txt
+          test -s web-runtime/build/web/licenses/upstream.lock
+          test -s web-runtime/build/web/assets/sprites/clouds.png
+          test -s web-runtime/build/web/assets/sprites/rays.png
+          test -s web-runtime/build/web/assets/sprites/distortAlpha.png
+          test -s web-runtime/build/web/assets/sprites/error.png
+          test -s web-runtime/build/web/assets/sprites/block_colors.png
+          test -s web-runtime/build/web/assets/sprites/sprites.aatls
+          test -s web-runtime/build/web/assets/sprites/sprites.png
+          test -s web-runtime/build/web/assets/bundles/bundle.properties
+          test -s web-runtime/build/web/assets/bundles/bundle_ru.properties
+          test -s web-runtime/build/web/assets/icons/icons.properties
+          test -s web-runtime/build/web/assets/locales
+          grep -qx 'en' web-runtime/build/web/assets/locales
+          grep -qx 'ru' web-runtime/build/web/assets/locales
+          test "$(wc -l < web-runtime/build/web/assets/locales)" -eq 2
+          for name in default outline monospace icon iconLarge tech logic; do
+            test -s "web-runtime/build/web/assets/webfonts/$name.fnt"
+            test -s "web-runtime/build/web/assets/webfonts/$name-0.png"
+            grep -q "webfonts/$name.fnt" web-runtime/build/web/assets-manifest.js
+            grep -q "webfonts/$name-0.png" web-runtime/build/web/assets-manifest.js
+          done
+          test ! -e web-runtime/build/web/assets/fonts/font.woff
+          test ! -e web-runtime/build/web/assets/fonts/monospace.woff
+          test ! -e web-runtime/build/web/assets/fonts/icon.ttf
+          test ! -e web-runtime/build/web/assets/fonts/logic.ttf
+          test ! -e web-runtime/build/web/assets/fonts/tech.ttf
+          grep -q 'mindustry-canvas' web-runtime/build/web/index.html
+          grep -q 'mindustry-web-status' web-runtime/build/web/index.html
+          grep -q 'data-mindustry-network' web-runtime/build/web/index.html
+          grep -q 'data-mindustry-storage' web-runtime/build/web/index.html
+          grep -q 'data-mindustry-audio' web-runtime/build/web/index.html
+          grep -q 'browser-storage.js' web-runtime/build/web/index.html
+          grep -q 'browser-audio.js' web-runtime/build/web/index.html
+          grep -q 'assets-manifest.js' web-runtime/build/web/index.html
+          grep -q 'sounds/ui/uiButton.ogg' web-runtime/build/web/assets-manifest.js
+          grep -q 'logicids.dat' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/clouds.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/rays.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/distortAlpha.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/error.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/sprites.aatls' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/sprites.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'bundles/bundle.properties' web-runtime/build/web/assets-manifest.js
+          grep -q 'bundles/bundle_ru.properties' web-runtime/build/web/assets-manifest.js
+          grep -q 'icons/icons.properties' web-runtime/build/web/assets-manifest.js
+          grep -q 'locales' web-runtime/build/web/assets-manifest.js
+          echo "TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)"
+          echo "Staged AATLS bytes: $(wc -c < web-runtime/build/web/assets/sprites/sprites.aatls)"
+          echo "Staged atlas pages: $(find web-runtime/build/web/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)"
+          echo "Total baked font PNGs: $(find web-runtime/build/web/assets/webfonts -maxdepth 1 -type f -name '*.png' | wc -l)"
+
+      - name: Enforce self-contained no-links Yandex package
+        run: |
+          if grep -REn --include='*.html' --include='*.css' --include='*.fnt' --include='*.properties' --include='*.js' 'https?://|wss?://' web-runtime/build/web; then
+            echo 'External URL found in deployable HTML/CSS/font/bundle/JavaScript files.' >&2
+            exit 1
+          fi
+          if grep -RFn 'Core.app.openURI(' work/Mindustry/core/src/mindustry/ui work/Mindustry/core/src/mindustry/editor; then
+            echo 'Direct external navigation call remained in patched UI/editor source.' >&2
+            exit 1
+          fi
+          grep -q "requireLocal(input, 'fetch')" web-runtime/build/web/index.html
+          grep -q "data-mindustry-network', 'local-only'" web-runtime/build/web/index.html
+          echo 'Deployable package contains no external URL literals in staged HTML/CSS/BMFont/bundles/JavaScript.'
+
+      - name: Audit Yandex release package requirements
+        run: bash scripts/audit-yandex-release.sh
+
+      # An independently downloadable DEVELOPMENT BUILD for the user's
+      # hands-on testing. This is explicitly NOT a release or even a claim
+      # that the subsequent real-Chrome tests passed: they continue below.
+      # Package only after TeaVM compiled, all pinned assets are present,
+      # the external-URL audit passed, and 100000000-byte cap passed.
+      # Do not condition the human-playtest artifact on yet-to-run UI/factory
+      # matrix outcomes, and never rename it to the approved release artifact.
+      - name: Package experimental game for manual playtesting
+        run: |
+          python3 scripts/package-yandex-release.py
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          cat > work/release/EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt <<EOF
+          This is a DEVELOPMENT playtest build, not a verified Yandex Games release.
+          Git SHA: ${GITHUB_SHA}
+          Includes original 3D Serpulo/Erekir planet interface in this source revision.
+          IMPORTANT: Native browser interaction, 46 campaign maps, saves and
+          gameplay factory regressions have NOT finished running at publication.
+          Some features may be incomplete or malfunction. Please report bugs.
+          Hard release gates later in this workflow are NOT bypassed.
+          EOF
+
+      - name: Upload experimental playable Yandex ZIP after byte budget
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          path: |
+            work/release/mindustry-yandex-release.zip
+            work/release/mindustry-yandex-release.zip.sha256
+            work/release/mindustry-yandex-release-report.txt
+            work/release/EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt
+          if-no-files-found: error
+
+      - name: Original research roots, native purchase, graph input and modal resize
+        run: bash scripts/verify-browser-native-research.sh
+
+      # Fail fast on native dialog interaction before the long campaign matrices.
+      - name: Native planet research context and nested modal close
+        run: bash scripts/verify-browser-planet-dialog.sh
+      - name: Ground Zero native research node and build palette
+        run: bash scripts/verify-browser-palette-visibility.sh
+      - name: Native HUD geometry and input on three portal surfaces
+        run: bash scripts/verify-browser-hud-layout.sh
+      - name: Native wave controls and live enemy spawning
+        run: bash scripts/verify-browser-wave-hud-stress.sh
+      - name: Native live campaign HUD opens original planets
+        run: bash scripts/verify-browser-hud-planet-stress.sh
+      - name: Native building configuration and repeated input
+        run: bash scripts/verify-browser-building-config-stress.sh
+      - name: Original custom catalog and edited-rule launch
+        run: bash scripts/verify-browser-custom-game.sh
+      - name: Native menu controls and repeated dialogs
+        run: bash scripts/verify-browser-ui-button-stress.sh
+      - name: Native resize and orientation continuity
+        run: bash scripts/verify-browser-resize-orientation.sh
+      - name: Native translated portal HUD bounds
+        run: bash scripts/verify-browser-portal-bounds.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-research-screenshots
+          path: work/menu-ui/*.png
+          if-no-files-found: ignore
