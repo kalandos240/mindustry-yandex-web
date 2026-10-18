@@ -249,7 +249,7 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        if(mode == Gamemode.attack && !supportsAttack(slug)) return;
+        if(mode == Gamemode.attack && selectedRules == null && !supportsAttack(slug)) return;
 
         // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
         // reads Map.spawns, which is still zero before the MSAV body is loaded here.
