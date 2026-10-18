@@ -321,4 +321,4 @@ jobs:
             work/firefox-*.png
             work/firefox-*.html
 
-# Recheck compact HUD reading region using transformed native actors.
+# Verify narrow tutorial proximity and portrait reading area.

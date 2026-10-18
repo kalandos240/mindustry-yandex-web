@@ -7,6 +7,9 @@ p = root / 'work/Mindustry/core/src/mindustry/entities/comp/WorldLabelComp.java'
 s = p.read_text()
 s = s.replace('import arc.graphics.*;', 'import arc.*;\nimport arc.math.*;\nimport arc.graphics.*;', 1)
 s = s.replace('    public static final byte', '    public static arc.scene.Element webHudHealth, webHudPlacement;\n\n    public static final byte', 1)
+signature = '    public static void drawAt(String text, float x, float y, float layer, int flags, float fontSize, int align, int lineAlign){'
+assert s.count(signature) == 1
+s = s.replace(signature, signature + '\n        drawAt(text, x, y, layer, flags, fontSize, align, lineAlign, false);\n    }\n\n    public static void drawAt(String text, float x, float y, float layer, int flags, float fontSize, int align, int lineAlign, boolean tutorial){', 1)
 old = '        layout.setText(font, text);\n'
 new = '''        layout.setText(font, text);
 
@@ -20,8 +23,9 @@ new = '''        layout.setText(font, text);
         float padding = (flags & flagBackground) != 0 ? 1f : 0f;
         float centerX = x + (Align.isLeft(align) ? layout.width / 2f + padding : Align.isRight(align) ? -layout.width / 2f - padding : 0f);
         float textTop = y + (Align.isBottom(align) ? layout.height + padding * 1.5f : Align.isTop(align) ? -padding * 1.5f : layout.height / 2f);
-        boolean fit = Core.app.isWeb() && centerX + layout.width / 2f >= left - edge
-            && centerX - layout.width / 2f <= right + edge && textTop >= bottom - edge
+        float reach = tutorial && Vars.state.isCampaign() ? Core.camera.width * 0.5f : edge;
+        boolean fit = Core.app.isWeb() && centerX + layout.width / 2f >= left - reach
+            && centerX - layout.width / 2f <= right + reach && textTop >= bottom - edge
             && textTop - layout.height <= top + edge;
         // Compact HUDs leave a reading area below health and beside/above
         // construction. Use actual transformed actor bounds, not device pixels.
@@ -39,7 +43,7 @@ new = '''        layout.setText(font, text);
             if(webHudPlacement != null && webHudPlacement.getWidth() > 1f){
                 var lower = webHudPlacement.localToStageCoordinates(Tmp.v1.set(0f, 0f));
                 var upper = webHudPlacement.localToStageCoordinates(Tmp.v2.set(webHudPlacement.getWidth(), webHudPlacement.getHeight()));
-                if(lower.x > Core.scene.getWidth() * 0.2f){
+                if(lower.x > Core.scene.getWidth() * 0.45f){
                     right = Math.min(right, cameraLeft + lower.x / Core.scene.getWidth() * Core.camera.width - edge);
                 }else{
                     bottom = Math.max(bottom, cameraBottom + upper.y / Core.scene.getHeight() * Core.camera.height + edge);
@@ -78,4 +82,9 @@ old = '        font.draw(text, x + tx, y, 0, lineAlign, false);'
 new = '        font.draw(text, wrap ? x - layout.width / 2f : x + tx, y, wrap ? layout.width : 0f, lineAlign, wrap);'
 assert s.count(old) == 1, 'Pinned WorldLabel draw anchor changed'
 p.write_text(s.replace(old, new))
+markers = root / 'work/Mindustry/core/src/mindustry/game/MapObjectives.java'
+source = markers.read_text()
+old_call = 'WorldLabel.drawAt(fetchedText, pos.x, pos.y, drawLayer, flags, fontSize * scaleFactor, textAlign, lineAlign);'
+assert source.count(old_call) == 1, 'Pinned tutorial text marker draw anchor changed'
+markers.write_text(source.replace(old_call, old_call[:-2] + ', true);'))
 print('World labels: wrap and fit visible anchors to the Web camera viewport')
