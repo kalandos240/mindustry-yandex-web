@@ -15,7 +15,6 @@ import static mindustry.Vars.*;
 public class BrowserResearchDialog extends ResearchDialog{
     private int sampleFrames;
     private boolean queryChecked, diagnostics, fixture;
-    private float footerSceneWidth = -1f;
 
     public BrowserResearchDialog(){
         name = "web-native-research";
@@ -27,10 +26,18 @@ public class BrowserResearchDialog extends ResearchDialog{
     }
 
     private void fitFooter(){
-        footerSceneWidth = Core.scene.getWidth();
-        float width = Math.min(210f, (Core.scene.getWidth() / arc.scene.ui.layout.Scl.scl(1f) - 20f) / 2f);
-        for(var cell : buttons.getCells()) if(cell.get() instanceof Button) cell.width(width);
-        buttons.invalidateHierarchy();
+        float scale = arc.scene.ui.layout.Scl.scl(1f);
+        float width = Math.min(210f, (Core.scene.getWidth() / scale - 20f) / 2f);
+        boolean changed = false;
+        for(var cell : buttons.getCells()){
+            if(!(cell.get() instanceof Button button)) continue;
+            float height = Math.max(64f, button.getPrefHeight()/scale);
+            if(Math.abs(cell.minWidth()-width*scale) > 0.5f || Math.abs(cell.minHeight()-height*scale) > 0.5f){
+                cell.width(width).height(height);
+                changed = true;
+            }
+        }
+        if(changed) buttons.invalidateHierarchy();
     }
 
     private void fitHeaders(){
@@ -51,7 +58,7 @@ public class BrowserResearchDialog extends ResearchDialog{
     public void act(float delta){
         super.act(delta);
         if(!isShown()) return;
-        if(footerSceneWidth != Core.scene.getWidth()) fitFooter();
+        fitFooter();
         fitHeaders();
         if((++sampleFrames & 15) != 0) return;
         if(!queryChecked){ diagnostics = requested(); queryChecked = true; }
@@ -77,8 +84,13 @@ public class BrowserResearchDialog extends ResearchDialog{
         report("invest", view.find("web-research-invest-conveyor"));
         report("root-serpulo", Core.scene.root.find("web-research-root-core-shard"));
         report("root-erekir", Core.scene.root.find("web-research-root-core-bastion"));
+        int footerIndex = 0;
         for(Element e : buttons.getChildren()){
-            if(e instanceof Button){ report("back", e); break; }
+            if(e instanceof TextButton button){
+                String key = footerIndex++ == 0 ? "back" : "database";
+                report(key, button);
+                report(key + "-label", button.getLabel());
+            }
         }
     }
 

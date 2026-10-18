@@ -10,6 +10,10 @@
   const b=c.getBoundingClientRect(),a=JSON.parse(get('native-research-title')),d=JSON.parse(get('native-research-items'));
   for(const [key,box] of [['title',a],['items',d]])if(!box||box[0]<-.5||box[1]<-.5||box[2]>b.width+.5||box[3]>b.height+.5)throw Error('Native research header clipped '+key+': '+box);
   if(Math.min(a[2],d[2])-Math.max(a[0],d[0])>1&&Math.min(a[3],d[3])-Math.max(a[1],d[1])>1)throw Error('Native research resource header overlaps tree title');
+  for(const key of ['back','database']){
+   const button=JSON.parse(get('native-research-'+key)),label=JSON.parse(get('native-research-'+key+'-label'));
+   if(!button||!label||label[0]<button[0]-.5||label[1]<button[1]-.5||label[2]>button[2]+.5||label[3]>button[3]+.5)throw Error('Translated native footer label clipped '+key);
+  }
  };
  await wait(()=>get('research-implementation')==='original-ResearchDialog','original class installed');
  if(campaign)await wait(()=>get('campaign-state')==='playing'&&get('campaign-save')==='valid','actual campaign and sector save');
