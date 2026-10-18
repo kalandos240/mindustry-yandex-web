@@ -120,6 +120,7 @@ public final class BrowserVanillaDialogs{
         if(ui.controls.isShown()) active.append("controls,");
         if(ui.language.isShown()) active.append("language,");
         if(ui.schematics.isShown()) active.append("schematics,");
+        if(ui.research.isShown()) active.append("research,");
         if(ui.database.isShown()) active.append("database,");
         BrowserStockDatabaseUi.sample();
         BrowserStockCustomGameUi.sample();

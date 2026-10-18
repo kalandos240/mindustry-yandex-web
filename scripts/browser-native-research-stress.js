@@ -33,6 +33,7 @@
  await open();
  await wait(()=>Number(get('research-tree-visible-nodes'))>2,'native visible nodes');
  await wait(()=>get('native-research-items'),'native resource header');headers();
+ if(campaign&&get('native-research-pause-menu-visible')!=='no')throw Error('Web pause menu visible beneath original research modal');
  if(campaign){
   const transitions=Number(get('space-transition-count')||0);
   window.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,code:'Space',key:' '}));await sleep(150);window.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,code:'Space',key:' '}));
@@ -59,7 +60,10 @@
   if(get('native-research-conveyor-unlocked')!=='no')throw Error('Conveyor must start locked');
   const before=Number(get('native-research-copper'));
   await click('conveyor');
-  if(get('input-mode')==='mobile')await click('invest');
+  if(get('input-mode')==='mobile'){
+   const card=Number(get('cpu-sample'));await wait(()=>Number(get('cpu-sample'))>=card+2,'native mobile information-card pan completes');
+   await click('invest');
+  }
   await wait(()=>get('native-research-conveyor-unlocked')==='yes','native spend unlocks Conveyor');
   const copper=Number(get('native-research-copper')),progress=Number(get('native-research-progress'));
   if(!(copper<before&&before-copper===progress&&progress>0))throw Error('Original research cost mismatch '+before+' -> '+copper+' progress '+progress);
