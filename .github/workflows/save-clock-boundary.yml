@@ -1,0 +1,51 @@
+name: Exact decimal-boundary save clock acceptance
+on:
+  push:
+    branches: [native-save-clock-boundary-acceptance]
+    paths: ['.github/workflows/save-clock-boundary.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39144736802
+          github-token: ${{ github.token }}
+          path: work/release
+      - name: Extract exact compiled archive
+        run: |
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          mkdir -p web-runtime/build/web
+          unzip -q work/release/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Both native campaigns and devices preserve millisecond-boundary save values
+        run: bash scripts/verify-browser-save-clock-go.sh
+      - name: Confirm untouched production game and budgets
+        run: |
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          with ZipFile('work/release/mindustry-yandex-release.zip') as z:
+              assert z.read('mindustry.js')==Path('web-runtime/build/web/mindustry.js').read_bytes()
+          PY
+          python3 scripts/yandex_size_budget.py
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-save-clock-boundary-verified
+          path: |
+            work/release/mindustry-yandex-release.zip
+            work/release/mindustry-yandex-release.zip.sha256
+            work/release/mindustry-yandex-release-report.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clock-boundary-native-evidence
+          path: |
+            work/clock-*.html
+            work/clock-*.png
