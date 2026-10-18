@@ -1,0 +1,59 @@
+name: Firefox saved campaign native Go acceptance
+on:
+  push:
+    branches: [native-save-wave-firefox]
+    paths: ['.github/workflows/save-wave-firefox.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  firefox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Firefox browser harness
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps firefox
+      - name: Wait for exact compiled archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 90); do
+            found=$(gh api repos/kalandos240/mindustry-yandex-web/actions/runs/39146826837/artifacts --jq '[.artifacts[]|select(.name=="mindustry-yandex-manual-playtest-experimental")]|length')
+            if [ "$found" != 0 ]; then exit 0; fi
+            sleep 10
+          done
+          exit 1
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 39146826837
+          name: mindustry-yandex-manual-playtest-experimental
+          path: compiled
+      - name: Extract untouched compiled archive
+        run: |
+          mkdir -p work web-runtime/build/web
+          (cd compiled && sha256sum -c mindustry-yandex-release.zip.sha256)
+          unzip -q compiled/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Actual Firefox cold saved campaign native Go
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          MOZ_WEBRENDER: "1"
+        run: xvfb-run -a python3 scripts/verify-firefox-saved-sector.py
+      - name: Confirm fixture-free packaged game
+        run: |
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          with ZipFile('compiled/mindustry-yandex-release.zip') as z:
+              assert z.read('mindustry.js')==Path('web-runtime/build/web/mindustry.js').read_bytes()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firefox-saved-sector-evidence
+          path: |
+            work/firefox-*.html
+            work/firefox-*.png
