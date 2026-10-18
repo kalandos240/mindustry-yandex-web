@@ -289,28 +289,18 @@ jobs:
 
       - name: Native sound sliders, campaign persistence and paused gameplay
         run: |
-          # Immutable staged assets, separate HTTP/CDP ports and Chrome profiles.
-          # Keep the clock fixture (which edits staged JS) strictly after all three.
-          bash scripts/verify-browser-settings-tab-stress.sh > work/settings-validation.log 2>&1 &
-          settings_pid=$!
+          # A single TeaVM startup can occupy the renderer for over 30 seconds
+          # when three SwiftShader processes compete on a shared runner.
+          # Keep all assertions and cold profiles; run suites sequentially.
+          bash scripts/verify-browser-settings-tab-stress.sh 2>&1 | tee work/settings-validation.log
           (
             set -e
             bash scripts/verify-browser-campaign-save-resume.sh
             INVENTORY_EMPTY=1 bash scripts/verify-browser-campaign-save-resume.sh
             INVENTORY_DEVICES=desktop INVENTORY_SPENT=partial bash scripts/verify-browser-campaign-save-resume.sh
             INVENTORY_DEVICES=mobile INVENTORY_SPENT=all bash scripts/verify-browser-campaign-save-resume.sh
-          ) > work/inventory-validation.log 2>&1 &
-          inventory_pid=$!
-          bash scripts/verify-browser-gameplay-button-stress.sh > work/settings-gameplay-validation.log 2>&1 &
-          gameplay_pid=$!
-          failed=0
-          if ! wait "$settings_pid"; then failed=1; fi
-          cat work/settings-validation.log
-          if ! wait "$inventory_pid"; then failed=1; fi
-          cat work/inventory-validation.log
-          if ! wait "$gameplay_pid"; then failed=1; fi
-          cat work/settings-gameplay-validation.log
-          test "$failed" -eq 0
+          ) 2>&1 | tee work/inventory-validation.log
+          bash scripts/verify-browser-gameplay-button-stress.sh 2>&1 | tee work/settings-gameplay-validation.log
       - name: Native Go resumes saved Erekir sector
         run: CLOCK_DEVICES=mobile CLOCK_SECTORS=onset bash scripts/verify-browser-save-clock-go.sh
       - name: Verify packaged JavaScript is unchanged by save fixtures
