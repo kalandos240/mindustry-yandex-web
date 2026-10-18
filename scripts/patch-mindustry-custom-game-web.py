@@ -30,12 +30,30 @@ body = body.replace("        addCloseButton();", """        float webButtonWidth
 body = body.replace("}).size(210f, 64f);", "}).size(webButtonWidth, 64f);")
 body = body.replace("        show();", "        show();\n        webFit(this);", 1)
 text = text[:start] + body + text[end:]
-text = text.replace("        d.show();", "        d.show();\n        webFit(d);", 1)
+# A resize can arrive while CustomRulesDialog covers its parent; stock onResize
+# only runs for the top modal. Refit existing actors without rebuilding rules.
+text = text.replace('        setFillParent(false);', '        setFillParent(false);\n        webTrack(this);', 1)
+text = text.replace("        d.show();", "        webTrack(d);\n        d.show();\n        webFit(d);", 1)
 helper = """
+    private static void webTrack(BaseDialog dialog){
+        final float[] viewport = {-1f, -1f};
+        dialog.update(() -> {
+            float width = Core.scene.getWidth(), height = Core.scene.getHeight();
+            if(width == viewport[0] && height == viewport[1]) return;
+            viewport[0] = width;
+            viewport[1] = height;
+            if(dialog instanceof MapPlayDialog){
+                float buttonWidth = Math.max(1f, Math.min(210f, (width - 40f) / 2f));
+                dialog.buttons.getCells().each(cell -> cell.width(buttonWidth));
+            }
+            webFit(dialog);
+        });
+    }
+
     private static void webFit(BaseDialog dialog){
         float width = Math.max(1f, Core.scene.getWidth() - Core.scene.marginLeft - Core.scene.marginRight);
         float height = Math.max(1f, Core.scene.getHeight() - Core.scene.marginTop - Core.scene.marginBottom);
-        dialog.setSize(Math.min(dialog.getWidth(), width), Math.min(dialog.getHeight(), height));
+        dialog.setSize(Math.min(dialog.getPrefWidth(), width), Math.min(dialog.getPrefHeight(), height));
         dialog.validate();
         dialog.centerWindow();
     }

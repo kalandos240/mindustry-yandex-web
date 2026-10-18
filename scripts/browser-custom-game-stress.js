@@ -33,6 +33,14 @@
   await click('custom-customize');
   await wait(()=>get('custom-page')==='rules','stock custom rules');
   await click('custom-wave-timer');
+  // Resize while the rules modal covers MapPlayDialog. Its parent must refit
+  // on return, preserving the edited rule and actual Back/Play hit rectangles.
+  const surface=document.getElementById('mindustry-game-surface'),resizeBefore=Number(get('resize-count'));
+  const oldHeight=surface.clientHeight;
+  surface.style.height='85%';
+  await wait(()=>Number(get('resize-count'))>resizeBefore&&surface.clientHeight<oldHeight&&get('container-match')==='true','resize under rules modal');
+  const resizedFrame=Number(get('cpu-sample'));
+  await wait(()=>Number(get('cpu-sample'))>resizedFrame,'rule modal and parent refit');
   await click('custom-back');
   await wait(()=>get('custom-page')==='map','custom rules return');
   await click('custom-launch');
