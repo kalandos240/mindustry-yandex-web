@@ -56,3 +56,5 @@ jobs:
             /tmp/mindustry-hud-planet.html
             work/menu-ui/*.png
             work/cold-*
+
+# The destroyed-core seed may end its live session after its durable flush.
