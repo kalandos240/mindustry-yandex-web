@@ -28,7 +28,7 @@ public final class BrowserHudLayout{
         if(info != null){
             float height = small ? Scl.scl(60f) : info.getWidget().getPrefHeight();
             var cell = frame.getCell(info);
-            if(cell.getMinHeight() != height){
+            if(cell.minHeight() != height){
                 cell.height(height / Scl.scl(1f));
                 frame.invalidateHierarchy();
             }
