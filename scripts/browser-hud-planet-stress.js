@@ -80,6 +80,23 @@
   const stable=Number(v('cpu-sample'));
   await wait(()=>Number(v('cpu-sample'))>stable,
     'TeaVM lives after native cross-planet campaign transition');
+  // Returning to an existing sector must load its persisted MSAV, not generate it.
+  for(const [planet,preset] of [['erekir','onset'],['serpulo','groundZero']]){
+    let sample=Number(v('cpu-sample'));
+    await wait(()=>Number(v('cpu-sample'))>=sample+2,'HUD settles before saved-sector return');
+    await clickStock(Number(v('hud-planet-x')),Number(v('hud-planet-y')),'reopen-'+preset);
+    await wait(()=>v('hud-planet-open')==='yes','globe for saved '+preset);
+    sample=Number(v('cpu-sample'));
+    await wait(()=>Number(v('cpu-sample'))>=sample+2,'globe coordinates for '+preset);
+    await clickStock(Number(v('planet-hit-'+planet+'-x')),Number(v('planet-hit-'+planet+'-y')),'select-'+preset);
+    await wait(()=>v('planet-start-sector-planet')===planet&&v('planet-hit-launch-exposed')==='yes'&&v('planet-hit-launch-disabled')==='no','Go to saved '+preset);
+    sample=Number(v('cpu-sample'));
+    await wait(()=>Number(v('cpu-sample'))>=sample+2,'saved-sector button coordinates');
+    await clickStock(Number(v('planet-hit-launch-x')),Number(v('planet-hit-launch-y')),'return-'+preset);
+    await wait(()=>v('campaign-state')==='playing'&&v('campaign-preset')===preset&&v('campaign-resume')==='ready','saved '+preset+' resumes; failure='+v('campaign-launch-failure'));
+    sample=Number(v('cpu-sample'));
+    await wait(()=>Number(v('cpu-sample'))>=sample+2,'live resumed '+preset);
+  }
   root.setAttribute('data-mindustry-hud-planet-cross-campaign','passed');
   root.setAttribute('data-mindustry-hud-planet-browser','passed');
   return 'Live HUD Icon.map opened 3D globe, switched Onset to GroundZero via real Launch and survived resize';

@@ -1,0 +1,40 @@
+name: Saved sector native Go diagnosis
+on:
+  push:
+    branches: [native-sector-return-diagnosis]
+    paths: ['.github/workflows/native-sector-return.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-original-research-playtest
+          run-id: 39097396561
+          github-token: ${{ github.token }}
+          path: work/release
+      - name: Extract exact reported build and trace throws
+        run: |
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          mkdir -p web-runtime/build/web
+          unzip -q work/release/mindustry-yandex-release.zip -d web-runtime/build/web
+          python3 scripts/debug-browser-runtime.py
+      - name: Native Onset Ground Zero and back through saved-sector Go buttons
+        env:
+          MINDUSTRY_CDP_CONSOLE: '1'
+        run: |
+          set -o pipefail
+          bash scripts/verify-browser-hud-planet-stress.sh 2>&1 | tee work/native-sector-return.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-sector-return-diagnosis
+          path: |
+            work/native-sector-return.log
+            /tmp/mindustry-hud-planet.html
+            work/menu-ui/*.png
