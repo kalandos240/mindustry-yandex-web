@@ -58,3 +58,10 @@ earlier mobile gesture could hit the still-closing chooser instead of the tree.
 
 This change does not claim whole-interface parity or recertify the full
 46-sector gameplay matrix.
+
+Additional unchanged-ZIP run 39100720051 passed the same lost-sector/backup
+checks and waited for actual player spawn before sending input. Its reviewed
+desktop screenshot shows the spawned Evoke at tile 300,108 after KeyD, versus
+the core/landing tile 277,108. The mobile screenshot confirms a spawned Evoke
+and a responding native core selection after a touch gesture; it does not
+prove mobile unit displacement.
