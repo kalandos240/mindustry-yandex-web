@@ -1,0 +1,39 @@
+name: Reproduce saved wave rollback
+on:
+  push:
+    branches: [native-save-wave-reproduction]
+    paths: ['.github/workflows/save-wave-reproduction.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 39144736802
+          name: mindustry-save-clock-fixed-verified
+          path: old-clock
+      - name: Extract previous exact ZIP
+        run: |
+          mkdir -p work web-runtime/build/web
+          unzip -q old-clock/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Reproduce wave 3 saved-sector Go rollback
+        run: |
+          if CLOCK_DEVICES=desktop CLOCK_SECTORS=onset bash scripts/verify-browser-save-clock-go.sh > work/old-wave.log 2>&1; then
+            cat work/old-wave.log
+            echo 'Previous build unexpectedly accepted wave 3 save'
+            exit 1
+          fi
+          tail -c 20000 work/old-wave.log
+          grep -F 'resume-clock-mismatch:w=3/1' work/old-wave.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: previous-zip-wave-reproduction
+          path: |
+            work/old-wave.log
+            work/clock-*.html
