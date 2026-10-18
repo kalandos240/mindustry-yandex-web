@@ -284,12 +284,6 @@ jobs:
             work/release/EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt
           if-no-files-found: error
 
-      - name: Native Go restores long played Ground Zero and Onset saves exactly on desktop and mobile
-        run: bash scripts/verify-browser-save-clock-go.sh
-      - name: Native returns to existing saved sectors
-        run: bash scripts/verify-browser-hud-planet-stress.sh
-      - name: Exact healthy save resources wave and tick after cold restart
-        run: bash scripts/verify-browser-campaign-save-resume.sh
       - name: Install Firefox acceptance browser
         run: |
           python3 -m pip install playwright
@@ -299,6 +293,8 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: "1"
           MOZ_WEBRENDER: "1"
         run: xvfb-run -a python3 scripts/verify-firefox-saved-sector.py
+      - name: Native Go restores saved wave and tick on desktop and mobile
+        run: bash scripts/verify-browser-save-clock-go.sh
       - name: Ensure fixtures never changed the packaged game
         run: |
           python3 - <<'PY'

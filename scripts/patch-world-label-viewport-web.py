@@ -9,14 +9,19 @@ s = s.replace('import arc.graphics.*;', 'import arc.*;\nimport arc.math.*;\nimpo
 old = '        layout.setText(font, text);\n'
 new = '''        layout.setText(font, text);
 
-        // Keep off-screen world markers off-screen. Fit only labels whose
-        // anchor is visible, using camera/world units rather than DOM pixels.
+        // Fit text that intersects the view, even if its anchor is just outside.
+        // Fully off-screen labels stay off-screen. All measurements use world units.
         float edge = Core.camera.width * 0.015f;
         float left = Core.camera.position.x - Core.camera.width / 2f + edge;
         float right = Core.camera.position.x + Core.camera.width / 2f - edge;
         float bottom = Core.camera.position.y - Core.camera.height / 2f + edge;
         float top = Core.camera.position.y + Core.camera.height / 2f - edge;
-        boolean fit = Core.app.isWeb() && x >= left - edge && x <= right + edge && y >= bottom - edge && y <= top + edge;
+        float padding = (flags & flagBackground) != 0 ? 1f : 0f;
+        float centerX = x + (Align.isLeft(align) ? layout.width / 2f + padding : Align.isRight(align) ? -layout.width / 2f - padding : 0f);
+        float textTop = y + (Align.isBottom(align) ? layout.height + padding * 1.5f : Align.isTop(align) ? -padding * 1.5f : layout.height / 2f);
+        boolean fit = Core.app.isWeb() && centerX + layout.width / 2f >= left - edge
+            && centerX - layout.width / 2f <= right + edge && textTop >= bottom - edge
+            && textTop - layout.height <= top + edge;
         float wrapWidth = Core.camera.width * 0.65f;
         boolean wrap = fit && layout.width > wrapWidth;
         if(wrap){
