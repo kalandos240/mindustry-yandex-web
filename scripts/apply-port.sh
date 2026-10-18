@@ -302,3 +302,5 @@ echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
 echo "Applied Web single-thread asset, SpriteBatch, FogControl and Pathfinder scheduler patches"
 echo "Applied Web-only Mindustry startup/single-player/save/input/gameplay patches"
+
+python3 "$ROOT_DIR/scripts/patch-mindustry-hud-items-web.py"

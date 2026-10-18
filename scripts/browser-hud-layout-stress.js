@@ -36,6 +36,7 @@
   // The stock info/cost panel expands after selection; fit the complete actor
   // graph again after a genuine container resize and verify transformed input.
   const old=Number(get('resize-count'));surface.style.height=get('input-mode')==='mobile'?'45%':'85%';
+  if(new URLSearchParams(location.search).get('hudNarrow')==='1')surface.style.width='41%';
   await wait(()=>Number(get('resize-count'))>old&&get('container-match')==='true','short portal resize');
   await alive();check();
   await click('category');await alive();check();
