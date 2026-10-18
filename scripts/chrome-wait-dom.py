@@ -552,7 +552,22 @@ def main() -> int:
                     continue
 
                 if args.after_ready_eval:
-                    eval_result = evaluate_await(ws, message_id, args.after_ready_eval, deadline - time.monotonic())
+                    try:
+                        eval_result = evaluate_await(ws, message_id, args.after_ready_eval, deadline - time.monotonic())
+                    except Exception:
+                        message_id += 1
+                        try:
+                            markers = evaluate(ws, message_id, "JSON.stringify(Object.fromEntries(Array.from(document.documentElement.attributes).filter(a=>a.name.startsWith('data-mindustry-')).map(a=>[a.name,a.value])))")
+                            message_id += 1
+                            sys.stderr.write("CHROME_FAILURE_MARKERS:" + markers + "\n")
+                            if args.screenshot:
+                                shot = cdp_command(ws, message_id, "Page.captureScreenshot", {"format": "png"})
+                                destination = Path(args.screenshot).with_suffix('.failure.png')
+                                destination.parent.mkdir(parents=True, exist_ok=True)
+                                destination.write_bytes(base64.b64decode(shot["result"]["data"]))
+                        except Exception as diagnostic_error:
+                            sys.stderr.write("Failure snapshot unavailable: " + str(diagnostic_error)[:200] + "\n")
+                        raise
                     message_id += 1
                     last_html = evaluate(
                         ws,
