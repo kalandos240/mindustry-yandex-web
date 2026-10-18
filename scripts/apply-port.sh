@@ -296,6 +296,8 @@ python3 "$ROOT_DIR/scripts/patch-mindustry-control-unlock-web.py" \
   "$MINDUSTRY_DIR/core/src/mindustry/core/Control.java"
 python3 "$ROOT_DIR/scripts/patch-mindustry-control-pause-web.py"
 
+python3 "$ROOT_DIR/scripts/patch-mindustry-custom-game-web.py"
+
 echo "Applied Arc Web overlay to $TARGET_DIR"
 echo "Applied Web-only Arc settings/core/audio/buffer compatibility patches"
 echo "Applied Web single-thread asset, SpriteBatch, FogControl and Pathfinder scheduler patches"

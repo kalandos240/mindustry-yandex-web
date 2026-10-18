@@ -48,6 +48,9 @@ public final class BrowserVanillaDialogs{
         // Save-slot management reuses native LoadDialog but redirects its load action
         // to the already validated browser-local Continue state machine.
         ui.load = new BrowserVanillaSavesDialog();
+        ui.picker = new ColorPicker();
+        ui.custom = new CustomGameDialog();
+        MapPlayDialog.webPlay = BrowserLocalMapRuntime::startNative;
 
         if(schematics == null){
             schematics = new Schematics();
@@ -103,6 +106,7 @@ public final class BrowserVanillaDialogs{
             || ui.language != null && ui.language.isShown()
             || ui.schematics != null && ui.schematics.isShown()
             || ui.database != null && ui.database.isShown()
+            || ui.custom != null && ui.custom.isShown()
             || ui.planet != null && ui.planet.isShown());
     }
 
@@ -112,11 +116,13 @@ public final class BrowserVanillaDialogs{
         StringBuilder active = new StringBuilder();
         if(ui.settings.isShown()) active.append("settings,");
         if(ui.load.isShown()) active.append("saves,");
+        if(ui.custom.isShown()) active.append("custom,");
         if(ui.controls.isShown()) active.append("controls,");
         if(ui.language.isShown()) active.append("language,");
         if(ui.schematics.isShown()) active.append("schematics,");
         if(ui.database.isShown()) active.append("database,");
         BrowserStockDatabaseUi.sample();
+        BrowserStockCustomGameUi.sample();
         if(ui.planet != null && ui.planet.isShown()) active.append("planet,");
         markDialogVisibility(active.length() == 0 ? "none" : active.toString());
         if(ui.settings.isShown() && settingsNestedProbeRequested()) sampleSettingsNestedControls();
@@ -249,6 +255,16 @@ public final class BrowserVanillaDialogs{
         }
     }
 
+    public static void openCustomGame(){
+        if(!initialized || state == null || !state.isMenu()) return;
+        BrowserLocalMapRuntime.prepareNativeCatalog();
+        ui.custom.show();
+        markCustomOpened();
+    }
+
+    @JSBody(script="document.documentElement.setAttribute('data-mindustry-vanilla-custom-open','yes');")
+    private static native void markCustomOpened();
+
     public static void openSaves(){
         if(!initialized || state == null || !state.isMenu() && !state.isGame()) return;
         ui.load.show();
@@ -295,6 +311,7 @@ public final class BrowserVanillaDialogs{
         r.setAttribute('data-mindustry-vanilla-settings', 'stock-SettingsMenuDialog');
         r.setAttribute('data-mindustry-vanilla-language', 'stock-LanguageDialog');
         r.setAttribute('data-mindustry-vanilla-saves', 'stock-LoadDialog-browser-safe');
+        r.setAttribute('data-mindustry-vanilla-custom', 'stock-CustomGameDialog');
         r.setAttribute('data-mindustry-vanilla-planet', 'stock-PlanetDialog-3d');
         r.setAttribute('data-mindustry-vanilla-research', 'browser-TechTree-preserved');
         """)

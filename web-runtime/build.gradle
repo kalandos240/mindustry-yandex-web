@@ -81,6 +81,7 @@ tasks.register("stageWeb", Copy) {
         // first real user-controlled map/start surface after deterministic CI gameplay
         // was separated from normal production startup.
         include "maps/default/**"
+        include "webmaps/**"
 
         // All stock Serpulo TechTree sector assets are staged, including optional branches.
         // Only local preset maps are packaged; browser runtime remains server-free.

@@ -189,7 +189,47 @@ public final class BrowserLocalMapRuntime{
         start(map, selectedMode());
     }
 
+    public static void prepareNativeCatalog(){
+        for(String slug : builtinSlugs){
+            Map map = bySlug(slug);
+            if(map.texture != null) continue;
+            try(DataInputStream stream = new DataInputStream(Core.files.internal("webmaps/" + slug + ".dat").read())){
+                if(stream.readUnsignedByte() != 0) throw new IOException("Unknown map preview cache version");
+                map.spawns = stream.readInt();
+                int teams = stream.readUnsignedByte();
+                map.teams.clear();
+                for(int i = 0; i < teams; i++) map.teams.add(stream.readUnsignedByte());
+            }catch(IOException error){
+                throw new IllegalStateException("Cannot read built-in preview metadata: " + slug, error);
+            }
+            map.texture = new arc.graphics.Texture(Core.files.internal("webmaps/" + slug + ".png"));
+        }
+    }
+
+    /** Original MapPlayDialog supplies the selected mode and customized rule object. */
+    public static void startNative(Map map, Rules rules){
+        if(rules == null || rules.defaultTeam == null || rules.waveTeam == null || rules.pvp || rules.editor){
+            ui.showErrorMessage("@rules.invaliddata");
+            return;
+        }
+        // CustomRulesDialog permits choosing any player/enemy team. Match
+        // World.loadMap's native validation before resetting the live menu state.
+        if(!map.teams.contains(rules.defaultTeam.id)){
+            ui.showErrorMessage(Core.bundle.format("map.nospawn", rules.defaultTeam.coloredName()));
+            return;
+        }
+        if(rules.attackMode && !map.teams.contains(rules.waveTeam.id)){
+            ui.showErrorMessage(Core.bundle.format("map.nospawn.attack", rules.waveTeam.coloredName()));
+            return;
+        }
+        start(map, savedMode(rules), rules);
+    }
+
     private static void start(Map map, Gamemode mode){
+        start(map, mode, null);
+    }
+
+    private static void start(Map map, Gamemode mode, Rules selectedRules){
         if(!initialized) throw new IllegalStateException("Browser local map catalog is not initialized");
         if(active) throw new IllegalStateException("A browser local map session is already active");
         if(map == null || !catalog.contains(map, true)){
@@ -209,12 +249,12 @@ public final class BrowserLocalMapRuntime{
         logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
-        if(mode == Gamemode.attack && !supportsAttack(slug)) return;
+        if(mode == Gamemode.attack && selectedRules == null && !supportsAttack(slug)) return;
 
         // The browser catalog decodes map metadata lazily. Gamemode.survival.valid(map)
         // reads Map.spawns, which is still zero before the MSAV body is loaded here.
         // The packaged-map world load below is the authoritative validation boundary.
-        Rules rules = map.applyRules(mode);
+        Rules rules = selectedRules == null ? map.applyRules(mode) : selectedRules;
         stageCoreRules(rules);
         if(mode == Gamemode.sandbox && (!rules.infiniteResources || !rules.waves || rules.waveTimer)){
             throw new IllegalStateException("Stock Sandbox rules were not applied on Web");

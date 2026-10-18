@@ -287,9 +287,11 @@ public final class BrowserStockMainMenu{
         const root=document.documentElement;
         root.removeAttribute('data-mindustry-play-campaign-x');
         root.removeAttribute('data-mindustry-play-campaign-y');
-        for(const name of ['play','database-group','custom','research','database','schematics','controls','settings','saves','planets']){
-            for(const edge of ['x','y','left','bottom','right','top']){
-                root.removeAttribute('data-mindustry-main-menu-'+name+'-'+edge);
+        const names=['play','database-group','custom','research','database','schematics','controls','settings','saves','planets'];
+        const edges=['x','y','left','bottom','right','top'];
+        for(let i=0;i<names.length;i++){
+            for(let j=0;j<edges.length;j++){
+                root.removeAttribute('data-mindustry-main-menu-'+names[i]+'-'+edges[j]);
             }
         }
         """)
