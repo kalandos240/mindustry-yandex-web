@@ -333,3 +333,4 @@ jobs:
 # Preserve unconstrained native item columns outside compact mode.
 
 # Diagnostic object fields use the TeaVM-supported explicit ES5 syntax.
+# Explicit word boundaries avoid Arc Label rewrapping a trailing soft sign.

@@ -17,7 +17,7 @@
       await wait(()=>get('pause-caption-'+k)!==null,'rendered caption '+k);
       const a=JSON.parse(get('pause-caption-'+k));
       if(!a.contained||a.lines<1)throw Error('Caption outside native button '+k+': '+JSON.stringify(a));
-      if(!a.text.includes(' ')&&a.lines!==1)throw Error('Word broken inside caption '+k+': '+JSON.stringify(a));
+      if(!/\s/.test(a.text)&&a.lines!==1)throw Error('Word broken inside caption '+k+': '+JSON.stringify(a));
       if(a.lines>2)throw Error('Too many caption lines '+k+': '+JSON.stringify(a));
     }
   };

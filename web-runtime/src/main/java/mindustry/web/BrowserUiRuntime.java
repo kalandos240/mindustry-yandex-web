@@ -552,6 +552,8 @@ public final class BrowserUiRuntime{
         Label label = button.getLabel();
         label.setWrap(false);
         label.setFontScale(1f);
+        String originalText = label.getText().toString().replace('\n', ' ');
+        label.setText(originalText);
         float available = Math.max(1f, width - (stacked ? 24f : 54f));
         float measured = label.getPrefWidth();
         if(stacked){
@@ -571,7 +573,13 @@ public final class BrowserUiRuntime{
             label.setText(text);
         }
         label.setFontScale(Math.min(1f, Math.max(1f, available - 3f) / Math.max(1f, measured)));
-        label.setWrap(stacked);
+        // Arc's wrapped Label lays text out twice, the second time at its
+        // glyph bounds; a final soft sign can then wrap by itself. Explicit
+        // word boundaries retain complete words in both layout passes.
+        if(stacked && label.getPrefWidth() > available){
+            label.setText(originalText.replace(' ', '\n'));
+        }
+        label.setWrap(false);
         label.setWidth(available);
         float textHeight = label.getPrefHeight();
         // clearChildren preserves the original click listeners; clear would
@@ -746,7 +754,8 @@ public final class BrowserUiRuntime{
             Vec2 upper = label.localToAscendantCoordinates(button, new Vec2(label.getWidth(), label.getHeight()));
             boolean contained = lower.x >= -0.5f && lower.y >= -0.5f
                 && upper.x <= button.getWidth() + 0.5f && upper.y <= button.getHeight() + 0.5f
-                && label.getGlyphLayout().height <= label.getHeight() + 0.5f;
+                && label.getGlyphLayout().height <= label.getHeight() + 0.5f
+                && label.getGlyphLayout().width <= label.getWidth() + 0.5f;
             markPauseCaption(action, label.getText().toString(), lines, contained);
         }
     }
