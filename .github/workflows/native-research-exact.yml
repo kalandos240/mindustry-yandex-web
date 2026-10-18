@@ -1,0 +1,79 @@
+name: Original ResearchDialog exact ZIP acceptance
+on:
+  push:
+    branches: [native-research-exact-acceptance-v3]
+    paths: ['.github/workflows/native-research-exact.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39095645869
+          github-token: ${{ github.token }}
+          path: work/release
+      - name: Verify unchanged compiled ZIP and budgets
+        run: |
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          mkdir -p web-runtime/build/web
+          unzip -q work/release/mindustry-yandex-release.zip -d web-runtime/build/web
+          python3 scripts/audit-web-performance.py
+          python3 scripts/yandex_size_budget.py
+      - name: Original research roots, native purchase, wheel zoom and graph drag
+        run: bash scripts/verify-browser-native-research.sh
+      - name: Native planet research context and nested modal close
+        run: bash scripts/verify-browser-planet-dialog.sh
+      - name: Ground Zero native research node and build palette
+        run: bash scripts/verify-browser-palette-visibility.sh
+      - name: Native compact HUD geometry and input
+        run: bash scripts/verify-browser-hud-layout.sh
+      - name: Native wave controls and enemy spawning
+        run: bash scripts/verify-browser-wave-hud-stress.sh
+      - name: Native campaign HUD cross-planet launch
+        run: bash scripts/verify-browser-hud-planet-stress.sh
+      - name: Native building configuration
+        run: bash scripts/verify-browser-building-config-stress.sh
+      - name: Native custom catalog and edited rules
+        run: bash scripts/verify-browser-custom-game.sh
+      - name: Original menu and repeated dialogs
+        run: bash scripts/verify-browser-ui-button-stress.sh
+      - name: Resize and orientation continuity
+        run: bash scripts/verify-browser-resize-orientation.sh
+      - name: Translated portal bounds
+        run: bash scripts/verify-browser-portal-bounds.sh
+      - name: Record exact ZIP acceptance
+        run: |
+          (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+          cat > work/release/PLAYTEST-ACCEPTANCE.txt <<'EOF'
+          Experimental original ResearchDialog build; not an approved portal release.
+          Compiled runtime source: 4971d944cf06938c52302ea853cdd5ec2a7709d1.
+          Exact unchanged ZIP passed original research roots, native desktop/mobile
+          purchase and exact core deductions, wheel/drag, Back/Escape/reopen/resize,
+          globe-selected Erekir research and return to the usable globe, palette,
+          compact HUD, waves/enemy spawning, live cross-planet launch, configuration,
+          custom rules/catalog, menu dialogs, orientation and translated portal bounds.
+          Unpacked bytes: see release report; hard limit: 100000000.
+          Full 46-map/gameplay matrix has not been recertified on this head.
+          Full original HUD and final whole-interface 1:1 parity remain unfinished.
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-original-research-playtest
+          path: |
+            work/release/mindustry-yandex-release.zip
+            work/release/mindustry-yandex-release.zip.sha256
+            work/release/mindustry-yandex-release-report.txt
+            work/release/PLAYTEST-ACCEPTANCE.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-research-native-evidence
+          path: work/menu-ui/*.png
+          if-no-files-found: ignore
