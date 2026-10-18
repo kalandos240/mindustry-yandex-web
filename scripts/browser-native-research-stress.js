@@ -12,7 +12,12 @@
   await wait(()=>get('main-menu-database-group-x'),'Database group');const b=c.getBoundingClientRect();await tap(b.left+Number(get('main-menu-database-group-x')),b.bottom-Number(get('main-menu-database-group-y')));
  }
  const prefix=campaign?'hud-research':'main-menu-research';
- const open=async()=>{await wait(()=>get(prefix+'-x')&&get(prefix+'-y'),'native research entry');const b=c.getBoundingClientRect();await tap(b.left+Number(get(prefix+'-x')),b.bottom-Number(get(prefix+'-y')));await wait(()=>get('research-open')==='yes'&&get('native-research-view'),'original dialog visible');};
+ const open=async()=>{
+  if(!campaign&&get('main-menu-layout')!=='mobile-grid'&&get('main-menu-database-submenu')!=='open'){
+   await wait(()=>get('main-menu-database-group-x'),'Database parent after resize');const b=c.getBoundingClientRect();await tap(b.left+Number(get('main-menu-database-group-x')),b.bottom-Number(get('main-menu-database-group-y')));
+  }
+  await wait(()=>get(prefix+'-x')&&get(prefix+'-y'),'native research entry');const b=c.getBoundingClientRect();await tap(b.left+Number(get(prefix+'-x')),b.bottom-Number(get(prefix+'-y')));await wait(()=>get('research-open')==='yes'&&get('native-research-view'),'original dialog visible');
+ };
  const narrow=new URLSearchParams(location.search).has('nativeResearchNarrow');
  if(narrow){const surface=document.getElementById('mindustry-game-surface'),old=Number(get('resize-count'));surface.style.width='50%';surface.style.marginLeft='7%';await wait(()=>Number(get('resize-count'))>old&&get('container-match')==='true','initial narrow surface');}
  await open();
@@ -27,6 +32,18 @@
   await click('title');await click('root-serpulo');await wait(()=>get('research-tree-root')==='core-shard','Serpulo tree');
  }
  if(campaign){
+  // Native layout reserves the full technology graph, including hidden
+  // descendants. Find the real node by actual view gestures, not by changing
+  // camera/selection fields or unlock flags in Java.
+  for(let attempt=0;attempt<14;attempt++){
+   await wait(()=>get('native-research-conveyor'),'original conveyor node bounds');
+   const a=JSON.parse(get('native-research-conveyor')),b=c.getBoundingClientRect(),x=(a[0]+a[2])/2,y=(a[1]+a[3])/2;
+   if(a[0]>10&&a[1]>85&&a[2]<b.width-10&&a[3]<b.height-70)break;
+   const dx=Math.max(-b.width*.35,Math.min(b.width*.35,b.width*.5-x)),dy=Math.max(-b.height*.2,Math.min(b.height*.2,b.height*.5-y)),id='native-find-node-'+attempt;
+   const frame=Number(get('cpu-sample'));
+   r.setAttribute('data-mindustry-cdp-drag-request',JSON.stringify({id,x0:b.left+b.width*.5,y0:b.top+b.height*.5,x1:b.left+b.width*.5+dx,y1:b.top+b.height*.5-dy,steps:10}));
+   await wait(()=>get('cdp-drag-ack')===id,'pan to native conveyor');await wait(()=>Number(get('cpu-sample'))>frame,'node bounds after pan');
+  }
   await wait(()=>get('native-research-copper')==='500','real core inventory fixture');
   if(get('native-research-conveyor-unlocked')!=='no')throw Error('Conveyor must start locked');
   const before=Number(get('native-research-copper'));
