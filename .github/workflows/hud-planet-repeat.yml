@@ -1,0 +1,37 @@
+name: Exact HUD ZIP diagnosis
+on:
+  push:
+    branches: [responsive-hud-planet-repeat-acceptance]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39092141103
+          github-token: ${{ github.token }}
+          path: work/exact-zip
+      - name: Extract unchanged runtime and enable exception diagnostics
+        run: |
+          mkdir -p web-runtime/build/web
+          unzip -q work/exact-zip/mindustry-yandex-release.zip -d web-runtime/build/web
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/chrome-wait-dom.py')
+          s=p.read_text()
+          anchor='        if payload.get("id") != message_id:'
+          s=s.replace(anchor, '        if payload.get("method") == "Runtime.exceptionThrown":\n            sys.stderr.write("CHROME_EXCEPTION:"+json.dumps(payload.get("params", {}))+"\\n")\n'+anchor)
+          p.write_text(s)
+          PY
+      - name: Five fresh original campaign planet transitions
+        run: |
+          for attempt in 1 2 3 4 5; do
+            echo "PLANET_ATTEMPT=$attempt"
+            bash scripts/verify-browser-hud-planet-stress.sh
+          done
