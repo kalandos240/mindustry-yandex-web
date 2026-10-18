@@ -1,0 +1,127 @@
+name: Direct native menu exact ZIP diagnosis and acceptance
+on:
+  push:
+    branches: [native-menu-routing-extracted-v1]
+    paths: ['.github/workflows/native-menu-routing-extracted.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  web-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39086211050
+          github-token: ${{ github.token }}
+          path: work/candidate
+      - name: Verify digest and extract the exact playable candidate
+        run: |
+          (cd work/candidate && sha256sum -c mindustry-yandex-release.zip.sha256)
+          python3 - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('work/candidate/mindustry-yandex-release.zip') as z:
+              assert sum(i.file_size for i in z.infolist()) <= 100000000
+              z.extractall('web-runtime/build/web')
+          PY
+      # Fail fast on native dialog interaction before the long campaign matrices.
+      - name: Verify original map-filter JSON and actual WebGL bootstrap proof
+        run: bash scripts/verify-browser-map-filter-json.sh
+
+      - name: Original custom catalog, modes, customized rules and actual launch
+        id: custom_ui
+        continue-on-error: true
+        run: bash scripts/verify-browser-custom-game.sh
+
+      - name: Verify native vanilla dialogs in real desktop and mobile Chrome
+        run: bash scripts/verify-browser-vanilla-dialogs.sh
+
+      # Interactive buttons are not certified merely by compiling their dialogs.
+      # Require real Chrome mouse/touch events AND a continuing TeaVM frame loop
+      # after each open/close, including repeat visits and a reduced game viewport.
+      - name: Stress all allowed menu buttons for missed actions and hard freezes
+        id: ui_button_stress
+        continue-on-error: true
+        run: bash scripts/verify-browser-ui-button-stress.sh
+
+      - name: Exercise whole menu rectangles in a narrow translated desktop surface
+        id: narrow_menu_stress
+        continue-on-error: true
+        run: bash scripts/verify-browser-narrow-menu.sh
+
+      - name: Prepare native custom game visual capture script
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/browser-custom-game-stress.js')
+          s=p.read_text()
+          for phase,anchor in [
+              ('catalog',"  await click('custom-first-map');"),
+              ('map',"  await click('custom-survival');"),
+              ('rules',"  await click('custom-wave-timer');"),
+          ]:
+              s=s.replace(anchor, "  if(new URLSearchParams(location.search).get('customVisual')==='"+phase+"'){await sleep(500);r.setAttribute('data-mindustry-custom-game-visual','"+phase+"');return 'visual '+ '"+phase+"';}\n"+anchor)
+          Path('work/custom-visual.js').write_text(s)
+          PY
+
+      - name: Capture original catalog, mode and rule dialogs with real input
+        run: |
+          python3 -m http.server 8134 --bind 127.0.0.1 --directory web-runtime/build/web >/tmp/custom-visual-http.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for device in desktop mobile desktop-narrow; do
+            args=()
+            if [ "$device" = mobile ]; then args+=(--emulate-mobile); fi
+            narrow=0
+            if [ "$device" = desktop-narrow ]; then narrow=1; fi
+            for phase in catalog map rules; do
+              python3 scripts/chrome-wait-dom.py "${args[@]}" \
+                --url "http://127.0.0.1:8134/index.html?lang=ru&mindustryCustomSmoke=1&mindustryCustomNarrow=$narrow&customVisual=$phase" \
+                --profile "/tmp/custom-visual-$device-$phase" --port 9661 --timeout 120 --cdp-input-bridge \
+                --screenshot "work/menu-ui/custom-$device-$phase.png" \
+                --require 'data-mindustry-web="ready"' --require 'data-mindustry-vanilla-dialogs="ready"' \
+                --after-ready-eval "$(cat work/custom-visual.js)" \
+                --after-ready-require "data-mindustry-custom-game-visual=\"$phase\"" \
+                > "work/custom-visual-$device-$phase.html"
+            done
+          done
+
+      - name: Upload original menu desktop and mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-menu-ui-screenshots
+          path: work/menu-ui/*.png
+          if-no-files-found: ignore
+
+
+
+      - name: Record the narrow menu screenshot for visual review
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import base64
+          from pathlib import Path
+          p=Path('work/menu-ui/desktop-narrow-ru.png')
+          if p.is_file():
+              encoded=base64.b64encode(p.read_bytes()).decode()
+              for start in range(0,len(encoded),4000):
+                  print('NARROW_MENU_PNG:'+encoded[start:start+4000])
+          PY
+      - name: Native Play opens live original 3D planets
+        run: bash scripts/verify-browser-play-campaign-stress.sh
+      - name: Real sector launches after unrelated deferred-map failure
+        run: bash scripts/verify-browser-real-campaign-launch.sh
+      - name: Actual desktop and mobile orientation and resize continuity
+        run: bash scripts/verify-browser-resize-orientation.sh
+      - name: Actual translated portal bounds and native HUD input
+        run: bash scripts/verify-browser-portal-bounds.sh
+      - name: Require every menu outcome
+        if: always()
+        run: |
+          test '${{ steps.custom_ui.outcome }}' = success
+          test '${{ steps.ui_button_stress.outcome }}' = success
+          test '${{ steps.narrow_menu_stress.outcome }}' = success
