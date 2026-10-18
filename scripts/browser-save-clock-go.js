@@ -29,6 +29,7 @@
  }
  const expected=new URLSearchParams(location.search).get('expectedTickMillis');
  if(v('campaign-resume-tick-ms')!==expected)throw Error('Saved double tick changed: expected '+expected+' actual '+v('campaign-resume-tick-ms'));
+ if(v('campaign-resume-wave')!=='3')throw Error('Saved wave changed: '+v('campaign-resume-wave'));
  const frame=Number(v('campaign-update-id'));await wait(()=>Number(v('campaign-update-id'))>frame,'world simulation continues');
  r.setAttribute('data-mindustry-cold-sector-go','passed');return 'Native saved-sector Go resumes after a cold browser restart';
 })()
