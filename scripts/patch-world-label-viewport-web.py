@@ -87,4 +87,8 @@ source = markers.read_text()
 old_call = 'WorldLabel.drawAt(fetchedText, pos.x, pos.y, drawLayer, flags, fontSize * scaleFactor, textAlign, lineAlign);'
 assert source.count(old_call) == 1, 'Pinned tutorial text marker draw anchor changed'
 markers.write_text(source.replace(old_call, old_call[:-2] + ', true);'))
-print('World labels: wrap and fit visible anchors to the Web camera viewport')
+source = markers.read_text()
+old_call = 'WorldLabel.drawAt(fetchedText, pos.x, pos.y + radius * scaleFactor + textHeight * scaleFactor, drawLayer, flags, fontSize * scaleFactor, textAlign, lineAlign);'
+assert source.count(old_call) == 1, 'Pinned shape tutorial marker draw anchor changed'
+markers.write_text(source.replace(old_call, old_call[:-2] + ', true);'))
+print('World labels: visible text and nearby campaign markers fit the Web camera and compact HUD')
