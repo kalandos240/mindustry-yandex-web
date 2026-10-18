@@ -9,6 +9,21 @@ if not LOGIC.is_file():
 
 text = LOGIC.read_text(encoding="utf-8")
 
+# The browser MSAV is authoritative. Settings-backed SectorInfo may be stale
+# after a cold tab restart and must not roll a loaded wave/rules back to defaults.
+old_load = """                    SectorInfo info = state.rules.sector.info;
+                    info.write();"""
+new_load = """                    SectorInfo info = state.rules.sector.info;
+                    info.wave = state.wave;
+                    info.waves = state.rules.waves;
+                    info.waveSpacing = state.rules.waveSpacing;
+                    info.winWave = state.rules.winWave;
+                    info.attack = state.rules.attackMode;
+                    info.write();"""
+if text.count(old_load) != 1:
+    raise SystemExit("Campaign saved-sector metadata authority anchor changed")
+text = text.replace(old_load, new_load, 1)
+
 old_guard = '''        if(state.isCampaign() || state.rules.pvp){
 '''
 new_guard = '''        if(state.rules.pvp){

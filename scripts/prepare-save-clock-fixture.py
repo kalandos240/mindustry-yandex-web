@@ -6,6 +6,7 @@ start=s.index('mw_BrowserCampaignRuntime_saveCampaignCheckpoint =')
 at=s.index('        if (mw_BrowserCampaignRuntime_current === null)',start)
 seed="""        if(!globalThis.__clockSeedDone){
             globalThis.__clockSeedDone=true;
+            m_Vars_state.$wave=3;
             m_Vars_state.$tick=Number(new URLSearchParams(location.search).get('clockFixtureTick'));
         }
 """
