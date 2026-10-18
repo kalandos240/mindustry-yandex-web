@@ -44,6 +44,49 @@ public final class WebFontBaker{
 
         output.child("characters-default.txt").writeString(uiChars, false, "UTF-8");
         Log.info("[WebFont] Browser font set complete in @", output);
+        bakeMapPreviews();
+    }
+
+    /** Run the pinned preview decoder once on the build JVM, never on a UI frame. */
+    private static void bakeMapPreviews() throws Exception{
+        mindustry.Vars.headless = true;
+        arc.Core.settings = new arc.mock.MockSettings();
+        arc.Core.files = new arc.mock.MockFiles(){
+            @Override public Fi internal(String path){ return Fi.get("core/assets/" + path); }
+        };
+        mindustry.Vars.content = new mindustry.core.ContentLoader();
+        mindustry.Vars.content.createBaseContent();
+        mindustry.Vars.content.init();
+        mindustry.Vars.content.loadColors();
+        mindustry.Vars.state = new mindustry.core.GameState();
+        mindustry.Vars.world = new mindustry.core.World();
+        Fi output = Fi.get("core/assets/webmaps");
+        output.deleteDirectory();
+        output.mkdirs();
+        int count = 0;
+        // Derive the exact public built-in list from stock Maps, including order.
+        java.lang.reflect.Field field = mindustry.maps.Maps.class.getDeclaredField("defaultMapNames");
+        field.setAccessible(true);
+        for(String slug : (String[])field.get(null)){
+            mindustry.maps.Map map = mindustry.io.MapIO.createMap(Fi.get("core/assets/maps/default/" + slug + ".msav"), false);
+            Pixmap preview = mindustry.io.MapIO.generatePreview(map);
+            try{
+                PixmapIO.writePng(output.child(slug + ".png"), preview);
+            }finally{
+                preview.dispose();
+            }
+            // Same cache format as Maps.writeCache(), consumed without reflection on Web.
+            try(DataOutputStream stream = new DataOutputStream(output.child(slug + ".dat").write(false))){
+                stream.writeByte(0);
+                stream.writeInt(map.spawns);
+                stream.writeByte(map.teams.size);
+                arc.struct.IntSet.IntSetIterator teams = map.teams.iterator();
+                while(teams.hasNext) stream.writeByte(teams.next());
+            }
+            Log.info("[WebMap] @: @x@, spawns=@, teams=@", slug, map.width, map.height, map.spawns, map.teams.size);
+            count++;
+        }
+        if(count != 18) throw new IllegalStateException("Pinned map preview count changed: " + count);
     }
 
     private static void bake(Fi source, Fi output, String name, String characters, int size, int shadowOffsetY, float borderWidth){

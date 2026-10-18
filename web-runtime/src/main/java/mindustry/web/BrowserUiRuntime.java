@@ -206,6 +206,19 @@ public final class BrowserUiRuntime{
         root.row();
 
         mapButtons.defaults().growX().height(mobile ? 52f : 46f).pad(2f);
+        TextButton nativeCustom = mapButtons.button(Core.bundle.get("customgame", "Custom Game"),
+            Icon.terrain, BrowserVanillaDialogs::openCustomGame)
+            .width(mobile ? 320f : 380f).height(mobile ? 54f : 46f)
+            .name("web-custom-native").get();
+        nativeCustom.update(() -> {
+            if(!state.isMenu() || !BrowserStockMainMenu.contentOpen() || nativeCustom.getWidth() <= 1f) return;
+            Vec2 center = nativeCustom.localToStageCoordinates(new Vec2(nativeCustom.getWidth()/2f, nativeCustom.getHeight()/2f));
+            Element hit = Core.scene.hit(center.x, center.y, true);
+            if(hit != nativeCustom && (hit == null || !hit.isDescendantOf(nativeCustom))) return;
+            Vec2 screen = Core.scene.getViewport().project(center);
+            markNativeCustomHitPoint(screen.x, screen.y);
+        });
+        mapButtons.row();
         for(String slug : BrowserLocalMapRuntime.slugs()){
             mapButtons.button(BrowserLocalMapRuntime.displayName(slug), () -> BrowserLocalMapRuntime.start(slug));
             if(BrowserLocalMapRuntime.supportsAttack(slug)){
@@ -624,6 +637,9 @@ public final class BrowserUiRuntime{
         setLocalModeUi(BrowserLocalMapRuntime.customModeCode());
         if(localModeButton != null) localModeButton.setText(localModeLabel());
     }
+
+    @JSBody(params={"x","y"}, script="document.documentElement.setAttribute('data-mindustry-custom-native-x',String(x));document.documentElement.setAttribute('data-mindustry-custom-native-y',String(y));")
+    private static native void markNativeCustomHitPoint(float x, float y);
 
     private static String localModeLabel(){
         return Core.bundle.get(BrowserLocalMapRuntime.customModeCode() == 1
