@@ -4,6 +4,7 @@ import arc.*;
 import arc.math.geom.*;
 import arc.scene.*;
 import arc.scene.ui.layout.*;
+import arc.scene.ui.ScrollPane;
 import org.teavm.jso.JSBody;
 
 import static mindustry.Vars.*;
@@ -21,6 +22,19 @@ public final class BrowserHudLayout{
 
     public static void fitPlacement(Table frame){
         boolean small = compact();
+        // A fixed information slot prevents hover/selection from moving the
+        // native buttons under the pointer. Long original info remains scrollable.
+        ScrollPane info = frame.find("web-placement-info");
+        if(info != null){
+            float height = small ? Scl.scl(60f) : info.getWidget().getPrefHeight();
+            var cell = frame.getCell(info);
+            if(cell.getMinHeight() != height){
+                cell.height(height / Scl.scl(1f));
+                frame.invalidateHierarchy();
+            }
+            info.setScrollingDisabled(true, false);
+            info.setOverscroll(false, false);
+        }
         float scale = small ? Math.min(1f, Math.min(
             Math.max(1f, Core.scene.getWidth() - 10f) / Math.max(1f, frame.getWidth()),
             Math.max(1f, Core.scene.getHeight() - 160f) / Math.max(1f, frame.getHeight()))) : 1f;

@@ -28,8 +28,11 @@
   }
   await alive();check();
   await click('category');await alive();
+  const categoryBefore=rect('category');
   await click('conveyor');await wait(()=>get('hud-layout-block')==='conveyor','original conveyor selection');
   await alive();check();
+  const categoryAfter=rect('category');
+  if(categoryBefore.some((v,i)=>Math.abs(v-categoryAfter[i])>1))throw Error('Native category moved under the pointer after block selection');
   // The stock info/cost panel expands after selection; fit the complete actor
   // graph again after a genuine container resize and verify transformed input.
   const old=Number(get('resize-count'));surface.style.height=get('input-mode')==='mobile'?'45%':'85%';

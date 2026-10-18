@@ -141,5 +141,11 @@ for old, new in replacements.items():
 source = source.replace('public class PlacementFragment{', 'public class PlacementFragment{\n    public static arc.func.Cons<Table> webFit;', 1)
 source = source.replace('            full.table(frame -> {', '            full.table(frame -> {\n                frame.name = "web-placement-frame";', 1)
 source = source.replace('                frame.update(() -> {', '                frame.update(() -> {\n                    if(webFit != null) webFit.get(frame);', 1)
+info_start = '                frame.table(Tex.buttonEdge2, top -> {'
+info_end = '                }).colspan(3).fillX().visible(this::hasInfoBox).touchable(Touchable.enabled).row();'
+if source.count(info_start) != 1 or source.count(info_end) != 1:
+    raise SystemExit("Pinned native placement information panel changed")
+source = source.replace(info_start, '                frame.pane(Styles.smallPane, top -> {\n                    top.background(Tex.buttonEdge2);', 1)
+source = source.replace(info_end, '                }).colspan(3).fillX().name("web-placement-info").visible(this::hasInfoBox).touchable(Touchable.enabled).row();', 1)
 path.write_text(source, encoding="utf-8")
 print("Preserved stock PlacementFragment with null-safe unmounted desktop dialogs")
