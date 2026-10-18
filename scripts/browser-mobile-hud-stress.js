@@ -34,11 +34,11 @@
   if(frozen!==get(campaign?'campaign-pause-update-id':'local-map-pause-update-id'))throw Error('Frozen simulation changed');
   await toolbar('menu');await wait(()=>get('pause-dialog-visible')==='yes','menu from inline pause');await alive();
   await click('pause-button-save');await wait(()=>get(campaign?'campaign-manual-save':'local-map-save')==='ready','actual saved paused game');
-  await click('pause-button-resume');await wait(()=>get(state)==='playing','Resume from menu');await alive();
+  await click('pause-button-resume');await wait(()=>get(state)==='playing'&&!paused(),'Resume from menu');await alive();
   await toolbar('pause');await wait(()=>paused(),'second inline pause');
-  await toolbar('pause');await wait(()=>get(state)==='playing','toolbar Play resumes');
+  await toolbar('pause');await wait(()=>get(state)==='playing'&&!paused(),'toolbar Play resumes');
   await alive();await escape();await wait(()=>get('pause-dialog-visible')==='yes','keyboard pause after toolbar resume');
-  await escape();await wait(()=>get(state)==='playing','keyboard resume');await alive();
+  await escape();await wait(()=>get(state)==='playing'&&!paused(),'keyboard resume');await alive();
   const surface=document.getElementById('mindustry-game-surface'),old=Number(get('resize-count'));
   surface.style.width='320px';surface.style.height='320px';
   await wait(()=>Number(get('resize-count'))>old&&get('container-match')==='true','320px portal resize');

@@ -322,3 +322,5 @@ jobs:
             work/mobile-hud-*.html
             work/clock-*.html
             work/clock-*.png
+
+# Pause modal takes priority over native mobile command controls.

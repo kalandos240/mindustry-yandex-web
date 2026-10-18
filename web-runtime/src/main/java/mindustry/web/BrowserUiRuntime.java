@@ -623,6 +623,9 @@ public final class BrowserUiRuntime{
             if(show != wasVisible[0]){
                 wasVisible[0] = show;
                 if(show){
+                    // A modal pause menu must also cover the native mobile
+                    // command controls, which normally sit above other HUD actors.
+                    overlay.toFront();
                     scroll.setScrollY(0f);
                     scroll.updateVisualScroll();
                 }else{
@@ -740,6 +743,9 @@ public final class BrowserUiRuntime{
             if(show != wasVisible[0]){
                 wasVisible[0] = show;
                 if(show){
+                    // A modal pause menu must also cover the native mobile
+                    // command controls, which normally sit above other HUD actors.
+                    overlay.toFront();
                     scroll.setScrollY(0f);
                     scroll.updateVisualScroll();
                 }else{
