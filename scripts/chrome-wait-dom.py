@@ -557,7 +557,7 @@ def main() -> int:
                     except Exception:
                         message_id += 1
                         try:
-                            markers = evaluate(ws, message_id, "JSON.stringify(Object.fromEntries(Array.from(document.documentElement.attributes).filter(a=>a.name.startsWith('data-mindustry-')).map(a=>[a.name,a.value])))")
+                            markers = evaluate(ws, message_id, "JSON.stringify(Object.fromEntries(Array.from(document.documentElement.attributes).filter(a=>a.name.startsWith('data-mindustry-')).map(a=>[a.name,a.value.slice(0,800)])))")
                             message_id += 1
                             sys.stderr.write("CHROME_FAILURE_MARKERS:" + markers + "\n")
                             if args.screenshot:

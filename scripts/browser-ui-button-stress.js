@@ -176,6 +176,7 @@
   // A second click-after-close cycle detects stale Arc modal touch capture,
   // unhandled key-up states and freezes that initial startup smoke can miss.
   await action('settings', 'vanilla-settings-open', 'settings');
+  await action('saves', 'vanilla-saves-open', 'saves');
   if(!isMobile) await play('play');
 
   if(!isMobile){
