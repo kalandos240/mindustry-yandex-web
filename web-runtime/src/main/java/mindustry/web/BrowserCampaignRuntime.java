@@ -685,7 +685,6 @@ public final class BrowserCampaignRuntime{
         player.set(state.rules.defaultTeam.core());
         Core.camera.position.set(state.rules.defaultTeam.core());
 
-        recoverEmptySectorInventory(sector);
         markSectorInventory("resume");
         state.set(mindustry.core.GameState.State.playing);
         if(!state.isPlaying() || !state.isCampaign() || state.rules.sector != sector){
@@ -1332,85 +1331,6 @@ public final class BrowserCampaignRuntime{
         // routes through BrowserFi.PersistentOutputStream -> IndexedDB.
         sector.save.file.sibling(sector.save.file.name() + ".items")
             .writeBytes(rows.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8), false);
-    }
-
-    private static boolean restoreCoreItemCheckpoint(Sector sector){
-        if(sector.save == null || sector.save.file == null) return false;
-        Fi checkpoint = sector.save.file.sibling(sector.save.file.name() + ".items");
-        if(!checkpoint.exists()) return false; // prior release or new sector
-        try{
-            String[] rows = checkpoint.readString().split("\\n");
-            if(rows.length == 0) return false;
-            String[] header = rows[0].split("\\|");
-            if(header.length != 6 || !"items-v1".equals(header[0])
-                || !sector.planet.name.equals(header[1])
-                || Integer.parseInt(header[2]) != sector.id
-                || Integer.parseInt(header[3]) != state.wave
-                || Long.parseLong(header[4]) != Math.round(state.tick * 1000d)
-                || Long.parseLong(header[5]) != sector.save.file.length()) return false;
-
-            // Validate the *whole* snapshot before changing a single item.
-            // One malformed row must never half-restore a live core.
-            int[] restored = new int[content.items().size];
-            int total = 0;
-            for(int i = 1; i < rows.length; i++){
-                if(rows[i].isEmpty()) continue;
-                int delimiter = rows[i].indexOf(':');
-                if(delimiter <= 0) return false;
-                int id = Integer.parseInt(rows[i].substring(0, delimiter));
-                int amount = Integer.parseInt(rows[i].substring(delimiter + 1));
-                if(id < 0 || id >= restored.length || amount <= 0
-                    || amount > state.rules.defaultTeam.core().storageCapacity
-                    || restored[id] != 0) return false;
-                restored[id] = amount;
-                total += amount;
-            }
-            if(total <= 0) return false;
-            var live = state.rules.defaultTeam.items();
-            for(Item item : content.items()){
-                if(restored[item.id] > 0) live.set(item, restored[item.id]);
-            }
-            sector.info.items.clear();
-            sector.info.items.add(live);
-            sector.saveInfo();
-            return true;
-        }catch(Exception malformed){
-            // Corrupt or stale auxiliary data must never block loading a
-            // healthy SaveIO world; the stock SectorInfo remains fallback.
-            return false;
-        }
-    }
-
-    // SaveIO remains authoritative. Restore a matching checkpoint only if
-    // the loaded core is *entirely* empty; never top up partial inventories.
-    private static void recoverEmptySectorInventory(Sector sector){
-        // A successfully decoded campaign inventory may legitimately be zero
-        // after research/launch costs in the menu. Never revive its older sidecar.
-        if(sector != null && sector.info.webInventoryLoaded) return;
-        if(sector == null || state.rules == null || state.rules.defaultTeam.core() == null) return;
-        var stored = sector.info.items;
-        var live = state.rules.defaultTeam.items();
-        int liveTotal = 0, savedTotal = 0;
-        for(Item item : content.items()){
-            liveTotal += live.get(item);
-            savedTotal += Math.max(0, stored.get(item));
-        }
-        if(liveTotal != 0) return;
-        // A mismatched/invalid sidecar must NOT revive stale SectorInfo.items:
-        // a player may have legitimately spent every item and saved again.
-        // Legacy saves with no sidecar can still use the original fallback.
-        if(sector.save != null && sector.save.file != null &&
-            sector.save.file.sibling(sector.save.file.name() + ".items").exists()){
-            restoreCoreItemCheckpoint(sector);
-            return;
-        }
-        // Backwards-compatible fallback for saves written by older ports.
-        if(savedTotal > 0){
-            for(Item item : content.items()){
-                int count = stored.get(item);
-                if(count > 0) live.set(item, count);
-            }
-        }
     }
 
     private static void writeCurrentSectorSave(){

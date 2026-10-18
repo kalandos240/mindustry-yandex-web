@@ -342,3 +342,5 @@ jobs:
 # Audit both populated and zero inventory fixtures and live native audio settings.
 
 # Persist full SectorInfo without reflection and preserve research/export resource changes.
+
+# Remove the superseded empty-inventory replay; explicit campaign metadata preserves spending.
