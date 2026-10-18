@@ -7,7 +7,19 @@ PORT=8085
 inventory_empty="${INVENTORY_EMPTY:-0}"
 expected_copper=137
 expected_lead=73
+inventory_spent="${INVENTORY_SPENT:-}"
+resume_copper=137
+resume_lead=73
 if [ "$inventory_empty" = 1 ]; then expected_copper=0; expected_lead=0; fi
+resume_copper="$expected_copper"
+resume_lead="$expected_lead"
+stale=1
+if [ -n "$inventory_spent" ]; then
+  stale=0
+  resume_copper=0
+  resume_lead=19
+  if [ "$inventory_spent" = all ]; then resume_lead=0; fi
+fi
 
 command -v google-chrome >/dev/null
 [ -s "$WEB_DIR/index.html" ]
@@ -122,7 +134,7 @@ run_campaign_cold_restart(){
   # prove the exact persisted checkpoint survives a cold menu boot in between.
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     "${device_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignContinueSmoke=groundZero&mindustryInventoryResumeSmoke=1" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignContinueSmoke=groundZero&mindustryInventoryResumeSmoke=$stale&mindustryInventorySpendSmoke=$inventory_spent" \
     --profile "$profile" \
     --port "$resume_cdp" \
     --timeout 90 \
@@ -135,8 +147,8 @@ run_campaign_cold_restart(){
     --require 'data-mindustry-campaign-test="groundZero"' \
     --require 'data-mindustry-campaign-resume-smoke="requested"' \
     --require 'data-mindustry-campaign-resume="ready"' \
-    --require "data-mindustry-campaign-resume-copper=\"$expected_copper\"" \
-    --require "data-mindustry-campaign-resume-lead=\"$expected_lead\"" \
+    --require "data-mindustry-campaign-resume-copper=\"$resume_copper\"" \
+    --require "data-mindustry-campaign-resume-lead=\"$resume_lead\"" \
     --require 'data-mindustry-campaign-resume-source="indexed-sector-save"' \
     --require 'data-mindustry-campaign-state="playing"' \
     --require 'data-mindustry-campaign-sector-id="170"' \
@@ -181,7 +193,9 @@ run_campaign_cold_restart(){
     local before after
     before="$(attr "$save_dom" "data-mindustry-campaign-checkpoint-$item")"
     after="$(attr "$resume_dom" "data-mindustry-campaign-resume-$item")"
-    if [ "$before" != "$after" ] || [ "$before" -lt 0 ]; then
+    local expected="$resume_copper"
+    if [ "$item" = lead ]; then expected="$resume_lead"; fi
+    if [ "$expected" != "$after" ] || [ "$before" -lt 0 ]; then
       echo "Campaign cold-restart lost $item ($label): checkpoint=$before resumed=$after" >&2
       exit 1
     fi
@@ -195,6 +209,7 @@ run_campaign_cold_restart(){
   echo "Yandex campaign cold restart ($label): auto device detect -> checkpoint -> cold production menu Continue -> second restart -> identical sector wave/tick/bytes PASS"
 }
 
+if [ "${INVENTORY_DEVICES:-both}" != mobile ]; then
 run_campaign_cold_restart \
   desktop desktop 0 \
   /tmp/mindustry-campaign-save-profile \
@@ -202,7 +217,9 @@ run_campaign_cold_restart \
   /tmp/mindustry-campaign-cold-menu-dom.html \
   /tmp/mindustry-campaign-resume-dom.html \
   9257 9258 9259
+fi
 
+if [ "${INVENTORY_DEVICES:-both}" != desktop ]; then
 run_campaign_cold_restart \
   mobile mobile 1 \
   /tmp/mindustry-campaign-save-mobile-profile \
@@ -210,5 +227,6 @@ run_campaign_cold_restart \
   /tmp/mindustry-campaign-cold-mobile-menu-dom.html \
   /tmp/mindustry-campaign-resume-mobile-dom.html \
   9260 9261 9262
+fi
 
 echo 'Yandex campaign cold-reload matrix: desktop + auto-detected mobile production menu/restart/resume PASS'

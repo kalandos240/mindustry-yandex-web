@@ -635,9 +635,20 @@ public final class BrowserCampaignRuntime{
         // CI-only: reproduce a nonempty stale SectorInfo, which bypassed the
         // old entirely-empty inventory recovery. SaveIO must win for each item.
         if(inventoryResumeSmoke()){
+            sector.info.webInventoryLoaded = false;
             sector.info.items.clear();
             sector.info.items.add(Items.copper, 31);
             sector.info.items.add(Items.lead, 19);
+        }
+        String spend = inventorySpendSmoke();
+        if(!spend.isEmpty()){
+            if(!sector.info.webInventoryLoaded || sector.info.items.get(Items.copper) != 137
+                || sector.info.items.get(Items.lead) != 73){
+                throw new IllegalStateException("Cold campaign inventory metadata did not round-trip");
+            }
+            sector.removeItem(Items.copper, 137);
+            sector.removeItem(Items.lead, "all".equals(spend) ? 73 : 54);
+            Core.settings.forceSave();
         }
         sector.save.load(world.makeSectorContext(sector));
         diagPhase("resume-world-loaded");
@@ -1283,6 +1294,9 @@ public final class BrowserCampaignRuntime{
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryInventoryResumeSmoke') === '1';")
     private static native boolean inventoryResumeSmoke();
 
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryInventorySpendSmoke') || '';")
+    private static native String inventorySpendSmoke();
+
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryInventoryEmptySmoke') === '1';")
     private static native boolean inventoryEmptySmoke();
 
@@ -1370,6 +1384,9 @@ public final class BrowserCampaignRuntime{
     // SaveIO remains authoritative. Restore a matching checkpoint only if
     // the loaded core is *entirely* empty; never top up partial inventories.
     private static void recoverEmptySectorInventory(Sector sector){
+        // A successfully decoded campaign inventory may legitimately be zero
+        // after research/launch costs in the menu. Never revive its older sidecar.
+        if(sector != null && sector.info.webInventoryLoaded) return;
         if(sector == null || state.rules == null || state.rules.defaultTeam.core() == null) return;
         var stored = sector.info.items;
         var live = state.rules.defaultTeam.items();

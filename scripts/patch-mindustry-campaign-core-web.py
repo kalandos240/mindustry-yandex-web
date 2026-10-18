@@ -19,12 +19,15 @@ new_load = """                    SectorInfo info = state.rules.sector.info;
                     info.waveSpacing = state.rules.waveSpacing;
                     info.winWave = state.rules.winWave;
                     info.attack = state.rules.attackMode;
-                    // SaveIO just restored the authoritative building inventory. A
-                    // stale/missing settings-backed SectorInfo must not erase it,
-                    // including partly spent and legitimately empty inventories.
-                    info.items.clear();
-                    if(state.rules.defaultTeam.core() != null){
-                        info.items.add(state.rules.defaultTeam.items());
+                    // Legacy/unreadable metadata must not erase the MSAV core.
+                    // Explicitly decoded campaign metadata remains authoritative for
+                    // research costs, launch spending and off-sector production.
+                    if(!info.webInventoryLoaded){
+                        info.items.clear();
+                        if(state.rules.defaultTeam.core() != null){
+                            info.items.add(state.rules.defaultTeam.items());
+                        }
+                        info.webInventoryLoaded = true;
                     }
                     info.write();"""
 if text.count(old_load) != 1:
@@ -165,3 +168,14 @@ text = text.replace(old_clear, new_clear, 1)
 
 LOGIC.write_text(text, encoding="utf-8")
 print("Enabled stock local campaign tick + victory/capture state check in Web playing core")
+
+# Explicit validity separates legacy metadata from persisted campaign changes:
+# research costs and off-sector production must still reach the loaded core.
+INFO = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry" / "game" / "SectorInfo.java"
+info = INFO.read_text(encoding="utf-8")
+info = info.replace("public class SectorInfo{", "public class SectorInfo{\n    public transient boolean webInventoryLoaded;", 1)
+anchor = "    public void prepare(Sector sector){"
+if info.count(anchor) != 1:
+    raise SystemExit("SectorInfo inventory validity anchor changed")
+info = info.replace(anchor, anchor + "\n        webInventoryLoaded = true;", 1)
+INFO.write_text(info, encoding="utf-8")

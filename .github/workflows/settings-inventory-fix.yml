@@ -293,6 +293,10 @@ jobs:
         run: bash scripts/verify-browser-campaign-save-resume.sh
       - name: Empty inventory does not resurrect spent resources
         run: INVENTORY_EMPTY=1 bash scripts/verify-browser-campaign-save-resume.sh
+      - name: Partial research costs in menu survive loading the older MSAV
+        run: INVENTORY_DEVICES=desktop INVENTORY_SPENT=partial bash scripts/verify-browser-campaign-save-resume.sh
+      - name: Fully spent campaign inventory does not resurrect old MSAV items
+        run: INVENTORY_DEVICES=mobile INVENTORY_SPENT=all bash scripts/verify-browser-campaign-save-resume.sh
       - name: Native gameplay menu controls
         run: bash scripts/verify-browser-gameplay-button-stress.sh
       - name: Native Go resumes saved Erekir sector
@@ -336,3 +340,5 @@ jobs:
 # Explicit word boundaries avoid Arc Label rewrapping a trailing soft sign.
 
 # Audit both populated and zero inventory fixtures and live native audio settings.
+
+# Persist full SectorInfo without reflection and preserve research/export resource changes.

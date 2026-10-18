@@ -28,6 +28,7 @@ public final class BrowserSettings extends Settings{
             throw new IllegalArgumentException("storageKey must not be empty");
         }
         this.storageKey = storageKey;
+        json.setSerializer(mindustry.game.SectorInfo.class, new BrowserSectorInfoCodec());
         markWritePolicy();
     }
 
