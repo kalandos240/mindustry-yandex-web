@@ -303,8 +303,15 @@
                     root.setAttribute('data-mindustry-settings-graphics-value', qualityState ? 'quality' : 'performance');
                 };
                 const nextVolume = value => value >= 100 ? 0 : Math.min(100, (Math.floor(Math.max(0, value) / 25) + 1) * 25);
-                sfx.onclick = () => { sfxState = nextVolume(sfxState); action(1, sfxState); renderSettings(); };
-                music.onclick = () => { musicState = nextVolume(musicState); action(2, musicState); renderSettings(); };
+                const persistVolume = (channel, volume) => {
+                    // Commit a one-byte preference to the same IndexedDB store as
+                    // campaign saves. Its durability can be awaited before closing.
+                    const store = globalThis.__mindustryStorage;
+                    if(!store || typeof store.put !== 'function') throw Error('Browser volume storage unavailable');
+                    store.put('preferences/volume-' + channel, new Uint8Array([volume]));
+                };
+                sfx.onclick = () => { sfxState = nextVolume(sfxState); action(1, sfxState); persistVolume('sfx', sfxState); renderSettings(); };
+                music.onclick = () => { musicState = nextVolume(musicState); action(2, musicState); persistVolume('music', musicState); renderSettings(); };
                 effects.onclick = () => { effectsState = !effectsState; action(3, effectsState ? 1 : 0); renderSettings(); };
                 graphics.onclick = () => { qualityState = !qualityState; action(4, qualityState ? 1 : 0); renderSettings(); };
 

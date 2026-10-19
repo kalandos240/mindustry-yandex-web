@@ -188,6 +188,12 @@ for device in desktop mobile; do
           throw Error('Simulation failed after settings changes');
         if(root.getAttribute('data-mindustry-settings-return')!=='closed-without-navigation')
           throw Error('Settings Back triggered unexpected world navigation');
+        // Prove the modified preferences survived a real durable storage barrier,
+        // then Chrome can be terminated immediately without losing their values.
+        await globalThis.__mindustryStorage.flush();
+        if(globalThis.__mindustryStorage.byteLength('preferences/volume-sfx')!==1 ||
+           globalThis.__mindustryStorage.byteLength('preferences/volume-music')!==1)
+          throw Error('Audio preferences were not committed to browser storage');
         root.setAttribute('data-mindustry-settings-gameplay-smoke','passed');
         return 'settings-keep-playing-pass';
       })()" \

@@ -76,7 +76,10 @@ public final class BrowserSettings extends Settings{
     public synchronized void loadValues(){
         values.clear();
         String payload = storageGet(storageKey);
-        if(payload == null || payload.isEmpty()) return;
+        if(payload == null || payload.isEmpty()){
+            restoreMirroredVolumes();
+            return;
+        }
         if(!payload.startsWith(header)){
             throw new IllegalStateException("Unsupported Mindustry Web settings format");
         }
@@ -102,7 +105,26 @@ public final class BrowserSettings extends Settings{
             values.clear();
             throw new IllegalStateException("Corrupt Mindustry Web settings payload", malformed);
         }
+        restoreMirroredVolumes();
     }
+
+    // localStorage is quick for Arc settings, but Chrome may be terminated before
+    // it commits a recent volume change. IndexedDB mirrors are hydrated before
+    // Bootstrap, and page lifecycle writes can be explicitly flushed like saves.
+    private void restoreMirroredVolumes(){
+        restoreMirroredVolume("sfxvol", "sfx");
+        restoreMirroredVolume("musicvol", "music");
+    }
+
+    private void restoreMirroredVolume(String key, String channel){
+        int volume = mirroredVolume(channel);
+        if(volume >= 0 && volume <= 100){
+            values.put(key, volume);
+        }
+    }
+
+    @JSBody(params = {"channel"}, script = "try { var store = globalThis.__mindustryStorage; var bytes = store && store.get('preferences/volume-' + channel); return bytes && bytes.length === 1 ? bytes[0] : -1; } catch(e) { return -1; }")
+    private static native int mirroredVolume(String channel);
 
     @Override
     public synchronized void saveValues(){
