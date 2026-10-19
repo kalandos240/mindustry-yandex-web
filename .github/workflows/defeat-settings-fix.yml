@@ -291,6 +291,7 @@ jobs:
         run: bash scripts/verify-browser-defeat-exit.sh
       - name: Native sound sliders, campaign persistence and paused gameplay
         run: |
+          set -euo pipefail
           # A single TeaVM startup can occupy the renderer for over 30 seconds
           # when three SwiftShader processes compete on a shared runner.
           # Keep all assertions and cold profiles; run suites sequentially.
