@@ -22,6 +22,7 @@ public final class BrowserCampaignRuntime{
     private static boolean active;
     private static boolean gameOverFreeze;
     private static boolean lossSmokeArmed;
+    private static boolean lossSmoke;
     private static boolean testChecked;
     private static boolean diagnostics;
     private static boolean diagnosticsQueryCached;
@@ -1304,7 +1305,7 @@ public final class BrowserCampaignRuntime{
             return;
         }
 
-        if(!lossSmokeArmed && lossSmokeRequested() && frames >= 3){
+        if(lossSmoke && !lossSmokeArmed && frames >= 3){
             // CI-only regression: destroy actual campaign player core buildings,
             // then run the normal Logic -> GameOverEvent -> modal path.
             if(current.preset != SectorPresets.groundZero && current.preset != SectorPresets.onset){
@@ -2031,6 +2032,7 @@ public final class BrowserCampaignRuntime{
         pauseSmoke = pauseSmokeRequested();
         captureSmoke = captureSmokeRequested();
         progressSmoke = progressSmokeRequested();
+        lossSmoke = lossSmokeRequested();
     }
 
     private static void diagPhase(String phase){

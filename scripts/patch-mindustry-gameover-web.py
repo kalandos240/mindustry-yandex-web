@@ -22,6 +22,8 @@ if text.count(old_guard) != 1:
     raise SystemExit("Logic Web game-over guard patch no longer matches staged playing core")
 text = text.replace(old_guard, new_guard, 1)
 
+# Campaigns must end when the last player core dies even during a mission stage
+# that temporarily disables canGameOver. Local non-campaign modes retain that flag.
 # A genuine core destruction normally removes the team core during the previous entity
 # update, so stock checkGameState observes it at the end of that same frame. The browser
 # verifier also needs to stage the already-lost state between frames. Check that state
@@ -29,7 +31,7 @@ text = text.replace(old_guard, new_guard, 1)
 old_preflight = '''        for(TeamData data : state.teams.getActive()){
             var rules = data.team.rules();
 '''
-new_preflight = '''        if(state.rules.canGameOver && !state.gameOver && state.teams.playerCores().size == 0){
+new_preflight = '''        if((state.isCampaign() || state.rules.canGameOver) && !state.gameOver && state.teams.playerCores().size == 0){
             state.gameOver = true;
             state.won = false;
             Events.fire(new GameOverEvent(state.rules.waveTeam));
@@ -53,7 +55,7 @@ new_anchor = '''        Events.fire(Trigger.afterGameUpdate);
         // non-attack loss condition after the entity tick as well, so a core destroyed
         // during this frame ends the match immediately. Campaign, PvP and attack-mode
         // winner resolution remain intentionally unreachable above.
-        if(state.rules.canGameOver && !state.gameOver && state.teams.playerCores().size == 0){
+        if((state.isCampaign() || state.rules.canGameOver) && !state.gameOver && state.teams.playerCores().size == 0){
             state.gameOver = true;
             state.won = false;
             Events.fire(new GameOverEvent(state.rules.waveTeam));

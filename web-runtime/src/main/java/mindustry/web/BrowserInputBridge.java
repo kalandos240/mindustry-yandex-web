@@ -150,7 +150,7 @@ public final class BrowserInputBridge{
                 if(code === 'Escape' && typeof globalThis.__mindustryCloseSettings === 'function'){
                     globalThis.__mindustryCloseSettings();
                 }
-                event.preventDefault();
+                if(shouldPreventKey(event) || code === 'Escape') event.preventDefault();
                 return;
             }
             const repeat = !!event.repeat || downCodes.has(code);
@@ -163,7 +163,7 @@ public final class BrowserInputBridge{
             if(isHtmlEditor(event)) return;
             downCodes.delete(event.code);
             if(document.documentElement.getAttribute('data-mindustry-settings-panel') === 'open'){
-                event.preventDefault();
+                if(shouldPreventKey(event) || event.code === 'Escape') event.preventDefault();
                 return;
             }
             keyUp(event.code || '');
