@@ -97,7 +97,10 @@ for device in desktop mobile; do
       if [ "$world" = serpulo ]; then
         cold_reqs+=(--require 'data-mindustry-campaign-ui-action="play"')
       else
-        cold_reqs+=(--require 'data-mindustry-erekir-ui-onset-save="false"')
+        # No Erekir-specific UI save marker exists. The defeated Onset sector
+        # has had its save deleted, and this clean test profile should hydrate
+        # zero game files on a fresh browser boot.
+        cold_reqs+=(--require 'data-mindustry-storage-hydrated-files="0"')
       fi
       python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
         "${device_args[@]}" \
