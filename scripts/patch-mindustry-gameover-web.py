@@ -54,8 +54,8 @@ new_anchor = '''        Events.fire(Trigger.afterGameUpdate);
         // Permanent Web/Yandex survival is local-authoritative. Keep the stock
         // non-attack loss condition after the entity tick as well, so a core destroyed
         // during this frame ends the match immediately. Campaign, PvP and attack-mode
-        // winner resolution remain intentionally unreachable above.
-        if((state.isCampaign() || state.rules.canGameOver) && !state.gameOver && state.teams.playerCores().size == 0){
+        // winner resolution is installed by later staged patches.
+        if(state.rules.canGameOver && !state.gameOver && state.teams.playerCores().size == 0){
             state.gameOver = true;
             state.won = false;
             Events.fire(new GameOverEvent(state.rules.waveTeam));
