@@ -1,0 +1,58 @@
+name: Inspect mobile Onset native research input
+on:
+  push:
+    branches: [defeat-settings-fix]
+    paths: ['.github/workflows/mobile-onset-input-debug.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  input:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-defeat-settings-verified
+          run-id: 39193665081
+          github-token: ${{ github.token }}
+          path: work/package
+      - name: Extract isolated diagnostic stage
+        run: |
+          mkdir -p web-runtime/build/web
+          unzip -q work/package/mindustry-yandex-release.zip -d web-runtime/build/web
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('web-runtime/build/web/mindustry.js');s=p.read_text()
+          for name,key in [('mw_BrowserResearchUi_show = () => {','research-show'),('mw_BrowserUiRuntime$buildMobileHudToolbar$lambda$_12_6_run = var$0 => {','research-click'),('mud_BrowserResearchDialog$_init_$lambda$_0_0_run = var$0 => {','research-shown'),('mud_BrowserResearchDialog$_init_$lambda$_0_1_run = var$0 => {','research-hidden')]:
+              assert s.count(name)==1
+              probe="document.documentElement.setAttribute('data-mindustry-debug-"+key+"',String(1+Number(document.documentElement.getAttribute('data-mindustry-debug-"+key+"')||0)));"
+              s=s.replace(name,name+'\n'+probe,1)
+          start=s.index('as_Scene_touchDown =');end=s.index('as_Scene_touchDragged =',start)
+          body=s[start:end];needle='        $target = $tmp;\n        if ($target !== null) {'
+          assert body.count(needle)==1
+          probe="""        var chain=[], dbg=$target;
+                  for(var n=0;dbg&&n<6;n++,dbg=dbg.$parent0)chain.push({name:dbg.$name6?$rt_ustr(dbg.$name6):'',hud:dbg===m_Vars_ui.$hudGroup,menu:dbg===m_Vars_ui.$menuGroup,input:dbg===m_Vars_control.$input.$uiGroup,scene:dbg===a_Core_scene.$root,x:dbg.$x13,y:dbg.$y13,w:dbg.$width2,h:dbg.$height2,keys:Object.keys(dbg).slice(-12)});
+                  document.documentElement.setAttribute('data-mindustry-debug-touch',JSON.stringify({x:var$9,y:var$10,chain:chain}));
+          """
+          body=body.replace(needle,'        $target = $tmp;\n'+probe+'        if ($target !== null) {')
+          s=s[:start]+body+s[end:]
+          start=s.index('muf_HudFragment$showToast$lambda$_15_0_run =')
+          end=s.index('function ma_ControlPathfinder',start)
+          body=s[start:end];needle='        ($rt_nullCheck(var$4)).$fillParent = 1;'
+          assert body.count(needle)==1
+          body=body.replace(needle,needle+'\n        var$4.$touchable0 = ase_Touchable_disabled;',1)
+          s=s[:start]+body+s[end:]
+          p.write_text(s)
+          p=Path('scripts/verify-browser-gameplay-button-stress.sh');s=p.read_text();i=s.index('run_buttons campaign desktop mindustryCampaignSmoke=groundZero');s=s[:i]+'run_buttons campaign mobile mindustryCampaignSmoke=onset\n';p.write_text(s)
+          PY
+      - name: Observe actual native touch target and dialog callbacks
+        run: bash scripts/verify-browser-gameplay-button-stress.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-onset-input-debug
+          path: |
+            work/settings-gameplay-*.html
+            work/settings-gameplay-*.png

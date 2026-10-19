@@ -120,6 +120,12 @@ public final class BrowserGameplayRuntime{
     private static void updateFrame(){
         if(!initialized || logic == null || state == null) return;
 
+        BrowserDefeatSmoke.update();
+        if(state.gameOver && BrowserCampaignRuntime.active()){
+            BrowserCampaignRuntime.updateDefeatFrame();
+            return;
+        }
+
         // The last Escape press can close a stock Dialog in Arc Scene before
         // this frame's gameplay shortcut handler runs. If we only query the
         // CURRENT dialog state, the same keyDown also resumes the paused

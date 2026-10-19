@@ -841,6 +841,14 @@ public final class BrowserCampaignRuntime{
         }
     }
 
+    public static void updateDefeatFrame(){
+        // No simulation or core-dependent Control path after the last core dies.
+        // Scene and audio must keep running so the loss action remains clickable.
+        control.sound.update();
+        renderer.update();
+        ui.update();
+    }
+
     /** Normal user Back: checkpoint the live sector before returning to the lean menu. */
     public static void returnToMenu(){
         if(!active || current == null) return;
@@ -848,6 +856,12 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("c:back");
         }
 
+        if(state.gameOver){
+            current.info.items.clear();
+            current.info.hasCore = false;
+            current.info.webInventoryLoaded = true;
+            current.saveInfo();
+        }
         int savedWave = state.wave;
         long savedTickMillis = Math.round(state.tick * 1000d);
         writeCurrentSectorSave();
@@ -1387,6 +1401,11 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("c:frame-sector");
         }
 
+        if(state.gameOver){
+            updateDefeatFrame();
+            return;
+        }
+
         if(captureSmoke){
             // CI stages only the stock victory predicates; Logic.checkGameState() must still
             // dispatch Call.sectorCapture(). Wave sectors use winWave, while attack sectors
@@ -1523,6 +1542,10 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("campaign-frame: logic.updateWebPlayingCore", error);
         }
         diagPhase("logic-ready");
+        if(state.gameOver){
+            updateDefeatFrame();
+            return;
+        }
 
         pathfinder.updateWeb();
         controlPath.updateWeb();

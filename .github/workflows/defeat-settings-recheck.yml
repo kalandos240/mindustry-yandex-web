@@ -1,0 +1,37 @@
+name: Strict complete gameplay settings acceptance on immutable ZIP
+on:
+  push:
+    branches: [defeat-settings-fix]
+    paths: ['.github/workflows/defeat-settings-recheck.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  strict-gameplay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-defeat-settings-verified
+          run-id: 39193665081
+          github-token: ${{ github.token }}
+          path: work/package
+      - name: Verify immutable game and extract
+        run: |
+          set -euo pipefail
+          (cd work/package && sha256sum -c mindustry-yandex-release.zip.sha256)
+          mkdir -p web-runtime/build/web
+          unzip -q work/package/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Require all six trusted gameplay scenarios
+        run: |
+          set -euo pipefail
+          bash scripts/verify-browser-gameplay-button-stress.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: strict-gameplay-evidence
+          path: |
+            work/settings-gameplay-*.html
+            work/settings-gameplay-*.png

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 MINDUSTRY = ROOT / "work" / "Mindustry" / "core" / "src" / "mindustry"
@@ -218,3 +219,18 @@ print(
     "Applied Web-safe local UI runtime: editor preview sync, playing overlay guards, planet mesh sync, "
     f"anonymous reflection compatibility ({anonymous_replacements}), byte formatter, and single-player settings"
 )
+
+# Native HUD notifications are decorative. Their global Scene containers otherwise
+# intercept taps on the mobile top toolbar while Onset's first notification slides
+# across it, even though the underlying Research button is visible.
+hud_path = MINDUSTRY / "ui" / "fragments" / "HudFragment.java"
+hud = read(hud_path)
+hud, count = re.subn(
+    r"(?m)^([ \t]*)Table container = Core.scene.table\(\);$",
+    r"\1Table container = Core.scene.table();\n\1container.touchable = Touchable.disabled;",
+    hud,
+)
+if count != 2:
+    raise SystemExit(f"Pinned HUD toast/unlock containers changed: {count}")
+hud_path.write_text(hud, encoding="utf-8")
+print("HUD toast and unlock notifications pass pointer input to native controls")

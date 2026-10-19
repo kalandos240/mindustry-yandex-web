@@ -23,6 +23,12 @@ import static mindustry.Vars.*;
  */
 public final class BrowserVanillaDialogs{
     private static boolean initialized;
+    private static long lastSettingsClose;
+
+    public static boolean menuExitAllowed(){
+        return !anyNativeModalShown() && !Core.scene.hasDialog()
+            && arc.util.Time.millis() - lastSettingsClose > 350L;
+    }
     private static boolean settingsProbeChecked, settingsProbeEnabled;
 
     private BrowserVanillaDialogs(){}
@@ -45,6 +51,7 @@ public final class BrowserVanillaDialogs{
         // Stock dialog reuses the original sound/game/graphics/data/preferences UI.
         // Unsupported desktop menu actions are patched in the temporary build tree.
         ui.settings = new SettingsMenuDialog();
+        ui.settings.hidden(() -> lastSettingsClose = arc.util.Time.millis());
         // Save-slot management reuses native LoadDialog but redirects its load action
         // to the already validated browser-local Continue state machine.
         ui.load = new BrowserVanillaSavesDialog();

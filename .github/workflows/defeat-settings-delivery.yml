@@ -1,0 +1,83 @@
+name: Deliver verified campaign defeat and settings ZIP
+on:
+  push:
+    branches: [defeat-settings-fix]
+    paths: ['.github/workflows/defeat-settings-delivery.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Wait for the exact source build to pass browser verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/39196095616'
+          for attempt in range(90):
+              request=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(request,timeout=30) as response:
+                  run=json.load(response)
+              assert run['head_sha']=='7f78cb2aeb178dfafeaef7099b2dfd636d4888f9'
+              print('Verification:',run['status'],run.get('conclusion'),flush=True)
+              if run['status']=='completed':
+                  if run.get('conclusion')!='success': raise SystemExit('Source browser verification did not pass')
+                  break
+              time.sleep(20)
+          else: raise SystemExit('Timed out waiting for source verification')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-defeat-settings-verified
+          run-id: 39196095616
+          github-token: ${{ github.token }}
+          path: work/verified
+      - name: Verify and extract the complete game at the ZIP root
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import hashlib,json
+          package=Path('work/verified/mindustry-yandex-release.zip')
+          expected=Path(str(package)+'.sha256').read_text().split()[0]
+          assert hashlib.sha256(package.read_bytes()).hexdigest()==expected
+          with ZipFile(package) as z:
+              assert z.testzip() is None
+              assert 'index.html' in z.namelist() and 'mindustry.js' in z.namelist()
+              assert sum(i.file_size for i in z.infolist())<100_000_000
+              assert len(z.read('mindustry.js'))<=41_200_000
+              for name in z.namelist():
+                  assert not name.startswith('/') and '..' not in Path(name).parts
+              z.extractall('work/ready')
+          root=Path('work/ready')
+          manifest={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
+          Path('work/package-manifest.json').write_text(json.dumps(manifest))
+          print('Verified source ZIP SHA256:',expected)
+          print('Unpacked bytes:',sum(p.stat().st_size for p in root.rglob('*') if p.is_file()))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-yandex-defeat-settings-2026-10-19-7f78cb2
+          path: work/ready/
+          compression-level: 9
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-defeat-settings-2026-10-19-7f78cb2
+          path: work/roundtrip
+      - name: Verify the downloadable archive contains the identical complete game
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          root=Path('work/roundtrip')
+          expected=json.loads(Path('work/package-manifest.json').read_text())
+          actual={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
+          assert actual==expected
+          assert (root/'index.html').is_file()
+          print('Directly uploadable game ZIP passed byte-for-byte roundtrip:',len(actual),'files')
+          PY
