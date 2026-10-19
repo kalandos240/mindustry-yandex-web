@@ -1,0 +1,74 @@
+name: Mindustry latest build package
+
+on:
+  push:
+    branches: [release-smoke-4dab6e]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - name: Checkout latest game source
+        uses: actions/checkout@v4
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Bootstrap pinned Mindustry and Arc
+        run: bash scripts/bootstrap.sh
+      - name: Generate original sprite atlas
+        working-directory: work/Mindustry
+        run: |
+          chmod +x gradlew
+          ./gradlew tools:pack '-Pargs=[]' --no-daemon --stacktrace
+      - name: Bake browser font atlases
+        run: |
+          bash scripts/install-web-font-baker.sh
+          cd work/Mindustry
+          ./gradlew tools:webFontBake --no-daemon --stacktrace
+      - name: Apply all browser compatibility patches
+        run: |
+          bash scripts/apply-port.sh
+          python3 scripts/patch-arc-fi-web.py work/Arc/arc-core/src/arc/files/Fi.java
+          python3 scripts/patch-mindustry-block-reflection.py work/Mindustry/core/src/mindustry/world/Block.java
+          python3 scripts/patch-mindustry-fonts-web.py work/Mindustry/core/src/mindustry/ui/Fonts.java
+          python3 scripts/patch-mindustry-no-links-web.py
+          python3 scripts/patch-mindustry-external-urls-web.py
+      - name: Compile Arc browser backend
+        working-directory: work/Arc
+        run: |
+          chmod +x gradlew
+          ./gradlew :arc-core:compileJava :backends:backend-web:compileJava --no-daemon --stacktrace
+      - name: Compile Mindustry core
+        working-directory: work/Mindustry
+        run: ./gradlew core:compileJava --no-daemon --stacktrace
+      - name: Compile JavaScript and stage assets
+        run: work/Arc/gradlew -p web-runtime generateJavaScript stageWeb --no-daemon --stacktrace
+      - name: Sanitize staged browser runtime
+        run: python3 scripts/sanitize-teavm-runtime-links.py
+      - name: Check release size and integrity
+        run: bash scripts/audit-yandex-release.sh
+      - name: Verify live defeat and durable settings in Chrome
+        run: bash scripts/verify-browser-defeat-settings.sh
+      - name: Package current game source
+        run: |
+          python3 scripts/package-yandex-release.py
+          cat work/release/mindustry-yandex-release-report.txt
+          test -s work/release/mindustry-yandex-release.zip
+      - name: Verify actual packaged game in Chrome
+        run: bash scripts/verify-yandex-release-archive.sh
+      - name: Upload current playable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-latest-tested-build
+          path: |
+            work/release/mindustry-yandex-release.zip
+            work/release/mindustry-yandex-release.zip.sha256
+            work/release/mindustry-yandex-release-report.txt
+          if-no-files-found: error
