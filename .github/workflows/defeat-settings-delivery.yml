@@ -17,12 +17,12 @@ jobs:
         run: |
           python3 - <<'PY'
           import json,os,time,urllib.request
-          url='https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/39193307500'
+          url='https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/39193665081'
           for attempt in range(90):
               request=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
               with urllib.request.urlopen(request,timeout=30) as response:
                   run=json.load(response)
-              assert run['head_sha']=='3105add059da6f6199f0fa961880fd5e8905f8bc'
+              assert run['head_sha']=='49e6fc30ad6a00bdb08c57bf82ba26917f7ead92'
               print('Verification:',run['status'],run.get('conclusion'),flush=True)
               if run['status']=='completed':
                   if run.get('conclusion')!='success': raise SystemExit('Source browser verification did not pass')
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: mindustry-defeat-settings-verified
-          run-id: 39193307500
+          run-id: 39193665081
           github-token: ${{ github.token }}
           path: work/verified
       - name: Verify and extract the complete game at the ZIP root
@@ -61,13 +61,13 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: mindustry-yandex-defeat-settings-2026-10-19-3105add
+          name: mindustry-yandex-defeat-settings-2026-10-19-49e6fc3
           path: work/ready/
           compression-level: 9
           if-no-files-found: error
       - uses: actions/download-artifact@v4
         with:
-          name: mindustry-yandex-defeat-settings-2026-10-19-3105add
+          name: mindustry-yandex-defeat-settings-2026-10-19-49e6fc3
           path: work/roundtrip
       - name: Verify the downloadable archive contains the identical complete game
         run: |
