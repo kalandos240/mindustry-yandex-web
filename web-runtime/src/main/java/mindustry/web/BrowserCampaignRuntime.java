@@ -21,6 +21,7 @@ import static mindustry.Vars.*;
 public final class BrowserCampaignRuntime{
     private static boolean active;
     private static boolean gameOverFreeze;
+    private static boolean lossSmokeArmed;
     private static boolean testChecked;
     private static boolean diagnostics;
     private static boolean diagnosticsQueryCached;
@@ -381,6 +382,7 @@ public final class BrowserCampaignRuntime{
         originObjectivesStaged = false;
         coreReadyMarked = false;
         gameOverFreeze = false;
+        lossSmokeArmed = false;
         pauseUpdateId = 0L;
         pausedFrames = 0;
         pauseSmokeArmed = false;
@@ -571,6 +573,7 @@ public final class BrowserCampaignRuntime{
         originObjectivesStaged = false;
         coreReadyMarked = false;
         gameOverFreeze = false;
+        lossSmokeArmed = false;
         pauseUpdateId = 0L;
         pausedFrames = 0;
         pauseSmokeArmed = false;
@@ -727,6 +730,7 @@ public final class BrowserCampaignRuntime{
         originObjectivesStaged = false;
         coreReadyMarked = false;
         gameOverFreeze = false;
+        lossSmokeArmed = false;
         pauseUpdateId = 0L;
         pausedFrames = 0;
         pauseSmokeArmed = false;
@@ -1298,6 +1302,19 @@ public final class BrowserCampaignRuntime{
             gameOverFreeze = true;
             updateGameOverFrame();
             return;
+        }
+
+        if(!lossSmokeArmed && lossSmokeRequested() && frames >= 3){
+            // CI-only regression: destroy actual campaign player core buildings,
+            // then run the normal Logic -> GameOverEvent -> modal path.
+            if(current.preset != SectorPresets.groundZero && current.preset != SectorPresets.onset){
+                throw new IllegalStateException("c:loss-smoke-sector");
+            }
+            var playerCores = state.rules.defaultTeam.cores().copy();
+            if(playerCores.isEmpty()) throw new IllegalStateException("c:loss-smoke-no-core");
+            playerCores.each(core -> core.kill());
+            lossSmokeArmed = true;
+            markLossSmokeArmed();
         }
 
         if(captureSmoke){
@@ -2060,6 +2077,13 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignPauseSmoke') === '1';")
     private static native boolean pauseSmokeRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignLossSmoke') === '1';")
+    private static native boolean lossSmokeRequested();
+
+    private static void markLossSmokeArmed(){
+        setRuntimeDomAttribute("data-mindustry-campaign-loss-smoke", "armed");
+    }
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignCaptureSmoke') === '1';")
     private static native boolean captureSmokeRequested();

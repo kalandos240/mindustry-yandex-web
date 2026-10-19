@@ -37,6 +37,7 @@ public final class BrowserUiRuntime{
     private static TextButton localContinueButton;
     private static int hudResearchPointerFrames;
     private static int hudDatabasePointerFrames;
+    private static int gameOverPointerFrames;
     private static Table gameOverOverlay;
     private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
@@ -428,10 +429,17 @@ public final class BrowserUiRuntime{
         dialog.image(Icon.cancel).size(42f).padTop(12f).row();
         dialog.add(Core.bundle.get("gameover", "Game Over"))
             .style(Styles.outlineLabel).padBottom(12f).row();
-        dialog.button(Core.bundle.get("back", "Back"), Icon.exit,
+        TextButton gameOverBack = dialog.button(Core.bundle.get("back", "Back"), Icon.exit,
             BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 240f : 300f, mobile ? 58f : 52f)
-            .name("web-gameover-back").padBottom(12f);
+            .name("web-gameover-back").padBottom(12f).get();
+        gameOverBack.update(() -> {
+            if(!state.gameOver || Core.scene == null || (++gameOverPointerFrames & 7) != 0) return;
+            Vec2 pos = gameOverBack.localToStageCoordinates(new Vec2(
+                gameOverBack.getWidth() / 2f, gameOverBack.getHeight() / 2f));
+            Vec2 screen = Core.scene.getViewport().project(pos);
+            markGameOverBackHitPoint(screen.x, screen.y);
+        });
         overlay.add(dialog).center();
         ui.hudGroup.addChild(overlay);
         gameOverOverlay = overlay;
@@ -519,4 +527,7 @@ public final class BrowserUiRuntime{
 
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-gameover-visible', 'ready');")
     private static native void markGameOverShown();
+
+    @JSBody(params = {"x", "y"}, script = "document.documentElement.setAttribute('data-mindustry-gameover-back-x',String(x)); document.documentElement.setAttribute('data-mindustry-gameover-back-y',String(y));")
+    private static native void markGameOverBackHitPoint(float x, float y);
 }
