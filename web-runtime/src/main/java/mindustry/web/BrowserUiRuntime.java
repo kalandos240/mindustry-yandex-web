@@ -424,10 +424,6 @@ public final class BrowserUiRuntime{
         float[] lastSize = {-1f};
         int[] frames = {0};
         root.update(() -> {
-            // Onset's stock input/HUD actors can be reattached above this toolbar.
-            // Its empty root is children-only; keep the actual top buttons clickable.
-            // Paused/game-over overlays retain priority when simulation is stopped.
-            if(state.isPlaying()) root.toFront();
             float size = BrowserHudLayout.compact() ? 44f : 48f;
             if(lastSize[0] != size){
                 lastSize[0] = size;

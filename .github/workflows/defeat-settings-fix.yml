@@ -360,3 +360,5 @@ jobs:
 # Persist campaign metadata in the same IndexedDB transaction stream as MSAV files.
 
 # Dynamic loss captions use the pinned Arc Table.label provider overload.
+
+# Decorative native toast/unlock containers must not intercept mobile HUD touches.
