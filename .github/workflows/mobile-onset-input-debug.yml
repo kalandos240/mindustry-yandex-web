@@ -38,9 +38,12 @@ jobs:
           """
           body=body.replace(needle,'        $target = $tmp;\n'+probe+'        if ($target !== null) {')
           s=s[:start]+body+s[end:]
-          needle='mw_BrowserUiRuntime_lambda$buildMobileHudToolbar$32 = ($lastSize, $buttons, $toolbar, $line, $root, $frames, $actions) => {'
-          assert s.count(needle)==1
-          s=s.replace(needle,needle+'\n    if(mc_GameState_isPlaying(m_Vars_state)) as_Element_toFront($root);',1)
+          start=s.index('muf_HudFragment$showToast$lambda$_15_0_run =')
+          end=s.index('function ma_ControlPathfinder',start)
+          body=s[start:end];needle='        ($rt_nullCheck(var$4)).$fillParent = 1;'
+          assert body.count(needle)==1
+          body=body.replace(needle,needle+'\n        var$4.$touchable0 = ase_Touchable_disabled;',1)
+          s=s[:start]+body+s[end:]
           p.write_text(s)
           p=Path('scripts/verify-browser-gameplay-button-stress.sh');s=p.read_text();i=s.index('run_buttons campaign desktop mindustryCampaignSmoke=groundZero');s=s[:i]+'run_buttons campaign mobile mindustryCampaignSmoke=onset\n';p.write_text(s)
           PY
@@ -53,4 +56,3 @@ jobs:
           path: |
             work/settings-gameplay-*.html
             work/settings-gameplay-*.png
-
