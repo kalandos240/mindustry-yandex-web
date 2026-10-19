@@ -24,6 +24,13 @@ public final class BrowserCampaignRuntime{
     private static boolean lossSmokeArmed;
     private static boolean lossSmoke;
     private static boolean testChecked;
+    // The 44 deferred .msav files are loaded by an asynchronous browser
+    // warmup. Opt-in matrix boots must await them; the two eager start maps
+    // are deliberately unaffected by this gate.
+    private static boolean matrixWaitingForAssets;
+    public static boolean matrixWaitingForAssets(){
+        return matrixWaitingForAssets;
+    }
     private static boolean diagnostics;
     private static boolean diagnosticsQueryCached;
     private static boolean diagnosticsQueryValue;
@@ -90,7 +97,7 @@ public final class BrowserCampaignRuntime{
             && meta.rules.sector.id == sector.id && meta.rules.sector.planet == sector.planet;
     }
 
-    private static boolean hasSectorSave(SectorPreset preset){
+    static boolean hasSectorSave(SectorPreset preset){
         Sector sector = preset == null ? null : preset.sector;
         if(sector == null || sector.save == null || sector.save.file == null
         || !sector.save.file.exists() || sector.save.file.length() < 128){
@@ -115,6 +122,8 @@ public final class BrowserCampaignRuntime{
             continuePreset(preset);
             return;
         }
+
+        if(BrowserCampaignAssets.defer(preset, () -> playUnlockedPreset(preset, originPreset, actionId))) return;
 
         Sector origin = originPreset == null ? null : originPreset.sector;
         if(origin == null || !origin.hasBase() || !origin.isCaptured()){
@@ -253,6 +262,14 @@ public final class BrowserCampaignRuntime{
 
     public static void maybeStartTestSector(){
         if(testChecked) return;
+        // Only the isolated 46-sector test waits for background campaign
+        // file hydration. Do not consume the one-shot testChecked flag
+        // while a deferred .msav is still absent from Core.files.
+        if(campaignMapMatrixRequested() && !campaignAssetsReady()){
+            matrixWaitingForAssets = true;
+            return;
+        }
+        matrixWaitingForAssets = false;
         testChecked = true;
 
         String resumeRequested = requestedResumeSector();
@@ -278,6 +295,23 @@ public final class BrowserCampaignRuntime{
             startGroundZero();
         }else if("onset".equalsIgnoreCase(requested)){
             startOnset();
+        }else if(campaignMapMatrixRequested()){
+            // CI-only full preset boot matrix: load the real packaged .msav,
+            // launch the original campaign state and advance live Logic frames.
+            // The ordinary public campaign path still requires prerequisite
+            // research/capture; only explicit isolated browser smoke profiles
+            // may bypass the unlock to verify late-game sector compatibility.
+            diagPhase("matrix-lookup");
+            SectorPreset testPreset = content.sector(requested);
+            if(testPreset == null || testPreset.sector == null
+                || (testPreset.sector.planet != Planets.serpulo
+                    && testPreset.sector.planet != Planets.erekir)){
+                throw new IllegalArgumentException("Unknown Mindustry campaign matrix sector: " + requested);
+            }
+            diagPhase("matrix-quiet-unlock");
+            testPreset.quietUnlock();
+            diagPhase("matrix-start");
+            startPreset(testPreset, testPreset.sector);
         }else{
             throw new IllegalArgumentException("Unsupported browser campaign smoke sector: " + requested);
         }
@@ -388,22 +422,27 @@ public final class BrowserCampaignRuntime{
         pausedFrames = 0;
         pauseSmokeArmed = false;
 
+        diagPhase("start-check-menu");
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("c:start-menu");
         }
+        diagPhase("start-check-network");
         if(net == null || net.active() || netServer != null || netClient != null){
             throw new IllegalStateException("c:start-net");
         }
 
+        diagPhase("start-check-sector");
         Sector sector = preset == null ? null : preset.sector;
         if(preset == null || sector == null || (sector.planet != Planets.serpulo && sector.planet != Planets.erekir)){
             throw new IllegalStateException("c:meta");
         }
+        diagPhase("start-check-sector-unlock");
         if(preset != SectorPresets.groundZero && !preset.unlocked()){
             throw new IllegalStateException("c:locked:" + preset.name);
         }
 
+        diagPhase("start-check-packaged-msav");
         Fi presetFile = Core.files.internal("maps/" + sector.planet.name + "/" + preset.name + "." + mapExtension);
         if(!presetFile.exists() || presetFile.length() < 128){
             throw new IllegalStateException("c:map:" + preset.name);
@@ -412,6 +451,7 @@ public final class BrowserCampaignRuntime{
             throw new IllegalStateException("c:maps");
         }
 
+        diagPhase("start-bind-generator");
         if(preset.generator == null || preset.generator.map == null){
             preset.generator = new FileMapGenerator(preset.name, preset);
         }
@@ -420,8 +460,15 @@ public final class BrowserCampaignRuntime{
         }
         markGeneratorReady(preset.generator.map.file.path());
 
-        diagPhase("reset");
-        logic.reset();
+        // logic.play() sets GameState.playing BEFORE the initial sector save,
+        // launch events and the browser session marker. Any exception there
+        // used to strand the game in playing with active=false; the very next
+        // frame then threw "Production Web entered playing state outside...".
+        // Roll back atomically so the real first failure is visible and the
+        // player can retry rather than being trapped on a dead planet map.
+        try{
+            diagPhase("reset");
+            logic.reset();
         mindustry.entities.Effect.webResetEffectBudget();
 
         if(preset == SectorPresets.groundZero || preset == SectorPresets.onset) preset.quietUnlock();
@@ -481,7 +528,49 @@ public final class BrowserCampaignRuntime{
         active = true;
         markStarted(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             sector.save.file.length());
+        }catch(Throwable launchError){
+            markLaunchFailure(preset.name, launchError.getClass().getName(),
+                String.valueOf(launchError.getMessage()));
+            current = null;
+            active = false;
+            frames = 0;
+            // Reset the original game world AND state, even when the failure
+            // happened after Logic.play() set State.playing.
+            try{
+                if(logic != null) logic.reset();
+            }catch(Throwable resetError){
+                markRecoveryFailure(resetError.getClass().getName());
+                if(state != null) state.set(mindustry.core.GameState.State.menu);
+            }
+            throw launchError;
+        }
     }
+
+    @JSBody(params={"sector","type","message"}, script="""
+        const root=document.documentElement;
+        const phase=root.getAttribute('data-mindustry-campaign-phase') || 'unrecorded';
+        const detail=sector+' / '+phase+' / '+type+' / '+message;
+        root.setAttribute('data-mindustry-campaign-launch-failure',detail);
+        root.setAttribute('data-mindustry-campaign-launch-result','failed');
+        console.error('Mindustry campaign launch failed:',detail);
+        const status=document.getElementById('mindustry-web-status');
+        if(status){
+            status.textContent='Sector launch failed: '+detail;
+            status.style.opacity='1';
+            status.style.color='#ffb2a8';
+            status.style.background='rgba(10,0,0,.9)';
+            status.style.padding='8px';
+            status.style.maxWidth='calc(100% - 28px)';
+            status.style.overflowWrap='anywhere';
+            status.style.pointerEvents='none';
+        }
+        """)
+    private static native void markLaunchFailure(String sector, String type, String message);
+
+    @JSBody(params={"type"}, script="""
+        document.documentElement.setAttribute('data-mindustry-campaign-recovery-failure',type);
+        """)
+    private static native void markRecoveryFailure(String type);
 
     /** Restore the persisted stock Ground Zero sector save after browser/IndexedDB restart. */
     public static void continueGroundZero(){
@@ -495,6 +584,9 @@ public final class BrowserCampaignRuntime{
     private static void continuePreset(SectorPreset preset){
         if(active) throw new IllegalStateException("c:active");
         cacheSmokeFlags();
+        String resumeSector = preset == null ? "missing-sector" : preset.name;
+        try{
+            diagPhase("resume-start");
         if(state == null || !state.isMenu() || logic == null || world == null || control == null
         || renderer == null || ui == null || pathfinder == null || controlPath == null || player == null){
             throw new IllegalStateException("c:resume-menu");
@@ -580,6 +672,23 @@ public final class BrowserCampaignRuntime{
         pauseSmokeArmed = false;
         markResumed(sector.id, sector.planet.name, preset.name, world.width(), world.height(),
             expectedBytes, state.wave, loadedTickMillis);
+        }catch(Throwable resumeError){
+            // A previous-release save, a damaged checkpoint, or a browser
+            // storage failure must not strand the entire TeaVM frame loop.
+            // Preserve the slot: never delete or overwrite it on a failed load.
+            markLaunchFailure(resumeSector, resumeError.getClass().getName(),
+                String.valueOf(resumeError.getMessage()));
+            current = null;
+            active = false;
+            frames = 0;
+            try{
+                if(logic != null && state != null && !state.isMenu()) logic.reset();
+            }catch(Throwable resetError){
+                markRecoveryFailure(resetError.getClass().getName());
+                if(state != null) state.set(mindustry.core.GameState.State.menu);
+            }
+            throw resumeError;
+        }
     }
 
     public static void pause(){
@@ -2036,7 +2145,10 @@ public final class BrowserCampaignRuntime{
     }
 
     private static void diagPhase(String phase){
-        if(diagnostics || pauseSmoke || captureSmoke || progressSmoke) markPhase(phase);
+        // Launch/resume takes place with active=false. Always retain the last
+        // real stage for user reports from Firefox/Yandex's nested iframe.
+        // Live-frame telemetry stays opt-in to avoid DOM churn every tick.
+        if(!active || diagnostics || pauseSmoke || captureSmoke || progressSmoke) markPhase(phase);
     }
 
     /** Exact byte count used by DataOutputStream.writeUTF's modified UTF-8 payload. */
@@ -2070,6 +2182,9 @@ public final class BrowserCampaignRuntime{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignSmoke') || '';")
     private static native String requestedSector();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignMapMatrix') === '1';")
+    private static native boolean campaignMapMatrixRequested();
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignContinueSmoke') || '';")
     private static native String requestedResumeSector();

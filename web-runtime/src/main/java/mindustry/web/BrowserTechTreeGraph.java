@@ -88,6 +88,16 @@ public final class BrowserTechTreeGraph extends WidgetGroup{
         measureLayout(branchRoot);
         preferredWidth = margin * 2f + maxX - minX + nodeWidth;
         preferredHeight = margin * 2f + maxY - minY + nodeHeight;
+        // A freshly opened technology root can contain fewer visible nodes
+        // than the Research window. A ScrollPane cannot pan such a small
+        // child at all, making the user's mouse drag appear broken. Keep a
+        // modest navigable canvas in both axes even before branches expand.
+        // Native node positions/layout stay identical; scrollbars are bounded
+        // by the actual responsive viewport, never a fixed 1920x1080 size.
+        preferredWidth = Math.max(preferredWidth,
+            Core.graphics.getWidth() / Scl.scl(1f) * 1.30f);
+        preferredHeight = Math.max(preferredHeight,
+            Core.graphics.getHeight() / Scl.scl(1f) * 1.30f);
         cacheCoordinates(branchRoot);
         for(TechNode node : visible){
             Vec2 point = coordinates.get(node);

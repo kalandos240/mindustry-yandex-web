@@ -18,6 +18,7 @@ public final class BrowserApplication extends WebApplicationBase{
     }
 
     private boolean resizePending = true;
+    private int lastLogicalResizeWidth = -1, lastLogicalResizeHeight = -1;
     private final FrameCallback frameCallback = this::onAnimationFrame;
     private final BrowserCanvas.ResizeCallback resizeCallback = () -> resizePending = true;
     private final LifecycleCallback platformPauseCallback = () -> setPlatformPaused(true);
@@ -106,7 +107,22 @@ public final class BrowserApplication extends WebApplicationBase{
                 resizePending = false;
                 if(BrowserCanvas.resizeToDisplay(config.canvasId, renderRatioCap)){
                     updateGraphicsMetrics();
-                    resize(graphics.getWidth(), graphics.getHeight());
+                    int logicalWidth = graphics.getWidth();
+                    int logicalHeight = graphics.getHeight();
+                    // The adaptive frame governor changes only the WebGL
+                    // *backing-buffer* pixel ratio, not the actual Yandex
+                    // canvas' CSS size. Dispatching a full Arc Scene resize
+                    // on each DPR adjustment can rebuild native HUD/dialog
+                    // actors mid-click (the user's #404 resize NPE), while
+                    // browser canvas already updated gl.viewport above.
+                    // Dispatch listener resize only for a real CSS/scene size
+                    // change; retain the initial resize and orientation ones.
+                    if(logicalWidth != lastLogicalResizeWidth ||
+                        logicalHeight != lastLogicalResizeHeight){
+                        lastLogicalResizeWidth = logicalWidth;
+                        lastLogicalResizeHeight = logicalHeight;
+                        resize(logicalWidth, logicalHeight);
+                    }
                 }
             }
             graphics.updateFrame(timestamp);
@@ -158,6 +174,33 @@ public final class BrowserApplication extends WebApplicationBase{
                 BrowserResearchTreeSmoke.update();
                 // Only when explicitly requested by the Erekir stress gate.
                 BrowserFactoryFreezeSmoke.update();
+                // CI only: inspect every registered vanilla block/building factory
+                // on live Serpulo/Erekir without changing any game tiles.
+                BrowserBlockRegistrySmoke.update();
+                // CI-only live building semantics: true conveyor transport and
+                // ore production on the original Ground Zero world.
+                BrowserBuildingMechanicsSmoke.update();
+                // Opt-in CI proof of all vanilla UnitType constructors and
+                // actual Ground Factory/Tank Fabricator stock unit spawning.
+                BrowserUnitProductionSmoke.update();
+                // CI-only acceptance of actual factory-produced unit movement,
+                // weapon-owned projectiles and damage against a hostile wall.
+                BrowserProducedUnitBehaviorSmoke.update();
+                // Original Dagger->Mace / Stell->Locus stock reconstructor:
+                // real factory unit, CI payload hand-off and live upgrade.
+                BrowserReconstructorSmoke.update();
+                // CI-only native Erekir Tank Assembler: 4 real assembly drones,
+                // stock payload conveyor intake and Vanquish output.
+                BrowserUnitAssemblerSmoke.update();
+                // Opt-in native Sorter config: real canvas click -> stock
+                // BlockConfigFragment -> ItemSelection copper set/clear.
+                BrowserBuildingConfigSmoke.update();
+                // Chrome test of the exact original HudFragment "skip" wave
+                // action, including real unit-wave state advancement.
+                BrowserWaveHudSmoke.update();
+                // Reproduce the user's campaign HUD Icon.map click in an
+                // active browser world; menu-only PlanetDialog smoke misses it.
+                BrowserHudPlanetSmoke.update();
 
                 if(awaitingPlatformResumeFrame){
                     phase = "resume-frame";

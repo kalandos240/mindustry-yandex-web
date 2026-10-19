@@ -200,6 +200,20 @@ public final class WebClientLauncher extends ClientLauncher{
         markRendererInitialized();
     }
 
+    @JSBody(params={"count"},script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-planet-sector-icons','ready');
+        root.setAttribute('data-mindustry-planet-sector-icon-count',String(count));
+        """)
+    private static native void markPlanetSectorIconsLoaded(int count);
+
+    @JSBody(script="""
+        const root=document.documentElement;
+        root.setAttribute('data-mindustry-planet-meshes','ready');
+        root.setAttribute('data-mindustry-content-load','complete');
+        """)
+    private static native void markPlanetMeshesLoaded();
+
     private static void installRendererDefaults(boolean mobileMode){
         // Full SettingsMenuDialog is intentionally absent from the lean Web UI, so install
         // the stock defaults that Renderer normally receives there. Persisted user values
@@ -265,9 +279,57 @@ public final class WebClientLauncher extends ClientLauncher{
         initRendererRuntime();
         markUiSyncPhase("renderer-init-ready");
 
+        // Missing vanilla lifecycle stage: ContentLoader.init() only sets
+        // up rules/metadata. Planet.mesh (and all Content.load()/loadIcon()
+        // sprites) are created by ContentLoader.load() AFTER shaders/atlas
+        // become available. The previous Web startup skipped this entirely:
+        // normal 2D sector worlds still drew, but PlanetRenderer called
+        // Planet.draw() -> mesh.render() on a NULL mesh, killing the TeaVM
+        // frame loop when any player clicked the stock 3D planet map.
+        // Restore the exact upstream content load once, before Arc Scene
+        // dialogs render or the user can interact with the globe.
+        markUiSyncPhase("content-load");
+        content.load();
+        drainAssetQueue("Mindustry vanilla ContentLoader.load");
+        if(mindustry.content.Planets.sun.mesh == null ||
+            mindustry.content.Planets.serpulo.mesh == null ||
+            mindustry.content.Planets.erekir.mesh == null){
+            throw new IllegalStateException("Vanilla Sun, Serpulo and Erekir 3D meshes are absent after ContentLoader.load()");
+        }
+        markPlanetMeshesLoaded();
+        markUiSyncPhase("content-load-ready");
+
         markUiSyncPhase("ui-load-sync");
         uiShell.loadSync();
         markUiSyncPhase("ui-load-sync-ready");
+
+        // Original SectorPreset.loadIcon() is conditional on Icon.terrain.
+        // ContentLoader.load() above runs *before* UI.loadSync -> Icon.load(),
+        // so every unlocked sector preset had a null uiIcon, even though
+        // its planet mesh was correctly initialized. The user's real Yandex
+        // stack trace resolves exactly to Sector.icon() dereferencing this
+        // null preset.uiIcon during PlanetDialog.renderProjections().
+        //
+        // Re-run only the 46 original SectorPreset.loadIcon callbacks AFTER
+        // UI.loadSync, preserving other content/meshes and vanilla icons.
+        // Fail at startup rather than freezing frame #132 on the 3D map.
+        markUiSyncPhase("planet-sector-icons");
+        if(Icon.terrain == null || Icon.terrain.getRegion() == null){
+            throw new IllegalStateException("Vanilla Icon.terrain has not been initialized by UI.loadSync()");
+        }
+        int sectorIcons = 0;
+        for(mindustry.type.SectorPreset preset : content.sectors()){
+            preset.loadIcon();
+            if(preset.uiIcon == null || preset.fullIcon == null){
+                throw new IllegalStateException("3D planet sector icon missing for " + preset.name);
+            }
+            sectorIcons++;
+        }
+        if(sectorIcons != 46){
+            throw new IllegalStateException("Unexpected stock Serpulo/Erekir sector icon count: " + sectorIcons);
+        }
+        markPlanetSectorIconsLoaded(sectorIcons);
+        markUiSyncPhase("planet-sector-icons-ready");
 
         if(Core.scene == null
         || Tex.whiteui == null
@@ -295,6 +357,10 @@ public final class WebClientLauncher extends ClientLauncher{
         markUiSyncPhase("gameplay-runtime");
         BrowserGameplayRuntime.init();
         markUiSyncPhase("gameplay-runtime-ready");
+
+        markUiSyncPhase("vanilla-local-dialogs");
+        BrowserVanillaDialogs.install();
+        markUiSyncPhase("vanilla-local-dialogs-ready");
 
         uiSyncLoaded = true;
         markUiSyncReady();
@@ -399,6 +465,11 @@ public final class WebClientLauncher extends ClientLauncher{
     public boolean hasLocalUiRuntime(){ return BrowserUiRuntime.initialized(); }
     public boolean hasGameplayRuntime(){ return BrowserGameplayRuntime.initialized(); }
     public InputHandler inputRuntime(){ return gameplayInput; }
+
+    @Override
+    public void showFileChooser(mindustry.ui.FileChooser.FileChooserParams params){
+        BrowserFileChooser.show(params);
+    }
 
     @Override
     public NetProvider getNet(){ return netProvider; }

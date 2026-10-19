@@ -8,7 +8,7 @@ PLATFORM="$WEB_DIR/yandex-platform.js"
 MANIFEST="$WEB_DIR/assets-manifest.js"
 PLANETS_SOURCE="$ROOT_DIR/work/Mindustry/core/src/mindustry/content/Planets.java"
 SERPULO_DATA="$WEB_DIR/assets/planets/serpulo.json"
-MAX_BYTES=$((100 * 1024 * 1024))
+MAX_BYTES=100000000
 
 fail(){
   echo "Yandex release audit failed: $*" >&2
