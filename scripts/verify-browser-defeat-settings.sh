@@ -73,9 +73,13 @@ for device in desktop mobile; do
           bubbles:true,cancelable:true,pointerId:310,pointerType:ptr,
           clientX:x,clientY:y,button:0,buttons:0,isPrimary:true}));
         await wait(()=>root.outerHTML.includes('$returned'),'Arc Back button / menu return');
-        if('$world'!=='local' &&
-           root.getAttribute('data-mindustry-campaign-defeat-exit')!=='ready')
-          throw Error('Campaign defeat failed to invalidate destroyed-core save');
+        if('$world'!=='local'){
+          if(root.getAttribute('data-mindustry-campaign-defeat-exit')!=='ready')
+            throw Error('Campaign defeat failed to invalidate destroyed-core save');
+          // Persist the sector save deletion and hasCore=false metadata before
+          // killing Chrome; cold boot must recover the fully committed state.
+          await globalThis.__mindustryStorage.flush();
+        }
         await new Promise(r=>setTimeout(r,300));
         if(root.getAttribute('data-mindustry-web')==='error') throw Error('Menu crashed after game over');
         root.setAttribute('data-mindustry-defeat-navigation','passed');
@@ -84,6 +88,29 @@ for device in desktop mobile; do
       --after-ready-require 'data-mindustry-defeat-navigation="passed"' \
       > "/tmp/mindustry-defeat-$world-$device.html"
     echo "$device $world: destroyed core -> modal -> real pointer Back -> menu PASS"
+
+    # A destroyed campaign core must never turn into a broken Continue after a
+    # genuine Chrome restart. Reboot with the exact same persistent browser profile
+    # and verify that the lost sector no longer advertises a resumable save.
+    if [ "$world" != local ]; then
+      cold_reqs=()
+      if [ "$world" = serpulo ]; then
+        cold_reqs+=(--require 'data-mindustry-campaign-ui-action="play"')
+      else
+        cold_reqs+=(--require 'data-mindustry-erekir-ui-onset-save="false"')
+      fi
+      python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+        "${device_args[@]}" \
+        --url "http://127.0.0.1:$PORT/index.html?lang=en" \
+        --profile "/tmp/mindustry-defeat-$world-$device-profile" --port 9482 \
+        --timeout 120 \
+        --require 'data-mindustry-web="ready"' \
+        --require 'data-mindustry-gameplay-loop="menu-stable"' \
+        --require 'data-mindustry-campaign-ui="ready"' \
+        "${cold_reqs[@]}" \
+        > "/tmp/mindustry-defeat-cold-$world-$device.html"
+      echo "$device $world: cold restart after defeat has no stale coreless Continue PASS"
+    fi
   done
 
   # Pause the actual game with its physical Space binding, open the pause
@@ -164,6 +191,26 @@ for device in desktop mobile; do
       --after-ready-require 'data-mindustry-settings-gameplay-smoke="passed"' \
       > "/tmp/mindustry-settings-$world-$device.html"
     echo "$device $world: pause -> settings volumes -> Escape/Back -> resume PASS"
+
+    # BrowserSettings writes synchronously to localStorage. Prove that an actual
+    # second Chrome process restores both changed volumes, not just the game's
+    # in-memory settings UI labels.
+    saved_dom="/tmp/mindustry-settings-$world-$device.html"
+    saved_sfx="$(grep -o 'data-mindustry-settings-sfx-value="[0-9]*"' "$saved_dom" | head -1 | cut -d'"' -f2)"
+    saved_music="$(grep -o 'data-mindustry-settings-music-value="[0-9]*"' "$saved_dom" | head -1 | cut -d'"' -f2)"
+    [[ "$saved_sfx" =~ ^[0-9]+$ && "$saved_music" =~ ^[0-9]+$ ]]
+    python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
+      "${device_args[@]}" \
+      --url "http://127.0.0.1:$PORT/index.html?lang=en" \
+      --profile "/tmp/mindustry-settings-$world-$device-profile" --port 9483 \
+      --timeout 120 \
+      --require 'data-mindustry-web="ready"' \
+      --require 'data-mindustry-gameplay-loop="menu-stable"' \
+      --require 'data-mindustry-settings-ui="ready"' \
+      --require "data-mindustry-settings-sfx-value=\"$saved_sfx\"" \
+      --require "data-mindustry-settings-music-value=\"$saved_music\"" \
+      > "/tmp/mindustry-settings-cold-$world-$device.html"
+    echo "$device $world: cold browser restart restored SFX=$saved_sfx and music=$saved_music PASS"
   done
 done
 
