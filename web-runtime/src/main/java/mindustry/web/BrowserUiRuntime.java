@@ -531,6 +531,8 @@ public final class BrowserUiRuntime{
     }
 
     private static void returnToMenuWithAd(){
+        // A closing native modal must consume its entire pointer/key gesture.
+        if(!BrowserVanillaDialogs.menuExitAllowed()) return;
         BrowserStockMainMenu.showHome();
         BrowserYandex.beginMenuFullscreenAdv();
         if(BrowserCampaignRuntime.active()){
@@ -791,22 +793,38 @@ public final class BrowserUiRuntime{
         overlay.setFillParent(true);
         overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> BrowserLocalMapRuntime.active() && state.isGame() && state.gameOver);
+        overlay.visible(() -> (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
+            && state.isGame() && state.gameOver);
 
         Table dialog = new Table(Tex.pane2);
         dialog.name = "web-gameover-dialog";
         dialog.defaults().pad(8f);
         dialog.image(Icon.cancel).size(42f).padTop(12f).row();
-        dialog.add(Core.bundle.get("gameover", "Game Over"))
-            .style(Styles.outlineLabel).padBottom(12f).row();
+        dialog.add(() -> state.isCampaign()
+            ? Core.bundle.format("sector.lost", state.getSector().name())
+            : Core.bundle.get("gameover", "Game Over"))
+            .style(Styles.outlineLabel).wrap().width(mobile ? 240f : 300f).padBottom(12f).row();
+        dialog.add(() -> Core.bundle.get("stats.wave") + ": " + state.stats.wavesLasted).row();
         dialog.button(Core.bundle.get("back", "Back"), Icon.exit,
             BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 240f : 300f, mobile ? 58f : 52f)
             .name("web-gameover-back").padBottom(12f);
         overlay.add(dialog).center();
+        int[] sample = {0};
+        overlay.update(() -> {
+            overlay.toFront();
+            if((++sample[0] & 15) != 0) return;
+            TextButton back = dialog.find("web-gameover-back");
+            Vec2 point = Core.scene.getViewport().project(back.localToStageCoordinates(
+                new Vec2(back.getWidth() / 2f, back.getHeight() / 2f)));
+            markGameOverHit(point.x, point.y);
+        });
         ui.hudGroup.addChild(overlay);
         markGameOverUiReady();
     }
+
+    @JSBody(params={"x", "y"}, script="document.documentElement.setAttribute('data-mindustry-defeat-visible','yes'); document.documentElement.setAttribute('data-mindustry-defeat-back-x',String(x)); document.documentElement.setAttribute('data-mindustry-defeat-back-y',String(y));")
+    private static native void markGameOverHit(float x, float y);
 
     public static boolean initialized(){
         return initialized;

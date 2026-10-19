@@ -116,6 +116,13 @@
     await wait(() => !modal(kind), 'pause/' + name + ' dialog closes');
     ensurePaused();
     await alive(name + ' dialog dismissed');
+    if (name === 'settings') {
+      // Observe beyond the native hide animation, not only the first close frame.
+      await sleep(800);
+      await alive('settings close settled');
+      if (attr(stateKey) === 'menu') throw Error('Settings unexpectedly returned to menu');
+      await wait(() => attr('pause-dialog-visible') === 'yes', 'same paused world after settings');
+    }
   };
   const researchAction = async (prefix,name) => {
     await click(prefix,name);

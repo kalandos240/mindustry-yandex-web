@@ -53,6 +53,8 @@ run_buttons(){
 }
 run_buttons campaign desktop mindustryCampaignSmoke=groundZero
 run_buttons campaign mobile mindustryCampaignSmoke=groundZero
+run_buttons campaign desktop mindustryCampaignSmoke=onset
+run_buttons campaign mobile mindustryCampaignSmoke=onset
 run_buttons local desktop mindustryMapSmoke=maze
 run_buttons local mobile mindustryMapSmoke=maze
 echo 'All real Chrome gameplay button checks passed, including frame-loop freeze watchdog.'
