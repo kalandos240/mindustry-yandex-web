@@ -33,7 +33,7 @@ jobs:
           body=s[start:end];needle='        $target = $tmp;\n        if ($target !== null) {'
           assert body.count(needle)==1
           probe="""        var chain=[], dbg=$target;
-                  for(var n=0;dbg&&n<6;n++,dbg=dbg.$parent0)chain.push({name:dbg.$name6?$rt_ustr(dbg.$name6):'',hud:dbg===m_Vars_ui.$hudGroup,menu:dbg===m_Vars_ui.$menuGroup,input:dbg===m_Vars_control.$input.$uiGroup,scene:dbg===ac_Core_scene.$root,x:dbg.$x13,y:dbg.$y13,w:dbg.$width2,h:dbg.$height2,keys:Object.keys(dbg).slice(-12)});
+                  for(var n=0;dbg&&n<6;n++,dbg=dbg.$parent0)chain.push({name:dbg.$name6?$rt_ustr(dbg.$name6):'',hud:dbg===m_Vars_ui.$hudGroup,menu:dbg===m_Vars_ui.$menuGroup,input:dbg===m_Vars_control.$input.$uiGroup,scene:dbg===a_Core_scene.$root,x:dbg.$x13,y:dbg.$y13,w:dbg.$width2,h:dbg.$height2,keys:Object.keys(dbg).slice(-12)});
                   document.documentElement.setAttribute('data-mindustry-debug-touch',JSON.stringify({x:var$9,y:var$10,chain:chain}));
           """
           body=body.replace(needle,'        $target = $tmp;\n'+probe+'        if ($target !== null) {')
