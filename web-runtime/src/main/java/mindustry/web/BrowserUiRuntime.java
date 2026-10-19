@@ -800,11 +800,11 @@ public final class BrowserUiRuntime{
         dialog.name = "web-gameover-dialog";
         dialog.defaults().pad(8f);
         dialog.image(Icon.cancel).size(42f).padTop(12f).row();
-        dialog.add(() -> state.isCampaign()
+        dialog.label(() -> state.isCampaign()
             ? Core.bundle.format("sector.lost", state.getSector().name())
             : Core.bundle.get("gameover", "Game Over"))
             .style(Styles.outlineLabel).wrap().width(mobile ? 240f : 300f).padBottom(12f).row();
-        dialog.add(() -> Core.bundle.get("stats.wave") + ": " + state.stats.wavesLasted).row();
+        dialog.label(() -> Core.bundle.get("stats.wave") + ": " + state.stats.wavesLasted).row();
         dialog.button(Core.bundle.get("back", "Back"), Icon.exit,
             BrowserUiRuntime::returnToMenuWithAd)
             .size(mobile ? 240f : 300f, mobile ? 58f : 52f)

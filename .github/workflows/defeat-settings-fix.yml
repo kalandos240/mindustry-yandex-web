@@ -357,3 +357,5 @@ jobs:
 # Main-menu Logic must honor the same pointer-release autosave policy as paused gameplay.
 
 # Persist campaign metadata in the same IndexedDB transaction stream as MSAV files.
+
+# Dynamic loss captions use the pinned Arc Table.label provider overload.
