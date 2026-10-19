@@ -23,12 +23,12 @@ jobs:
           python3 - <<'PY'
           import urllib.request,json,os,time
           for attempt in range(60):
-              u='https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/39193665081/artifacts'
+              u='https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/39195685042/artifacts'
               r=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
               with urllib.request.urlopen(r,timeout=30) as f: data=json.load(f)
               found=[a for a in data['artifacts'] if a['name']=='mindustry-yandex-manual-playtest-experimental']
               if found:
-                  assert found[0]['workflow_run']['head_sha']=='49e6fc30ad6a00bdb08c57bf82ba26917f7ead92'
+                  assert found[0]['workflow_run']['head_sha']=='582deb1709b735701942020f3a7050e0a4ab5cd8'
                   break
               time.sleep(15)
           else: raise SystemExit('Compiled package unavailable')
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: mindustry-yandex-manual-playtest-experimental
-          run-id: 39193665081
+          run-id: 39195685042
           github-token: ${{ github.token }}
           path: work/package
       - name: Extract unchanged package

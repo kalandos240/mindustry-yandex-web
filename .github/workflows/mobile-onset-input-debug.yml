@@ -37,7 +37,11 @@ jobs:
                   document.documentElement.setAttribute('data-mindustry-debug-touch',JSON.stringify({x:var$9,y:var$10,chain:chain}));
           """
           body=body.replace(needle,'        $target = $tmp;\n'+probe+'        if ($target !== null) {')
-          s=s[:start]+body+s[end:];p.write_text(s)
+          s=s[:start]+body+s[end:]
+          needle='mw_BrowserUiRuntime_lambda$buildMobileHudToolbar$32 = ($lastSize, $buttons, $toolbar, $line, $root, $frames, $actions) => {'
+          assert s.count(needle)==1
+          s=s.replace(needle,needle+'\n    if(mc_GameState_isPlaying(m_Vars_state)) as_Element_toFront($root);',1)
+          p.write_text(s)
           p=Path('scripts/verify-browser-gameplay-button-stress.sh');s=p.read_text();i=s.index('run_buttons campaign desktop mindustryCampaignSmoke=groundZero');s=s[:i]+'run_buttons campaign mobile mindustryCampaignSmoke=onset\n';p.write_text(s)
           PY
       - name: Observe actual native touch target and dialog callbacks
