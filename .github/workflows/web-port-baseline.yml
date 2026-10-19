@@ -392,6 +392,9 @@ jobs:
       # persistence matrices so TechTree/map compatibility regressions fail fast.
       # Input, build selection, and localized scene behavior fail fast ahead of
       # long campaign matrices while the original PlacementFragment is restored.
+      - name: Verify live defeat menus and in-game settings in desktop/mobile Chrome
+        run: bash scripts/verify-browser-defeat-settings.sh
+
       - name: Verify visible construction palette during real desktop/mobile gameplay
         run: bash scripts/verify-browser-palette-visibility.sh
 
@@ -467,9 +470,6 @@ jobs:
 
       - name: Verify campaign pause save and resume
         run: bash scripts/verify-browser-campaign-pause.sh
-
-      - name: Verify live defeat menus and in-game settings in desktop/mobile Chrome
-        run: bash scripts/verify-browser-defeat-settings.sh
 
       - name: Verify Space hotkey pause and resume never freezes the browser
         run: bash scripts/verify-browser-space-pause.sh
