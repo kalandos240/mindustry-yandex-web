@@ -533,6 +533,29 @@ public final class BrowserUiRuntime{
     private static void returnToMenuWithAd(){
         // A closing native modal must consume its entire pointer/key gesture.
         if(!BrowserVanillaDialogs.menuExitAllowed()) return;
+        if(!state.gameOver){
+            Dialog confirm = new Dialog(Core.bundle.get("confirm", "Confirm"));
+            confirm.setFillParent(false);
+            confirm.cont.add(Core.bundle.get("confirmquit", "Return to the main menu?"))
+                .width(Math.min(400f, Core.scene.getWidth() - 50f)).wrap().pad(16f);
+            confirm.buttons.defaults().size(140f, 54f).pad(4f);
+            TextButton cancel = confirm.buttons.button("@cancel", confirm::hide).get();
+            TextButton accept = confirm.buttons.button("@ok", () -> {
+                confirm.hide();
+                exitSessionToMenu();
+            }).get();
+            confirm.closeOnBack();
+            confirm.update(() -> {
+                markPauseHitPoint(cancel, "exit-cancel");
+                markPauseHitPoint(accept, "exit-confirm");
+            });
+            confirm.show();
+            return;
+        }
+        exitSessionToMenu();
+    }
+
+    private static void exitSessionToMenu(){
         BrowserStockMainMenu.showHome();
         BrowserYandex.beginMenuFullscreenAdv();
         if(BrowserCampaignRuntime.active()){

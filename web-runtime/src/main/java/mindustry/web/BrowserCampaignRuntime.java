@@ -7,6 +7,10 @@ import mindustry.game.*;
 import mindustry.io.*;
 import mindustry.maps.generators.*;
 import mindustry.type.*;
+import mindustry.world.*;
+import mindustry.gen.*;
+import mindustry.game.Teams.BlockPlan;
+import mindustry.world.blocks.power.PowerGraph;
 import org.teavm.jso.JSBody;
 
 import static mindustry.Vars.*;
@@ -409,6 +413,10 @@ public final class BrowserCampaignRuntime{
     }
 
     private static void startPreset(SectorPreset preset, Sector origin){
+        startPreset(preset, origin, new WorldParams(), null);
+    }
+
+    private static void startPreset(SectorPreset preset, Sector origin, WorldParams params, Runnable restore){
         if(active) throw new IllegalStateException("c:active");
         cacheSmokeFlags();
         saveSmokeArmed = false;
@@ -481,7 +489,8 @@ public final class BrowserCampaignRuntime{
         sector.planet.setLastSector(sector);
 
         diagPhase("world-load-sector");
-        world.loadSector(sector);
+        world.loadSector(sector, params);
+        if(restore != null) restore.run();
         if(state.rules == null || state.rules.sector != sector || state.map == null
         || world.width() <= 0 || world.height() <= 0 || state.rules.defaultTeam.core() == null){
             throw new IllegalStateException("c:world:" + preset.name);
@@ -549,6 +558,40 @@ public final class BrowserCampaignRuntime{
                 if(state != null) state.set(mindustry.core.GameState.State.menu);
             }
             throw launchError;
+        }
+    }
+
+    /** Original non-clearing recapture semantics, after the new map is loaded. */
+    private static void restoreLostBuildings(BlockPlan[] plans, Building[] buildings, Building[] derelicts){
+        for(Building build : Team.derelict.data().buildings.toArray(Building.class)) build.tile.remove();
+        for(Building build : derelicts){
+            Tile tile = world.tile(build.tileX(), build.tileY());
+            if(tile != null && tile.build == null && Build.validPlace(build.block, Team.derelict,
+                build.tileX(), build.tileY(), build.rotation, false, false)){
+                tile.setBlock(build.block, Team.derelict, build.rotation, () -> build);
+            }
+        }
+        for(Building build : buildings){
+            if(build.power != null){
+                build.power.graph = new PowerGraph();
+                build.power.links.clear();
+            }
+            Tile tile = world.tile(build.tileX(), build.tileY());
+            if(tile != null && tile.build == null && Build.validPlace(build.block, state.rules.defaultTeam,
+                build.tileX(), build.tileY(), build.rotation, false, false)){
+                build.addPlan(false, true);
+                tile.setBlock(build.block, state.rules.defaultTeam, build.rotation, () -> build);
+                build.changeTeam(Team.derelict);
+                build.dropped();
+            }
+        }
+        for(Building build : buildings) if(build.isValid()) build.updateProximity();
+        for(BlockPlan plan : plans){
+            Building build = world.build(plan.x, plan.y);
+            if(!(build != null && build.block == plan.block && build.tileX() == plan.x
+                && build.tileY() == plan.y && build.team != state.rules.waveTeam)){
+                state.rules.defaultTeam.data().plans.add(plan);
+            }
         }
     }
 
@@ -664,22 +707,32 @@ public final class BrowserCampaignRuntime{
         }
         if(state.rules.defaultTeam.core() == null){
             diagPhase("resume-missing-core");
-            // Match Control.playSector's clearSectorOnLose path. A valid
-            // Erekir save can contain no player core after defeat. Preserve
-            // those bytes before the new landing replaces the active slot.
-            if(sector.planet.clearSectorOnLose || sector.planet.campaignRules.clearSectorOnLose){
-                Fi source = sector.save.file;
-                Fi preserved = source.sibling(source.name() + ".lost-backup");
-                preserved.writeBytes(source.readBytes());
-                long preservedBytes = preserved.length();
-                if(preservedBytes != source.length()) throw new IllegalStateException("c:lost-sector-backup");
-                Sector origin = sector.info.origin == null ? sector : sector.info.origin;
-                logic.reset();
-                markLostSectorRelaunch(preset.name, (int)preservedBytes);
-                startPreset(preset, origin);
-                return;
+            Fi source = sector.save.file;
+            Fi preserved = source.sibling(source.name() + ".lost-backup");
+            preserved.writeBytes(source.readBytes());
+            long preservedBytes = preserved.length();
+            if(preservedBytes != source.length()) throw new IllegalStateException("c:lost-sector-backup");
+            Sector origin = sector.info.origin == null ? sector : sector.info.origin;
+            WorldParams params = new WorldParams();
+            Runnable restore = null;
+            // Stock Control.playSector recapture: simulate loss on the old
+            // world, then carry surviving buildings/derelicts/plans into a
+            // fresh landing. Erekir deliberately clears the old structures.
+            if(!sector.planet.clearSectorOnLose && !sector.planet.campaignRules.clearSectorOnLose
+                && sector.info.spawnPosition != 0 && sector.info.sectorDataMatches(sector)
+                && world.tile(sector.info.spawnPosition) != null){
+                params.corePositionOverride = sector.info.spawnPosition;
+                world.tile(params.corePositionOverride).setBlock(sector.planet.defaultCore, state.rules.defaultTeam);
+                SectorDamage.apply(1f);
+                BlockPlan[] plans = state.rules.defaultTeam.data().plans.toArray(BlockPlan.class);
+                Building[] buildings = state.rules.defaultTeam.data().buildings.toArray(Building.class);
+                Building[] derelicts = Team.derelict.data().buildings.toArray(Building.class);
+                restore = () -> restoreLostBuildings(plans, buildings, derelicts);
             }
-            throw new IllegalStateException("c:resume-core:" + preset.name);
+            logic.reset();
+            markLostSectorRelaunch(preset.name, (int)preservedBytes);
+            startPreset(preset, origin, params, restore);
+            return;
         }
 
         diagPhase("resume-player");
@@ -1327,34 +1380,9 @@ public final class BrowserCampaignRuntime{
         Core.settings.forceSave();
     }
 
-    // The browser uses a virtual file system flushed to IndexedDB. SectorInfo
-    // alone is a Core.settings JSON record, not part of the sector .msav. Keep
-    // a tiny companion checkpoint beside the *same* SaveIO file so resource
-    // recovery survives even if settings hydration drops the SectorInfo cache.
-    // Stamp planet, sector, wave, tick and save byte count: never apply a
-    // snapshot belonging to an older/different save.
-    private static void writeCoreItemCheckpoint(Sector sector){
-        if(sector == null || sector.save == null || sector.save.file == null
-            || state.rules == null || state.rules.defaultTeam.core() == null) return;
-        StringBuilder rows = new StringBuilder("items-v1|")
-            .append(sector.planet.name).append('|').append(sector.id).append('|')
-            .append(state.wave).append('|').append(Math.round(state.tick * 1000d))
-            .append('|').append(sector.save.file.length()).append('\n');
-        for(Item item : content.items()){
-            int amount = state.rules.defaultTeam.items().get(item);
-            if(amount > 0) rows.append(item.id).append(':').append(amount).append('\n');
-        }
-        // Arc Fi.writeString() calls Fi.writer() and attempts java.io.File,
-        // which BrowserFi deliberately does not expose on TeaVM. writeBytes()
-        // routes through BrowserFi.PersistentOutputStream -> IndexedDB.
-        sector.save.file.sibling(sector.save.file.name() + ".items")
-            .writeBytes(rows.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8), false);
-    }
-
     private static void writeCurrentSectorSave(){
         snapshotSectorInventory(current);
         control.saves.saveSector(current);
-        writeCoreItemCheckpoint(current);
     }
 
     private static void saveCampaignCheckpoint(){

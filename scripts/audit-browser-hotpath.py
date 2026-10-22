@@ -440,8 +440,6 @@ if 'controls.top().left()' in BROWSER_UI or '"web-command-mode-hud"' in BROWSER_
     failures.append("stock UI: intrusive left-hand Back/Pause/Command overlay remains")
 CAMPAIGN_RUNTIME = (WEB_JAVA / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
 require(CAMPAIGN_RUNTIME, "snapshotSectorInventory(current);", "persist live core inventory in SectorInfo")
-require(CAMPAIGN_RUNTIME, 'sector.save.file.name() + ".items"', "durable sidecar persists core inventory beside SaveIO")
-require(CAMPAIGN_RUNTIME, "writeCoreItemCheckpoint(current);", "save paths persist core item sidecar")
 require(CAMPAIGN_RUNTIME, 'markSectorInventory("resume");', "cold campaign resource diagnostics")
 SECTOR_INFO_CODEC = (WEB_JAVA / "BrowserSectorInfoCodec.java").read_text(encoding="utf-8")
 require(BROWSER_SETTINGS, "new BrowserSectorInfoCodec()", "explicit SectorInfo persistence without reflection")
