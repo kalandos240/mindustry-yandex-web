@@ -2,6 +2,7 @@
 """Stage a lost-core checkpoint and a retained-derelict sentinel, never ship probes."""
 from pathlib import Path
 import sys
+import re
 p=Path(__file__).resolve().parents[1]/'web-runtime/build/web/mindustry.js'
 s=p.read_text()
 if '--read-probe' in sys.argv:
@@ -19,6 +20,8 @@ if '--read-probe' in sys.argv:
 """
     p.write_text(s.replace(marker,probe+marker))
     raise SystemExit
+team_setters=re.findall(r'(mw_Tile_setBlock\d*) = \(\$this, \$type, \$team\) => \{',s)
+assert len(team_setters)==1, 'Expected one exact Tile.setBlock(Block,Team) overload'
 start=s.index('mw_Campaign_saveCampaignCheckpoint =')
 at=s.index('        if (mw_Campaign_current === null)',start)
 fixture="""        if(new URLSearchParams(location.search).has('lostCore') && !globalThis.__lostCoreFixture){
@@ -44,4 +47,4 @@ fixture="""        if(new URLSearchParams(location.search).has('lostCore') && !g
             setTimeout(()=>mc_GameState_set(m_Vars_state,mc_GameState$State_paused),0);
         }
 """
-p.write_text(s[:at]+fixture+s[at:])
+p.write_text(s[:at]+fixture.replace('mw_Tile_setBlock1(tile,',team_setters[0]+'(tile,')+s[at:])
