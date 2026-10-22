@@ -6,6 +6,7 @@ import mindustry.content.*;
 import mindustry.game.*;
 import mindustry.io.*;
 import mindustry.maps.generators.*;
+import mindustry.maps.SectorDamage;
 import mindustry.type.*;
 import mindustry.world.*;
 import mindustry.gen.*;
