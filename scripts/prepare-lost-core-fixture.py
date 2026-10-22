@@ -19,12 +19,12 @@ if '--read-probe' in sys.argv:
 """
     p.write_text(s.replace(marker,probe+marker))
     raise SystemExit
-start=s.index('mw_BrowserCampaignRuntime_saveCampaignCheckpoint =')
-at=s.index('        if (mw_BrowserCampaignRuntime_current === null)',start)
+start=s.index('mw_Campaign_saveCampaignCheckpoint =')
+at=s.index('        if (mw_Campaign_current === null)',start)
 fixture="""        if(new URLSearchParams(location.search).has('lostCore') && !globalThis.__lostCoreFixture){
             globalThis.__lostCoreFixture=true;
             const core=mg_Team_core(m_Vars_state.$rules2.$defaultTeam);
-            if(mw_BrowserCampaignRuntime_current.$planet===mc_Planets_serpulo){
+            if(mw_Campaign_current.$planet===mc_Planets_serpulo){
                 let found=false;
                 outer:for(let x=2;x<mc_World_width(m_Vars_world)-2;x++){
                     for(let y=2;y<mc_World_height(m_Vars_world)-2;y++){

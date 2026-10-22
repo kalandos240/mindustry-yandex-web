@@ -23,22 +23,22 @@ public class BrowserPlanetDialog extends PlanetDialog{
     Sector findLauncher(Sector to){
         // Original renderOverProjections calls this while drawing hovered
         // sectors, BEFORE the browser launch action can bind their maps.
-        if(!BrowserCampaignRuntime.preparePresetGenerator(to)) return null;
+        if(!Campaign.preparePresetGenerator(to)) return null;
         return super.findLauncher(to);
     }
 
     @Override
     boolean hasNoCandidate(Sector sector){
-        return !sector.hasBase() && !BrowserCampaignRuntime.preparePresetGenerator(sector) || super.hasNoCandidate(sector);
+        return !sector.hasBase() && !Campaign.preparePresetGenerator(sector) || super.hasNoCandidate(sector);
     }
 
     @Override
     public void selectSector(Sector sector){
-        waitingForMap = sector == null || sector.hasBase() || BrowserCampaignRuntime.preparePresetGenerator(sector) ? null : sector;
+        waitingForMap = sector == null || sector.hasBase() || Campaign.preparePresetGenerator(sector) ? null : sector;
         super.selectSector(sector);
         if(waitingForMap != null){
             BrowserCampaignAssets.defer(sector.preset, () -> {
-                if(selected == sector && BrowserCampaignRuntime.preparePresetGenerator(sector)){
+                if(selected == sector && Campaign.preparePresetGenerator(sector)){
                     waitingForMap = null;
                     updateSelected();
                 }
@@ -133,7 +133,7 @@ public class BrowserPlanetDialog extends PlanetDialog{
         try{
             super.act(delta);
             if(waitingForMap != null && selected == waitingForMap
-            && BrowserCampaignRuntime.preparePresetGenerator(waitingForMap)){
+            && Campaign.preparePresetGenerator(waitingForMap)){
                 waitingForMap = null;
                 updateSelected();
             }

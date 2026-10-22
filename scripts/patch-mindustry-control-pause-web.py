@@ -2,7 +2,7 @@
 """Route browser Space pause through the web sector state machine.
 
 The desktop Control.update() directly calls GameState.set(paused), bypassing
-BrowserCampaignRuntime.pause()/BrowserLocalMapRuntime.pause() and their frozen
+Campaign.pause()/BrowserLocalMapRuntime.pause() and their frozen
 clock tracking. Paused browser frames intentionally skip Control.update(), so
 a second Space can never resume. Leave all non-pause stock controls intact.
 """

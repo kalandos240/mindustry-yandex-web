@@ -31,7 +31,7 @@ public final class BrowserProducedUnitBehaviorSmoke{
 
     public static void update(){
         if(!requested() || complete) return;
-        if(state == null || !state.isPlaying() || !BrowserCampaignRuntime.active()
+        if(state == null || !state.isPlaying() || !Campaign.active()
             || state.rules == null || state.rules.sector == null) return;
         if(++frames > 1200)
             throw new IllegalStateException("Produced unit combat smoke timed out at stage " + stage);

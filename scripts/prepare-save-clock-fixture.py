@@ -2,8 +2,8 @@
 from pathlib import Path
 p=Path(__file__).resolve().parents[1]/'web-runtime/build/web/mindustry.js'
 s=p.read_text()
-start=s.index('mw_BrowserCampaignRuntime_saveCampaignCheckpoint =')
-at=s.index('        if (mw_BrowserCampaignRuntime_current === null)',start)
+start=s.index('mw_Campaign_saveCampaignCheckpoint =')
+at=s.index('        if (mw_Campaign_current === null)',start)
 seed="""        if(!globalThis.__clockSeedDone){
             globalThis.__clockSeedDone=true;
             m_Vars_state.$wave=3;

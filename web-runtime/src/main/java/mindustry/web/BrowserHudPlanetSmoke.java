@@ -23,7 +23,7 @@ public final class BrowserHudPlanetSmoke{
 
     public static void update(){
         if(!requested() || complete || state == null || !state.isCampaign()
-        || !BrowserCampaignRuntime.active() || Core.scene == null || ui == null
+        || !Campaign.active() || Core.scene == null || ui == null
         || ui.planet == null) return;
         if(++frames > 950){
             throw new IllegalStateException("Campaign HUD original planet map stalled; armed="+armed);

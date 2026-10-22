@@ -153,13 +153,13 @@ public final class BrowserUiRuntime{
         TextButton startSerpulo = campaignStarts.button(
             mindustry.content.Planets.serpulo.localizedName + " - " +
                 Core.bundle.get("play", "Play"),
-            Icon.play, BrowserCampaignRuntime::playGroundZero)
+            Icon.play, Campaign::playGroundZero)
             .width(mobile ? 152f : 181f).height(mobile ? 51f : 47f)
             .name("web-play-serpulo").get();
         TextButton startErekir = campaignStarts.button(
             mindustry.content.Planets.erekir.localizedName + " - " +
                 Core.bundle.get("play", "Play"),
-            Icon.play, BrowserCampaignRuntime::playOnset)
+            Icon.play, Campaign::playOnset)
             .width(mobile ? 152f : 181f).height(mobile ? 51f : 47f)
             .name("web-play-erekir").get();
         // Both start maps are eager; an unrelated deferred-map failure must
@@ -485,8 +485,8 @@ public final class BrowserUiRuntime{
     private static native void markHudDatabaseHitPoint(float x, float y);
 
     private static void pauseActiveSession(){
-        if(BrowserCampaignRuntime.active()){
-            BrowserCampaignRuntime.pause();
+        if(Campaign.active()){
+            Campaign.pause();
         }else{
             BrowserLocalMapRuntime.pause();
         }
@@ -494,16 +494,16 @@ public final class BrowserUiRuntime{
 
     private static void resumeActiveSession(){
         hudOnlyPause = false;
-        if(BrowserCampaignRuntime.active()){
-            BrowserCampaignRuntime.resume();
+        if(Campaign.active()){
+            Campaign.resume();
         }else{
             BrowserLocalMapRuntime.resume();
         }
     }
 
     private static void saveActiveSession(){
-        if(BrowserCampaignRuntime.active()){
-            BrowserCampaignRuntime.saveCurrentSession();
+        if(Campaign.active()){
+            Campaign.saveCurrentSession();
         }else{
             BrowserLocalMapRuntime.saveLocalSession();
         }
@@ -537,8 +537,8 @@ public final class BrowserUiRuntime{
     private static void exitSessionToMenu(){
         BrowserStockMainMenu.showHome();
         BrowserYandex.beginMenuFullscreenAdv();
-        if(BrowserCampaignRuntime.active()){
-            BrowserCampaignRuntime.returnToMenu();
+        if(Campaign.active()){
+            Campaign.returnToMenu();
         }else{
             BrowserLocalMapRuntime.returnToMenu();
         }
@@ -634,7 +634,7 @@ public final class BrowserUiRuntime{
         dialog.button(Core.bundle.get("research", "Research"), Icon.tree, 32f,
             BrowserResearchUi::show)
             .size(width, height).name("web-pause-research")
-            .visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
+            .visible(() -> Campaign.active() && state.isCampaign());
         dialog.row();
 
         dialog.button(Core.bundle.get("schematics", "Schematics"), Icon.paste, 32f,
@@ -669,7 +669,7 @@ public final class BrowserUiRuntime{
         // Invisible Arc actors do not receive update callbacks. Observe both
         // transitions in the visibility provider, including modal dismissal.
         overlay.visible(() -> {
-            boolean show = (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
+            boolean show = (BrowserLocalMapRuntime.active() || Campaign.active())
                 && state.isPaused() && !hudOnlyPause && !state.gameOver && !Core.scene.hasDialog();
             if(show != wasVisible[0]){
                 wasVisible[0] = show;
@@ -722,7 +722,7 @@ public final class BrowserUiRuntime{
             markPauseHitPoint(dialog.find("web-pause-resume"), "resume");
             markPauseHitPoint(dialog.find("web-pause-settings"), "settings");
             markPauseHitPoint(dialog.find("web-pause-save"), "save");
-            if(BrowserCampaignRuntime.active() && state.isCampaign()){
+            if(Campaign.active() && state.isCampaign()){
                 markPauseHitPoint(dialog.find("web-pause-research"), "research");
             }
             markPauseHitPoint(dialog.find("web-pause-schematics"), "schematics");
@@ -795,7 +795,7 @@ public final class BrowserUiRuntime{
         overlay.setFillParent(true);
         overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
+        overlay.visible(() -> (BrowserLocalMapRuntime.active() || Campaign.active())
             && state.isGame() && state.gameOver);
 
         Table dialog = new Table(Tex.pane2);

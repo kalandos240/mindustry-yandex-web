@@ -508,245 +508,962 @@ new_menu = '''        // Touch-first Yandex UI keeps campaign actions large enou
                             mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextFungalResearch();
                             craterResearch.setText(next == null
                                 ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
-                                : next.localizedName + " — " + Core.bundle.get("r…65650 tokens truncated…e update callbacks. Observe both
-        // transitions in the visibility provider, including modal dismissal.
-        overlay.visible(() -> {
-            boolean show = (BrowserLocalMapRuntime.active() || Campaign.active())
-                && state.isPaused() && !hudOnlyPause && !state.gameOver && !Core.scene.hasDialog();
-            if(show != wasVisible[0]){
-                wasVisible[0] = show;
-                if(show){
-                    // A modal pause menu must also cover the native mobile
-                    // command controls, which normally sit above other HUD actors.
-                    overlay.toFront();
-                    scroll.setScrollY(0f);
-                    scroll.updateVisualScroll();
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.fungalPass)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.fungalPass);
+                            craterResearch.setText(Core.bundle.get("sector.fungalPass.name", "Fungal Pass") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frontier)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextFrontierResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.frontier)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.frontier);
+                            craterResearch.setText(Core.bundle.get("sector.frontier.name", "Frontier") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.saltFlats)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextSaltResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.saltFlats)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.saltFlats);
+                            craterResearch.setText(Core.bundle.get("sector.saltFlats.name", "Salt Flats") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.tarFields)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTarResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.tarFields)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.tarFields);
+                            craterResearch.setText(Core.bundle.get("sector.tarFields.name", "Tar Fields") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.impact0078)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextImpactResearch();
+                            if(BrowserCampaignResearch.waitingForImpactThorium()){
+                                craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.thorium.localizedName));
+                            }else{
+                                craterResearch.setText(next == null
+                                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                        BrowserCampaignResearch.remaining(next));
+                            }
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.impact0078)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.impact0078);
+                            craterResearch.setText(Core.bundle.get("sector.impact0078.name", "Impact 0078") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stainedMountains)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.stainedMountains);
+                            craterResearch.setText(Core.bundle.get("sector.stainedMountains.name", "Stained Mountains") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.infestedCanyons)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextInfestedResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.infestedCanyons)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.infestedCanyons);
+                            craterResearch.setText(Core.bundle.get("sector.infestedCanyons.name", "Infested Canyons") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.nuclearComplex)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNuclearResearch();
+                            if(BrowserCampaignResearch.waitingForNuclearPlastanium()){
+                                craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.plastanium.localizedName));
+                            }else{
+                                craterResearch.setText(next == null
+                                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                        BrowserCampaignResearch.remaining(next));
+                            }
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.nuclearComplex)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.nuclearComplex);
+                            craterResearch.setText(Core.bundle.get("sector.nuclearComplex.name", "Nuclear Production Complex") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.desolateRift)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextDesolateResearch();
+                            if(BrowserCampaignResearch.waitingForDesolateCryofluid()){
+                                craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Liquids.cryofluid.localizedName));
+                            }else{
+                                craterResearch.setText(next == null
+                                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                        BrowserCampaignResearch.remaining(next));
+                            }
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.desolateRift)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.desolateRift);
+                            craterResearch.setText(Core.bundle.get("sector.desolateRift.name", "Desolate Rift") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.facility32m)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.facility32m);
+                            craterResearch.setText(Core.bundle.get("sector.facility32m.name", "Facility 32M") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.perilousHarbor)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextPerilousResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.perilousHarbor)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.perilousHarbor);
+                            craterResearch.setText(Core.bundle.get("sector.perilousHarbor.name", "Perilous Harbor") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.extractionOutpost)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextExtractionResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.extractionOutpost)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.extractionOutpost);
+                            craterResearch.setText(Core.bundle.get("sector.extractionOutpost.name", "Extraction Outpost") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.coastline)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCoastlineResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.coastline)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.coastline);
+                            craterResearch.setText(Core.bundle.get("sector.coastline.name", "Coastline") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.navalFortress)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextNavalFortressResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.navalFortress)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.navalFortress);
+                            craterResearch.setText(Core.bundle.get("sector.navalFortress.name", "Naval Fortress") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.overgrowth)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.overgrowth);
+                            craterResearch.setText(Core.bundle.get("sector.overgrowth.name", "Overgrowth") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.mycelialBastion)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextMycelialResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.mycelialBastion)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.mycelialBastion);
+                            craterResearch.setText(Core.bundle.get("sector.mycelialBastion.name", "Mycelial Bastion") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.littoralShipyard)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextLittoralResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.littoralShipyard)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.littoralShipyard);
+                            craterResearch.setText(Core.bundle.get("sector.littoralShipyard.name", "Littoral Shipyard") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.planetaryTerminal)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTerminalResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.planetaryTerminal)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.planetaryTerminal);
+                            craterResearch.setText(Core.bundle.get("sector.planetaryTerminal.name", "Planetary Launch Terminal") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.taintedWoods)){
+                            craterResearch.setText(Core.bundle.format("requirement.produce", mindustry.content.Items.sporePod.localizedName));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.taintedWoods)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.taintedWoods);
+                            craterResearch.setText(Core.bundle.get("sector.taintedWoods.name", "Tainted Woods") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atolls)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAtollsResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atolls)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.atolls);
+                            craterResearch.setText(Core.bundle.get("sector.atolls.name", "Atolls") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.testingGrounds)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextTestingGroundsResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.testingGrounds)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.testingGrounds);
+                            craterResearch.setText(Core.bundle.get("sector.testingGrounds.name", "Testing Grounds") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.sunkenPier)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.sunkenPier);
+                            craterResearch.setText(Core.bundle.get("sector.sunkenPier.name", "Sunken Pier") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.weatheredChannels)){
+                            mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextWeatheredResearch();
+                            craterResearch.setText(next == null
+                                ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                                : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                                    BrowserCampaignResearch.remaining(next));
+                        }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.weatheredChannels)){
+                            boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.weatheredChannels);
+                            craterResearch.setText(Core.bundle.get("sector.weatheredChannels.name", "Weathered Channels") + " — " +
+                                Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                        }else{
+                            craterResearch.setText(Core.bundle.get("planet.serpulo.name", "Serpulo") + " — " +
+                                Core.bundle.get("complete", "Complete"));
+                        }
+            
+                        if(Campaign.diagnosticsEnabled()){
+                            markCampaignRuinousState(
+                                mindustry.content.Blocks.graphitePress.unlocked(),
+                                mindustry.content.Blocks.siliconSmelter.unlocked(),
+                                mindustry.content.Blocks.kiln.unlocked(),
+                                mindustry.content.Blocks.mechanicalPump.unlocked(),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ruinousShores),
+                                Campaign.hasSave(mindustry.content.SectorPresets.ruinousShores)
+                            );
+                            markCampaignWindsweptState(
+                                mindustry.content.Blocks.pneumaticDrill.unlocked(),
+                                mindustry.content.Blocks.duo.unlocked(),
+                                mindustry.content.Blocks.scatter.unlocked(),
+                                mindustry.content.Blocks.hail.unlocked(),
+                                mindustry.content.Blocks.steamGenerator.unlocked(),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.windsweptIslands),
+                                Campaign.hasSave(mindustry.content.SectorPresets.windsweptIslands)
+                            );
+                            markCampaignSaltBranchState(
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.biomassFacility),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.biomassFacility),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.fungalPass),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.fungalPass),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.frontier),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.frontier),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.saltFlats),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.saltFlats),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.tarFields),
+                                Campaign.hasSave(mindustry.content.SectorPresets.tarFields)
+                            );
+                            markCampaignImpactState(
+                                mindustry.content.Blocks.laserDrill.unlocked(),
+                                mindustry.content.Items.thorium.unlocked(),
+                                mindustry.content.Blocks.lancer.unlocked(),
+                                mindustry.content.Blocks.salvo.unlocked(),
+                                mindustry.content.Blocks.coreFoundation.unlocked(),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.impact0078),
+                                Campaign.hasSave(mindustry.content.SectorPresets.impact0078)
+                            );
+                            markCampaignLateState(
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.stainedMountains),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stainedMountains),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.infestedCanyons),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.infestedCanyons),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.nuclearComplex),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.nuclearComplex),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.desolateRift),
+                                Campaign.hasSave(mindustry.content.SectorPresets.desolateRift)
+                            );
+                            markCampaignFinalInfraState(
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.facility32m),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.facility32m),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.perilousHarbor),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.perilousHarbor),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.extractionOutpost),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.extractionOutpost),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.coastline),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.coastline),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.navalFortress),
+                                Campaign.hasSave(mindustry.content.SectorPresets.navalFortress)
+                            );
+                            markCampaignTerminalState(
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.overgrowth),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.overgrowth),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.mycelialBastion),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.mycelialBastion),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.littoralShipyard),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.littoralShipyard),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.planetaryTerminal),
+                                Campaign.hasSave(mindustry.content.SectorPresets.planetaryTerminal)
+                            );
+                            markCampaignOptionalState(
+                                mindustry.content.Items.sporePod.unlocked(),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.taintedWoods),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.taintedWoods),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atolls),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atolls),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.testingGrounds),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.testingGrounds),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.sunkenPier),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.sunkenPier),
+                                BrowserCampaignResearch.ready(mindustry.content.SectorPresets.weatheredChannels),
+                                BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.weatheredChannels)
+                            );
+                        }
+
+            // craterButton
+            boolean ready = BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crateredBattleground);
+                        boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.crateredBattleground);
+                        craterButton.setText(Core.bundle.get("sector.crateredBattleground.name", "Cratered Battleground") + " — " +
+                            (ready
+                                ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                                : Core.bundle.get("locked", "Locked")));
+                        if(Campaign.diagnosticsEnabled()){
+                            markCampaignCraterState(
+                                mindustry.content.Blocks.mechanicalDrill.unlocked(),
+                                mindustry.content.Items.coal.unlocked(),
+                                mindustry.content.Blocks.combustionGenerator.unlocked(),
+                                mindustry.content.Blocks.powerNode.unlocked(),
+                                mindustry.content.Blocks.mender.unlocked(),
+                                ready,
+                                saved
+                            );
+                        }
+        });
+
+        campaignProgress.add(craterResearch).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f).padTop(2f);
+        campaignProgress.add(craterButton).width(campaignWidth / 2f - 3f).height(mobile ? 50f : 42f).padTop(2f);
+
+        root.add(campaignProgress).width(campaignWidth).padBottom(8f);
+        root.row();
+
+        // Erekir uses the same compact one-action-at-a-time pattern so mobile does not
+        // grow a permanent row for every Erekir prerequisite.
+        TextButton erekirProgress = new TextButton("");
+        erekirProgress.clicked(() -> {
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.onset)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOnsetResearch();
+                if(Campaign.hasSave(mindustry.content.SectorPresets.onset) && next != null
+                && BrowserCampaignResearch.canSpend(next)){
+                    BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextOnsetResearch());
                 }else{
-                    markPauseHidden();
+                    Campaign.playOnset();
                 }
+            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.aegis)){
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextAegisResearch());
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.aegis)){
+                Campaign.playAegis();
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.lake)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.lake)){
+                Campaign.playLake();
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.lake)
+            && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.intersect)){
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextIntersectResearch());
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.intersect)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.intersect)){
+                Campaign.playIntersect();
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.intersect)
+            && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atlas)){
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextAtlasResearch());
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atlas)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atlas)){
+                Campaign.playAtlas();
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atlas)
+            && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.split)){
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextSplitResearch());
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.split)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.split)){
+                Campaign.playSplit();
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.split)
+            && BrowserCampaignResearch.ready(mindustry.content.SectorPresets.basin)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.basin)){
+                Campaign.playBasin();
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.basin)
+            && BrowserCampaignResearch.ready(mindustry.content.SectorPresets.marsh)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.marsh)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextMarshResearch();
+                if(Campaign.hasSave(mindustry.content.SectorPresets.marsh) && next != null
+                && BrowserCampaignResearch.canSpend(next)){
+                    BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextMarshResearch());
+                }else{
+                    Campaign.playMarsh();
+                }
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.marsh)
+            && BrowserCampaignResearch.ready(mindustry.content.SectorPresets.peaks)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.peaks)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextPeaksResearch();
+                if(Campaign.hasSave(mindustry.content.SectorPresets.peaks) && next != null
+                && BrowserCampaignResearch.canSpend(next)){
+                    BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextPeaksResearch());
+                }else{
+                    Campaign.playPeaks();
+                }
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.peaks)
+            && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ravine)){
+                Campaign.playPeaks();
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ravine)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.ravine)){
+                Campaign.playRavine();
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.ravine)
+            && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.caldera)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCalderaResearch();
+                if(next != null && BrowserCampaignResearch.canSpend(next)){
+                    BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextCalderaResearch());
+                }else{
+                    Campaign.playRavine();
+                }
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.caldera)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.caldera)){
+                Campaign.playCaldera();
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.caldera)
+            && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.stronghold)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextStrongholdResearch();
+                if(next != null && BrowserCampaignResearch.canSpend(next)){
+                    BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextStrongholdResearch());
+                }else{
+                    Campaign.playCaldera();
+                }
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.stronghold)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stronghold)){
+                Campaign.playStronghold();
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crevice)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crevice)){
+                Campaign.playCrevice();
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.siege)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.siege)){
+                Campaign.playSiege();
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crossroads)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crossroads)){
+                Campaign.playCrossroads();
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crossroads)
+            && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.karst)){
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextKarstResearch());
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.karst)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.karst)){
+                Campaign.playKarst();
+            }else if(BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.karst)
+            && !BrowserCampaignResearch.ready(mindustry.content.SectorPresets.origin)){
+                BrowserCampaignResearch.spendNext(BrowserCampaignResearch.nextOriginResearch());
+            }else if(BrowserCampaignResearch.ready(mindustry.content.SectorPresets.origin)
+            && !BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin)){
+                Campaign.playOrigin();
             }
-            return show;
         });
-        String[] paired = {"resume", "settings", "save", "research", "schematics", "controls"};
-        String[] wide = {"saves", "menu"};
+        arc.func.Boolp erekirProgressDisabled = () -> {
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.onset)) return false;
 
-        // The stock menu is not active while playing, so its visibility
-        // sampler cannot observe Settings/Controls/Saves shown from Pause.
-        // Update native Arc hitboxes and the real dialog visibility here,
-        // at one sample per 16 Scene frames rather than every frame.
-        int[] sampling = {0};
-        overlay.update(() -> {
-            float sw = Core.scene.getWidth(), sh = Core.scene.getHeight();
-            if(viewport[0] != sw || viewport[1] != sh){
-                viewport[0] = sw;
-                viewport[1] = sh;
-                float buttonWidth = Math.min(width, Math.max(70f, (sw - 70f) / 2f));
-                for(String action : paired){
-                    TextButton button = dialog.find("web-pause-" + action);
-                    float fittedHeight = fitPauseCaption(button, buttonWidth, height);
-                    dialog.getCell(button).width(buttonWidth).height(fittedHeight);
-                }
-                for(String action : wide){
-                    TextButton button = dialog.find("web-pause-" + action);
-                    button.getLabel().setWrap(true);
-                    button.getLabelCell().minWidth(0f);
-                    dialog.getCell(button).width(buttonWidth * 2f + 10f);
-                }
-                dialog.invalidateHierarchy();
-                float contentHeight = dialog.getPrefHeight();
-                float barWidth = contentHeight > sh - 10f
-                    ? Math.max(scroll.getStyle().vScroll.getMinWidth(), scroll.getStyle().vScrollKnob.getMinWidth()) : 0f;
-                scrollCell.width(Math.min(sw - 10f, dialog.getPrefWidth() + barWidth))
-                    .height(Math.min(sh - 10f, contentHeight));
-                overlay.invalidateHierarchy();
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.aegis)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAegisResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
             }
-            if((++sampling[0] & 15) != 0) return;
-            markPauseHitPoint(dialog.find("web-pause-resume"), "resume");
-            markPauseHitPoint(dialog.find("web-pause-settings"), "settings");
-            markPauseHitPoint(dialog.find("web-pause-save"), "save");
-            if(Campaign.active() && state.isCampaign()){
-                markPauseHitPoint(dialog.find("web-pause-research"), "research");
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.aegis)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.lake)) return true;
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.lake)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.intersect)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextIntersectResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
             }
-            markPauseHitPoint(dialog.find("web-pause-schematics"), "schematics");
-            markPauseHitPoint(dialog.find("web-pause-controls"), "controls");
-            markPauseHitPoint(dialog.find("web-pause-saves"), "saves");
-            markPauseHitPoint(dialog.find("web-pause-menu"), "menu");
-            BrowserVanillaDialogs.sampleVisibility();
-            markPauseVisible();
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.intersect)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atlas)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAtlasResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atlas)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.split)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextSplitResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.split)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.basin)) return true;
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.basin)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.marsh)) return true;
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.marsh)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.peaks)) return true;
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.peaks)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ravine)){
+                return !BrowserCampaignResearch.waitingForRavineSlag();
+            }
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.ravine)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.caldera)) return false;
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.caldera)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.stronghold)) return false;
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stronghold)) return false;
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crevice)) return true;
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crevice)) return false;
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.siege)) return true;
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.siege)) return false;
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crossroads)) return true;
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crossroads)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.karst)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextKarstResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.karst)) return false;
+
+            if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.origin)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOriginResearch();
+                return next == null || !BrowserCampaignResearch.canSpend(next);
+            }
+            return BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin);
+        };
+        erekirProgress.setDisabled(erekirProgressDisabled.get());
+        // Erekir progression gets its own zero-size update driver; Arc
+        // Element.update() replaces (rather than adds) an actor's callback.
+        Table erekirUiTick = new Table();
+        erekirUiTick.touchable = Touchable.disabled;
+        ui.menuGroup.addChild(erekirUiTick);
+        erekirUiTick.update(() -> {
+            if(state == null || !state.isMenu()) return;
+            if((campaignUiRefreshFrame[0] & 7) != 0) return;
+            erekirProgress.setDisabled(erekirProgressDisabled.get());
+            if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.onset)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.onset);
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOnsetResearch();
+                if(saved && next != null && BrowserCampaignResearch.canSpend(next)){
+                    erekirProgress.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }else{
+                    erekirProgress.setText(Core.bundle.get("sector.onset.name", "Onset") + " — " +
+                        Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                }
+            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.aegis)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAegisResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.aegis)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.aegis);
+                erekirProgress.setText(Core.bundle.get("sector.aegis.name", "Aegis") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.lake)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.lake);
+                erekirProgress.setText(Core.bundle.get("sector.lake.name", "Lake") + " — " +
+                    (BrowserCampaignResearch.ready(mindustry.content.SectorPresets.lake)
+                        ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.intersect)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextIntersectResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.intersect)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.intersect);
+                erekirProgress.setText(Core.bundle.get("sector.intersect.name", "Intersect") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atlas)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextAtlasResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atlas)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.atlas);
+                erekirProgress.setText(Core.bundle.get("sector.atlas.name", "Atlas") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.split)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextSplitResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.split)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.split);
+                erekirProgress.setText(Core.bundle.get("sector.split.name", "Split") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.basin)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.basin);
+                erekirProgress.setText(Core.bundle.get("sector.basin.name", "Basin") + " — " +
+                    (BrowserCampaignResearch.ready(mindustry.content.SectorPresets.basin)
+                        ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.marsh)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.marsh);
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextMarshResearch();
+                if(saved && next != null && BrowserCampaignResearch.canSpend(next)){
+                    erekirProgress.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }else if(saved && BrowserCampaignResearch.waitingForMarshProduction()){
+                    mindustry.ctype.UnlockableContent produce = !mindustry.content.Items.oxide.unlocked()
+                        ? mindustry.content.Items.oxide : mindustry.content.Liquids.arkycite;
+                    erekirProgress.setText(produce.localizedName + " — " +
+                        Core.bundle.get("produce", "Produce"));
+                }else{
+                    erekirProgress.setText(Core.bundle.get("sector.marsh.name", "Marsh") + " — " +
+                        Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                }
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.peaks)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.peaks);
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextPeaksResearch();
+                if(saved && next != null && BrowserCampaignResearch.canSpend(next)){
+                    erekirProgress.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }else{
+                    erekirProgress.setText(Core.bundle.get("sector.peaks.name", "Peaks") + " — " +
+                        Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+                }
+            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ravine)){
+                erekirProgress.setText(mindustry.content.Liquids.slag.localizedName + " — " +
+                    Core.bundle.get("produce", "Produce"));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.ravine)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.ravine);
+                erekirProgress.setText(Core.bundle.get("sector.ravine.name", "Ravine") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.caldera)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextCalderaResearch();
+                if(next != null && BrowserCampaignResearch.canSpend(next)){
+                    erekirProgress.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }else{
+                    erekirProgress.setText(Core.bundle.get("sector.ravine.name", "Ravine") + " — " +
+                        Core.bundle.get("continue", "Continue"));
+                }
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.caldera)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.caldera);
+                erekirProgress.setText(Core.bundle.get("sector.caldera-erekir.name", "Caldera") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.stronghold)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextStrongholdResearch();
+                if(next != null && BrowserCampaignResearch.canSpend(next)){
+                    erekirProgress.setText(next.localizedName + " — " +
+                        Core.bundle.get("research", "Research") + " " + BrowserCampaignResearch.remaining(next));
+                }else{
+                    erekirProgress.setText(Core.bundle.get("sector.caldera-erekir.name", "Caldera") + " — " +
+                        Core.bundle.get("continue", "Continue"));
+                }
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stronghold)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.stronghold);
+                erekirProgress.setText(Core.bundle.get("sector.stronghold.name", "Stronghold") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crevice)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.crevice);
+                erekirProgress.setText(Core.bundle.get("sector.crevice.name", "Crevice") + " — " +
+                    (BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crevice)
+                        ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.siege)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.siege);
+                erekirProgress.setText(Core.bundle.get("sector.siege.name", "Siege") + " — " +
+                    (BrowserCampaignResearch.ready(mindustry.content.SectorPresets.siege)
+                        ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crossroads)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.crossroads);
+                erekirProgress.setText(Core.bundle.get("sector.crossroads.name", "Crossroads") + " — " +
+                    (BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crossroads)
+                        ? Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play")
+                        : Core.bundle.get("locked", "Locked")));
+            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.karst)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextKarstResearch();
+                erekirProgress.setText(next == null
+                    ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                    : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                        BrowserCampaignResearch.remaining(next));
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.karst)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.karst);
+                erekirProgress.setText(Core.bundle.get("sector.karst.name", "Karst") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else if(!BrowserCampaignResearch.ready(mindustry.content.SectorPresets.origin)){
+                mindustry.ctype.UnlockableContent next = BrowserCampaignResearch.nextOriginResearch();
+                if(next == null && BrowserCampaignResearch.waitingForOriginPhaseFabric()){
+                    erekirProgress.setText(mindustry.content.Items.phaseFabric.localizedName + " — " +
+                        Core.bundle.get("produce", "Produce"));
+                }else{
+                    erekirProgress.setText(next == null
+                        ? Core.bundle.get("research", "Research") + " — " + Core.bundle.get("complete", "Complete")
+                        : next.localizedName + " — " + Core.bundle.get("research", "Research") + " " +
+                            BrowserCampaignResearch.remaining(next));
+                }
+            }else if(!BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin)){
+                boolean saved = Campaign.hasSave(mindustry.content.SectorPresets.origin);
+                erekirProgress.setText(Core.bundle.get("sector.origin.name", "Origin") + " — " +
+                    Core.bundle.get(saved ? "continue" : "play", saved ? "Continue" : "Play"));
+            }else{
+                erekirProgress.setText(Core.bundle.get("planet.erekir.name", "Erekir") + " — " +
+                    Core.bundle.get("complete", "Complete"));
+            }
+
+            if(Campaign.diagnosticsEnabled()){
+                markCampaignErekirState(
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.onset),
+                    Campaign.hasSave(mindustry.content.SectorPresets.onset),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.aegis),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.aegis),
+                    Campaign.hasSave(mindustry.content.SectorPresets.aegis),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.lake),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.lake),
+                    Campaign.hasSave(mindustry.content.SectorPresets.lake),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.intersect),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.intersect),
+                    Campaign.hasSave(mindustry.content.SectorPresets.intersect)
+                );
+                markCampaignErekirMidState(
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.atlas),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.atlas),
+                    Campaign.hasSave(mindustry.content.SectorPresets.atlas),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.split),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.split),
+                    Campaign.hasSave(mindustry.content.SectorPresets.split),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.basin),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.basin),
+                    Campaign.hasSave(mindustry.content.SectorPresets.basin)
+                );
+                markCampaignErekirBranchState(
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.marsh),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.marsh),
+                    Campaign.hasSave(mindustry.content.SectorPresets.marsh),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.peaks),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.peaks),
+                    Campaign.hasSave(mindustry.content.SectorPresets.peaks),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.ravine),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.ravine),
+                    Campaign.hasSave(mindustry.content.SectorPresets.ravine),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.caldera),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.caldera),
+                    Campaign.hasSave(mindustry.content.SectorPresets.caldera)
+                );
+                markCampaignErekirLateState(
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.stronghold),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.stronghold),
+                    Campaign.hasSave(mindustry.content.SectorPresets.stronghold),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crevice),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crevice),
+                    Campaign.hasSave(mindustry.content.SectorPresets.crevice),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.siege),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.siege),
+                    Campaign.hasSave(mindustry.content.SectorPresets.siege),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.crossroads),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.crossroads),
+                    Campaign.hasSave(mindustry.content.SectorPresets.crossroads)
+                );
+                markCampaignErekirFinalState(
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.karst),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.karst),
+                    Campaign.hasSave(mindustry.content.SectorPresets.karst),
+                    BrowserCampaignResearch.ready(mindustry.content.SectorPresets.origin),
+                    BrowserCampaignResearch.isCaptured(mindustry.content.SectorPresets.origin),
+                    Campaign.hasSave(mindustry.content.SectorPresets.origin)
+                );
+            }
         });
-        ui.hudGroup.addChild(overlay);
-        markPauseUiReady();
-        markPauseSettingsUiReady();
-        markStockPauseUiReady(mobile ? "mobile" : "desktop");
-    }
+        root.add(erekirProgress).width(campaignWidth).height(mobile ? 54f : 44f).padBottom(8f);
+        root.row();
 
-    private static void markPauseHitPoint(Element button, String action){
-        if(button == null || !button.visible || Core.scene == null
-            || button.getWidth() <= 1f || button.getHeight() <= 1f) return;
-        Vec2 center = button.localToStageCoordinates(
-            new Vec2(button.getWidth() / 2f, button.getHeight() / 2f));
-        Vec2 screen = Core.scene.getViewport().project(center);
-        markPauseHitPointNative(action, screen.x, screen.y);
-        if(captionDiagnostics && button instanceof TextButton textButton){
-            textButton.validate();
-            Label label = textButton.getLabel();
-            label.validate();
-            int lines = 0;
-            float lastY = 0f;
-            for(var run : label.getGlyphLayout().runs){
-                if(lines == 0 || Math.abs(run.y - lastY) > 0.1f){ lines++; lastY = run.y; }
-            }
-            Vec2 lower = label.localToAscendantCoordinates(button, new Vec2());
-            Vec2 upper = label.localToAscendantCoordinates(button, new Vec2(label.getWidth(), label.getHeight()));
-            boolean contained = lower.x >= -0.5f && lower.y >= -0.5f
-                && upper.x <= button.getWidth() + 0.5f && upper.y <= button.getHeight() + 0.5f
-                && label.getGlyphLayout().height <= label.getHeight() + 0.5f
-                && label.getGlyphLayout().width <= label.getWidth() + 0.5f;
-            markPauseCaption(action, label.getText().toString(), lines, contained);
+        root.add(Core.bundle.get("customgame", "Custom Game")).padBottom(8f);
+        root.row();
+        localContinueButton = new TextButton(Core.bundle.get("continue", "Continue"));
+        localContinueButton.clicked(BrowserLocalMapRuntime::continueSaved);
+        localContinueButton.setDisabled(!BrowserSaveRuntime.hasLocalSession());
+        root.add(localContinueButton)
+            .width(mobile ? 320f : 380f)
+            .height(mobile ? 54f : 46f)
+            .padBottom(8f);
+        root.row();
+
+        Table mapButtons = new Table();
+'''
+if text.count(old_menu) != 1:
+    raise SystemExit("Campaign UI menu anchor no longer matches post-local-save browser UI")
+text = text.replace(old_menu, new_menu, 1)
+
+old_pane = '''        root.add(pane).width(mobile ? 320f : 380f).height(mobile ? 430f : 500f);
+        ui.menuGroup.addChild(root);
+'''
+new_pane = '''        // Landscape phones can be only ~320-400 logical px tall. Keep the
+        // campaign controls touch-sized, and let the map list yield vertical space.
+        float mapPaneHeight = mobile
+            ? Math.max(56f, Math.min(110f, Core.graphics.getHeight() - 500f))
+            : 330f;
+        Cell<ScrollPane> mapPaneCell = root.add(pane).width(mobile ? 320f : 380f).height(mapPaneHeight);
+        final float[] lastMapPaneHeight = {mapPaneHeight};
+        if(mobile){
+            // The stock MenuFragment-style home hides the heavy Play menu.
+            // Arc Group.act() skips invisible children, so pane.update() is
+            // never called while the new native Home is visible. Use a
+            // non-interactive, zero-size menu-root update actor instead:
+            // resize/orientation changes must still refresh map pane sizing.
+            Table mapResizeTick = new Table();
+            mapResizeTick.touchable = Touchable.disabled;
+            mapResizeTick.update(() -> {
+                if(!state.isMenu()) return;
+                float nextHeight = Math.max(56f, Math.min(110f, Core.graphics.getHeight() - 500f));
+                if(Math.abs(nextHeight - lastMapPaneHeight[0]) > 0.5f){
+                    lastMapPaneHeight[0] = nextHeight;
+                    mapPaneCell.height(nextHeight);
+                    root.invalidateHierarchy();
+                    markCampaignUiResized(nextHeight);
+                }
+            });
+            ui.menuGroup.addChild(mapResizeTick);
         }
-    }
+        ui.menuGroup.addChild(root);
+        markCampaignUiReady(mobile ? "mobile" : "desktop", campaignWidth, campaignHeight, mapPaneHeight);
+'''
+if text.count(old_pane) != 1:
+    raise SystemExit("Campaign UI map-pane anchor no longer matches")
+text = text.replace(old_pane, new_pane, 1)
 
-    @JSBody(script = "return new URLSearchParams(location.search).has('mindustryCaptionSmoke');")
-    private static native boolean captionSmokeRequested();
-
-    @JSBody(params = {"action", "caption", "lines", "contained"}, script = """
-        const r=document.documentElement, p='data-mindustry-pause-caption-'+action;
-        r.setAttribute(p, JSON.stringify({text:caption,lines:lines,contained:contained}));
-        """)
-    private static native void markPauseCaption(String action, String caption, int lines, boolean contained);
-
-    @JSBody(params = {"action", "x", "y"}, script = """
-        const r = document.documentElement;
-        r.setAttribute('data-mindustry-pause-button-' + action + '-x', String(x));
-        r.setAttribute('data-mindustry-pause-button-' + action + '-y', String(y));
-        """)
-    private static native void markPauseHitPointNative(String action, float x, float y);
-
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-dialog-visible','yes');")
-    private static native void markPauseVisible();
-
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-dialog-visible','no');")
-    private static native void markPauseHidden();
-
-    /**
-     * The original game-over screen has a dedicated, modal action instead of
-     * loose, unframed text floating above the running level.
-     */
-    private static void buildLocalGameOverOverlay(){
-        Table overlay = new Table();
-        overlay.setFillParent(true);
-        overlay.setBackground(Styles.black6);
-        overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> (BrowserLocalMapRuntime.active() || Campaign.active())
-            && state.isGame() && state.gameOver);
-
-        Table dialog = new Table(Tex.pane2);
-        dialog.name = "web-gameover-dialog";
-        dialog.defaults().pad(8f);
-        dialog.image(Icon.cancel).size(42f).padTop(12f).row();
-        dialog.label(() -> state.isCampaign()
-            ? Core.bundle.format("sector.lost", state.getSector().name())
-            : Core.bundle.get("gameover", "Game Over"))
-            .style(Styles.outlineLabel).wrap().width(mobile ? 240f : 300f).padBottom(12f).row();
-        dialog.label(() -> Core.bundle.get("stats.wave") + ": " + state.stats.wavesLasted).row();
-        dialog.button(Core.bundle.get("back", "Back"), Icon.exit,
-            BrowserUiRuntime::returnToMenuWithAd)
-            .size(mobile ? 240f : 300f, mobile ? 58f : 52f)
-            .name("web-gameover-back").padBottom(12f);
-        overlay.add(dialog).center();
-        int[] sample = {0};
-        overlay.update(() -> {
-            overlay.toFront();
-            if((++sample[0] & 15) != 0) return;
-            TextButton back = dialog.find("web-gameover-back");
-            Vec2 point = Core.scene.getViewport().project(back.localToStageCoordinates(
-                new Vec2(back.getWidth() / 2f, back.getHeight() / 2f)));
-            markGameOverHit(point.x, point.y);
+old_hud = '''        controls.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
+            .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
+            .pad(8f);
+        controls.button(Core.bundle.get("pause", "Pause"), BrowserUiRuntime::pauseActiveSession)
+            .size(mobile ? 132f : 116f, mobile ? 52f : 44f)
+            .pad(8f);
+'''
+new_hud = '''        boolean[] campaignBackUiSmoke = {false};
+        controls.update(() -> {
+            if(!campaignBackUiSmoke[0] && campaignBackUiSmokeRequested()
+            && Campaign.active() && campaignCoreReady()){
+                campaignBackUiSmoke[0] = true;
+                markCampaignUiBackSmoke();
+                returnToMenuWithAd();
+            }
         });
-        ui.hudGroup.addChild(overlay);
-        markGameOverUiReady();
-    }
 
-    @JSBody(params={"x", "y"}, script="document.documentElement.setAttribute('data-mindustry-defeat-visible','yes'); document.documentElement.setAttribute('data-mindustry-defeat-back-x',String(x)); document.documentElement.setAttribute('data-mindustry-defeat-back-y',String(y));")
-    private static native void markGameOverHit(float x, float y);
+        controls.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
+            .size(mobile ? 148f : 116f, mobile ? 56f : 44f).pad(8f);
+        controls.button(Core.bundle.get("pause", "Pause"), BrowserUiRuntime::pauseActiveSession)
+            .size(mobile ? 148f : 116f, mobile ? 56f : 44f)
+            .pad(8f);
+'''
+if text.count(old_hud) == 1:
+    text = text.replace(old_hud, new_hud, 1)
+elif 'findStockResearchControl(inputTable)' in text and '    private static void buildLocalHudControls(){' in text:
+    # The existing DesktopInput lower-right Icon.tree is wired to Research.
+    # Do not add a second menu/tree button, and do not overwrite the live
+    # root.update callback that binds the real native button.
+    begin = text.index('    private static void buildLocalHudControls(){')
+    finish = text.index('    private static void pauseActiveSession(){', begin)
+    hud = text[begin:finish]
+    if hud.count('        ui.hudGroup.addChild(root);') != 1:
+        raise SystemExit("Stock HUD smoke cannot find the native HUD mount")
+    smoke_tick = '''        // CI-only action is independent of the real HUD: do not mutate
+        // DesktopInput's button, its listeners, or the Scene update callback.
+        if(campaignBackUiSmokeRequested()){
+            boolean[] campaignBackUiSmoke = {false};
+            Table campaignBackSmokeTick = new Table();
+            campaignBackSmokeTick.setFillParent(true);
+            campaignBackSmokeTick.touchable = Touchable.disabled;
+            campaignBackSmokeTick.update(() -> {
+                if(!campaignBackUiSmoke[0] && Campaign.active() && campaignCoreReady()){
+                    campaignBackUiSmoke[0] = true;
+                    markCampaignUiBackSmoke();
+                    returnToMenuWithAd();
+                }
+            });
+            ui.hudGroup.addChild(campaignBackSmokeTick);
+        }
+'''
+    hud = hud.replace('        ui.hudGroup.addChild(root);',
+        '        ui.hudGroup.addChild(root);\n' + smoke_tick, 1)
+    text = text[:begin] + hud + text[finish:]
+else:
+    raise SystemExit("Campaign UI HUD anchor matches neither legacy nor native gameplay buttons")
 
-    public static boolean initialized(){
-        return initialized;
-    }
+old_pause_back = '''        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
+            .size(mobile ? 180f : 156f, mobile ? 58f : 48f)
+            .padTop(8f);
+'''
+new_pause_back = '''        overlay.button(Core.bundle.get("back", "Back"), BrowserUiRuntime::returnToMenuWithAd)
+            .size(mobile ? 196f : 156f, mobile ? 62f : 48f).padTop(8f);
+'''
+if text.count(old_pause_back) == 1:
+    # Legacy minimal pause panel: widen its Back action for mobile.
+    text = text.replace(old_pause_back, new_pause_back, 1)
+elif 'dialog.name = "web-pause-dialog"' in text and (
+    'dialog.button(Core.bundle.get("back", "Back"), Icon.left,' in text
+    and '.name("web-pause-menu")' in text
+    and 'BrowserUiRuntime::returnToMenuWithAd)' in text
+):
+    # The Yandex-safe native Pause button returns to the game menu after
+    # saving; it must not imply quitting the browser. Keep the existing
+    # full-width Arc Scene button and do not replace it with legacy HTML.
+    pass
+else:
+    raise SystemExit("Campaign UI pause-overlay Back anchor no longer matches known native or legacy UI")
 
-    public static void syncLocalSaveUiState(){
-        if(!initialized) return;
-        boolean available = BrowserSaveRuntime.hasLocalSession();
-        if(localContinueButton != null) localContinueButton.setDisabled(!available);
-        markLocalSaveUiReady(available ? "available" : "empty");
-    }
+marker_anchor = '''    @JSBody(params = {"slot"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slot', slot);")
+    private static native void markLocalSaveUiReady(String slot);
+'''
+marker_replacement = '''    @JSBody(params = {"layout", "buttonWidth", "buttonHeight", "paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-layout',layout); document.documentElement.setAttribute('data-mindustry-campaign-ui-button-width',String(buttonWidth)); document.documentElement.setAttribute('data-mindustry-campaign-ui-button-height',String(buttonHeight)); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
+    private static native void markCampaignUiReady(String layout, float buttonWidth, float buttonHeight, float paneHeight);
 
-    public static void syncLocalModeUi(){
-        if(!initialized) return;
-        setLocalModeUi(BrowserLocalMapRuntime.customModeCode());
-        if(localModeButton != null) localModeButton.setText(localModeLabel());
-    }
+    @JSBody(params = {"action"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-action',action);")
+    private static native void markCampaignUiAction(String action);
 
-    @JSBody(params={"x","y"}, script="document.documentElement.setAttribute('data-mindustry-custom-native-x',String(x));document.documentElement.setAttribute('data-mindustry-custom-native-y',String(y));")
-    private static native void markNativeCustomHitPoint(float x, float y);
+    @JSBody(params = {"conveyor", "junction", "router", "frozenReady", "frozenSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-progress-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-conveyor-unlocked',conveyor ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-junction-unlocked',junction ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-router-unlocked',router ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-ready',frozenReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frozen-forest-save',frozenSaved ? 'true' : 'false');")
+    private static native void markCampaignProgressState(boolean conveyor, boolean junction, boolean router, boolean frozenReady, boolean frozenSaved);
 
-    private static String localModeLabel(){
-        return Core.bundle.get(BrowserLocalMapRuntime.customModeCode() == 1
-            ? "mode.sandbox.name" : "mode.survival.name");
-    }
+    @JSBody(params = {"drill", "coal", "combustion", "powerNode", "mender", "craterReady", "craterSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-crater-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-drill-unlocked',drill ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-coal-unlocked',coal ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-combustion-generator-unlocked',combustion ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-power-node-unlocked',powerNode ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mender-unlocked',mender ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-ready',craterReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-cratered-battleground-save',craterSaved ? 'true' : 'false');")
+    private static native void markCampaignCraterState(boolean drill, boolean coal, boolean combustion, boolean powerNode, boolean mender, boolean craterReady, boolean craterSaved);
 
-    @JSBody(params = {"source"}, script = "const r=document.documentElement;r.setAttribute('data-mindustry-hud-commands','stock-PlacementFragment');r.setAttribute('data-mindustry-hud-command-toggle',source);r.setAttribute('data-mindustry-hud-command-mode','off');")
-    private static native void markCommandToggleReady(String source);
+    @JSBody(params = {"graphitePress", "siliconSmelter", "kiln", "mechanicalPump", "ruinousReady", "ruinousSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ruinous-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-graphite-press-unlocked',graphitePress ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-silicon-smelter-unlocked',siliconSmelter ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-kiln-unlocked',kiln ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mechanical-pump-unlocked',mechanicalPump ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-ready',ruinousReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-ruinous-shores-save',ruinousSaved ? 'true' : 'false');")
+    private static native void markCampaignRuinousState(boolean graphitePress, boolean siliconSmelter, boolean kiln, boolean mechanicalPump, boolean ruinousReady, boolean ruinousSaved);
 
-    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-hud-command-input-mode',mode);")
-    private static native void markCommandInputMode(String mode);
+    @JSBody(params = {"pneumaticDrill", "duo", "scatter", "hail", "steamGenerator", "windsweptReady", "windsweptSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-windswept-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-pneumatic-drill-unlocked',pneumaticDrill ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-duo-unlocked',duo ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-scatter-unlocked',scatter ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-hail-unlocked',hail ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-steam-generator-unlocked',steamGenerator ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-ready',windsweptReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-windswept-islands-save',windsweptSaved ? 'true' : 'false');")
+    private static native void markCampaignWindsweptState(boolean pneumaticDrill, boolean duo, boolean scatter, boolean hail, boolean steamGenerator, boolean windsweptReady, boolean windsweptSaved);
 
-    @JSBody(params = {"mode"}, script = "document.documentElement.setAttribute('data-mindustry-hud-command-mode',mode);")
-    private static native void markCommandToggleState(String mode);
+    @JSBody(params = {"biomassReady", "biomassCaptured", "fungalReady", "fungalCaptured", "frontierReady", "frontierCaptured", "saltReady", "saltCaptured", "tarReady", "tarSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-salt-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-ready',biomassReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-biomass-facility-captured',biomassCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-ready',fungalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-fungal-pass-captured',fungalCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-ready',frontierReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-frontier-captured',frontierCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-ready',saltReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salt-flats-captured',saltCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-ready',tarReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tar-fields-save',tarSaved ? 'true' : 'false');")
+    private static native void markCampaignSaltBranchState(boolean biomassReady, boolean biomassCaptured, boolean fungalReady, boolean fungalCaptured, boolean frontierReady, boolean frontierCaptured, boolean saltReady, boolean saltCaptured, boolean tarReady, boolean tarSaved);
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
-    private static native void markReady();
+    @JSBody(params = {"laserDrill", "thorium", "lancer", "salvo", "foundation", "impactReady", "impactSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-impact-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-laser-drill-unlocked',laserDrill ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-thorium-unlocked',thorium ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-lancer-unlocked',lancer ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-salvo-unlocked',salvo ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-core-foundation-unlocked',foundation ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-ready',impactReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-impact-0078-save',impactSaved ? 'true' : 'false');")
+    private static native void markCampaignImpactState(boolean laserDrill, boolean thorium, boolean lancer, boolean salvo, boolean foundation, boolean impactReady, boolean impactSaved);
 
-    @JSBody(params = {"sfx", "music", "effects", "quality"}, script = "globalThis.__mindustryInstallSettings(null,sfx,music,effects,quality);")
-    private static native void installSettingsUi(int sfx, int music, boolean effects, boolean quality);
+    @JSBody(params = {"stainedReady", "stainedCaptured", "infestedReady", "infestedCaptured", "nuclearReady", "nuclearCaptured", "desolateReady", "desolateSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-late-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-ready',stainedReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-stained-mountains-captured',stainedCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-ready',infestedReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-infested-canyons-captured',infestedCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-ready',nuclearReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-nuclear-complex-captured',nuclearCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-ready',desolateReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-desolate-rift-save',desolateSaved ? 'true' : 'false');")
+    private static native void markCampaignLateState(boolean stainedReady, boolean stainedCaptured, boolean infestedReady, boolean infestedCaptured, boolean nuclearReady, boolean nuclearCaptured, boolean desolateReady, boolean desolateSaved);
 
-    @JSBody(params = {"mode"}, script = "globalThis.__mindustryInstallLocalMode(null,mode);")
-    private static native void installLocalModeUi(int mode);
+    @JSBody(params = {"facilityReady", "facilityCaptured", "perilousReady", "perilousCaptured", "extractionReady", "extractionCaptured", "coastlineReady", "coastlineCaptured", "navalReady", "navalSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-final-infra-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-facility32m-ready',facilityReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-facility32m-captured',facilityCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-ready',perilousReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-perilous-harbor-captured',perilousCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-ready',extractionReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-extraction-outpost-captured',extractionCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-ready',coastlineReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-coastline-captured',coastlineCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-ready',navalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-naval-fortress-save',navalSaved ? 'true' : 'false');")
+    private static native void markCampaignFinalInfraState(boolean facilityReady, boolean facilityCaptured, boolean perilousReady, boolean perilousCaptured, boolean extractionReady, boolean extractionCaptured, boolean coastlineReady, boolean coastlineCaptured, boolean navalReady, boolean navalSaved);
 
-    @JSBody(params = {"mode"}, script = "if(globalThis.__mindustrySetLocalMode){ globalThis.__mindustrySetLocalMode(mode); }")
-    private static native void setLocalModeUi(int mode);
+    @JSBody(params = {"overgrowthReady", "overgrowthCaptured", "mycelialReady", "mycelialCaptured", "littoralReady", "littoralCaptured", "terminalReady", "terminalSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-terminal-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-ready',overgrowthReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-overgrowth-captured',overgrowthCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-ready',mycelialReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-mycelial-bastion-captured',mycelialCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-ready',littoralReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-littoral-shipyard-captured',littoralCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-ready',terminalReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-planetary-terminal-save',terminalSaved ? 'true' : 'false');")
+    private static native void markCampaignTerminalState(boolean overgrowthReady, boolean overgrowthCaptured, boolean mycelialReady, boolean mycelialCaptured, boolean littoralReady, boolean littoralCaptured, boolean terminalReady, boolean terminalSaved);
 
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-map-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-map-menu', 'builtin-selector'); document.documentElement.setAttribute('data-mindustry-local-map-back', 'ready');")
-    private static native void markLocalMapUiReady();
+    @JSBody(params = {"sporePod", "taintedReady", "taintedCaptured", "atollsReady", "atollsCaptured", "testingReady", "testingCaptured", "sunkenReady", "sunkenCaptured", "weatheredReady", "weatheredCaptured"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-optional-ui','ready'); document.documentElement.setAttribute('data-mindustry-campaign-spore-pod-unlocked',sporePod ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-ready',taintedReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-tainted-woods-captured',taintedCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-atolls-ready',atollsReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-atolls-captured',atollsCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-ready',testingReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-testing-grounds-captured',testingCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-ready',sunkenReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-sunken-pier-captured',sunkenCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-ready',weatheredReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-campaign-weathered-channels-captured',weatheredCaptured ? 'true' : 'false');")
+    private static native void markCampaignOptionalState(boolean sporePod, boolean taintedReady, boolean taintedCaptured, boolean atollsReady, boolean atollsCaptured, boolean testingReady, boolean testingCaptured, boolean sunkenReady, boolean sunkenCaptured, boolean weatheredReady, boolean weatheredCaptured);
+
+    @JSBody(params = {"onsetCaptured", "onsetSaved", "aegisReady", "aegisCaptured", "aegisSaved", "lakeReady", "lakeCaptured", "lakeSaved", "intersectReady", "intersectCaptured", "intersectSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-onset-captured',onsetCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-onset-save',onsetSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-aegis-ready',aegisReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-aegis-captured',aegisCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-aegis-save',aegisSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-lake-ready',lakeReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-lake-captured',lakeCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-lake-save',lakeSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-intersect-ready',intersectReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-intersect-captured',intersectCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-intersect-save',intersectSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirState(boolean onsetCaptured, boolean onsetSaved, boolean aegisReady, boolean aegisCaptured, boolean aegisSaved, boolean lakeReady, boolean lakeCaptured, boolean lakeSaved, boolean intersectReady, boolean intersectCaptured, boolean intersectSaved);
+
+    @JSBody(params = {"atlasReady", "atlasCaptured", "atlasSaved", "splitReady", "splitCaptured", "splitSaved", "basinReady", "basinCaptured", "basinSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-mid-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-atlas-ready',atlasReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-atlas-captured',atlasCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-atlas-save',atlasSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-split-ready',splitReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-split-captured',splitCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-split-save',splitSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-basin-ready',basinReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-basin-captured',basinCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-basin-save',basinSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirMidState(boolean atlasReady, boolean atlasCaptured, boolean atlasSaved, boolean splitReady, boolean splitCaptured, boolean splitSaved, boolean basinReady, boolean basinCaptured, boolean basinSaved);
+
+    @JSBody(params = {"marshReady", "marshCaptured", "marshSaved", "peaksReady", "peaksCaptured", "peaksSaved", "ravineReady", "ravineCaptured", "ravineSaved", "calderaReady", "calderaCaptured", "calderaSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-branch-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-marsh-ready',marshReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-marsh-captured',marshCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-marsh-save',marshSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-peaks-ready',peaksReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-peaks-captured',peaksCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-peaks-save',peaksSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-ravine-ready',ravineReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-ravine-captured',ravineCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-ravine-save',ravineSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-caldera-ready',calderaReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-caldera-captured',calderaCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-caldera-save',calderaSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirBranchState(boolean marshReady, boolean marshCaptured, boolean marshSaved, boolean peaksReady, boolean peaksCaptured, boolean peaksSaved, boolean ravineReady, boolean ravineCaptured, boolean ravineSaved, boolean calderaReady, boolean calderaCaptured, boolean calderaSaved);
+
+    @JSBody(params = {"strongholdReady", "strongholdCaptured", "strongholdSaved", "creviceReady", "creviceCaptured", "creviceSaved", "siegeReady", "siegeCaptured", "siegeSaved", "crossroadsReady", "crossroadsCaptured", "crossroadsSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-late-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-ready',strongholdReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-captured',strongholdCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-stronghold-save',strongholdSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-ready',creviceReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-captured',creviceCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crevice-save',creviceSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-ready',siegeReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-captured',siegeCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-siege-save',siegeSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-ready',crossroadsReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-captured',crossroadsCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-crossroads-save',crossroadsSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirLateState(boolean strongholdReady, boolean strongholdCaptured, boolean strongholdSaved, boolean creviceReady, boolean creviceCaptured, boolean creviceSaved, boolean siegeReady, boolean siegeCaptured, boolean siegeSaved, boolean crossroadsReady, boolean crossroadsCaptured, boolean crossroadsSaved);
+
+    @JSBody(params = {"karstReady", "karstCaptured", "karstSaved", "originReady", "originCaptured", "originSaved"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-erekir-final-ui','ready'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-ready',karstReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-captured',karstCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-karst-save',karstSaved ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-origin-ready',originReady ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-origin-captured',originCaptured ? 'true' : 'false'); document.documentElement.setAttribute('data-mindustry-erekir-ui-origin-save',originSaved ? 'true' : 'false');")
+    private static native void markCampaignErekirFinalState(boolean karstReady, boolean karstCaptured, boolean karstSaved, boolean originReady, boolean originCaptured, boolean originSaved);
+
+    @JSBody(params = {"paneHeight"}, script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-resized','ready'); document.documentElement.setAttribute('data-mindustry-campaign-ui-map-pane-height',String(paneHeight));")
+    private static native void markCampaignUiResized(float paneHeight);
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryCampaignUiBackSmoke') === '1';")
+    private static native boolean campaignBackUiSmokeRequested();
+
+    @JSBody(script = "return document.documentElement.getAttribute('data-mindustry-campaign-core') === 'ready';")
+    private static native boolean campaignCoreReady();
+
+    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-campaign-ui-back-smoke','triggered');")
+    private static native void markCampaignUiBackSmoke();
 
     @JSBody(params = {"slot"}, script = "document.documentElement.setAttribute('data-mindustry-local-save-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-local-continue-slot', slot);")
     private static native void markLocalSaveUiReady(String slot);
+'''
+if text.count(marker_anchor) != 1:
+    raise SystemExit("Campaign UI marker anchor no longer matches post-local-save UI")
+text = text.replace(marker_anchor, marker_replacement, 1)
 
-    @JSBody(script = """
-        const launch=document.getElementById('mindustry-settings-toggle');
-        if(launch && launch.style.display !== 'none') launch.click();
-        """)
-    static native void openMenuSettings();
-
-    @JSBody(script = "if(globalThis.__mindustryOpenPauseSettings){globalThis.__mindustryOpenPauseSettings();}")
-    private static native void openPauseSettings();
-
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-pause-settings-entry','ready');")
-    private static native void markPauseSettingsUiReady();
-
-    @JSBody(params={"mode"}, script="document.documentElement.setAttribute('data-mindustry-stock-pause-dialog',mode);")
-    private static native void markStockPauseUiReady(String mode);
-
-    @JSBody(params = {"x", "y"}, script = """
-        const root = document.documentElement;
-        root.setAttribute('data-mindustry-hud-research-x', String(x));
-        root.setAttribute('data-mindustry-hud-research-y', String(y));
-        """)
-    private static native void markHudResearchHitPoint(float x, float y);
-
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-pause-ui', 'ready');")
-    private static native void markPauseUiReady();
-
-    @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-gameover-ui', 'ready');")
-    private static native void markGameOverUiReady();
-}
+UI.write_text(text, encoding="utf-8")
+print("Enabled lean Campaign/Continue menu and campaign-aware desktop/mobile Back controls")
