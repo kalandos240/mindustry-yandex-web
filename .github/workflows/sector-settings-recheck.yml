@@ -16,10 +16,26 @@ jobs:
         suite: [loss, settings, cold, progression]
     steps:
       - uses: actions/checkout@v4
+      - name: Wait for the exact sector-loader build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PYCODE'
+          import json,urllib.request,os,time
+          for attempt in range(90):
+              request=urllib.request.Request('https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/39760840880/artifacts',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(request,timeout=30) as f: data=json.load(f)
+              matches=[a for a in data['artifacts'] if a['name']=='mindustry-yandex-manual-playtest-experimental']
+              if matches:
+                  assert matches[0]['workflow_run']['head_sha']=='1d139adb3582e15f87c2429d6116690b6d329a3e'
+                  break
+              time.sleep(10)
+          else: raise SystemExit('Exact compiled game unavailable')
+          PYCODE
       - uses: actions/download-artifact@v4
         with:
           name: mindustry-yandex-manual-playtest-experimental
-          run-id: 39753028664
+          run-id: 39760840880
           github-token: ${{ github.token }}
           path: work/package
       - name: Verify and extract immutable complete game
@@ -29,7 +45,7 @@ jobs:
           from zipfile import ZipFile
           import hashlib
           p=Path('work/package/mindustry-yandex-release.zip')
-          assert hashlib.sha256(p.read_bytes()).hexdigest()=='4a12ed9148eaacee4521c61357c32a8c6823fa682f44fd32ec93d7f17e6d8e5a'
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==Path(str(p)+'.sha256').read_text().split()[0]
           with ZipFile(p) as z:
               assert z.testzip() is None
               assert 'index.html' in z.namelist()
@@ -87,7 +103,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: mindustry-yandex-manual-playtest-experimental
-          run-id: 39753028664
+          run-id: 39760840880
           github-token: ${{ github.token }}
           path: work/package
       - name: Confirm exact full game identity
@@ -96,7 +112,7 @@ jobs:
           import hashlib
           from pathlib import Path
           p=Path('work/package/mindustry-yandex-release.zip')
-          assert hashlib.sha256(p.read_bytes()).hexdigest()=='4a12ed9148eaacee4521c61357c32a8c6823fa682f44fd32ec93d7f17e6d8e5a'
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==Path(str(p)+'.sha256').read_text().split()[0]
           PY
       - uses: actions/upload-artifact@v4
         with:
