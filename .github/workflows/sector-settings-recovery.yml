@@ -1,5 +1,5 @@
 name: Lost Serpulo recapture and settings exit confirmation
-# Keep the original progression branches and compact campaign symbol names.
+# Compile every updated Campaign caller and fixture with the original 44 progression branches.
 on:
   push:
     branches: [sector-settings-recovery]
