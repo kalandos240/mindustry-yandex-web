@@ -536,7 +536,7 @@ public final class BrowserUiRuntime{
         if(!state.gameOver){
             Dialog confirm = new Dialog(Core.bundle.get("confirm", "Confirm"));
             confirm.setFillParent(false);
-            confirm.cont.add(Core.bundle.get("confirmquit", "Return to the main menu?"))
+            confirm.cont.add(Core.bundle.get("quit.confirm", "Return to the main menu?"))
                 .width(Math.min(400f, Core.scene.getWidth() - 50f)).wrap().pad(16f);
             confirm.buttons.defaults().size(140f, 54f).pad(4f);
             TextButton cancel = confirm.buttons.button("@cancel", confirm::hide).get();

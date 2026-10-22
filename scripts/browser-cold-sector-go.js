@@ -24,6 +24,7 @@
  if(lost){
   const backup=new Uint8Array(storage.get(savedPath+'.lost-backup')||[]);
   if(backup.length!==savedBytes.length||backup.some((byte,i)=>byte!==savedBytes[i]))throw Error('Lost-sector backup differs from original MSAV');
+  if(planet==='serpulo' && !globalThis.__mindustryReadLostSentinel())throw Error('Recapture discarded the saved derelict sentinel');
   await storage.flush();
   r.setAttribute('data-mindustry-lost-backup-exact','passed');
  }

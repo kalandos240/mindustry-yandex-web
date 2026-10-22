@@ -564,7 +564,7 @@ public final class BrowserCampaignRuntime{
 
     /** Original non-clearing recapture semantics, after the new map is loaded. */
     private static void restoreLostBuildings(BlockPlan[] plans, Building[] buildings, Building[] derelicts){
-        for(Building build : Team.derelict.data().buildings.toArray(Building.class)) build.tile.remove();
+        for(Building build : Team.derelict.data().buildings.<Building>toArray(Building.class)) build.tile.remove();
         for(Building build : derelicts){
             Tile tile = world.tile(build.tileX(), build.tileY());
             if(tile != null && tile.build == null && Build.validPlace(build.block, Team.derelict,
@@ -594,6 +594,7 @@ public final class BrowserCampaignRuntime{
                 state.rules.defaultTeam.data().plans.add(plan);
             }
         }
+        Core.app.post(() -> renderer.minimap.updateAll());
     }
 
     @JSBody(params={"sector","type","message"}, script="""
@@ -720,14 +721,14 @@ public final class BrowserCampaignRuntime{
             // world, then carry surviving buildings/derelicts/plans into a
             // fresh landing. Erekir deliberately clears the old structures.
             if(!sector.planet.clearSectorOnLose && !sector.planet.campaignRules.clearSectorOnLose
-                && sector.info.spawnPosition != 0 && sector.info.sectorDataMatches(sector)
+                && sector.info.spawnPosition != 0 && preparePresetGenerator(sector) && sector.info.sectorDataMatches(sector)
                 && world.tile(sector.info.spawnPosition) != null){
                 params.corePositionOverride = sector.info.spawnPosition;
                 world.tile(params.corePositionOverride).setBlock(sector.planet.defaultCore, state.rules.defaultTeam);
                 SectorDamage.apply(1f);
                 BlockPlan[] plans = state.rules.defaultTeam.data().plans.toArray(BlockPlan.class);
-                Building[] buildings = state.rules.defaultTeam.data().buildings.toArray(Building.class);
-                Building[] derelicts = Team.derelict.data().buildings.toArray(Building.class);
+                Building[] buildings = state.rules.defaultTeam.data().buildings.<Building>toArray(Building.class);
+                Building[] derelicts = Team.derelict.data().buildings.<Building>toArray(Building.class);
                 restore = () -> restoreLostBuildings(plans, buildings, derelicts);
             }
             logic.reset();

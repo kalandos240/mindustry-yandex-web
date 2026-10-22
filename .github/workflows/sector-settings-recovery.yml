@@ -1,5 +1,5 @@
 name: Lost Serpulo recapture and settings exit confirmation
-# Verify the stock SectorDamage recapture import in the browser compilation.
+# Verify stock recapture, retained derelicts and cancelable menu exits.
 on:
   push:
     branches: [sector-settings-recovery]
