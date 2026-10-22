@@ -1,5 +1,5 @@
 name: Lost Serpulo recapture and settings exit confirmation
-# Share the 44 CI progression exits to retain the JavaScript size guard.
+# Share all 44 CI progression exits, retaining Caldera's original action identifier.
 on:
   push:
     branches: [sector-settings-recovery]

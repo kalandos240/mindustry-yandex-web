@@ -1987,7 +1987,7 @@ public final class BrowserCampaignRuntime{
                         }
                         if(next != null){
                             returnToMenu();
-                            playUnlockedPreset(next, nextOrigin, next.name);
+                            playUnlockedPreset(next, nextOrigin, next == SectorPresets.caldera ? "caldera" : next.name);
                             markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
                             return;
                         }
