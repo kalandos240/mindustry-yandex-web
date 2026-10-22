@@ -1,4 +1,5 @@
 name: Verify save transaction recovery
+# Keep the hot-path guard aware of uncommitted failed writes.
 on:
   push:
     branches: [sector-settings-recovery]
