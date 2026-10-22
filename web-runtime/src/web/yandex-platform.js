@@ -18,7 +18,9 @@
         initPromise: null,
         playerPromise: null,
         cloudSyncPromise: null,
+        cloudSyncQueued: null,
         cloudLastPayload: '',
+        cloudLastFlushedPayload: '',
         fullscreenButton: null,
         bannerWanted: false,
         bannerShowing: false,
@@ -488,7 +490,13 @@
 
     async function getPlayer(){
         if(!state.ysdk || typeof state.ysdk.getPlayer !== 'function') return null;
-        if(!state.playerPromise) state.playerPromise = state.ysdk.getPlayer();
+        if(!state.playerPromise){
+            state.playerPromise = Promise.resolve().then(() => state.ysdk.getPlayer()).catch(error => {
+                // A temporary player-service error must not poison every later save.
+                state.playerPromise = null;
+                throw error;
+            });
+        }
         return state.playerPromise;
     }
 
@@ -613,12 +621,21 @@
             mark('data-yandex-cloud-state', 'unavailable');
             return false;
         }
-        if(state.cloudSyncPromise) return state.cloudSyncPromise;
+        if(state.cloudSyncPromise){
+            // A checkpoint written during an upload must get its own latest
+            // snapshot afterwards, rather than inherit the older upload's result.
+            state.cloudSyncQueued = {
+                reason,
+                flush: Boolean(flush || state.cloudSyncQueued && state.cloudSyncQueued.flush)
+            };
+            return state.cloudSyncPromise;
+        }
 
-        state.cloudSyncPromise = (async () => {
+        const save = async (reason, flush) => {
             const built = buildCloudCheckpoint();
             if(!built) return false;
-            if(built.canonical === state.cloudLastPayload){
+            if(built.canonical === state.cloudLastPayload &&
+                (!flush || built.canonical === state.cloudLastFlushedPayload)){
                 mark('data-yandex-cloud-state', 'unchanged');
                 return true;
             }
@@ -632,19 +649,36 @@
             mark('data-yandex-cloud-state', 'saving');
             await withTimeout(player.setData({[cloudKey]: built.snapshot}, Boolean(flush)), 3500, 'Yandex cloud save');
             state.cloudLastPayload = built.canonical;
+            state.cloudLastFlushedPayload = flush ? built.canonical : '';
             mark('data-yandex-cloud-state', 'saved');
             mark('data-yandex-cloud-reason', String(reason || 'unknown'));
             mark('data-yandex-cloud-bytes', String(built.bytes));
             mark('data-yandex-cloud-files', String(Object.keys(built.snapshot.files).length));
             return true;
-        })().catch(error => {
+        };
+        const failed = error => {
             mark('data-yandex-cloud-state', 'error');
             mark('data-yandex-cloud-error', String(error && error.message ? error.message : error));
             console.info('Yandex cloud checkpoint save unavailable:', error && error.message ? error.message : error);
             return false;
-        }).finally(() => {
-            state.cloudSyncPromise = null;
-        });
+        };
+        state.cloudSyncPromise = (async () => {
+            try{
+                let next = {reason, flush};
+                let result = false;
+                while(next){
+                    state.cloudSyncQueued = null;
+                    result = await save(next.reason, next.flush).catch(failed);
+                    next = state.cloudSyncQueued;
+                }
+                return result;
+            }finally{
+                // Clear synchronously with the last queue check. An outer
+                // Promise.finally leaves a microtask gap that can lose a caller.
+                state.cloudSyncQueued = null;
+                state.cloudSyncPromise = null;
+            }
+        })();
 
         return state.cloudSyncPromise;
     }
