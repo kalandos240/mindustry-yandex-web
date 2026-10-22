@@ -34,6 +34,7 @@ public final class BrowserPlanetBridge{
         // Wait BEFORE checkpointing/resetting the currently active world.
         // A saved Erekir sector may need the packaged map for a new landing
         // after losing its core. Fetch before replacing the active world.
+        markLaunch(sector.planet.name + "/" + sector.preset.name);
         if(BrowserCampaignAssets.defer(sector.preset, () -> launchSector(sector))) return;
         try{
             // In vanilla the player can launch a different sector FROM the
@@ -51,7 +52,6 @@ public final class BrowserPlanetBridge{
                 reject("campaign-transition-not-returned-to-menu");
                 return;
             }
-            markLaunch(sector.planet.name + "/" + sector.preset.name);
             switch(sector.preset.name){
                 case "groundZero" -> Campaign.playGroundZero();
                 case "frozenForest" -> Campaign.playFrozenForest();
@@ -131,7 +131,7 @@ public final class BrowserPlanetBridge{
         }
     }
 
-    @JSBody(params={"sector"}, script="document.documentElement.setAttribute('data-mindustry-planet-launch-sector',sector);")
+    @JSBody(params={"sector"}, script="document.documentElement.setAttribute('data-mindustry-planet-launch-sector',sector); console.info('Mindustry sector Go:',sector);")
     private static native void markLaunch(String sector);
 
     @JSBody(params={"sector"}, script="""

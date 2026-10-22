@@ -1,5 +1,5 @@
 name: Lost Serpulo recapture and settings exit confirmation
-# Preserve Go during a pending map request and bound stalled downloads.
+# Verify deferred Go, timeout recovery and non-destructive sector export.
 on:
   push:
     branches: [sector-settings-recovery]
@@ -34,6 +34,7 @@ jobs:
           python3 scripts/test_yandex_size_budget.py
           node scripts/test-campaign-map-loading.js
           python3 scripts/test-campaign-deferred-actions.py
+          node scripts/test-sector-export.js
           python3 scripts/audit-campaign-consistency.py
           python3 scripts/audit-browser-hotpath.py
           python3 scripts/audit-yandex-ui-controls.py

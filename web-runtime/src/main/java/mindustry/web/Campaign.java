@@ -2385,7 +2385,10 @@ public final class Campaign{
     }
 
 
-    @JSBody(params = {"key", "value"}, script = "document.documentElement.setAttribute(key, value);")
+    @JSBody(params = {"key", "value"}, script = """
+        document.documentElement.setAttribute(key,value);
+        if(key==='data-mindustry-campaign-phase' && /^(start-|resume-|sector-|world-|reset$|play$)/.test(value)) console.info('Mindustry sector stage:',value);
+        """)
     private static native void setRuntimeDomAttribute(String key, String value);
 
     private static void markRequested(String name){

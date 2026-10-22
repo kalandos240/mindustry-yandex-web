@@ -56,6 +56,51 @@ public class BrowserPlanetDialog extends PlanetDialog{
     }
 
     @Override
+    void updateSelected(){
+        super.updateSelected();
+        if(mode == Mode.look && selected != null && selected.save != null){
+            int columns = Math.max(1, sectorTop.getColumns());
+            sectorTop.row();
+            sectorTop.button("@export", mindustry.gen.Icon.upload, this::exportSelectedSave)
+                .height(42f).growX().colspan(columns).pad(4f).name("web-planet-export");
+        }
+    }
+
+    /** Export only this game's selected checkpoint and settings for recovery. */
+    private void exportSelectedSave(){
+        if(selected == null || selected.save == null || selected.save.file == null) return;
+        exportSelectedSave(selected.save.file.path(), selected.preset == null ? String.valueOf(selected.id) : selected.preset.name);
+    }
+
+    @JSBody(params={"path","sector"},script="""
+        var storage=globalThis.__mindustryStorage;
+        var source=storage && storage.get(path);
+        if(!source) return;
+        var encode=function(bytes){
+            var binary='';
+            for(var i=0;i<bytes.length;i+=16384) binary+=String.fromCharCode.apply(null,new Uint8Array(bytes.buffer,bytes.byteOffset+i,Math.min(16384,bytes.length-i)));
+            return btoa(binary);
+        };
+        var files={};
+        files[path]=encode(source);
+        var backup=storage.get(path+'.lost-backup');
+        if(backup) files[path+'.lost-backup']=encode(backup);
+        var names=storage.paths();
+        for(var n=0;n<names.length;n++){
+            var name=names[n];
+            if(name.startsWith('settings/') && name.endsWith('.mws1')) files[name]=encode(storage.get(name));
+        }
+        var data=JSON.stringify({format:'mindustry-web-sector-v1',sector:sector,savePath:path,files:files});
+        var url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
+        var link=document.createElement('a');
+        link.href=url;link.download='Mindustry-sector-'+sector+'.json';
+        document.body.appendChild(link);link.click();link.remove();
+        setTimeout(function(){URL.revokeObjectURL(url);},60000);
+        document.documentElement.setAttribute('data-mindustry-sector-export','ready');
+        """)
+    private static native void exportSelectedSave(String path,String sector);
+
+    @Override
     public Dialog show(){
         // In desktop vanilla the first-run portrait chooser selects/centers
         // the starting sector. Web deliberately omits that obstructed overlay,
