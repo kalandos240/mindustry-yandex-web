@@ -1,5 +1,5 @@
 name: Lost Serpulo recapture and settings exit confirmation
-# Verify deferred Go, timeout recovery and non-destructive sector export.
+# Verify deferred Go and native selected-sector export hitboxes.
 on:
   push:
     branches: [sector-settings-recovery]

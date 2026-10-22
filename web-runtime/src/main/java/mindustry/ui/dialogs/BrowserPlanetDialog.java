@@ -231,6 +231,7 @@ public class BrowserPlanetDialog extends PlanetDialog{
             sampleButton("web-planet-choice-serpulo", "serpulo");
             sampleButton("web-planet-choice-erekir", "erekir");
             sampleButton("web-planet-tech", "tech");
+            sampleButton("web-planet-export", "export");
             sampleButton("web-planet-launch", "launch");
             markZoom(state.zoom);
             markFirstIntroStep(Core.settings.getString("web-planet-intro-step", "not-clicked"));
