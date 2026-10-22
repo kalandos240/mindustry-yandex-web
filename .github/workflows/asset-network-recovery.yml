@@ -1,0 +1,91 @@
+name: Verify packaged asset network recovery
+on:
+  push:
+    branches: [sector-settings-recovery]
+    paths: ['.github/workflows/asset-network-recovery.yml', 'scripts/test-asset-network-recovery.js']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Check production loaders and sector actions
+        run: |
+          set -euo pipefail
+          node scripts/test-asset-network-recovery.js
+          node scripts/test-campaign-map-loading.js
+          node scripts/test-sector-export.js
+          python3 scripts/test-campaign-deferred-actions.py
+          python3 scripts/audit-browser-hotpath.py
+          python3 scripts/audit-campaign-consistency.py
+          python3 scripts/audit-yandex-ui-controls.py
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-defeat-settings-verified
+          run-id: 39761008608
+          github-token: ${{ github.token }}
+          path: work/source
+      - name: Package the updated loader with the verified runtime
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile,ZIP_DEFLATED
+          import hashlib
+          source=Path('work/source/mindustry-yandex-release.zip')
+          assert hashlib.sha256(source.read_bytes()).hexdigest()=='4673cfba9da58fa365e37ef0879309a8742db2493fb23ba16255c67da8c442b5'
+          root=Path('web-runtime/build/web')
+          with ZipFile(source) as z:
+              assert z.testzip() is None
+              assert all(not n.startswith('/') and '..' not in Path(n).parts for n in z.namelist())
+              z.extractall(root)
+              original={n:hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist()}
+          (root/'index.html').write_bytes(Path('web-runtime/src/web/index.html').read_bytes())
+          files=sorted(p for p in root.rglob('*') if p.is_file())
+          assert len(files)==756
+          assert sum(p.stat().st_size for p in files)<100_000_000
+          for p in files:
+              name=p.relative_to(root).as_posix()
+              if name!='index.html': assert hashlib.sha256(p.read_bytes()).hexdigest()==original[name],name
+          Path('work/release').mkdir()
+          package=Path('work/release/Mindustry-Yandex-network-recovery.zip')
+          with ZipFile(package,'w',ZIP_DEFLATED,compresslevel=9) as z:
+              for p in files: z.write(p,p.relative_to(root).as_posix())
+          print('Release SHA256:',hashlib.sha256(package.read_bytes()).hexdigest())
+          print('Files:',len(files),'Unpacked:',sum(p.stat().st_size for p in files))
+          PY
+      - name: Launch both campaigns on desktop and mobile Chrome
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8152 --bind 127.0.0.1 --directory web-runtime/build/web >work/network-http.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for device in desktop mobile; do
+            args=()
+            if [ "$device" = mobile ]; then args+=(--emulate-mobile); fi
+            for sector in groundZero onset; do
+              python3 scripts/chrome-wait-dom.py "${args[@]}" --url "http://127.0.0.1:8152/index.html?lang=ru&mindustryCampaignSmoke=$sector&mindustryCampaignSaveSmoke=1" --profile "/tmp/network-$device-$sector" --port 9752 --timeout 180 --require 'data-mindustry-web="ready"' --require 'data-mindustry-campaign-state="playing"' --require 'data-mindustry-campaign-core="ready"' --require 'data-mindustry-campaign-save-flush="ready"' --require 'data-mindustry-campaign-assets="ready"' > "work/network-$device-$sector.html"
+              python3 scripts/verify-browser-bootstrap-dom.py "work/network-$device-$sector.html"
+              echo "$device $sector packaged boot, campaign, save and all maps PASS"
+            done
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-network-recovery-verified
+          path: work/release/Mindustry-Yandex-network-recovery.zip
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: network-recovery-evidence
+          path: |
+            work/network-*.html
+            work/network-http.log
+          if-no-files-found: ignore
