@@ -1,5 +1,5 @@
 name: Lost Serpulo recapture and settings exit confirmation
-# Compile every updated Campaign caller and fixture with the original 44 progression branches.
+# Preserve Go during a pending map request and bound stalled downloads.
 on:
   push:
     branches: [sector-settings-recovery]
@@ -33,6 +33,7 @@ jobs:
           python3 -m py_compile scripts/*.py
           python3 scripts/test_yandex_size_budget.py
           node scripts/test-campaign-map-loading.js
+          python3 scripts/test-campaign-deferred-actions.py
           python3 scripts/audit-campaign-consistency.py
           python3 scripts/audit-browser-hotpath.py
           python3 scripts/audit-yandex-ui-controls.py
