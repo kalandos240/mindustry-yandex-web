@@ -10,4 +10,4 @@ Inventory remains authoritative in MSAV plus the durable explicit SectorInfo cod
 
 Acceptance fixtures add a derelict copper-wall sentinel to the pre-loss Serpulo save. The cold native globe Go test checks original backup bytes and the sentinel in the recaptured live world. Fixture-only JavaScript is removed before package identity checks and delivery.
 
-Size control: share the common exit/launch/mark sequence across all 44 CI campaign progression branches, retaining their exact research verifier, destination and launch origin. Remove obsolete JS settings callbacks: the shell consumes only preference telemetry, while all editable settings use SettingsMenuDialog.
+Size control: keep the existing 44 progression branches unchanged. Name the internal browser campaign class `Campaign` to reduce repeated symbols in TeaVM's unobfuscated output, retaining source and stack readability. Remove obsolete JS settings callbacks: the shell consumes only preference telemetry, while all editable settings use SettingsMenuDialog.

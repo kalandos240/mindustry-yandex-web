@@ -26,7 +26,7 @@ jobs:
           from pathlib import Path
           p=Path('web-runtime/build/web/mindustry.js')
           s=p.read_text()
-          a=s.index('mw_BrowserCampaignRuntime_continuePreset =')
+          a=s.index('mw_Campaign_continuePreset =')
           b=s.index('\n}',a)+2
           body=s[a:b]
           needle='            if ($source.$webInventoryLoaded) {'

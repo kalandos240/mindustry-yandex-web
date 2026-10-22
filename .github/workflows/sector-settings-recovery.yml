@@ -1,5 +1,5 @@
 name: Lost Serpulo recapture and settings exit confirmation
-# Share all 44 CI progression exits, retaining Caldera's original action identifier.
+# Keep the original progression branches and compact campaign symbol names.
 on:
   push:
     branches: [sector-settings-recovery]

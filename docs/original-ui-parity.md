@@ -56,7 +56,7 @@ The native-only cleanup removes those DOM controls, adds an Arc mode selector to
 Play and hides ready-state debug text. Fresh screenshots confirm those overlays are absent. Follow-up desktop spacing/highlight cleanup from cb8c8c9 compiled and passed desktop/mobile menu and native Settings interaction tests in run 39064596753; screenshot review confirms version text no longer overlaps Play.
 
 The wave-HUD diagnostic stack from run 39065145258 reached
-BrowserCampaignRuntime.maybeStartTestSector before any HUD test: its late-sector
+Campaign.maybeStartTestSector before any HUD test: its late-sector
 URLs omitted mindustryCampaignMapMatrix=1. The corrected verifier must launch
 the real survival maps and still require a trusted native HUD click, original
 Logic.runWave progression and a continuing game loop. This fixture correction

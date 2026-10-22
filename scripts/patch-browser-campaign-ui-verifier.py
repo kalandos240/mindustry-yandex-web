@@ -14,7 +14,7 @@ menu_end = text.index("run_production_map(){", menu_start)
 menu = text[menu_start:menu_end]
 menu_anchor = '''    --require 'data-mindustry-local-map-back="ready"' \\
 '''
-# Normal production startup deliberately keeps BrowserCampaignRuntime diagnostics off.
+# Normal production startup deliberately keeps Campaign diagnostics off.
 # Verify that the Campaign surface itself is constructed with the desktop layout, but
 # do not require data-mindustry-campaign-ui-action here: that telemetry is intentionally
 # emitted only by explicit campaign smoke URLs. The mobile campaign smoke below enables

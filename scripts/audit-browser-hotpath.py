@@ -17,7 +17,7 @@ DATABASE_UI = (WEB_JAVA / "BrowserStockDatabaseUi.java").read_text(encoding="utf
 RESEARCH_UI = (WEB_JAVA / "BrowserResearchUi.java").read_text(encoding="utf-8")
 WEB_LAUNCHER = (WEB_JAVA / "WebClientLauncher.java").read_text(encoding="utf-8")
 GAMEPLAY = (WEB_JAVA / "BrowserGameplayRuntime.java").read_text(encoding="utf-8")
-CAMPAIGN_RUNTIME = (WEB_JAVA / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
+CAMPAIGN_RUNTIME = (WEB_JAVA / "Campaign.java").read_text(encoding="utf-8")
 BROWSER_FILES = (WEB_JAVA / "BrowserFiles.java").read_text(encoding="utf-8")
 BROWSER_FI = (WEB_JAVA / "BrowserFi.java").read_text(encoding="utf-8")
 BROWSER_SETTINGS = (WEB_JAVA / "BrowserSettings.java").read_text(encoding="utf-8")
@@ -235,8 +235,8 @@ require(FACTORY_FREEZE, "target.setBlock(Blocks.tankFabricator", "completed Erek
 require(CONTROL_PATH_WEB, "fullClusterSteps++ < 1", "bounded complete cluster regeneration during building bursts")
 require(CONTROL_PATH_WEB, "innerClusterSteps++ < 2", "bounded inner cluster regeneration during building bursts")
 
-require(GAMEPLAY, "BrowserCampaignRuntime.pause()", "campaign pause clock bridge")
-require(GAMEPLAY, "BrowserCampaignRuntime.resume()", "campaign resume keyboard action")
+require(GAMEPLAY, "Campaign.pause()", "campaign pause clock bridge")
+require(GAMEPLAY, "Campaign.resume()", "campaign resume keyboard action")
 require(GAMEPLAY, "BrowserLocalMapRuntime.pause()", "local map pause clock bridge")
 require(GAMEPLAY, "BrowserLocalMapRuntime.resume()", "local map resume keyboard action")
 require(CONTROL_PAUSE, 'state.set(state.isPaused() ? State.playing : State.paused);', "removal of unsafe desktop Space state transition")
@@ -438,7 +438,7 @@ require(BROWSER_UI, 'nativeButton.name = "web-research-hud"', "existing native b
 require(BROWSER_UI, "if(mobile){", "keep a single native-style mobile research button")
 if 'controls.top().left()' in BROWSER_UI or '"web-command-mode-hud"' in BROWSER_UI:
     failures.append("stock UI: intrusive left-hand Back/Pause/Command overlay remains")
-CAMPAIGN_RUNTIME = (WEB_JAVA / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
+CAMPAIGN_RUNTIME = (WEB_JAVA / "Campaign.java").read_text(encoding="utf-8")
 require(CAMPAIGN_RUNTIME, "snapshotSectorInventory(current);", "persist live core inventory in SectorInfo")
 require(CAMPAIGN_RUNTIME, 'markSectorInventory("resume");', "cold campaign resource diagnostics")
 SECTOR_INFO_CODEC = (WEB_JAVA / "BrowserSectorInfoCodec.java").read_text(encoding="utf-8")
