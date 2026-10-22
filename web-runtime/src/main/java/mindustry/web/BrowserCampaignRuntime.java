@@ -1763,356 +1763,234 @@ public final class BrowserCampaignRuntime{
                     markCaptureComplete(current.preset == null ? "unknown" : current.preset.name,
                         current.id, state.wave, current.save.file.length());
 
-                    if(progressSmoke && current.preset == SectorPresets.onset){
-                        BrowserCampaignResearch.runAegisProgressSmoke(current);
-                        returnToMenu();
-                        playAegis();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.aegis){
-                        BrowserCampaignResearch.verifyLakeReadyAfterAegis(current);
-                        returnToMenu();
-                        playLake();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.lake){
-                        BrowserCampaignResearch.runIntersectProgressSmoke(current);
-                        returnToMenu();
-                        playIntersect();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.intersect){
-                        BrowserCampaignResearch.runAtlasProgressSmoke(current);
-                        returnToMenu();
-                        playAtlas();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.atlas){
-                        BrowserCampaignResearch.runSplitProgressSmoke(current);
-                        returnToMenu();
-                        playSplit();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.split){
-                        BrowserCampaignResearch.verifyBasinReadyAfterAtlas(current);
-                        returnToMenu();
-                        playBasin();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.basin){
-                        BrowserCampaignResearch.verifyMarshReadyAfterBasin(current);
-                        returnToMenu();
-                        playMarsh();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.marsh){
-                        BrowserCampaignResearch.verifyPeaksReadyAfterMarsh(current);
-                        returnToMenu();
-                        playPeaks();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.peaks){
-                        BrowserCampaignResearch.runRavineProgressSmoke(current);
-                        returnToMenu();
-                        playRavine();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.ravine){
-                        BrowserCampaignResearch.runCalderaProgressSmoke(current);
-                        returnToMenu();
-                        playCaldera();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.caldera){
-                        BrowserCampaignResearch.runStrongholdProgressSmoke(current);
-                        returnToMenu();
-                        playStronghold();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.stronghold){
-                        BrowserCampaignResearch.verifyCreviceReadyAfterStronghold(current);
-                        returnToMenu();
-                        playCrevice();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.crevice){
-                        BrowserCampaignResearch.verifySiegeReadyAfterCrevice(current);
-                        returnToMenu();
-                        playSiege();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.siege){
-                        BrowserCampaignResearch.verifyCrossroadsReadyAfterSiege(current);
-                        returnToMenu();
-                        playCrossroads();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.crossroads){
-                        BrowserCampaignResearch.runKarstProgressSmoke(current);
-                        returnToMenu();
-                        playKarst();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.karst){
-                        BrowserCampaignResearch.runOriginProgressSmoke(current);
-                        returnToMenu();
-                        playOrigin();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.groundZero){
-                        BrowserCampaignResearch.runEarlyProgressSmoke(current);
-                        returnToMenu();
-                        playFrozenForest();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.frozenForest){
-                        BrowserCampaignResearch.runCraterProgressSmoke(current);
-                        returnToMenu();
-                        playCrateredBattleground();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.crateredBattleground){
-                        BrowserCampaignResearch.runRuinousProgressSmoke(current);
-                        returnToMenu();
-                        playRuinousShores();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.ruinousShores){
-                        BrowserCampaignResearch.runWindsweptProgressSmoke(current);
-                        returnToMenu();
-                        playWindsweptIslands();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.windsweptIslands){
-                        BrowserCampaignResearch.verifyBiomassReadyAfterWindswept(current);
-                        returnToMenu();
-                        playBiomassFacility();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.biomassFacility){
-                        BrowserCampaignResearch.runFungalProgressSmoke(current);
-                        returnToMenu();
-                        playFungalPass();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.fungalPass){
-                        BrowserCampaignResearch.runFrontierProgressSmoke(current);
-                        returnToMenu();
-                        playFrontier();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.frontier){
-                        BrowserCampaignResearch.runSaltProgressSmoke(current);
-                        returnToMenu();
-                        playSaltFlats();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.saltFlats){
-                        BrowserCampaignResearch.runTarProgressSmoke(current);
-                        returnToMenu();
-                        playTarFields();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.tarFields){
-                        BrowserCampaignResearch.runImpactProgressSmoke(current);
-                        returnToMenu();
-                        playImpact0078();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.impact0078){
-                        BrowserCampaignResearch.verifyStainedReadyAfterImpact(current);
-                        returnToMenu();
-                        playStainedMountains();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.stainedMountains){
-                        BrowserCampaignResearch.runInfestedProgressSmoke(current);
-                        returnToMenu();
-                        playInfestedCanyons();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.infestedCanyons){
-                        BrowserCampaignResearch.runNuclearProgressSmoke(current);
-                        returnToMenu();
-                        playNuclearComplex();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.nuclearComplex){
-                        BrowserCampaignResearch.runDesolateProgressSmoke(current);
-                        returnToMenu();
-                        playDesolateRift();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.desolateRift){
-                        BrowserCampaignResearch.verifyFacility32mReady(current);
-                        returnToMenu();
-                        playFacility32m();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.facility32m){
-                        BrowserCampaignResearch.runPerilousProgressSmoke(current);
-                        returnToMenu();
-                        playPerilousHarbor();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.perilousHarbor){
-                        BrowserCampaignResearch.runExtractionProgressSmoke(current);
-                        returnToMenu();
-                        playExtractionOutpost();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.extractionOutpost){
-                        BrowserCampaignResearch.runCoastlineProgressSmoke(current);
-                        returnToMenu();
-                        playCoastline();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.coastline){
-                        BrowserCampaignResearch.runNavalFortressProgressSmoke(current);
-                        returnToMenu();
-                        playNavalFortress();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.navalFortress){
-                        BrowserCampaignResearch.verifyOvergrowthReady(current);
-                        returnToMenu();
-                        playOvergrowth();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.overgrowth){
-                        BrowserCampaignResearch.runMycelialProgressSmoke(current);
-                        returnToMenu();
-                        playMycelialBastion();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.mycelialBastion){
-                        BrowserCampaignResearch.runLittoralProgressSmoke(current);
-                        returnToMenu();
-                        playLittoralShipyard();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.littoralShipyard){
-                        BrowserCampaignResearch.runTerminalProgressSmoke(current);
-                        returnToMenu();
-                        playPlanetaryTerminal();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.planetaryTerminal){
-                        BrowserCampaignResearch.runTaintedProgressSmoke(current);
-                        returnToMenu();
-                        playTaintedWoods();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.taintedWoods){
-                        BrowserCampaignResearch.runAtollsProgressSmoke(current);
-                        returnToMenu();
-                        playAtolls();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.atolls){
-                        BrowserCampaignResearch.runTestingGroundsProgressSmoke(current);
-                        returnToMenu();
-                        playTestingGrounds();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.testingGrounds){
-                        BrowserCampaignResearch.verifySunkenPierReady(current);
-                        returnToMenu();
-                        playSunkenPier();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
-                    }
-
-                    if(progressSmoke && current.preset == SectorPresets.sunkenPier){
-                        BrowserCampaignResearch.runWeatheredProgressSmoke(current);
-                        returnToMenu();
-                        playWeatheredChannels();
-                        markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
-                        return;
+                    if(progressSmoke){
+                        SectorPreset next = null, nextOrigin = null;
+                        if(current.preset == SectorPresets.onset){
+                            BrowserCampaignResearch.runAegisProgressSmoke(current);
+                            next = SectorPresets.aegis;
+                            nextOrigin = SectorPresets.onset;
+                        }
+                        else if(current.preset == SectorPresets.aegis){
+                            BrowserCampaignResearch.verifyLakeReadyAfterAegis(current);
+                            next = SectorPresets.lake;
+                            nextOrigin = SectorPresets.aegis;
+                        }
+                        else if(current.preset == SectorPresets.lake){
+                            BrowserCampaignResearch.runIntersectProgressSmoke(current);
+                            next = SectorPresets.intersect;
+                            nextOrigin = SectorPresets.lake;
+                        }
+                        else if(current.preset == SectorPresets.intersect){
+                            BrowserCampaignResearch.runAtlasProgressSmoke(current);
+                            next = SectorPresets.atlas;
+                            nextOrigin = SectorPresets.intersect;
+                        }
+                        else if(current.preset == SectorPresets.atlas){
+                            BrowserCampaignResearch.runSplitProgressSmoke(current);
+                            next = SectorPresets.split;
+                            nextOrigin = SectorPresets.atlas;
+                        }
+                        else if(current.preset == SectorPresets.split){
+                            BrowserCampaignResearch.verifyBasinReadyAfterAtlas(current);
+                            next = SectorPresets.basin;
+                            nextOrigin = SectorPresets.atlas;
+                        }
+                        else if(current.preset == SectorPresets.basin){
+                            BrowserCampaignResearch.verifyMarshReadyAfterBasin(current);
+                            next = SectorPresets.marsh;
+                            nextOrigin = SectorPresets.basin;
+                        }
+                        else if(current.preset == SectorPresets.marsh){
+                            BrowserCampaignResearch.verifyPeaksReadyAfterMarsh(current);
+                            next = SectorPresets.peaks;
+                            nextOrigin = SectorPresets.marsh;
+                        }
+                        else if(current.preset == SectorPresets.peaks){
+                            BrowserCampaignResearch.runRavineProgressSmoke(current);
+                            next = SectorPresets.ravine;
+                            nextOrigin = SectorPresets.marsh;
+                        }
+                        else if(current.preset == SectorPresets.ravine){
+                            BrowserCampaignResearch.runCalderaProgressSmoke(current);
+                            next = SectorPresets.caldera;
+                            nextOrigin = SectorPresets.ravine;
+                        }
+                        else if(current.preset == SectorPresets.caldera){
+                            BrowserCampaignResearch.runStrongholdProgressSmoke(current);
+                            next = SectorPresets.stronghold;
+                            nextOrigin = SectorPresets.caldera;
+                        }
+                        else if(current.preset == SectorPresets.stronghold){
+                            BrowserCampaignResearch.verifyCreviceReadyAfterStronghold(current);
+                            next = SectorPresets.crevice;
+                            nextOrigin = SectorPresets.stronghold;
+                        }
+                        else if(current.preset == SectorPresets.crevice){
+                            BrowserCampaignResearch.verifySiegeReadyAfterCrevice(current);
+                            next = SectorPresets.siege;
+                            nextOrigin = SectorPresets.crevice;
+                        }
+                        else if(current.preset == SectorPresets.siege){
+                            BrowserCampaignResearch.verifyCrossroadsReadyAfterSiege(current);
+                            next = SectorPresets.crossroads;
+                            nextOrigin = SectorPresets.siege;
+                        }
+                        else if(current.preset == SectorPresets.crossroads){
+                            BrowserCampaignResearch.runKarstProgressSmoke(current);
+                            next = SectorPresets.karst;
+                            nextOrigin = SectorPresets.crossroads;
+                        }
+                        else if(current.preset == SectorPresets.karst){
+                            BrowserCampaignResearch.runOriginProgressSmoke(current);
+                            next = SectorPresets.origin;
+                            nextOrigin = SectorPresets.karst;
+                        }
+                        else if(current.preset == SectorPresets.groundZero){
+                            BrowserCampaignResearch.runEarlyProgressSmoke(current);
+                            next = SectorPresets.frozenForest;
+                            nextOrigin = SectorPresets.groundZero;
+                        }
+                        else if(current.preset == SectorPresets.frozenForest){
+                            BrowserCampaignResearch.runCraterProgressSmoke(current);
+                            next = SectorPresets.crateredBattleground;
+                            nextOrigin = SectorPresets.frozenForest;
+                        }
+                        else if(current.preset == SectorPresets.crateredBattleground){
+                            BrowserCampaignResearch.runRuinousProgressSmoke(current);
+                            next = SectorPresets.ruinousShores;
+                            nextOrigin = SectorPresets.crateredBattleground;
+                        }
+                        else if(current.preset == SectorPresets.ruinousShores){
+                            BrowserCampaignResearch.runWindsweptProgressSmoke(current);
+                            next = SectorPresets.windsweptIslands;
+                            nextOrigin = SectorPresets.ruinousShores;
+                        }
+                        else if(current.preset == SectorPresets.windsweptIslands){
+                            BrowserCampaignResearch.verifyBiomassReadyAfterWindswept(current);
+                            next = SectorPresets.biomassFacility;
+                            nextOrigin = SectorPresets.windsweptIslands;
+                        }
+                        else if(current.preset == SectorPresets.biomassFacility){
+                            BrowserCampaignResearch.runFungalProgressSmoke(current);
+                            next = SectorPresets.fungalPass;
+                            nextOrigin = SectorPresets.biomassFacility;
+                        }
+                        else if(current.preset == SectorPresets.fungalPass){
+                            BrowserCampaignResearch.runFrontierProgressSmoke(current);
+                            next = SectorPresets.frontier;
+                            nextOrigin = SectorPresets.fungalPass;
+                        }
+                        else if(current.preset == SectorPresets.frontier){
+                            BrowserCampaignResearch.runSaltProgressSmoke(current);
+                            next = SectorPresets.saltFlats;
+                            nextOrigin = SectorPresets.frontier;
+                        }
+                        else if(current.preset == SectorPresets.saltFlats){
+                            BrowserCampaignResearch.runTarProgressSmoke(current);
+                            next = SectorPresets.tarFields;
+                            nextOrigin = SectorPresets.saltFlats;
+                        }
+                        else if(current.preset == SectorPresets.tarFields){
+                            BrowserCampaignResearch.runImpactProgressSmoke(current);
+                            next = SectorPresets.impact0078;
+                            nextOrigin = SectorPresets.tarFields;
+                        }
+                        else if(current.preset == SectorPresets.impact0078){
+                            BrowserCampaignResearch.verifyStainedReadyAfterImpact(current);
+                            next = SectorPresets.stainedMountains;
+                            nextOrigin = SectorPresets.biomassFacility;
+                        }
+                        else if(current.preset == SectorPresets.stainedMountains){
+                            BrowserCampaignResearch.runInfestedProgressSmoke(current);
+                            next = SectorPresets.infestedCanyons;
+                            nextOrigin = SectorPresets.stainedMountains;
+                        }
+                        else if(current.preset == SectorPresets.infestedCanyons){
+                            BrowserCampaignResearch.runNuclearProgressSmoke(current);
+                            next = SectorPresets.nuclearComplex;
+                            nextOrigin = SectorPresets.infestedCanyons;
+                        }
+                        else if(current.preset == SectorPresets.nuclearComplex){
+                            BrowserCampaignResearch.runDesolateProgressSmoke(current);
+                            next = SectorPresets.desolateRift;
+                            nextOrigin = SectorPresets.nuclearComplex;
+                        }
+                        else if(current.preset == SectorPresets.desolateRift){
+                            BrowserCampaignResearch.verifyFacility32mReady(current);
+                            next = SectorPresets.facility32m;
+                            nextOrigin = SectorPresets.stainedMountains;
+                        }
+                        else if(current.preset == SectorPresets.facility32m){
+                            BrowserCampaignResearch.runPerilousProgressSmoke(current);
+                            next = SectorPresets.perilousHarbor;
+                            nextOrigin = SectorPresets.frontier;
+                        }
+                        else if(current.preset == SectorPresets.perilousHarbor){
+                            BrowserCampaignResearch.runExtractionProgressSmoke(current);
+                            next = SectorPresets.extractionOutpost;
+                            nextOrigin = SectorPresets.perilousHarbor;
+                        }
+                        else if(current.preset == SectorPresets.extractionOutpost){
+                            BrowserCampaignResearch.runCoastlineProgressSmoke(current);
+                            next = SectorPresets.coastline;
+                            nextOrigin = SectorPresets.extractionOutpost;
+                        }
+                        else if(current.preset == SectorPresets.coastline){
+                            BrowserCampaignResearch.runNavalFortressProgressSmoke(current);
+                            next = SectorPresets.navalFortress;
+                            nextOrigin = SectorPresets.coastline;
+                        }
+                        else if(current.preset == SectorPresets.navalFortress){
+                            BrowserCampaignResearch.verifyOvergrowthReady(current);
+                            next = SectorPresets.overgrowth;
+                            nextOrigin = SectorPresets.frontier;
+                        }
+                        else if(current.preset == SectorPresets.overgrowth){
+                            BrowserCampaignResearch.runMycelialProgressSmoke(current);
+                            next = SectorPresets.mycelialBastion;
+                            nextOrigin = SectorPresets.overgrowth;
+                        }
+                        else if(current.preset == SectorPresets.mycelialBastion){
+                            BrowserCampaignResearch.runLittoralProgressSmoke(current);
+                            next = SectorPresets.littoralShipyard;
+                            nextOrigin = SectorPresets.mycelialBastion;
+                        }
+                        else if(current.preset == SectorPresets.littoralShipyard){
+                            BrowserCampaignResearch.runTerminalProgressSmoke(current);
+                            next = SectorPresets.planetaryTerminal;
+                            nextOrigin = SectorPresets.littoralShipyard;
+                        }
+                        else if(current.preset == SectorPresets.planetaryTerminal){
+                            BrowserCampaignResearch.runTaintedProgressSmoke(current);
+                            next = SectorPresets.taintedWoods;
+                            nextOrigin = SectorPresets.infestedCanyons;
+                        }
+                        else if(current.preset == SectorPresets.taintedWoods){
+                            BrowserCampaignResearch.runAtollsProgressSmoke(current);
+                            next = SectorPresets.atolls;
+                            nextOrigin = SectorPresets.extractionOutpost;
+                        }
+                        else if(current.preset == SectorPresets.atolls){
+                            BrowserCampaignResearch.runTestingGroundsProgressSmoke(current);
+                            next = SectorPresets.testingGrounds;
+                            nextOrigin = SectorPresets.coastline;
+                        }
+                        else if(current.preset == SectorPresets.testingGrounds){
+                            BrowserCampaignResearch.verifySunkenPierReady(current);
+                            next = SectorPresets.sunkenPier;
+                            nextOrigin = SectorPresets.navalFortress;
+                        }
+                        else if(current.preset == SectorPresets.sunkenPier){
+                            BrowserCampaignResearch.runWeatheredProgressSmoke(current);
+                            next = SectorPresets.weatheredChannels;
+                            nextOrigin = SectorPresets.navalFortress;
+                        }
+                        if(next != null){
+                            returnToMenu();
+                            playUnlockedPreset(next, nextOrigin, next.name);
+                            markProgressSectorStarted(current.id, current.preset == null ? "unknown" : current.preset.name);
+                            return;
+                        }
                     }
                 }else if(frames > 8){
                     throw new IllegalStateException("c:no-capture:" + current.preset.name);

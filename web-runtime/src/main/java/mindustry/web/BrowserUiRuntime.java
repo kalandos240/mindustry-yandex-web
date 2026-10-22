@@ -30,11 +30,6 @@ import static mindustry.Vars.*;
  * The small Back control is likewise local and returns directly to the stable map menu.
  */
 public final class BrowserUiRuntime{
-    @JSFunctor
-    private interface SettingsAction extends JSObject{
-        void run(int setting, int value);
-    }
-
     private static boolean initialized;
     private static boolean hudOnlyPause;
     private static boolean captionDiagnostics;
@@ -42,7 +37,6 @@ public final class BrowserUiRuntime{
     private static TextButton localModeButton;
     private static int hudResearchPointerFrames;
     private static int hudDatabasePointerFrames;
-    private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
 
@@ -91,12 +85,12 @@ public final class BrowserUiRuntime{
         }
 
         buildLocalMapMenu();
-        installSettingsUi(settingsAction,
+        installSettingsUi(
             Core.settings.getInt("sfxvol", 100),
             Core.settings.getInt("musicvol", 100),
             Core.settings.getBool("effects", true),
             qualityVisuals());
-        installLocalModeUi(settingsAction, BrowserLocalMapRuntime.customModeCode());
+        installLocalModeUi(BrowserLocalMapRuntime.customModeCode());
         buildLocalHudControls();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
@@ -219,7 +213,8 @@ public final class BrowserUiRuntime{
         Table mapButtons = new Table();
         // Native mode choice belongs to Custom Game, never above the main menu.
         localModeButton = root.button(localModeLabel(), Icon.settings, () -> {
-            applySettingAction(5, BrowserLocalMapRuntime.customModeCode() == 0 ? 1 : 0);
+            Core.settings.put("localgamemode", BrowserLocalMapRuntime.customModeCode() == 0 ? 1 : 0);
+            Core.settings.forceSave();
             syncLocalModeUi();
         }).width(mobile ? 320f : 380f).height(mobile ? 52f : 46f)
             .name("web-custom-mode").get();
@@ -287,22 +282,6 @@ public final class BrowserUiRuntime{
         r.setAttribute('data-mindustry-play-direct-'+planet+'-y',String(y));
         """)
     private static native void markDirectCampaignHit(String planet, float x, float y);
-
-    private static void applySettingAction(int setting, int value){
-        switch(setting){
-            case 1 -> Core.settings.put("sfxvol", value);
-            case 2 -> Core.settings.put("musicvol", value);
-            case 3 -> Core.settings.put("effects", value != 0);
-            case 4 -> {
-                boolean enabled = value != 0;
-                Core.settings.put("animatedwater", enabled);
-                Core.settings.put("animatedshields", enabled);
-                Core.settings.put("drawlight", enabled);
-            }
-            case 5 -> Core.settings.put("localgamemode", value == 1 ? 1 : 0);
-        }
-        Core.settings.forceSave();
-    }
 
     private static boolean qualityVisuals(){
         return Core.settings.getBool("animatedwater", !mobile)
@@ -886,11 +865,11 @@ public final class BrowserUiRuntime{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
     private static native void markReady();
 
-    @JSBody(params = {"action", "sfx", "music", "effects", "quality"}, script = "globalThis.__mindustryInstallSettings(action,sfx,music,effects,quality);")
-    private static native void installSettingsUi(SettingsAction action, int sfx, int music, boolean effects, boolean quality);
+    @JSBody(params = {"sfx", "music", "effects", "quality"}, script = "globalThis.__mindustryInstallSettings(null,sfx,music,effects,quality);")
+    private static native void installSettingsUi(int sfx, int music, boolean effects, boolean quality);
 
-    @JSBody(params = {"action", "mode"}, script = "globalThis.__mindustryInstallLocalMode(action,mode);")
-    private static native void installLocalModeUi(SettingsAction action, int mode);
+    @JSBody(params = {"mode"}, script = "globalThis.__mindustryInstallLocalMode(null,mode);")
+    private static native void installLocalModeUi(int mode);
 
     @JSBody(params = {"mode"}, script = "if(globalThis.__mindustrySetLocalMode){ globalThis.__mindustrySetLocalMode(mode); }")
     private static native void setLocalModeUi(int mode);

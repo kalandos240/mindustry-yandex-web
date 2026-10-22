@@ -1,5 +1,5 @@
 name: Lost Serpulo recapture and settings exit confirmation
-# Verify stock recapture, retained derelicts and cancelable menu exits.
+# Share the 44 CI progression exits to retain the JavaScript size guard.
 on:
   push:
     branches: [sector-settings-recovery]
@@ -305,6 +305,11 @@ jobs:
             # on both devices and all six gameplay/defeat scenarios here.
           ) 2>&1 | tee work/inventory-validation.log
           bash scripts/verify-browser-gameplay-button-stress.sh 2>&1 | tee work/settings-gameplay-validation.log
+      - name: Preserve all 44 campaign progression transitions after deduplication
+        run: |
+          set -euo pipefail
+          bash scripts/verify-browser-campaign-capture.sh 2>&1 | tee work/recapture-serpulo-progression.log
+          bash scripts/verify-browser-erekir-progression.sh 2>&1 | tee work/recapture-erekir-progression.log
       - name: Native Go recaptures lost sectors after cold browser restart
         run: MINDUSTRY_LOST_CORE=1 bash scripts/verify-browser-cold-sector-go.sh
       - name: Native Go resumes saved Erekir sector

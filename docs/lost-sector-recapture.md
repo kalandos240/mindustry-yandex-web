@@ -9,3 +9,5 @@ The portal log contains ad close/resume events but no settings exception or stac
 Inventory remains authoritative in MSAV plus the durable explicit SectorInfo codec. The abandoned write-only `.items` companion was removed; no reader or recovery path used it.
 
 Acceptance fixtures add a derelict copper-wall sentinel to the pre-loss Serpulo save. The cold native globe Go test checks original backup bytes and the sentinel in the recaptured live world. Fixture-only JavaScript is removed before package identity checks and delivery.
+
+Size control: share the common exit/launch/mark sequence across all 44 CI campaign progression branches, retaining their exact research verifier, destination and launch origin. Remove obsolete JS settings callbacks: the shell consumes only preference telemetry, while all editable settings use SettingsMenuDialog.
