@@ -5,6 +5,7 @@
     var state = global.__mindustryAudio || (global.__mindustryAudio = {
         ctx: null,
         buffers: new Map(),
+        decodeRequests: new Map(),
         decodedBuffers: new Set(),
         bufferAccess: new Map(),
         bufferClock: 0,
@@ -59,8 +60,25 @@
         var pending = state.buffers.get(url);
         state.bufferAccess.set(url, ++state.bufferClock);
         if(pending) return pending;
-
-        pending = fetch(url)
+        var context = state.ctx;
+        if(!context) return Promise.reject(new Error('Audio context is unavailable'));
+        var controller = new AbortController();
+        var timer, cancel;
+        var deadline = new Promise(function(resolve, reject){
+            cancel = function(){
+                controller.abort();
+                reject(new Error('Audio decode cancelled: ' + url));
+            };
+            timer = setTimeout(function(){
+                controller.abort();
+                reject(new Error('Audio load/decode timed out: ' + url));
+            }, 20000);
+        });
+        var request = {cancel: cancel};
+        state.decodeRequests.set(url, request);
+        var download = Promise.resolve().then(function(){
+                return fetch(url, {signal: controller.signal});
+            })
             .then(function(response){
                 if(!response.ok){
                     throw new Error('Audio asset fetch failed (' + response.status + '): ' + url);
@@ -68,21 +86,28 @@
                 return response.arrayBuffer();
             })
             .then(function(bytes){
-                return state.ctx.decodeAudioData(bytes);
-            })
-            .then(function(buffer){
+                if(controller.signal.aborted || state.ctx !== context) throw new Error('Audio context changed: ' + url);
+                return context.decodeAudioData(bytes);
+            });
+        pending = Promise.race([download, deadline]).then(function(buffer){
+                if(state.ctx !== context || state.buffers.get(url) !== pending) throw new Error('Stale audio decode: ' + url);
                 state.durations.set(url, buffer.duration || 0);
                 state.decodedBuffers.add(url);
                 state.bufferAccess.set(url, ++state.bufferClock);
                 trimDecodedBuffers(url);
                 return buffer;
+            }).finally(function(){
+                clearTimeout(timer);
+                if(state.decodeRequests.get(url) === request) state.decodeRequests.delete(url);
             });
 
         state.buffers.set(url, pending);
         pending.catch(function(){
-            state.buffers.delete(url);
-            state.decodedBuffers.delete(url);
-            state.bufferAccess.delete(url);
+            if(state.buffers.get(url) === pending){
+                state.buffers.delete(url);
+                state.decodedBuffers.delete(url);
+                state.bufferAccess.delete(url);
+            }
         });
         return pending;
     }
@@ -200,18 +225,23 @@
             return;
         }
 
+        var context = state.ctx;
         root.setAttribute('data-mindustry-audio', 'decoding');
         decode(url).then(function(buffer){
+            if(state.ctx !== context) return;
             if(!buffer || !(buffer.duration > 0)){
                 throw new Error('Decoded audio has no duration: ' + url);
             }
             root.setAttribute('data-mindustry-audio', 'ready');
             root.setAttribute('data-mindustry-audio-smoke-ms', String(Math.round(buffer.duration * 1000)));
-        }).catch(setError);
+        }).catch(function(error){
+            if(state.ctx === context) setError(error);
+        });
     }
 
     function playSound(url, volume, pitch, pan, loop){
         if(!state.ctx) return -1;
+        var context = state.ctx;
 
         if(state.maxVoices > 0 && state.voices.size >= state.maxVoices){
             var victimId = -1;
@@ -255,8 +285,8 @@
         decode(url).then(function(buffer){
             if(state.voices.get(id) === voice) startVoice(voice, buffer);
         }).catch(function(error){
-            state.voices.delete(id);
-            console.warn('Mindustry sound decode failed:', url, error);
+            if(state.voices.get(id) === voice) state.voices.delete(id);
+            if(state.ctx === context) console.warn('Mindustry sound decode failed:', url, error);
         });
         return id;
     }
@@ -358,6 +388,8 @@
     }
 
     function dispose(){
+        state.decodeRequests.forEach(function(request){ request.cancel(); });
+        state.decodeRequests.clear();
         removeUnlockListeners();
         state.unlocked = false;
         state.unlocking = false;
