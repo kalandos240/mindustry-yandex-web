@@ -2,12 +2,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const baseline = process.argv[2];
+const valuesBaseline = process.argv[3] === 'values';
 const source = fs.readFileSync(baseline || __dirname + '/../web-runtime/src/web/yandex-platform.js','utf8');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const settingsPath = 'settings/mindustry.web.settings.v1.mws1';
 const settingsKey = 'mindustry.web.settings.v1';
 const savePath = 'saves/sector-serpulo-0.msav';
 const part = (key,value) => 's'+key.length+':'+key+value.length+':'+value;
+const typed = (type,key,value) => type+key.length+':'+key+value.length+':'+value;
 const settings = tag => 'MWS1|'+part('last-sector-save','sector-serpulo-0')+part('tag',tag);
 const encoded = Buffer.alloc(128, 7).toString('base64');
 const snapshot = () => ({schema:1,settings:settings('cloud'),files:{[savePath]:encoded}});
@@ -46,6 +48,14 @@ async function harness(remote=snapshot()){
 
 (async () => {
     const h = await harness();
+    if(valuesBaseline){
+        const corrupt=snapshot(); corrupt.settings='MWS1|'+typed('i','volume','not-a-number');
+        h.setRemote(corrupt); h.attrs.set('data-mindustry-storage','ready');
+        assert.equal(await h.api.restoreCloudCheckpoint(),true);
+        assert.equal(h.mirror(),corrupt.settings);
+        console.log('Previous cloud validator bug REPRODUCED: non-numeric integer setting accepted and persisted before native settings load');
+        return;
+    }
     h.events.game_api_pause(); await tick();
     if(baseline){
         assert.equal(h.uploads.length,1);
@@ -84,6 +94,11 @@ async function harness(remote=snapshot()){
     badSnapshots.push({...snapshot(),settings:'MWS1|broken'});
     badSnapshots.push({...snapshot(),settings:'MWS1|s:5:hello'});
     badSnapshots.push({...snapshot(),settings:'MWS1|z3:key3:val'});
+    for(const [type,value] of [['i','bad'],['i','2147483648'],['i','-2147483649'],
+        ['l','9223372036854775808'],['l','-9223372036854775809'],['l','1.5'],
+        ['f','1.2.3'],['f',''],['x','0'],['x','gg'],['b','maybe']]){
+        badSnapshots.push({...snapshot(),settings:'MWS1|'+typed(type,'value',value)});
+    }
     for(const bad of badSnapshots){
         const b=await harness(bad); b.attrs.set('data-mindustry-storage','ready');
         b.memory.set(settingsPath,new TextEncoder().encode(settings('local')));
@@ -117,5 +132,21 @@ async function harness(remote=snapshot()){
     const disk=await harness(); disk.attrs.set('data-mindustry-storage','ready'); disk.failFlush();
     assert.equal(await disk.api.restoreCloudCheckpoint(),false);
     assert.equal(disk.mirrors.length,0,'Settings mirror changes only after confirmed file persistence');
+    const valid=snapshot();
+    for(const [type,value] of [['i','2147483647'],['i','-2147483648'],['i','+0001'],
+        ['l','9223372036854775807'],['l','-9223372036854775808'],['l','9999999999'],
+        ['f','-0.0'],['f','1.25E-10'],['f','NaN'],['f','Infinity'],
+        ['x','00ffAB80'],['x',''],['b','0'],['b','1'],['s','Русский текст 🌍']]){
+        valid.settings+=typed(type,'value-'+type+'-'+value,value);
+    }
+    const edges=await harness(valid); edges.attrs.set('data-mindustry-storage','ready');
+    assert.equal(await edges.api.restoreCloudCheckpoint(),true,'All serializer types and exact numeric boundaries remain supported');
+    assert.equal(edges.mirror(),valid.settings);
+    assert.equal(await edges.api.syncCloudCheckpoint('valid-values'),true);
+    const invalidLocal=await harness(); invalidLocal.attrs.set('data-mindustry-storage','ready');
+    invalidLocal.memory.set(savePath,new Uint8Array(128));
+    invalidLocal.memory.set(settingsPath,new TextEncoder().encode('MWS1|'+typed('l','playtime','9223372036854775808')));
+    assert.equal(await invalidLocal.api.syncCloudCheckpoint('bad-local'),false);
+    assert.equal(invalidLocal.uploads.length,0,'Invalid local settings cannot poison the cloud backup');
     console.log('Cloud startup/restore: early pause, hydration, in-flight restore, complete validation, offline recovery, existing local progress, new player and failed disk flush PASS');
 })().catch(error => {console.error(error);process.exitCode=1;});

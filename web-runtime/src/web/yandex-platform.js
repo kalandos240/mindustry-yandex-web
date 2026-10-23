@@ -492,11 +492,12 @@
     async function getPlayer(){
         if(!state.ysdk || typeof state.ysdk.getPlayer !== 'function') return null;
         if(!state.playerPromise){
-            state.playerPromise = Promise.resolve().then(() => state.ysdk.getPlayer()).catch(error => {
+            const lookup = withTimeout(Promise.resolve().then(() => state.ysdk.getPlayer()), 2500, 'Yandex player').catch(error => {
                 // A temporary player-service error must not poison every later save.
-                state.playerPromise = null;
+                if(state.playerPromise === lookup) state.playerPromise = null;
                 throw error;
             });
+            state.playerPromise = lookup;
         }
         return state.playerPromise;
     }
@@ -533,9 +534,31 @@
             if(!'bilfsx'.includes(type)) throw new Error('Unknown browser settings type');
             const key = part();
             const value = part();
+            validateSettingValue(type, value);
             if(key === wanted) return value;
         }
         return '';
+    }
+
+    function validateSettingValue(type, value){
+        if(type === 'b' && value !== '0' && value !== '1') throw new Error('Invalid boolean setting');
+        if(type === 'i' || type === 'l'){
+            if(!/^[+-]?\d+$/.test(value)) throw new Error('Invalid integer setting');
+            const negative = value[0] === '-';
+            const digits = value.replace(/^[+-]/, '').replace(/^0+/, '') || '0';
+            const limit = type === 'i' ? (negative ? '2147483648' : '2147483647') :
+                (negative ? '9223372036854775808' : '9223372036854775807');
+            // Compare decimal strings so a Java long never loses precision in JS.
+            if(digits.length > limit.length || digits.length === limit.length && digits > limit){
+                throw new Error('Integer setting out of range');
+            }
+        }
+        if(type === 'f' && !/^[+-]?(?:NaN|Infinity|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.test(value)){
+            throw new Error('Invalid float setting');
+        }
+        if(type === 'x' && (value.length % 2 || /[^0-9a-fA-F]/.test(value))){
+            throw new Error('Invalid binary setting');
+        }
     }
 
     function bytesToBase64(bytes){
@@ -576,7 +599,13 @@
         if(settings && !settings.startsWith('MWS1|')) settings = '';
 
         let lastSector = '';
-        try{ lastSector = settingsValue(settings, 'last-sector-save'); }catch(_ignored){}
+        try{
+            settingsValue(settings, null);
+            lastSector = settingsValue(settings, 'last-sector-save');
+        }catch(error){
+            mark('data-yandex-cloud-state', 'invalid-settings');
+            return null;
+        }
         const campaignPath = /^sector-(?:serpulo|erekir)-\d+$/.test(lastSector)
             ? 'saves/' + lastSector + '.msav' : '';
         const localPath = 'saves/web-local-survival.msav';
