@@ -81,6 +81,9 @@ async function harness(remote=snapshot()){
     }
     badSnapshots.push({...snapshot(),files:[]});
     badSnapshots.push({...snapshot(),settings:'MWS1|'+ 'x'.repeat(200000)});
+    badSnapshots.push({...snapshot(),settings:'MWS1|broken'});
+    badSnapshots.push({...snapshot(),settings:'MWS1|s:5:hello'});
+    badSnapshots.push({...snapshot(),settings:'MWS1|z3:key3:val'});
     for(const bad of badSnapshots){
         const b=await harness(bad); b.attrs.set('data-mindustry-storage','ready');
         b.memory.set(settingsPath,new TextEncoder().encode(settings('local')));

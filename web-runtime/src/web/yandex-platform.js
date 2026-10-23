@@ -517,7 +517,9 @@
         const part = () => {
             const colon = payload.indexOf(':', cursor);
             if(colon < 0) throw new Error('Malformed browser settings length');
-            const length = Number(payload.slice(cursor, colon));
+            const digits = payload.slice(cursor, colon);
+            if(!/^\d+$/.test(digits)) throw new Error('Malformed browser settings length');
+            const length = Number(digits);
             const start = colon + 1;
             const end = start + length;
             if(!Number.isInteger(length) || length < 0 || end > payload.length){
@@ -527,7 +529,8 @@
             return payload.slice(start, end);
         };
         while(cursor < payload.length){
-            cursor++; // value type
+            const type = payload[cursor++];
+            if(!'bilfsx'.includes(type)) throw new Error('Unknown browser settings type');
             const key = part();
             const value = part();
             if(key === wanted) return value;
@@ -735,6 +738,8 @@
                 if(typeof snapshot.settings !== 'string' || !snapshot.settings.startsWith('MWS1|')){
                     throw new Error('Invalid cloud settings payload');
                 }
+                // A null lookup scans every field instead of stopping at a key.
+                settingsValue(snapshot.settings, null);
                 settingsBytes = new TextEncoder().encode(snapshot.settings);
             }
 
