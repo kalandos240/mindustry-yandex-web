@@ -21,6 +21,7 @@
         cloudSyncQueued: null,
         cloudLastPayload: '',
         cloudLastFlushedPayload: '',
+        cloudRestoreReady: false,
         fullscreenButton: null,
         bannerWanted: false,
         bannerShowing: false,
@@ -621,6 +622,14 @@
             mark('data-yandex-cloud-state', 'unavailable');
             return false;
         }
+        const storage = globalThis.__mindustryStorage;
+        if(!storage || root.getAttribute('data-mindustry-storage') !== 'ready' ||
+            !state.cloudRestoreReady && !storage.paths().some(path => cloudFilePattern.test(path))){
+            // SDK pause may arrive before IndexedDB hydration or cloud restore.
+            // Never replace remote progress with an incomplete startup snapshot.
+            mark('data-yandex-cloud-state', 'waiting-storage');
+            return false;
+        }
         if(state.cloudSyncPromise){
             // A checkpoint written during an upload must get its own latest
             // snapshot afterwards, rather than inherit the older upload's result.
@@ -696,6 +705,7 @@
         }
 
         if(storage.paths().some(path => cloudFilePattern.test(path))){
+            state.cloudRestoreReady = true;
             mark('data-yandex-cloud-restore', 'skipped-local-present');
             return false;
         }
@@ -712,30 +722,43 @@
             const snapshot = data && data[cloudKey];
             if(!snapshot || snapshot.schema !== 1){
                 mark('data-yandex-cloud-restore', 'empty');
+                if(!snapshot) state.cloudRestoreReady = true;
                 return false;
             }
 
+            // Validate and decode the entire snapshot before changing local files.
+            if(encodedBytes({schema:1, settings:snapshot.settings || '', files:snapshot.files || {}}) > cloudBudgetBytes){
+                throw new Error('Cloud checkpoint exceeds restore budget');
+            }
+            let settingsBytes = null;
             if(snapshot.settings){
                 if(typeof snapshot.settings !== 'string' || !snapshot.settings.startsWith('MWS1|')){
                     throw new Error('Invalid cloud settings payload');
                 }
-                const settingsBytes = new TextEncoder().encode(snapshot.settings);
-                storage.put(settingsPath, settingsBytes, settingsBytes.byteLength);
-                try{ localStorage.setItem(settingsKey, snapshot.settings); }catch(_ignored){}
+                settingsBytes = new TextEncoder().encode(snapshot.settings);
             }
 
-            let restoredFiles = 0;
+            const decodedFiles = [];
+            if(snapshot.files != null && (typeof snapshot.files !== 'object' || Array.isArray(snapshot.files))){
+                throw new Error('Invalid cloud save file list');
+            }
             const files = snapshot.files && typeof snapshot.files === 'object' ? snapshot.files : {};
             for(const [path, encoded] of Object.entries(files)){
                 if(!cloudFilePattern.test(path)) continue;
+                if(typeof encoded !== 'string') throw new Error('Invalid cloud save encoding: ' + path);
                 const bytes = base64ToBytes(encoded);
-                if(bytes.byteLength < 128) continue;
+                if(bytes.byteLength < 128) throw new Error('Incomplete cloud save: ' + path);
+                decodedFiles.push([path, bytes]);
+            }
+            if(settingsBytes) storage.put(settingsPath, settingsBytes, settingsBytes.byteLength);
+            for(const [path, bytes] of decodedFiles){
                 storage.put(path, bytes, bytes.byteLength);
-                restoredFiles++;
             }
             await storage.flush();
+            if(settingsBytes) try{ localStorage.setItem(settingsKey, snapshot.settings); }catch(_ignored){}
+            state.cloudRestoreReady = true;
             mark('data-yandex-cloud-restore', 'ready');
-            mark('data-yandex-cloud-restored-files', String(restoredFiles));
+            mark('data-yandex-cloud-restored-files', String(decodedFiles.length));
             mark('data-yandex-cloud-restored-settings', snapshot.settings ? 'yes' : 'no');
             return true;
         }catch(error){

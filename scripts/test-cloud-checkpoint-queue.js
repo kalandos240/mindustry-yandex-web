@@ -8,6 +8,7 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 
 async function harness(playerFailures=0){
     const attrs = new Map(), files = new Map(), calls = [], events = {};
+    attrs.set('data-mindustry-storage', 'ready');
     const settingsKey = 'mindustry.web.settings.v1';
     const settingsPath = 'settings/' + settingsKey + '.mws1';
     const savePath = 'saves/sector-serpulo-0.msav';
@@ -26,7 +27,7 @@ async function harness(playerFailures=0){
         document:{documentElement:root}, window:{dispatchEvent:() => {}},
         CustomEvent:class {constructor(name){this.name=name;}}, navigator:{language:'ru'},
         YaGames:{init:async () => sdk}, localStorage:{getItem:() => null},
-        __mindustryStorage:{get:path => files.get(path), exists:path => files.has(path), lifecycleFlush:async () => true},
+        __mindustryStorage:{get:path => files.get(path), exists:path => files.has(path), paths:() => Array.from(files.keys()), lifecycleFlush:async () => true},
         TextEncoder, TextDecoder, Int8Array, Uint8Array, btoa, atob,
         console:{info:() => {}}, setTimeout, clearTimeout, Date, performance
     };
