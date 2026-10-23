@@ -9,7 +9,9 @@ ROOT=Path(__file__).resolve().parents[1]
 STAGE=ROOT/'web-runtime/build/web'
 
 async def main():
-    sound=sorted(STAGE.glob('assets/sounds/*.ogg'))[0]
+    sounds=list((STAGE/'assets/sounds').rglob('*.ogg'))
+    assert sounds,'Packaged SFX are missing'
+    sound=min(sounds,key=lambda p:(p.stem!='press',p.as_posix()))
     data=sound.read_bytes();release=threading.Event()
     class Handler(SimpleHTTPRequestHandler):
         stalled=False
