@@ -130,8 +130,11 @@
 
     function unlock(){
         if(!state.ctx || state.unlocked || state.unlocking) return;
+        if(state.platformPaused) return;
+        var context = state.ctx;
         state.unlocking = true;
-        state.ctx.resume().then(function(){
+        context.resume().then(function(){
+            if(state.ctx !== context) return;
             state.unlocked = true;
             state.unlocking = false;
             removeUnlockListeners();
@@ -139,12 +142,11 @@
             root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot');
             state.music.forEach(function(entry){
                 if(entry.pendingPlay && !state.platformPaused){
-                    entry.pendingPlay = false;
-                    entry.element.play().catch(function(){ entry.pendingPlay = true; });
+                    requestMusicPlay(entry);
                 }
             });
         }).catch(function(){
-            state.unlocking = false;
+            if(state.ctx === context) state.unlocking = false;
         });
     }
 
@@ -164,6 +166,9 @@
             setError(error);
             return false;
         }
+        state.unlocked = false;
+        state.unlocking = false;
+        root.setAttribute('data-mindustry-audio-unlocked', 'false');
 
         state.decode = decode;
         state.startVoice = startVoice;
@@ -184,7 +189,8 @@
         root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot-pending');
 
         root.setAttribute('data-mindustry-audio', 'installed');
-        root.setAttribute('data-mindustry-audio-platform', 'running');
+        root.setAttribute('data-mindustry-audio-platform', state.platformPaused ? 'paused' : 'running');
+        if(state.platformPaused) state.ctx.suspend().catch(function(){});
         return true;
     }
 
@@ -319,15 +325,18 @@
     }
 
     function platformPause(paused){
-        if(!state.ctx) return;
+        paused = !!paused;
+        if(state.platformPaused === paused) return;
         state.platformPaused = paused;
         root.setAttribute('data-mindustry-audio-platform', paused ? 'paused' : 'running');
         root.setAttribute(paused ? 'data-mindustry-audio-pause-observed' : 'data-mindustry-audio-resume-observed', 'yes');
+        if(!state.ctx) return;
 
         if(paused){
             state.ctx.suspend().catch(function(){});
             state.music.forEach(function(entry){
-                entry.resumeAfterPlatform = !entry.element.paused || entry.pendingPlay;
+                entry.resumeAfterPlatform = entry.resumeAfterPlatform || !entry.element.paused || entry.pendingPlay;
+                entry.playRequest++;
                 entry.element.pause();
             });
             return;
@@ -335,13 +344,9 @@
 
         if(state.unlocked) state.ctx.resume().catch(function(){});
         state.music.forEach(function(entry){
-            if(!entry.resumeAfterPlatform) return;
+            if(!entry.resumeAfterPlatform && !entry.pendingPlay) return;
             entry.resumeAfterPlatform = false;
-            if(state.unlocked){
-                entry.element.play().catch(function(){ entry.pendingPlay = true; });
-            }else{
-                entry.pendingPlay = true;
-            }
+            requestMusicPlay(entry);
         });
 
         state.voices.forEach(function(voice){
@@ -353,6 +358,9 @@
     }
 
     function dispose(){
+        removeUnlockListeners();
+        state.unlocked = false;
+        state.unlocking = false;
         var ids = [];
         state.voices.forEach(function(voice, id){ ids.push(id); });
         ids.forEach(stopVoice);
@@ -363,6 +371,9 @@
         state.bufferClock = 0;
 
         state.music.forEach(function(entry){
+            entry.playRequest++;
+            entry.pendingPlay = false;
+            entry.resumeAfterPlatform = false;
             entry.element.pause();
             entry.element.removeAttribute('src');
             entry.element.load();
@@ -372,6 +383,7 @@
         if(state.ctx) state.ctx.close().catch(function(){});
         state.ctx = null;
         state.installed = false;
+        root.setAttribute('data-mindustry-audio-unlocked', 'false');
         root.setAttribute('data-mindustry-audio', 'disposed');
     }
 
@@ -382,9 +394,11 @@
         element.src = url;
         element.playsInline = true;
         var entry = {
+            id: id,
             element: element,
             pendingPlay: false,
-            resumeAfterPlatform: false
+            resumeAfterPlatform: false,
+            playRequest: 0
         };
         state.music.set(id, entry);
         return entry;
@@ -394,6 +408,19 @@
         createMusic(id, url);
     }
 
+    function requestMusicPlay(entry){
+        var request = ++entry.playRequest;
+        entry.pendingPlay = true;
+        if(state.platformPaused || !state.unlocked) return;
+        try{
+            Promise.resolve(entry.element.play()).then(function(){
+                if(state.music.get(entry.id) === entry && entry.playRequest === request) entry.pendingPlay = false;
+            }).catch(function(){
+                if(state.music.get(entry.id) === entry && entry.playRequest === request) entry.pendingPlay = true;
+            });
+        }catch(ignored){ /* Leave playback pending for the next permitted attempt. */ }
+    }
+
     function musicPlay(id, url, volume, pitch, pan, loop){
         var entry = createMusic(id, url);
         var element = entry.element;
@@ -401,37 +428,26 @@
         element.playbackRate = pitch;
         element.loop = loop;
 
-        if(state.platformPaused || !state.unlocked){
-            entry.pendingPlay = true;
-            return;
-        }
-
-        element.play().then(function(){
-            entry.pendingPlay = false;
-        }).catch(function(){
-            entry.pendingPlay = true;
-        });
+        requestMusicPlay(entry);
     }
 
     function musicPause(id, paused){
         var entry = state.music.get(id);
         if(!entry) return;
         if(paused){
+            entry.playRequest++;
             entry.element.pause();
             entry.pendingPlay = false;
+            entry.resumeAfterPlatform = false;
         }else{
-            entry.pendingPlay = true;
-            if(state.unlocked && !state.platformPaused){
-                entry.element.play().then(function(){
-                    entry.pendingPlay = false;
-                }).catch(function(){});
-            }
+            requestMusicPlay(entry);
         }
     }
 
     function musicStop(id){
         var entry = state.music.get(id);
         if(!entry) return;
+        entry.playRequest++;
         entry.element.pause();
         try{ entry.element.currentTime = 0; }catch(ignored){}
         entry.pendingPlay = false;
@@ -441,6 +457,9 @@
     function musicDispose(id){
         var entry = state.music.get(id);
         if(!entry) return;
+        entry.playRequest++;
+        entry.pendingPlay = false;
+        entry.resumeAfterPlatform = false;
         entry.element.pause();
         entry.element.removeAttribute('src');
         entry.element.load();
