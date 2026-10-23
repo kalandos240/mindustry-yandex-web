@@ -72,5 +72,10 @@ async function play(h,id=1){h.api.musicPlay(id,'music.ogg',0.6,1,0,true);await t
     newReject(new Error('new play rejected'));oldResolve();await tick();
     assert(superseded.state.music.get(4).pendingPlay,'Older success cannot clear the newest retry');
     superseded.api.musicDispose(4);assert(!superseded.state.music.has(4));
+    const retry=await ready();retry.api.musicPrepare(5,'music.ogg');
+    const f=retry.state.music.get(5).element;f.deferPlay=true;
+    retry.api.musicPlay(5,'music.ogg',0.5,1,0,true);f.paused=true;f.rejectPlay(new Error('temporary autoplay denial'));await tick();
+    f.deferPlay=false;retry.api.platformPause(false);await tick();
+    assert(!f.paused && f.plays===2,'An extra resume event can retry denied pending playback');
     console.log('Audio lifecycle: duplicate pause, explicit pause/stop, queued music, late play callbacks, volume/loop, early pause and context reinstallation PASS');
 })().catch(error=>{console.error(error);process.exitCode=1;});

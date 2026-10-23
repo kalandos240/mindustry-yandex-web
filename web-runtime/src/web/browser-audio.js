@@ -326,7 +326,7 @@
 
     function platformPause(paused){
         paused = !!paused;
-        if(state.platformPaused === paused) return;
+        if(state.platformPaused === paused && paused) return;
         state.platformPaused = paused;
         root.setAttribute('data-mindustry-audio-platform', paused ? 'paused' : 'running');
         root.setAttribute(paused ? 'data-mindustry-audio-pause-observed' : 'data-mindustry-audio-resume-observed', 'yes');
