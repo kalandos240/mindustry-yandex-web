@@ -147,6 +147,21 @@
 
     const unlockEvents = ['pointerdown', 'touchstart', 'keydown'];
 
+    function listenForUnlock(){
+        unlockEvents.forEach(function(type){
+            global.addEventListener(type, unlock, {passive: true, capture: true});
+        });
+        root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot-pending');
+    }
+
+    function requireUnlock(context){
+        if(state.ctx !== context || state.platformPaused) return;
+        state.unlocked = false;
+        state.unlocking = false;
+        root.setAttribute('data-mindustry-audio-unlocked', 'false');
+        listenForUnlock();
+    }
+
     function removeUnlockListeners(){
         unlockEvents.forEach(function(type){
             global.removeEventListener(type, unlock, true);
@@ -160,6 +175,11 @@
         state.unlocking = true;
         context.resume().then(function(){
             if(state.ctx !== context) return;
+            if(context.state !== 'running'){
+                state.unlocking = false;
+                requireUnlock(context);
+                return;
+            }
             state.unlocked = true;
             state.unlocking = false;
             removeUnlockListeners();
@@ -194,6 +214,11 @@
         state.unlocked = false;
         state.unlocking = false;
         root.setAttribute('data-mindustry-audio-unlocked', 'false');
+        var context = state.ctx;
+        if(typeof context.addEventListener === 'function') context.addEventListener('statechange', function(){
+            if(state.ctx === context && state.unlocked &&
+                (context.state === 'suspended' || context.state === 'interrupted')) requireUnlock(context);
+        });
 
         state.decode = decode;
         state.startVoice = startVoice;
@@ -208,10 +233,7 @@
             state.maxDecodedBuffers > 0 ? 'mobile-lru-64' : 'desktop-unlimited');
         root.setAttribute('data-mindustry-audio-voice-policy',
             state.maxVoices > 0 ? 'mobile-quietest-unprotected-48' : 'desktop-unlimited');
-        unlockEvents.forEach(function(type){
-            global.addEventListener(type, unlock, {passive: true, capture: true});
-        });
-        root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot-pending');
+        listenForUnlock();
 
         root.setAttribute('data-mindustry-audio', 'installed');
         root.setAttribute('data-mindustry-audio-platform', state.platformPaused ? 'paused' : 'running');
@@ -372,7 +394,12 @@
             return;
         }
 
-        if(state.unlocked) state.ctx.resume().catch(function(){});
+        if(state.unlocked){
+            var context = state.ctx;
+            context.resume().then(function(){
+                if(context.state !== 'running') requireUnlock(context);
+            }).catch(function(){ requireUnlock(context); });
+        }
         state.music.forEach(function(entry){
             if(!entry.resumeAfterPlatform && !entry.pendingPlay) return;
             entry.resumeAfterPlatform = false;
@@ -549,3 +576,4 @@
         musicDispose: musicDispose
     };
 })(window);
+

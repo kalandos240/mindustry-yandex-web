@@ -42,6 +42,14 @@ async def main():
                         a.fftSize=256;source.connect(a);a.connect(s.ctx.destination);s.testAnalyser=a;
                     }''')
                     await page.wait_for_function('''()=>{const s=__mindustryAudio,a=new Float32Array(256);s.testAnalyser.getFloatTimeDomainData(a);return a.some(v=>Math.abs(v)>0.0001);}''',timeout=30000)
+                    # Simulate a browser/system interruption with the actual AudioContext.
+                    # No fake resume, play, audio buffers or media implementations.
+                    await page.evaluate('()=>__mindustryAudio.ctx.suspend()')
+                    await page.wait_for_function('!__mindustryAudio.unlocked && __mindustryAudio.ctx.state==="suspended"')
+                    assert await page.evaluate('document.documentElement.getAttribute("data-mindustry-audio-unlocked")')=='false'
+                    await gesture()
+                    await page.wait_for_function('''()=>{const a=new Float32Array(256);__mindustryAudio.testAnalyser.getFloatTimeDomainData(a);return a.some(v=>Math.abs(v)>0.0001);}''')
+                    print(mode+': real context interruption, trusted-input recovery and restored nonzero samples PASS',flush=True)
                     await page.evaluate('()=>{__mindustryAudioApi.platformPause(true);__mindustryAudioApi.platformPause(true);}')
                     await page.wait_for_function('__mindustryAudio.ctx.state==="suspended"')
                     time=await page.evaluate('__mindustryAudio.music.get(901).element.currentTime')
@@ -74,3 +82,4 @@ async def main():
         server.shutdown();fixture.unlink(missing_ok=True)
 
 asyncio.run(main())
+
