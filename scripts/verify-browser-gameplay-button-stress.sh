@@ -46,8 +46,8 @@ run_buttons(){
     grep -Fq 'data-mindustry-local-map-save="ready"' "$dom"
   fi
   # Five dialog opens plus save/resume/menu; campaign adds HUD/Pause Research.
-  local expected_clicks=20
-  if [ "$scenario" = campaign ]; then expected_clicks=22; fi
+  local expected_clicks=23
+  if [ "$scenario" = campaign ]; then expected_clicks=25; fi
   grep -Fq "data-mindustry-gameplay-button-clicks=\"$expected_clicks\"" "$dom"
   echo "$scenario/$device: real HUD, pause menu buttons, save, dialogs, Resume and Back PASS"
 }

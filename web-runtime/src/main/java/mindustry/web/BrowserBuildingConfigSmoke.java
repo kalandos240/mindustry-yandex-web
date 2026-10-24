@@ -31,7 +31,7 @@ public final class BrowserBuildingConfigSmoke{
     public static void update(){
         if(!requested() || finished) return;
         if(state == null || !state.isPlaying() || state.gameOver ||
-            !BrowserCampaignRuntime.active() || state.rules == null ||
+            !Campaign.active() || state.rules == null ||
             state.rules.sector == null || state.rules.sector.planet != Planets.serpulo ||
             state.rules.defaultTeam.core() == null ||
             control == null || control.input == null || Core.scene == null) return;

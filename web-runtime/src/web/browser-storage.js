@@ -16,6 +16,14 @@
     let mutationTx = null;
     let mutationStoreRef = null;
     let mutationTransactions = 0;
+    let mutationPaths = null;
+    const failedPaths = new Set();
+
+    function rememberFailedPaths(paths, error){
+        for(const path of paths) failedPaths.add(path);
+        root.setAttribute('data-mindustry-storage-write-state', 'error');
+        root.setAttribute('data-mindustry-storage-write-error', String(error && error.name || 'AbortError'));
+    }
 
     function markStage(stage){
         root.setAttribute('data-mindustry-storage', stage);
@@ -88,6 +96,7 @@
         if(mutationTx !== tx) return;
         mutationTx = null;
         mutationStoreRef = null;
+        mutationPaths = null;
     }
 
     function mutationStore(){
@@ -97,26 +106,45 @@
         const tx = db.transaction(STORE, 'readwrite');
         mutationTx = tx;
         mutationStoreRef = tx.objectStore(STORE);
+        const paths = new Set();
+        mutationPaths = paths;
         mutationTransactions++;
         root.setAttribute('data-mindustry-storage-write-policy', 'task-coalesced-readwrite');
         root.setAttribute('data-mindustry-storage-write-transactions', String(mutationTransactions));
 
         tx.oncomplete = () => clearMutationTransaction(tx);
         tx.onerror = () => clearMutationTransaction(tx);
-        tx.onabort = () => clearMutationTransaction(tx);
+        tx.onabort = () => {
+            rememberFailedPaths(paths, tx.error);
+            clearMutationTransaction(tx);
+        };
         return mutationStoreRef;
     }
 
-    function mutate(action){
-        let store = mutationStore();
-        try{
+    function mutate(action, paths){
+        // Keep the latest in-memory snapshot even if opening/enqueuing a
+        // transaction throws; a later flush can persist these exact paths.
+        const run = () => {
+            const store = mutationStore();
+            for(const path of paths) mutationPaths.add(path);
             return action(store);
+        };
+        try{
+            return run();
         }catch(error){
-            if(!error || error.name !== 'TransactionInactiveError') throw error;
+            if(!error || error.name !== 'TransactionInactiveError'){
+                rememberFailedPaths(paths, error);
+                throw error;
+            }
             mutationTx = null;
             mutationStoreRef = null;
-            store = mutationStore();
-            return action(store);
+            mutationPaths = null;
+            try{
+                return run();
+            }catch(retryError){
+                rememberFailedPaths(paths, retryError);
+                throw retryError;
+            }
         }
     }
 
@@ -159,7 +187,7 @@
         const value = copyBytes(bytes, logicalLength);
         memory[key] = value;
         writeGeneration++;
-        const request = mutate(store => store.put({path: key, data: value}));
+        const request = mutate(store => store.put({path: key, data: value}), [key]);
         request.onerror = () => console.error('Mindustry IndexedDB write failed:', request.error);
         return true;
     }
@@ -169,7 +197,7 @@
         const existed = Object.prototype.hasOwnProperty.call(memory, key);
         delete memory[key];
         writeGeneration++;
-        const request = mutate(store => store.delete(key));
+        const request = mutate(store => store.delete(key), [key]);
         request.onerror = () => console.error('Mindustry IndexedDB delete failed:', request.error);
         return existed;
     }
@@ -183,7 +211,7 @@
             writeGeneration++;
             mutate(store => {
                 for(const candidate of keys) store.delete(candidate);
-            });
+            }, keys);
         }
         return keys.length > 0;
     }
@@ -207,6 +235,35 @@
         return value ? value.byteLength : 0;
     }
 
+    function retryFailedWrites(){
+        if(!failedPaths.size) return Promise.resolve();
+        const paths = Array.from(failedPaths);
+        const generation = writeGeneration;
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readwrite');
+            tx.oncomplete = () => {
+                // Writes made while this repair was pending must retain their
+                // retry markers, including a later abort of the same path.
+                if(writeGeneration === generation){
+                    for(const path of paths) failedPaths.delete(path);
+                }
+                if(!failedPaths.size){
+                    root.setAttribute('data-mindustry-storage-write-state', 'ready');
+                    root.removeAttribute('data-mindustry-storage-write-error');
+                }
+                resolve();
+            };
+            tx.onerror = () => reject(tx.error || new Error('IndexedDB retry failed'));
+            tx.onabort = () => reject(tx.error || new Error('IndexedDB retry aborted'));
+            const store = tx.objectStore(STORE);
+            // Replay current values/tombstones, never an older aborted payload.
+            for(const path of paths){
+                if(Object.prototype.hasOwnProperty.call(memory, path)) store.put({path, data: memory[path]});
+                else store.delete(path);
+            }
+        });
+    }
+
     function flush(){
         if(!db) return Promise.resolve();
 
@@ -217,7 +274,7 @@
             if(flushGeneration >= targetGeneration) return flushPromise;
             return flushPromise.then(() => flush());
         }
-        if(durableGeneration >= targetGeneration){
+        if(durableGeneration >= targetGeneration && !failedPaths.size){
             flushSkips++;
             root.setAttribute('data-mindustry-storage-flush-skips', String(flushSkips));
             return Promise.resolve();
@@ -236,7 +293,9 @@
             tx.objectStore(STORE).count();
         });
 
-        flushPromise = pending.then(
+        // A read barrier alone succeeds even if an earlier write was aborted.
+        // Its completion first lets all earlier abort handlers record paths.
+        flushPromise = pending.then(retryFailedWrites).then(
             value => {
                 durableGeneration = Math.max(durableGeneration, targetGeneration);
                 root.setAttribute('data-mindustry-storage-durable-generation', String(durableGeneration));
@@ -281,3 +340,4 @@
     }, {passive: true});
     window.addEventListener('pagehide', () => lifecycleFlush('pagehide'), {passive: true});
 })();
+

@@ -148,8 +148,8 @@ if "data-mindustry-async-core" not in runtime:
                 }
                 BrowserPlayingRuntime.updateFrame();
             }else{
-                if(BrowserCampaignRuntime.active()){
-                    BrowserCampaignRuntime.updateFrame();
+                if(Campaign.active()){
+                    Campaign.updateFrame();
                 }else{
                     if(!BrowserLocalMapRuntime.active()){
                         // A failed sector launch can leave vanilla Logic.play's
@@ -167,7 +167,7 @@ if "data-mindustry-async-core" not in runtime:
     new_play = '''        if(state.isPlaying()){
             // Recover BEFORE beginning the stock asynchronous physics frame:
             // orphaned vanilla State.playing has no browser-owned World session.
-            if(!smokeMode && !BrowserCampaignRuntime.active()
+            if(!smokeMode && !Campaign.active()
             && !BrowserLocalMapRuntime.active()){
                 recoverOrphanSession("playing");
                 return;
@@ -179,8 +179,8 @@ if "data-mindustry-async-core" not in runtime:
                         throw new IllegalStateException("CI Web entered playing state outside the explicit deterministic gameplay smoke");
                     }
                     BrowserPlayingRuntime.updateFrame();
-                }else if(BrowserCampaignRuntime.active()){
-                    BrowserCampaignRuntime.updateFrame();
+                }else if(Campaign.active()){
+                    Campaign.updateFrame();
                 }else{
                     BrowserLocalMapRuntime.updateFrame();
                 }

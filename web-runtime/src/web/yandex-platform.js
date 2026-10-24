@@ -18,7 +18,10 @@
         initPromise: null,
         playerPromise: null,
         cloudSyncPromise: null,
+        cloudSyncQueued: null,
         cloudLastPayload: '',
+        cloudLastFlushedPayload: '',
+        cloudRestoreReady: false,
         fullscreenButton: null,
         bannerWanted: false,
         bannerShowing: false,
@@ -488,7 +491,14 @@
 
     async function getPlayer(){
         if(!state.ysdk || typeof state.ysdk.getPlayer !== 'function') return null;
-        if(!state.playerPromise) state.playerPromise = state.ysdk.getPlayer();
+        if(!state.playerPromise){
+            const lookup = withTimeout(Promise.resolve().then(() => state.ysdk.getPlayer()), 2500, 'Yandex player').catch(error => {
+                // A temporary player-service error must not poison every later save.
+                if(state.playerPromise === lookup) state.playerPromise = null;
+                throw error;
+            });
+            state.playerPromise = lookup;
+        }
         return state.playerPromise;
     }
 
@@ -508,7 +518,9 @@
         const part = () => {
             const colon = payload.indexOf(':', cursor);
             if(colon < 0) throw new Error('Malformed browser settings length');
-            const length = Number(payload.slice(cursor, colon));
+            const digits = payload.slice(cursor, colon);
+            if(!/^\d+$/.test(digits)) throw new Error('Malformed browser settings length');
+            const length = Number(digits);
             const start = colon + 1;
             const end = start + length;
             if(!Number.isInteger(length) || length < 0 || end > payload.length){
@@ -518,12 +530,35 @@
             return payload.slice(start, end);
         };
         while(cursor < payload.length){
-            cursor++; // value type
+            const type = payload[cursor++];
+            if(!'bilfsx'.includes(type)) throw new Error('Unknown browser settings type');
             const key = part();
             const value = part();
+            validateSettingValue(type, value);
             if(key === wanted) return value;
         }
         return '';
+    }
+
+    function validateSettingValue(type, value){
+        if(type === 'b' && value !== '0' && value !== '1') throw new Error('Invalid boolean setting');
+        if(type === 'i' || type === 'l'){
+            if(!/^[+-]?\d+$/.test(value)) throw new Error('Invalid integer setting');
+            const negative = value[0] === '-';
+            const digits = value.replace(/^[+-]/, '').replace(/^0+/, '') || '0';
+            const limit = type === 'i' ? (negative ? '2147483648' : '2147483647') :
+                (negative ? '9223372036854775808' : '9223372036854775807');
+            // Compare decimal strings so a Java long never loses precision in JS.
+            if(digits.length > limit.length || digits.length === limit.length && digits > limit){
+                throw new Error('Integer setting out of range');
+            }
+        }
+        if(type === 'f' && !/^[+-]?(?:NaN|Infinity|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.test(value)){
+            throw new Error('Invalid float setting');
+        }
+        if(type === 'x' && (value.length % 2 || /[^0-9a-fA-F]/.test(value))){
+            throw new Error('Invalid binary setting');
+        }
     }
 
     function bytesToBase64(bytes){
@@ -564,7 +599,13 @@
         if(settings && !settings.startsWith('MWS1|')) settings = '';
 
         let lastSector = '';
-        try{ lastSector = settingsValue(settings, 'last-sector-save'); }catch(_ignored){}
+        try{
+            settingsValue(settings, null);
+            lastSector = settingsValue(settings, 'last-sector-save');
+        }catch(error){
+            mark('data-yandex-cloud-state', 'invalid-settings');
+            return null;
+        }
         const campaignPath = /^sector-(?:serpulo|erekir)-\d+$/.test(lastSector)
             ? 'saves/' + lastSector + '.msav' : '';
         const localPath = 'saves/web-local-survival.msav';
@@ -613,12 +654,29 @@
             mark('data-yandex-cloud-state', 'unavailable');
             return false;
         }
-        if(state.cloudSyncPromise) return state.cloudSyncPromise;
+        const storage = globalThis.__mindustryStorage;
+        if(!storage || root.getAttribute('data-mindustry-storage') !== 'ready' ||
+            !state.cloudRestoreReady && !storage.paths().some(path => cloudFilePattern.test(path))){
+            // SDK pause may arrive before IndexedDB hydration or cloud restore.
+            // Never replace remote progress with an incomplete startup snapshot.
+            mark('data-yandex-cloud-state', 'waiting-storage');
+            return false;
+        }
+        if(state.cloudSyncPromise){
+            // A checkpoint written during an upload must get its own latest
+            // snapshot afterwards, rather than inherit the older upload's result.
+            state.cloudSyncQueued = {
+                reason,
+                flush: Boolean(flush || state.cloudSyncQueued && state.cloudSyncQueued.flush)
+            };
+            return state.cloudSyncPromise;
+        }
 
-        state.cloudSyncPromise = (async () => {
+        const save = async (reason, flush) => {
             const built = buildCloudCheckpoint();
             if(!built) return false;
-            if(built.canonical === state.cloudLastPayload){
+            if(built.canonical === state.cloudLastPayload &&
+                (!flush || built.canonical === state.cloudLastFlushedPayload)){
                 mark('data-yandex-cloud-state', 'unchanged');
                 return true;
             }
@@ -632,19 +690,36 @@
             mark('data-yandex-cloud-state', 'saving');
             await withTimeout(player.setData({[cloudKey]: built.snapshot}, Boolean(flush)), 3500, 'Yandex cloud save');
             state.cloudLastPayload = built.canonical;
+            state.cloudLastFlushedPayload = flush ? built.canonical : '';
             mark('data-yandex-cloud-state', 'saved');
             mark('data-yandex-cloud-reason', String(reason || 'unknown'));
             mark('data-yandex-cloud-bytes', String(built.bytes));
             mark('data-yandex-cloud-files', String(Object.keys(built.snapshot.files).length));
             return true;
-        })().catch(error => {
+        };
+        const failed = error => {
             mark('data-yandex-cloud-state', 'error');
             mark('data-yandex-cloud-error', String(error && error.message ? error.message : error));
             console.info('Yandex cloud checkpoint save unavailable:', error && error.message ? error.message : error);
             return false;
-        }).finally(() => {
-            state.cloudSyncPromise = null;
-        });
+        };
+        state.cloudSyncPromise = (async () => {
+            try{
+                let next = {reason, flush};
+                let result = false;
+                while(next){
+                    state.cloudSyncQueued = null;
+                    result = await save(next.reason, next.flush).catch(failed);
+                    next = state.cloudSyncQueued;
+                }
+                return result;
+            }finally{
+                // Clear synchronously with the last queue check. An outer
+                // Promise.finally leaves a microtask gap that can lose a caller.
+                state.cloudSyncQueued = null;
+                state.cloudSyncPromise = null;
+            }
+        })();
 
         return state.cloudSyncPromise;
     }
@@ -662,6 +737,7 @@
         }
 
         if(storage.paths().some(path => cloudFilePattern.test(path))){
+            state.cloudRestoreReady = true;
             mark('data-yandex-cloud-restore', 'skipped-local-present');
             return false;
         }
@@ -678,30 +754,45 @@
             const snapshot = data && data[cloudKey];
             if(!snapshot || snapshot.schema !== 1){
                 mark('data-yandex-cloud-restore', 'empty');
+                if(!snapshot) state.cloudRestoreReady = true;
                 return false;
             }
 
+            // Validate and decode the entire snapshot before changing local files.
+            if(encodedBytes({schema:1, settings:snapshot.settings || '', files:snapshot.files || {}}) > cloudBudgetBytes){
+                throw new Error('Cloud checkpoint exceeds restore budget');
+            }
+            let settingsBytes = null;
             if(snapshot.settings){
                 if(typeof snapshot.settings !== 'string' || !snapshot.settings.startsWith('MWS1|')){
                     throw new Error('Invalid cloud settings payload');
                 }
-                const settingsBytes = new TextEncoder().encode(snapshot.settings);
-                storage.put(settingsPath, settingsBytes, settingsBytes.byteLength);
-                try{ localStorage.setItem(settingsKey, snapshot.settings); }catch(_ignored){}
+                // A null lookup scans every field instead of stopping at a key.
+                settingsValue(snapshot.settings, null);
+                settingsBytes = new TextEncoder().encode(snapshot.settings);
             }
 
-            let restoredFiles = 0;
+            const decodedFiles = [];
+            if(snapshot.files != null && (typeof snapshot.files !== 'object' || Array.isArray(snapshot.files))){
+                throw new Error('Invalid cloud save file list');
+            }
             const files = snapshot.files && typeof snapshot.files === 'object' ? snapshot.files : {};
             for(const [path, encoded] of Object.entries(files)){
                 if(!cloudFilePattern.test(path)) continue;
+                if(typeof encoded !== 'string') throw new Error('Invalid cloud save encoding: ' + path);
                 const bytes = base64ToBytes(encoded);
-                if(bytes.byteLength < 128) continue;
+                if(bytes.byteLength < 128) throw new Error('Incomplete cloud save: ' + path);
+                decodedFiles.push([path, bytes]);
+            }
+            if(settingsBytes) storage.put(settingsPath, settingsBytes, settingsBytes.byteLength);
+            for(const [path, bytes] of decodedFiles){
                 storage.put(path, bytes, bytes.byteLength);
-                restoredFiles++;
             }
             await storage.flush();
+            if(settingsBytes) try{ localStorage.setItem(settingsKey, snapshot.settings); }catch(_ignored){}
+            state.cloudRestoreReady = true;
             mark('data-yandex-cloud-restore', 'ready');
-            mark('data-yandex-cloud-restored-files', String(restoredFiles));
+            mark('data-yandex-cloud-restored-files', String(decodedFiles.length));
             mark('data-yandex-cloud-restored-settings', snapshot.settings ? 'yes' : 'no');
             return true;
         }catch(error){

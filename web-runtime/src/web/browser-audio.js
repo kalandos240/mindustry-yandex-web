@@ -5,6 +5,7 @@
     var state = global.__mindustryAudio || (global.__mindustryAudio = {
         ctx: null,
         buffers: new Map(),
+        decodeRequests: new Map(),
         decodedBuffers: new Set(),
         bufferAccess: new Map(),
         bufferClock: 0,
@@ -59,8 +60,25 @@
         var pending = state.buffers.get(url);
         state.bufferAccess.set(url, ++state.bufferClock);
         if(pending) return pending;
-
-        pending = fetch(url)
+        var context = state.ctx;
+        if(!context) return Promise.reject(new Error('Audio context is unavailable'));
+        var controller = new AbortController();
+        var timer, cancel;
+        var deadline = new Promise(function(resolve, reject){
+            cancel = function(){
+                controller.abort();
+                reject(new Error('Audio decode cancelled: ' + url));
+            };
+            timer = setTimeout(function(){
+                controller.abort();
+                reject(new Error('Audio load/decode timed out: ' + url));
+            }, 20000);
+        });
+        var request = {cancel: cancel};
+        state.decodeRequests.set(url, request);
+        var download = Promise.resolve().then(function(){
+                return fetch(url, {signal: controller.signal});
+            })
             .then(function(response){
                 if(!response.ok){
                     throw new Error('Audio asset fetch failed (' + response.status + '): ' + url);
@@ -68,21 +86,28 @@
                 return response.arrayBuffer();
             })
             .then(function(bytes){
-                return state.ctx.decodeAudioData(bytes);
-            })
-            .then(function(buffer){
+                if(controller.signal.aborted || state.ctx !== context) throw new Error('Audio context changed: ' + url);
+                return context.decodeAudioData(bytes);
+            });
+        pending = Promise.race([download, deadline]).then(function(buffer){
+                if(state.ctx !== context || state.buffers.get(url) !== pending) throw new Error('Stale audio decode: ' + url);
                 state.durations.set(url, buffer.duration || 0);
                 state.decodedBuffers.add(url);
                 state.bufferAccess.set(url, ++state.bufferClock);
                 trimDecodedBuffers(url);
                 return buffer;
+            }).finally(function(){
+                clearTimeout(timer);
+                if(state.decodeRequests.get(url) === request) state.decodeRequests.delete(url);
             });
 
         state.buffers.set(url, pending);
         pending.catch(function(){
-            state.buffers.delete(url);
-            state.decodedBuffers.delete(url);
-            state.bufferAccess.delete(url);
+            if(state.buffers.get(url) === pending){
+                state.buffers.delete(url);
+                state.decodedBuffers.delete(url);
+                state.bufferAccess.delete(url);
+            }
         });
         return pending;
     }
@@ -122,29 +147,51 @@
 
     const unlockEvents = ['pointerdown', 'touchstart', 'keydown'];
 
+    function listenForUnlock(){
+        unlockEvents.forEach(function(type){
+            global.addEventListener(type, unlock, {passive: true, capture: true});
+        });
+        root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot-pending');
+    }
+
+    function requireUnlock(context){
+        if(state.ctx !== context || state.platformPaused) return;
+        state.unlocked = false;
+        state.unlocking = false;
+        root.setAttribute('data-mindustry-audio-unlocked', 'false');
+        listenForUnlock();
+    }
+
     function removeUnlockListeners(){
         unlockEvents.forEach(function(type){
             global.removeEventListener(type, unlock, true);
         });
     }
 
+    function completeUnlock(context){
+        if(state.ctx !== context) return;
+        state.unlocking = false;
+        if(context.state !== 'running'){
+            requireUnlock(context);
+            return;
+        }
+        var wasUnlocked = state.unlocked;
+        state.unlocked = true;
+        removeUnlockListeners();
+        root.setAttribute('data-mindustry-audio-unlocked', 'true');
+        root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot');
+        if(!wasUnlocked) state.music.forEach(function(entry){
+            if(entry.pendingPlay && !state.platformPaused) requestMusicPlay(entry);
+        });
+    }
+
     function unlock(){
         if(!state.ctx || state.unlocked || state.unlocking) return;
+        if(state.platformPaused) return;
+        var context = state.ctx;
         state.unlocking = true;
-        state.ctx.resume().then(function(){
-            state.unlocked = true;
-            state.unlocking = false;
-            removeUnlockListeners();
-            root.setAttribute('data-mindustry-audio-unlocked', 'true');
-            root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot');
-            state.music.forEach(function(entry){
-                if(entry.pendingPlay && !state.platformPaused){
-                    entry.pendingPlay = false;
-                    entry.element.play().catch(function(){ entry.pendingPlay = true; });
-                }
-            });
-        }).catch(function(){
-            state.unlocking = false;
+        context.resume().then(function(){ completeUnlock(context); }).catch(function(){
+            if(state.ctx === context) state.unlocking = false;
         });
     }
 
@@ -164,6 +211,14 @@
             setError(error);
             return false;
         }
+        state.unlocked = false;
+        state.unlocking = false;
+        root.setAttribute('data-mindustry-audio-unlocked', 'false');
+        var context = state.ctx;
+        if(typeof context.addEventListener === 'function') context.addEventListener('statechange', function(){
+            if(state.ctx === context && state.unlocked &&
+                (context.state === 'suspended' || context.state === 'interrupted')) requireUnlock(context);
+        });
 
         state.decode = decode;
         state.startVoice = startVoice;
@@ -178,13 +233,11 @@
             state.maxDecodedBuffers > 0 ? 'mobile-lru-64' : 'desktop-unlimited');
         root.setAttribute('data-mindustry-audio-voice-policy',
             state.maxVoices > 0 ? 'mobile-quietest-unprotected-48' : 'desktop-unlimited');
-        unlockEvents.forEach(function(type){
-            global.addEventListener(type, unlock, {passive: true, capture: true});
-        });
-        root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot-pending');
+        listenForUnlock();
 
         root.setAttribute('data-mindustry-audio', 'installed');
-        root.setAttribute('data-mindustry-audio-platform', 'running');
+        root.setAttribute('data-mindustry-audio-platform', state.platformPaused ? 'paused' : 'running');
+        if(state.platformPaused) state.ctx.suspend().catch(function(){});
         return true;
     }
 
@@ -194,18 +247,23 @@
             return;
         }
 
+        var context = state.ctx;
         root.setAttribute('data-mindustry-audio', 'decoding');
         decode(url).then(function(buffer){
+            if(state.ctx !== context) return;
             if(!buffer || !(buffer.duration > 0)){
                 throw new Error('Decoded audio has no duration: ' + url);
             }
             root.setAttribute('data-mindustry-audio', 'ready');
             root.setAttribute('data-mindustry-audio-smoke-ms', String(Math.round(buffer.duration * 1000)));
-        }).catch(setError);
+        }).catch(function(error){
+            if(state.ctx === context) setError(error);
+        });
     }
 
     function playSound(url, volume, pitch, pan, loop){
         if(!state.ctx) return -1;
+        var context = state.ctx;
 
         if(state.maxVoices > 0 && state.voices.size >= state.maxVoices){
             var victimId = -1;
@@ -249,8 +307,8 @@
         decode(url).then(function(buffer){
             if(state.voices.get(id) === voice) startVoice(voice, buffer);
         }).catch(function(error){
-            state.voices.delete(id);
-            console.warn('Mindustry sound decode failed:', url, error);
+            if(state.voices.get(id) === voice) state.voices.delete(id);
+            if(state.ctx === context) console.warn('Mindustry sound decode failed:', url, error);
         });
         return id;
     }
@@ -319,29 +377,33 @@
     }
 
     function platformPause(paused){
-        if(!state.ctx) return;
+        paused = !!paused;
+        if(state.platformPaused === paused && paused) return;
         state.platformPaused = paused;
         root.setAttribute('data-mindustry-audio-platform', paused ? 'paused' : 'running');
         root.setAttribute(paused ? 'data-mindustry-audio-pause-observed' : 'data-mindustry-audio-resume-observed', 'yes');
+        if(!state.ctx) return;
 
         if(paused){
             state.ctx.suspend().catch(function(){});
             state.music.forEach(function(entry){
-                entry.resumeAfterPlatform = !entry.element.paused || entry.pendingPlay;
+                entry.resumeAfterPlatform = entry.resumeAfterPlatform || !entry.element.paused || entry.pendingPlay;
+                entry.playRequest++;
                 entry.element.pause();
             });
             return;
         }
 
-        if(state.unlocked) state.ctx.resume().catch(function(){});
+        if(state.unlocked){
+            var context = state.ctx;
+            context.resume().then(function(){
+                completeUnlock(context);
+            }).catch(function(){ requireUnlock(context); });
+        }
         state.music.forEach(function(entry){
-            if(!entry.resumeAfterPlatform) return;
+            if(!entry.resumeAfterPlatform && !entry.pendingPlay) return;
             entry.resumeAfterPlatform = false;
-            if(state.unlocked){
-                entry.element.play().catch(function(){ entry.pendingPlay = true; });
-            }else{
-                entry.pendingPlay = true;
-            }
+            requestMusicPlay(entry);
         });
 
         state.voices.forEach(function(voice){
@@ -353,6 +415,11 @@
     }
 
     function dispose(){
+        state.decodeRequests.forEach(function(request){ request.cancel(); });
+        state.decodeRequests.clear();
+        removeUnlockListeners();
+        state.unlocked = false;
+        state.unlocking = false;
         var ids = [];
         state.voices.forEach(function(voice, id){ ids.push(id); });
         ids.forEach(stopVoice);
@@ -363,6 +430,9 @@
         state.bufferClock = 0;
 
         state.music.forEach(function(entry){
+            entry.playRequest++;
+            entry.pendingPlay = false;
+            entry.resumeAfterPlatform = false;
             entry.element.pause();
             entry.element.removeAttribute('src');
             entry.element.load();
@@ -372,6 +442,7 @@
         if(state.ctx) state.ctx.close().catch(function(){});
         state.ctx = null;
         state.installed = false;
+        root.setAttribute('data-mindustry-audio-unlocked', 'false');
         root.setAttribute('data-mindustry-audio', 'disposed');
     }
 
@@ -382,9 +453,11 @@
         element.src = url;
         element.playsInline = true;
         var entry = {
+            id: id,
             element: element,
             pendingPlay: false,
-            resumeAfterPlatform: false
+            resumeAfterPlatform: false,
+            playRequest: 0
         };
         state.music.set(id, entry);
         return entry;
@@ -394,6 +467,19 @@
         createMusic(id, url);
     }
 
+    function requestMusicPlay(entry){
+        var request = ++entry.playRequest;
+        entry.pendingPlay = true;
+        if(state.platformPaused || !state.unlocked) return;
+        try{
+            Promise.resolve(entry.element.play()).then(function(){
+                if(state.music.get(entry.id) === entry && entry.playRequest === request) entry.pendingPlay = false;
+            }).catch(function(){
+                if(state.music.get(entry.id) === entry && entry.playRequest === request) entry.pendingPlay = true;
+            });
+        }catch(ignored){ /* Leave playback pending for the next permitted attempt. */ }
+    }
+
     function musicPlay(id, url, volume, pitch, pan, loop){
         var entry = createMusic(id, url);
         var element = entry.element;
@@ -401,37 +487,26 @@
         element.playbackRate = pitch;
         element.loop = loop;
 
-        if(state.platformPaused || !state.unlocked){
-            entry.pendingPlay = true;
-            return;
-        }
-
-        element.play().then(function(){
-            entry.pendingPlay = false;
-        }).catch(function(){
-            entry.pendingPlay = true;
-        });
+        requestMusicPlay(entry);
     }
 
     function musicPause(id, paused){
         var entry = state.music.get(id);
         if(!entry) return;
         if(paused){
+            entry.playRequest++;
             entry.element.pause();
             entry.pendingPlay = false;
+            entry.resumeAfterPlatform = false;
         }else{
-            entry.pendingPlay = true;
-            if(state.unlocked && !state.platformPaused){
-                entry.element.play().then(function(){
-                    entry.pendingPlay = false;
-                }).catch(function(){});
-            }
+            requestMusicPlay(entry);
         }
     }
 
     function musicStop(id){
         var entry = state.music.get(id);
         if(!entry) return;
+        entry.playRequest++;
         entry.element.pause();
         try{ entry.element.currentTime = 0; }catch(ignored){}
         entry.pendingPlay = false;
@@ -441,6 +516,9 @@
     function musicDispose(id){
         var entry = state.music.get(id);
         if(!entry) return;
+        entry.playRequest++;
+        entry.pendingPlay = false;
+        entry.resumeAfterPlatform = false;
         entry.element.pause();
         entry.element.removeAttribute('src');
         entry.element.load();
@@ -498,3 +576,4 @@
         musicDispose: musicDispose
     };
 })(window);
+

@@ -6,7 +6,9 @@ import org.teavm.jso.*;
 
 /** Keep the current world intact while a deferred campaign map is fetched. */
 public final class BrowserCampaignAssets{
-    private static boolean pending;
+    private static String pendingPath;
+    private static Runnable pendingAction;
+    private static int requestId;
 
     @JSFunctor
     public interface Completion extends JSObject{
@@ -17,19 +19,35 @@ public final class BrowserCampaignAssets{
 
     /** Returns true when the action is deferred (or another launch is pending). */
     public static boolean defer(SectorPreset preset, Runnable action){
-        if(pending) return true;
         if(preset == null || preset.sector == null) return false;
         String path = "maps/" + preset.sector.planet.name + "/" + preset.name + ".msav";
-        if(Core.files.internal(path).length() >= 128) return false;
-        pending = true;
+        // An unrelated slow map must never block an already cached sector.
+        if(Core.files.internal(path).length() >= 128){
+            requestId++;
+            pendingPath = null;
+            pendingAction = null;
+            return false;
+        }
+        if(path.equals(pendingPath)){
+            // Selection starts a warmup callback. A subsequent Go must replace
+            // that callback with the user's launch, not silently disappear.
+            pendingAction = action;
+            return true;
+        }
+        int request = ++requestId;
+        pendingPath = path;
+        pendingAction = action;
         prepare(path, error -> Core.app.post(() -> {
-            pending = false;
+            if(request != requestId) return;
+            Runnable next = pendingAction;
+            pendingPath = null;
+            pendingAction = null;
             if(error != null && !error.isEmpty()){
                 showFailure(error);
                 return;
             }
             try{
-                action.run();
+                next.run();
             }catch(Throwable failure){
                 showFailure(failure.getClass().getName() + ": " + failure.getMessage());
             }
@@ -42,10 +60,10 @@ public final class BrowserCampaignAssets{
         root.setAttribute('data-mindustry-campaign-map-request',path);
         root.setAttribute('data-mindustry-campaign-map-request-state','loading');
         Promise.resolve().then(() => globalThis.__mindustryPrepareCampaignMap(path)).then(() => {
-            root.setAttribute('data-mindustry-campaign-map-request-state','ready');
+            if(root.getAttribute('data-mindustry-campaign-map-request')===path) root.setAttribute('data-mindustry-campaign-map-request-state','ready');
             done('');
         }, error => {
-            root.setAttribute('data-mindustry-campaign-map-request-state','failed');
+            if(root.getAttribute('data-mindustry-campaign-map-request')===path) root.setAttribute('data-mindustry-campaign-map-request-state','failed');
             done(String(error));
         });
         """)

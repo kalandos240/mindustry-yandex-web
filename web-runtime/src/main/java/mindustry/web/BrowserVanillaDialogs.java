@@ -69,7 +69,7 @@ public final class BrowserVanillaDialogs{
 
         // PlanetRenderer has been initialized by WebClientLauncher before this
         // dialog graph. The original 3D planet UI and TechTree now share stock
-        // navigation, while sector loading still uses BrowserCampaignRuntime.
+        // navigation, while sector loading still uses Campaign.
         markPlanetStage("constructing");
         String constructorPhase = "planet";
         try{

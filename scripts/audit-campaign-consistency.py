@@ -8,7 +8,7 @@ AUDIT = (ROOT / "scripts" / "audit-yandex-release.sh").read_text(encoding="utf-8
 SERPULO_TEST = (ROOT / "scripts" / "verify-browser-campaign-capture.sh").read_text(encoding="utf-8")
 EREKIR_TEST = (ROOT / "scripts" / "verify-browser-erekir-progression.sh").read_text(encoding="utf-8")
 RESEARCH = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignResearch.java").read_text(encoding="utf-8")
-RUNTIME = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
+RUNTIME = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "Campaign.java").read_text(encoding="utf-8")
 UI_PATCH = (ROOT / "scripts" / "patch-browser-campaign-ui.py").read_text(encoding="utf-8")
 PLANET_BRIDGE = (ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserPlanetBridge.java").read_text(encoding="utf-8")
 
@@ -146,12 +146,12 @@ research_referenced = (
     | referenced_methods(UI_PATCH, "BrowserCampaignResearch")
 )
 runtime_declared = declared_static_methods(RUNTIME)
-runtime_referenced = referenced_methods(UI_PATCH, "BrowserCampaignRuntime")
+runtime_referenced = referenced_methods(UI_PATCH, "Campaign")
 
 for method in sorted(research_referenced - research_declared):
     failures.append(f"campaign Java surface: missing BrowserCampaignResearch.{method} declaration")
 for method in sorted(runtime_referenced - runtime_declared):
-    failures.append(f"campaign Java surface: missing BrowserCampaignRuntime.{method} declaration")
+    failures.append(f"campaign Java surface: missing Campaign.{method} declaration")
 
 research_jsbodies = len(re.findall(r"@org\.teavm\.jso\.JSBody", RESEARCH))
 if research_jsbodies > 2:
@@ -197,7 +197,7 @@ if save_aliases != expected_save_aliases:
         f"expected={sorted(expected_save_aliases)} actual={sorted(save_aliases)}"
     )
 require(RUNTIME, "public static boolean hasSave(SectorPreset preset)", "generic campaign save query")
-require(UI_PATCH, "BrowserCampaignRuntime.hasSave(", "campaign UI generic save query")
+require(UI_PATCH, "Campaign.hasSave(", "campaign UI generic save query")
 
 for preset, origin in LAUNCH_ORIGINS.items():
     action = "caldera" if preset == "caldera" else preset
@@ -211,7 +211,7 @@ for preset, origin in LAUNCH_ORIGINS.items():
 # separate menu's playUnlockedPreset path. File names and Java field names may
 # differ (Erekir Caldera is named "caldera-erekir" in vanilla v159.7).
 planet_dispatch = dict(re.findall(
-    r'case "([^"]+)"\s*->\s*BrowserCampaignRuntime\.(play[A-Za-z0-9]+)\(\);',
+    r'case "([^"]+)"\s*->\s*Campaign\.(play[A-Za-z0-9]+)\(\);',
     PLANET_BRIDGE,
 ))
 expected_planet_dispatch = {

@@ -121,8 +121,8 @@ public final class BrowserGameplayRuntime{
         if(!initialized || logic == null || state == null) return;
 
         BrowserDefeatSmoke.update();
-        if(state.gameOver && BrowserCampaignRuntime.active()){
-            BrowserCampaignRuntime.updateDefeatFrame();
+        if(state.gameOver && Campaign.active()){
+            Campaign.updateDefeatFrame();
             return;
         }
 
@@ -135,11 +135,11 @@ public final class BrowserGameplayRuntime{
         boolean nativeModalKeyGuard = nativeModalNow || priorNativeModal;
         priorNativeModal = nativeModalNow;
         if(nativeModalNow && state.isPaused() && !nativeDialogPaused){
-            if(BrowserCampaignRuntime.active()) BrowserCampaignRuntime.adoptNativeDialogPause();
+            if(Campaign.active()) Campaign.adoptNativeDialogPause();
             else if(BrowserLocalMapRuntime.active()) BrowserLocalMapRuntime.adoptNativeDialogPause();
             nativeDialogPaused = true;
         }else if(nativeDialogPaused && state.isPlaying()){
-            if(BrowserCampaignRuntime.active()) BrowserCampaignRuntime.nativeDialogResumed();
+            if(Campaign.active()) Campaign.nativeDialogResumed();
             else if(BrowserLocalMapRuntime.active()) BrowserLocalMapRuntime.nativeDialogResumed();
             nativeDialogPaused = false;
         }else if(state.isMenu()){
@@ -179,9 +179,9 @@ public final class BrowserGameplayRuntime{
         && !state.rules.pauseDisabled && Core.scene != null
         && !nativeModalKeyGuard
         && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
-            if(BrowserCampaignRuntime.active()){
-                if(state.isPaused()) BrowserCampaignRuntime.resume();
-                else BrowserCampaignRuntime.pause();
+            if(Campaign.active()){
+                if(state.isPaused()) Campaign.resume();
+                else Campaign.pause();
                 markSpaceTransition(state.isPaused() ? "paused" : "resumed");
             }else if(BrowserLocalMapRuntime.active()){
                 if(state.isPaused()) BrowserLocalMapRuntime.resume();
@@ -197,8 +197,8 @@ public final class BrowserGameplayRuntime{
                 }
                 BrowserPlayingRuntime.updateFrame();
             }else{
-                if(BrowserCampaignRuntime.active()){
-                    BrowserCampaignRuntime.updateFrame();
+                if(Campaign.active()){
+                    Campaign.updateFrame();
                 }else{
                     if(!BrowserLocalMapRuntime.active()){
                         // A failed sector launch can leave vanilla Logic.play's
@@ -217,8 +217,8 @@ public final class BrowserGameplayRuntime{
             if(smokeMode){
                 throw new IllegalStateException("CI Web entered paused state outside the production pause smokes");
             }
-            if(BrowserCampaignRuntime.active()){
-                BrowserCampaignRuntime.updatePausedFrame();
+            if(Campaign.active()){
+                Campaign.updatePausedFrame();
             }else if(BrowserLocalMapRuntime.active()){
                 BrowserLocalMapRuntime.updatePausedFrame();
             }else{
@@ -251,13 +251,13 @@ public final class BrowserGameplayRuntime{
         }else if(smokeMode && menuUpdateFrames == 5){
             BrowserPlayingRuntime.begin();
         }else if(!smokeMode && (menuUpdateFrames == 4 ||
-            (BrowserCampaignRuntime.matrixWaitingForAssets() && menuUpdateFrames % 8 == 0))){
+            (Campaign.matrixWaitingForAssets() && menuUpdateFrames % 8 == 0))){
             // Retry only the asynchronous campaign matrix asset gate, in a
             // bounded eight-frame cadence; normal production/test launches
             // retain their one-shot startup call.
             // CI may request one real campaign sector or packaged local map. Without
             // either query, production remains in the user-controlled local selector.
-            BrowserCampaignRuntime.maybeStartTestSector();
+            Campaign.maybeStartTestSector();
             if(state.isMenu()) BrowserLocalMapRuntime.maybeStartTestMap();
         }
     }

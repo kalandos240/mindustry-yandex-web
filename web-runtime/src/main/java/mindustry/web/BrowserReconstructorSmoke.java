@@ -37,7 +37,7 @@ public final class BrowserReconstructorSmoke{
 
     public static void update(){
         if(!requested() || finished) return;
-        if(state == null || !state.isPlaying() || !BrowserCampaignRuntime.active()
+        if(state == null || !state.isPlaying() || !Campaign.active()
             || state.rules == null || state.rules.sector == null
             || state.rules.defaultTeam.core() == null) return;
 

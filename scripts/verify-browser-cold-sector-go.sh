@@ -26,7 +26,9 @@ for device in desktop mobile; do
   if [ "${MINDUSTRY_LOST_CORE:-0}" = 1 ]; then cp "$ROOT/work/core-fixture-clean.js" "$ROOT/web-runtime/build/web/mindustry.js"; fi
   extra=''
   if [ "${MINDUSTRY_LOST_CORE:-0}" = 1 ]; then extra='&expectLostCore=1'; fi
+  if [ "${MINDUSTRY_LOST_CORE:-0}" = 1 ]; then python3 "$ROOT/scripts/prepare-lost-core-fixture.py" --read-probe; fi
   python3 "$ROOT/scripts/chrome-wait-dom.py" "${args[@]}" --url "http://127.0.0.1:8146/index.html?lang=ru&mindustryCampaignSaveSmoke=0&savedPlanet=$planet$extra" --profile "$profile" --port 9747 --timeout 150 --cdp-input-bridge --require 'data-mindustry-web="ready"' --after-ready-eval "$(cat "$ROOT/scripts/browser-cold-sector-go.js")" --after-ready-require 'data-mindustry-cold-sector-go="passed"' --screenshot "$ROOT/work/cold-$device-$target.png" > "$ROOT/work/cold-$device-$target-resume.html"
+  if [ "${MINDUSTRY_LOST_CORE:-0}" = 1 ]; then cp "$ROOT/work/core-fixture-clean.js" "$ROOT/web-runtime/build/web/mindustry.js"; fi
   echo "$device $target native cold Go PASS"
  done
 done

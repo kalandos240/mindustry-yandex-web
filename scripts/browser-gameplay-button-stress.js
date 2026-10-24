@@ -107,6 +107,12 @@
         if (writes !== 1) throw Error('Settings drag did not persist on release: ' + key + ' writes=' + writes);
         ensurePaused();
       }
+      const tick = attr(campaign ? 'campaign-update-id' : 'local-map-update-id');
+      window.dispatchEvent(new Event('mindustry:yandex-pause'));
+      await sleep(180);
+      window.dispatchEvent(new Event('mindustry:yandex-resume'));
+      await alive('SDK resume with Sound settings open');
+      if (attr(stateKey) === 'menu') throw Error('SDK resume discarded settings world');
       await click('settings-hit-back', 'Sound Back button');
       await wait(() => attr('settings-native-page') === 'root', 'Sound Back');
     }
@@ -184,6 +190,14 @@
   await alive('resume gameplay');
   await pause();
   await click('pause-button-menu', 'Back to menu');
+  await alive('exit confirmation');
+  if (attr(stateKey) === 'menu') throw Error('Exit did not require confirmation');
+  await click('pause-button-exit-cancel', 'Keep playing');
+  await wait(() => attr('pause-dialog-visible') === 'yes', 'cancel exit retains paused world');
+  await sleep(400);
+  await click('pause-button-menu', 'Back to menu again');
+  await alive('exit confirmation again');
+  await click('pause-button-exit-confirm', 'Confirm menu exit');
   await wait(() => attr(stateKey) === 'menu' &&
     attr('main-menu-page') === 'home', 'return to actual main menu');
   await alive('return to menu');

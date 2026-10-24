@@ -20,10 +20,11 @@
  globalThis.__mindustryThrowCount=0;
  await click('planet-hit-launch');
  const lost=new URLSearchParams(location.search).has('expectLostCore');
- await wait(()=>v('campaign-state')==='playing'&&(lost?v('campaign-lost-sector-relaunch')==='onset':v('campaign-resume')==='ready'),'saved sector loaded');
+ await wait(()=>v('campaign-state')==='playing'&&(lost?v('campaign-lost-sector-relaunch')===(planet==='serpulo'?'groundZero':'onset'):v('campaign-resume')==='ready'),'saved sector loaded');
  if(lost){
   const backup=new Uint8Array(storage.get(savedPath+'.lost-backup')||[]);
   if(backup.length!==savedBytes.length||backup.some((byte,i)=>byte!==savedBytes[i]))throw Error('Lost-sector backup differs from original MSAV');
+  if(planet==='serpulo' && !globalThis.__mindustryReadLostSentinel())throw Error('Recapture discarded the saved derelict sentinel');
   await storage.flush();
   r.setAttribute('data-mindustry-lost-backup-exact','passed');
  }
