@@ -48,6 +48,12 @@ async function ready(){const h=harness();h.api.install();h.gesture();await tick(
     const paused=await ready();paused.api.platformPause(true);assert(paused.state.unlocked);
     assert.equal(paused.listeners.get('pointerdown').size,0,'Expected platform pause does not rearm input');
     paused.api.platformPause(false);await tick();assert(paused.state.unlocked);
+    // Browsers may deliver the suspend statechange after platform resume starts.
+    const delayed=await ready(),pending=delayed.state.ctx;delayed.api.platformPause(true);
+    pending.deferResume=true;delayed.api.platformPause(false);pending.emit();
+    assert(!delayed.state.unlocked);pending.state='running';pending.resolveResume();await tick();
+    assert(delayed.state.unlocked,'Successful resume recovers from delayed suspend events');
+    assert.equal(delayed.listeners.get('pointerdown').size,0);
     const stale=await ready(),old=stale.state.ctx;stale.api.platformPause(true);old.deferResume=true;
     stale.api.platformPause(false);stale.api.dispose();stale.api.install();stale.gesture();await tick();
     old.rejectPending(new Error('Old resume failed'));old.state='interrupted';old.emit();await tick();

@@ -168,29 +168,29 @@
         });
     }
 
+    function completeUnlock(context){
+        if(state.ctx !== context) return;
+        state.unlocking = false;
+        if(context.state !== 'running'){
+            requireUnlock(context);
+            return;
+        }
+        var wasUnlocked = state.unlocked;
+        state.unlocked = true;
+        removeUnlockListeners();
+        root.setAttribute('data-mindustry-audio-unlocked', 'true');
+        root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot');
+        if(!wasUnlocked) state.music.forEach(function(entry){
+            if(entry.pendingPlay && !state.platformPaused) requestMusicPlay(entry);
+        });
+    }
+
     function unlock(){
         if(!state.ctx || state.unlocked || state.unlocking) return;
         if(state.platformPaused) return;
         var context = state.ctx;
         state.unlocking = true;
-        context.resume().then(function(){
-            if(state.ctx !== context) return;
-            if(context.state !== 'running'){
-                state.unlocking = false;
-                requireUnlock(context);
-                return;
-            }
-            state.unlocked = true;
-            state.unlocking = false;
-            removeUnlockListeners();
-            root.setAttribute('data-mindustry-audio-unlocked', 'true');
-            root.setAttribute('data-mindustry-audio-unlock-policy', 'one-shot');
-            state.music.forEach(function(entry){
-                if(entry.pendingPlay && !state.platformPaused){
-                    requestMusicPlay(entry);
-                }
-            });
-        }).catch(function(){
+        context.resume().then(function(){ completeUnlock(context); }).catch(function(){
             if(state.ctx === context) state.unlocking = false;
         });
     }
@@ -397,7 +397,7 @@
         if(state.unlocked){
             var context = state.ctx;
             context.resume().then(function(){
-                if(context.state !== 'running') requireUnlock(context);
+                completeUnlock(context);
             }).catch(function(){ requireUnlock(context); });
         }
         state.music.forEach(function(entry){

@@ -1,4 +1,5 @@
 name: Verify interrupted audio recovery
+# Successful context resume also settles delayed suspend events.
 # Sound assets retain their original nested directory layout.
 # Extra resume events may retry browser-denied pending music.
 # Reject malformed settings framing before staging a restored checkpoint.
