@@ -48,9 +48,9 @@ async def main():
                         await page.evaluate("""()=>new MutationObserver(ms=>{for(const m of ms){if(m.attributeName==='data-mindustry-cdp-click-request')window.__firefoxNativeClick(JSON.parse(document.documentElement.getAttribute(m.attributeName)));}}).observe(document.documentElement,{attributes:true,attributeFilter:['data-mindustry-cdp-click-request']})""")
                         script=(ROOT/'scripts/browser-save-clock-go.js').read_text().split(' const lostExpected')[0]
                         script+=''' await click('planet-hit-launch');
-                        await wait(()=>v('campaign-state')==='playing'&&v('campaign-core')==='ready','fresh world');
-                        const start=Number(v('campaign-update-id'));
-                        await wait(()=>Number(v('campaign-update-id'))>start+90,'live fresh world');return 'fresh native Go PASS';})()'''
+                        await wait(()=>v('campaign-state')==='playing'&&v('campaign-save')==='valid','fresh world');
+                        const start=Number(v('cpu-sample'));
+                        await wait(()=>Number(v('cpu-sample'))>start+2,'live production frames');return 'fresh native Go PASS';})()'''
                         await page.evaluate(script)
                         assert await page.get_attribute('html','data-mindustry-web')!='error'
                         print(label+' fresh native Go PASS',flush=True)

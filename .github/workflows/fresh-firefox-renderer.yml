@@ -1,4 +1,5 @@
 name: Diagnose fresh Firefox campaign renderer
+# Production Go is checked without CI-only campaign telemetry.
 on:
   push:
     branches: [sector-settings-recovery]
