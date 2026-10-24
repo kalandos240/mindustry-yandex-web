@@ -1,0 +1,79 @@
+name: Verify renderer error report build
+on:
+  push:
+    branches: [sector-settings-recovery]
+    paths: ['.github/workflows/renderer-report-verify.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test nested report and clipboard fallback
+        run: node scripts/test-browser-error-report.js
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-sector-landing-verified
+          run-id: 40081943112
+          github-token: ${{ github.token }}
+          path: work/package
+      - name: Package exact runtime with error report UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile,ZIP_DEFLATED
+          import hashlib
+          base=Path('work/package/Mindustry-Yandex-sector-landing-fix.zip')
+          assert hashlib.sha256(base.read_bytes()).hexdigest()=='cabfe2859c8487d66f83654ae3e79c006e80a8ecba69bab8f5b66f4712b7aa88'
+          root=Path('web-runtime/build/web')
+          with ZipFile(base) as z:
+              z.extractall(root)
+              hashes={n:hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist()}
+          index=Path('web-runtime/src/web/index.html').read_bytes()
+          assert Path('scripts/browser-error-report.inline.js').read_text().strip() in index.decode()
+          (root/'index.html').write_bytes(index)
+          for p in root.rglob('*'):
+              if p.is_file() and p.name!='index.html':assert hashlib.sha256(p.read_bytes()).hexdigest()==hashes[p.relative_to(root).as_posix()]
+          files=sorted(p for p in root.rglob('*') if p.is_file());assert len(files)==756
+          assert sum(p.stat().st_size for p in files)<100_000_000
+          Path('work/release').mkdir()
+          out=Path('work/release/Mindustry-Yandex-renderer-diagnostic.zip')
+          with ZipFile(out,'w',ZIP_DEFLATED,compresslevel=9) as z:
+              for p in files:z.write(p,p.relative_to(root).as_posix())
+          print('Release SHA256:',hashlib.sha256(out.read_bytes()).hexdigest())
+          print('Files:',len(files),'Unpacked:',sum(p.stat().st_size for p in files))
+          PY
+      - name: Install Firefox
+        timeout-minutes: 5
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps firefox
+      - name: Test genuine nested Java exception and report controls
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MOZ_WEBRENDER: '1'
+        run: xvfb-run -a python3 scripts/verify-native-error-report.py
+      - name: Verify untouched production runtime after fixture cleanup
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          with ZipFile('work/release/Mindustry-Yandex-renderer-diagnostic.zip') as z:
+              assert z.testzip() is None
+              assert z.read('mindustry.js')==Path('web-runtime/build/web/mindustry.js').read_bytes()
+              assert b'__rendererErrorFixture' not in z.read('mindustry.js')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-renderer-diagnostic-verified
+          path: work/release/Mindustry-Yandex-renderer-diagnostic.zip
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renderer-error-report-evidence
+          path: work/error-report-native.png
