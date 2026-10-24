@@ -1,0 +1,47 @@
+name: Diagnose fresh Firefox campaign renderer
+on:
+  push:
+    branches: [sector-settings-recovery]
+    paths: ['.github/workflows/fresh-firefox-renderer.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-sector-landing-verified
+          run-id: 40081943112
+          github-token: ${{ github.token }}
+          path: work/package
+      - name: Stage exact delivered game
+        run: |
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          import hashlib
+          p=Path('work/package/Mindustry-Yandex-sector-landing-fix.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='cabfe2859c8487d66f83654ae3e79c006e80a8ecba69bab8f5b66f4712b7aa88'
+          with ZipFile(p) as z:z.extractall('web-runtime/build/web')
+          PY
+      - name: Install native Firefox
+        timeout-minutes: 5
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps firefox
+      - name: Fresh production Go with persisted graphics settings in both WebGL versions
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MOZ_WEBRENDER: '1'
+        run: xvfb-run -a python3 scripts/diagnose-fresh-firefox-renderer.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fresh-firefox-renderer-evidence
+          path: |
+            work/fresh-*.html
+            work/fresh-*.png
