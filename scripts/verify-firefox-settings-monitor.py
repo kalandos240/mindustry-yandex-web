@@ -51,7 +51,8 @@ async def main():
                                              ('fixed-held',held_settings(pristine.decode()),False),
                                              ('fixed-normal',pristine.decode(),False)]:
                     JS.write_text(source)
-                    profile=root/name;shutil.copytree(seed,profile)
+                    profile=root/name
+                    shutil.copytree(seed,profile,ignore=shutil.ignore_patterns('lock','.parentlock','parent.lock'))
                     context=await launch(profile)
                     try:
                         page=await context.new_page()
