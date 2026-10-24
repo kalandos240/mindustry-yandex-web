@@ -16,6 +16,8 @@ const error=new Error('c:97');error[Symbol('javaException')]=new Wrapper();
  const report=c.__mindustryErrorReport;
  assert.equal(report.phase,'sector-save');assert.equal(report.causes.length,2);
  assert.equal(report.causes[1].message,'framebuffer detail');assert.equal(report.causes[1].stack,'inner-renderer-stack');
+ attrs.set('data-mindustry-web','error');listeners.error({error:new Error('c:97 relayed by SDK')});
+ assert.equal(c.__mindustryErrorReport.causes[1].message,'framebuffer detail');
  const panel=body.children[0],copy=panel.children[1],reload=panel.children[2];
  await copy.onclick();assert.equal(JSON.parse(copied[0]).causes[1].message,'framebuffer detail');assert.equal(copy.textContent,'Скопировано');
  c.navigator.clipboard.writeText=async()=>{throw Error('iframe clipboard denied');};await copy.onclick();

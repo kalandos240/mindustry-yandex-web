@@ -1,4 +1,5 @@
 name: Verify renderer error report build
+# Preserve the original cause if the host later forwards a plain Error.
 on:
   push:
     branches: [sector-settings-recovery]

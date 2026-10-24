@@ -27,6 +27,9 @@
     }
     function capture(error){
         try{
+            // A host SDK may forward the same failure as a plain Error later.
+            // Preserve the original Java causes instead of replacing them with c:97.
+            if(!javaValue(error) && globalThis.__mindustryErrorReport?.causes.length>1) return;
             const report=describe(error);
             globalThis.__mindustryErrorReport=report;
             root.setAttribute('data-mindustry-error-causes',JSON.stringify(report.causes.map(c=>({type:c.type,message:c.message}))));
