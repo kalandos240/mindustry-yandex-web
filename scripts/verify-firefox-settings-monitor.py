@@ -1,4 +1,4 @@
-"""Native cold sector Go: old Settings monitor wait vs browser-confined settings."""
+"""Native cold sector Go: foreign-owner Settings monitor failure vs confined settings."""
 import asyncio,shutil,subprocess,tempfile,threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
@@ -72,7 +72,9 @@ async def main():
                             assert await page.get_attribute('html','data-settings-monitor-fixture')=='held'
                             assert await page.get_attribute('html','data-mindustry-campaign-phase')=='resume-world-loaded'
                             assert await page.get_attribute('html','data-mindustry-cold-sector-go')!='passed'
-                            print('Previous runtime: occupied Settings monitor REPRODUCES native Ground Zero stop exactly at resume-world-loaded',flush=True)
+                            failure=await page.get_attribute('html','data-mindustry-campaign-launch-failure')
+                            assert failure and 'IllegalMonitorStateException' in failure,failure
+                            print('Previous runtime: foreign Settings monitor causes IllegalMonitorStateException at resume-world-loaded; this is controlled fault injection, not an exact user-save replay',flush=True)
                         else:
                             assert await page.get_attribute('html','data-mindustry-cold-sector-go')=='passed'
                             assert not await page.get_attribute('html','data-mindustry-campaign-launch-failure')
