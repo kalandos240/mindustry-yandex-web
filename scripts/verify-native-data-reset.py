@@ -89,6 +89,7 @@ async def main():
                         assert any('sector-serpulo-' in p for p in baseline['paths']),baseline
                         assert any('sector-erekir-' in p for p in baseline['paths']),baseline
                         assert baseline['pref']=='retain-me',baseline
+                        assert baseline['research']==99 and baseline['otherResearch']==77 and baseline['unlocked'] is True,baseline
                         await text(target)
                         # Cancel must not create a reset marker or mutate durable data.
                         await choose(lambda c:c['kind']=='button' and c['label'].strip().lower() in ['cancel','back'],'cancel reset')

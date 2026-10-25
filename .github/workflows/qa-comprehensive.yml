@@ -1,3 +1,4 @@
+# Validate raw inputs against frozen compile commit and preserve generated overlay hashes.
 # All jobs verify frozen candidate 597dd1e / run40156042223.
 name: Exact candidate comprehensive browser acceptance
 'on':

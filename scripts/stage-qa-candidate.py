@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Validate source identity and stage an immutable compiled QA candidate."""
-import argparse,hashlib,json,shutil,zipfile
+import argparse,hashlib,json,re,shutil,subprocess,zipfile
 from pathlib import Path,PurePosixPath
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -18,9 +18,26 @@ def main():
     current.update(['scripts/apply-port.sh','scripts/bootstrap.sh','upstream.lock','web-runtime/build.gradle',
         'scripts/sanitize-teavm-runtime-links.py','scripts/compact-teavm-state-vars.cjs','scripts/test-teavm-state-vars.cjs'])
     assert current==set(manifest['files']),'Production source file set differs from compiled candidate'
+    # The build overlays deliberately rewrite nine tracked Java inputs in place.
+    # The artifact records those *generated* hashes. Verify checkout inputs against
+    # the actual immutable build commit, and retain both identities in the ledger.
+    source=manifest['source'];assert re.fullmatch('[a-f0-9]{40}',source)
+    check=subprocess.run(['git','cat-file','-e',source+'^{commit}'],cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    if check.returncode:subprocess.run(['git','fetch','--depth=1','origin',source],cwd=ROOT,check=True)
+    generated={
+        'BrowserApplication.java','BrowserBuildPlacementSmoke.java','BrowserCampaignResearch.java',
+        'BrowserGL20.java','BrowserGameplayRuntime.java','BrowserLocalMapRuntime.java',
+        'BrowserUiRuntime.java','Campaign.java','WebClientLauncher.java'}
+    input_hashes={};overlays=[]
     for name,expected in manifest['files'].items():
         p=ROOT/name
-        assert p.is_file() and digest(p)==expected,'Production source differs from compiled candidate: '+name
+        original=subprocess.check_output(['git','show',source+':'+name],cwd=ROOT)
+        input_hash=hashlib.sha256(original).hexdigest();input_hashes[name]=input_hash
+        assert p.is_file() and digest(p)==input_hash,'Production input differs from compiled commit: '+name
+        if input_hash!=expected:
+            assert name.startswith('web-runtime/src/main/java/mindustry/web/') and p.name in generated,'Unexpected build-generated source change: '+name
+            overlays.append(name)
+    manifest['input_source_files']=input_hashes;manifest['generated_overlays']=overlays
     stage=ROOT/'web-runtime/build/web'
     if stage.exists():shutil.rmtree(stage)
     stage.mkdir(parents=True)
