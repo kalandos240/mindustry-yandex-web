@@ -48,7 +48,9 @@ async def main(args):
                 # synthetic activation in an Xvfb session; test the user-facing
                 # mixer with media enabled and keep pending/autoplay-denied
                 # behavior covered by test-audio-lifecycle.js.
-                'media.autoplay.default':0,'media.autoplay.block-webaudio':False}
+                'media.autoplay.default':0,'media.autoplay.block-webaudio':False,
+                'media.cubeb.backend':'null',
+                'media.block-autoplay-until-in-foreground':False}
             browser=await getattr(pw,args.browser).launch(**options)
             context=await browser.new_context(viewport={'width':390 if args.mobile else 1280,'height':844 if args.mobile else 800},
                 has_touch=args.mobile,**({'is_mobile':args.mobile} if args.browser=='chromium' else {}))
