@@ -56,7 +56,7 @@
 
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = '/sdk.js';
+            script.src = 'sdk.js';
             script.async = true;
             script.onload = () => resolve();
             script.onerror = () => reject(new Error('Yandex Games SDK loader is unavailable'));
