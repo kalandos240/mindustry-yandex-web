@@ -44,7 +44,9 @@ jobs:
         env:
           NATIVE_CASE: ${{ matrix.scenario }}
         run: |
-          python3 scripts/run-persistence-qa.py --suite libraries --case "$NATIVE_CASE" --keep-going
+          family=libraries
+          if [ "$NATIVE_CASE" = cloud-startup ] || [ "$NATIVE_CASE" = cloud-reset-preferences ]; then family=persistence; fi
+          python3 scripts/run-persistence-qa.py --suite "$family" --case "$NATIVE_CASE" --keep-going
       - uses: actions/upload-artifact@v4
         if: always()
         with:
