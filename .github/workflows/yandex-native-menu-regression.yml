@@ -49,7 +49,7 @@ jobs:
       - name: Install browser smoke dependencies
         run: python3 -m pip install websocket-client
       - name: Real native game exit and Yandex interstitial
-        run: bash scripts/verify-yandex-sdk.sh
+        run: MINDUSTRY_YANDEX_MENU_AD_ONLY=1 bash scripts/verify-yandex-sdk.sh
       - name: Verify release locales without rebuilding pinned source
         run: bash scripts/verify-browser-locales.sh
       - uses: actions/upload-artifact@v4
