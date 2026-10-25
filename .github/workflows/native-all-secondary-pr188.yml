@@ -2,7 +2,7 @@ name: PR188 native controls, rules and all supported factories
 on:
   push:
     branches: [qa/schematic-contentmap-regression-20261025]
-    paths: [.github/workflows/native-all-secondary-pr188.yml, scripts/verify-secondary-controls.py]
+    paths: [.github/workflows/native-all-secondary-pr188.yml, scripts/verify-secondary-controls.py, scripts/browser-ui-control-probe.js, scripts/prepare-ui-control-probe.py]
 permissions:
   contents: read
   actions: read
