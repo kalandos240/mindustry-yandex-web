@@ -127,6 +127,22 @@ async def main(args):
                             await page.mouse.move((r['left']+r['right'])/2,(r['top']+r['bottom'])/2)
                             await page.mouse.wheel(0,-220 if target['top']<r['top'] else 220)
                     await page.wait_for_timeout(120)
+                try:
+                    snapshot=await page.evaluate("""query=>{
+                        const data=__mindustryUiControls({includeOffscreen:true,includeDisabled:true});
+                        return {query,viewport:[innerWidth,innerHeight],modal:data.modal,
+                            matching:data.controls.filter(c=>(c.label||'').includes(query)||(c.name||'').includes(query)),
+                            scrollPanes:data.controls.filter(c=>c.kind==='scrollpane')
+                                .map(c=>({id:c.id,path:c.path,onScreen:c.onScreen,
+                                    scrollY:c.scrollY,maxY:c.maxY,rect:c.visibleCssRect})),
+                            visibleButtons:data.controls.filter(c=>c.kind==='button' && c.onScreen)
+                                .map(c=>({label:c.label,name:c.name,path:c.path,y:c.y,rect:c.visibleCssRect}))};
+                    }""",str(key or name or label))
+                    fname=out/f'{args.browser}-{"mobile" if args.mobile else "desktop"}-unreachable-{str(key or name or label).replace(" ","-")}.json'
+                    fname.write_text(json.dumps(snapshot,ensure_ascii=False,indent=2))
+                    print('UNREACHABLE_NATIVE_CONTROL '+json.dumps(snapshot,ensure_ascii=False),flush=True)
+                    await page.screenshot(path=str(fname.with_suffix('.png')))
+                except Exception as diagnostic_error:print('UNREACHABLE_DIAGNOSTIC_FAILED '+repr(diagnostic_error),flush=True)
                 raise AssertionError('Native control not reachable: '+str(key or name or label))
             async def click(**find):
                 # Inertial ScrollPane movement can continue after a wheel event,
