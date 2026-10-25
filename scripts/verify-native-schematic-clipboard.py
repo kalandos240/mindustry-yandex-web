@@ -104,6 +104,11 @@ async def main():
                         async with page.expect_download() as item:
                             await button('File')
                         download=await item.value;downloaded=Path(await download.path()).read_bytes()
+                        # Preserve the actual *stock-exported* MSCH bytes for
+                        # offline v1 parsing. Header/tag-only validation cannot
+                        # prove that the block-data section round-trips.
+                        (OUT/(mode+'-native-export.msch')).write_bytes(downloaded)
+                        (OUT/(mode+'-original-fixture.msch')).write_bytes(payload)
                         assert read_tags(downloaded)[2]['name']=='QA схема'
                         assert not errors,errors
                         # File import also round-trips through FileReader, native
