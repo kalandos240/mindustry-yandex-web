@@ -134,6 +134,42 @@ reported_try = source_try.replace(
     chr(10).join(('                            Log.err(e);',
                   '                            ui.showException(e);'))
 )
+# Stage callbacks on the *actual* pinned stock dialog, rather than assuming
+# BrowserFileChooser.handleChooseResult returning means parser/write succeeded.
+# No file names, bytes, or user content are recorded.
+reported_try = reported_try.replace(
+    '                            Schematic s = Schematics.read(file);',
+    chr(10).join((
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "before-read");',
+        '                            Schematic s = Schematics.read(file);',
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "after-read");'
+    ))
+)
+reported_try = reported_try.replace(
+    '                            schematics.add(s);',
+    chr(10).join((
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "before-add");',
+        '                            schematics.add(s);',
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "after-add");'
+    ))
+)
+reported_try = reported_try.replace(
+    '                            last = s;',
+    chr(10).join((
+        '                            last = s;',
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "success");'
+    ))
+)
+reported_try = reported_try.replace(
+    '                            Log.err(e);',
+    chr(10).join((
+        '                            arc.Core.settings.put("qa-schematic-last-stage", arc.Core.settings.getString("qa-schematic-import-stage", "none"));',
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "catch");',
+        '                            arc.Core.settings.put("qa-schematic-error-class", e.getClass().getName());',
+        '                            arc.Core.settings.put("qa-schematic-error-message", String.valueOf(e.getMessage()));',
+        '                            Log.err(e);'
+    ))
+)
 if dialog.count(source_try) != 1:
     raise SystemExit("Pinned native MSCH FileChooser parser callback changed")
 dialog = dialog.replace(source_try, reported_try, 1)

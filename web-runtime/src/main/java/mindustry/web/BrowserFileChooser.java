@@ -87,6 +87,10 @@ public final class BrowserFileChooser{
     @JSBody(params={"phase","count"}, script="var r=document.documentElement; r.setAttribute('data-mindustry-browser-native-import-phase',phase); r.setAttribute('data-mindustry-browser-native-import-count',String(count));")
     private static native void markImportPhase(String phase, int count);
 
+    /** Diagnostic phase only, never expose an imported file name or contents. */
+    @JSBody(params={"phase"}, script="document.documentElement.setAttribute('data-mindustry-stock-schematic-stage',phase);")
+    public static native void markSchematicStage(String phase);
+
     // TeaVM 0.15 JSBody uses an ES5 parser: no arrow functions/async/await.
     // FileReader callbacks serially deliver each validated browser-local upload.
     @JSBody(params={"extensions","multiple","callback"}, script="""
