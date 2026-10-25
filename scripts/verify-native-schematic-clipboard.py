@@ -89,7 +89,12 @@ async def main():
                         for attempt in range(3):
                             value=await controls()
                             if any(x.get('name')=='web-main-schematics' and x['onScreen']
-                                   for x in value['controls']):return
+                                   for x in value['controls']):
+                                print('NATIVE_DATABASE_FIRST_CLICK '+json.dumps({
+                                    'attempt':attempt,'submenu':await page.get_attribute(
+                                        'html','data-mindustry-main-menu-database-submenu'),
+                                    'scene':value.get('stage')},ensure_ascii=False),flush=True)
+                                return
                             if await page.get_attribute('html','data-mindustry-main-menu-database-submenu')=='open':
                                 await page.wait_for_timeout(450)
                                 continue
@@ -100,6 +105,10 @@ async def main():
                                       && __mindustryUiControls({includeOffscreen:true,includeDisabled:true})
                                         .controls.some(c=>c.name==='web-main-schematics' && c.onScreen)""",
                                     timeout=2500)
+                                print('NATIVE_DATABASE_FIRST_CLICK '+json.dumps({
+                                    'attempt':attempt,'submenu':await page.get_attribute(
+                                        'html','data-mindustry-main-menu-database-submenu'),
+                                    'scene':(await controls()).get('stage')},ensure_ascii=False),flush=True)
                                 return
                             except Exception:
                                 # Retry an ordinary pointer click, not a
