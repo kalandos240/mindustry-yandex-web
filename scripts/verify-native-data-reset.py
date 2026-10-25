@@ -3,7 +3,7 @@
 Isolated disposable browser profiles; production reset callbacks are never invoked
 through JavaScript. Storage fixtures are explicit and do not emulate world loading.
 """
-import asyncio,json,os,shutil,subprocess,tempfile,threading
+import argparse,asyncio,json,os,shutil,subprocess,tempfile,threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 STAGE=ROOT/'web-runtime/build/web'
 OUT=ROOT/'work/native-data-reset'
 
-async def main():
+async def main(target_filter=None):
     OUT.mkdir(parents=True,exist_ok=True)
     runtime=STAGE/'mindustry.js';original=runtime.read_bytes();installed=[];server=None
     reports=[]
@@ -91,12 +91,25 @@ async def main():
                         assert baseline['pref']=='retain-me',baseline
                         assert baseline['research']==99 and baseline['otherResearch']==77 and baseline['unlocked'] is True,baseline
                         await text(target)
+                        async def require_confirmation(stage):
+                            # Distinguish a real application failure from an
+                            # invalid test click before a destructive action.
+                            for _ in range(30):
+                                shown=(await inventory()).get('modal') or {}
+                                if shown.get('title')=='Confirm':return
+                                await page.wait_for_timeout(100)
+                            seen=await inventory()
+                            await page.screenshot(path=str(OUT/('missing-confirm-'+str(stage)+'.png')))
+                            (OUT/('missing-confirm-'+str(stage)+'.json')).write_text(json.dumps(seen,indent=2))
+                            raise AssertionError(stage+': native confirmation not opened; top modal='+json.dumps(seen.get('modal')))
+                        await require_confirmation('initial')
                         # Cancel must not create a reset marker or mutate durable data.
                         await choose(lambda c:c['kind']=='button' and c['label'].strip().lower() in ['cancel','back'],'cancel reset')
                         assert await page.evaluate('__mindustryQaSetting("web-campaign-reset-at")')==before
                         assert await page.evaluate("()=>__mindustryStorage.paths().filter(p=>p.endsWith('.msav'))")==baseline['paths'],'Cancel deleted saves'
                         assert await page.evaluate("__mindustryQaSetting('req-router-copper')")==baseline['research'],'Cancel changed research'
                         await text(target)
+                        await require_confirmation('repeat')
                         await text('OK')
                         await page.wait_for_function('()=>Number(__mindustryQaSetting("web-campaign-reset-at"))>0')
                         marker=await page.evaluate('__mindustryQaSetting("web-campaign-reset-at")')
@@ -132,6 +145,9 @@ async def main():
                     finally:
                         if target and errors:(OUT/'errors.json').write_text(json.dumps(errors,indent=2))
                         await context.close()
+                if target_filter:
+                    await run(target_filter)
+                    return
                 ordinary=await run();planet=await run(planet=True)
                 assert len(ordinary)==4,ordinary
                 assert len(planet)==2,planet
@@ -146,4 +162,8 @@ async def main():
         for script in reversed(installed):subprocess.run(['python3',str(ROOT/'scripts'/script),'--restore'],check=True)
         assert runtime.read_bytes()==original,'QA helpers changed production runtime bytes'
 
-if __name__=='__main__':asyncio.run(main())
+if __name__=='__main__':
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--target',help='Limit to one destructive action for isolated native diagnostics')
+    args=parser.parse_args()
+    asyncio.run(main(args.target))
