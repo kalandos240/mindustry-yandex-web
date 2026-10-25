@@ -57,6 +57,15 @@ async def main():
                     assert await page.evaluate('textResults')==[{'ok':True,'text':unicode}]
                     assert await page.evaluate('gameKeys')==0
                     assert await page.evaluate('releases')==['text-input','text-input-close']
+                    # Regression: an old setTimeout focus/select could fire
+                    # after the first typed value and replace it on Enter.
+                    field=await open({'value':'previous'})
+                    await field.fill('fresh text')
+                    await page.wait_for_timeout(100)
+                    caret=await field.evaluate('(e)=>[e.selectionStart,e.selectionEnd]')
+                    assert caret==[len('fresh text')]*2,(mode,'deferred selection erased input',caret)
+                    await field.press('Escape')
+                    assert (await page.evaluate('textResults')).pop()=={'ok':False,'text':'fresh text'}
                     field=await open({'numeric':True,'maxLength':4,'value':'bad'})
                     assert await field.input_value()==''
                     await field.fill('a12b345');assert await field.input_value()=='1234'
