@@ -140,30 +140,30 @@ reported_try = source_try.replace(
 reported_try = reported_try.replace(
     '                            Schematic s = Schematics.read(file);',
     chr(10).join((
-        '                            mindustry.web.BrowserFileChooser.markSchematicStage("before-read");',
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "before-read");',
         '                            Schematic s = Schematics.read(file);',
-        '                            mindustry.web.BrowserFileChooser.markSchematicStage("after-read");'
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "after-read");'
     ))
 )
 reported_try = reported_try.replace(
     '                            schematics.add(s);',
     chr(10).join((
-        '                            mindustry.web.BrowserFileChooser.markSchematicStage("before-add");',
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "before-add");',
         '                            schematics.add(s);',
-        '                            mindustry.web.BrowserFileChooser.markSchematicStage("after-add");'
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "after-add");'
     ))
 )
 reported_try = reported_try.replace(
     '                            last = s;',
     chr(10).join((
         '                            last = s;',
-        '                            mindustry.web.BrowserFileChooser.markSchematicStage("success");'
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "success");'
     ))
 )
 reported_try = reported_try.replace(
     '                            Log.err(e);',
     chr(10).join((
-        '                            mindustry.web.BrowserFileChooser.markSchematicStage("catch");',
+        '                            arc.Core.settings.put("qa-schematic-import-stage", "catch");',
         '                            Log.err(e);'
     ))
 )
