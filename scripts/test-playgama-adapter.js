@@ -104,7 +104,7 @@ async function run(initialAudio){
    return sdk.adv.showFullscreenAdv({placement:ctx.__mindustryPlaygamaBridge.state.intentPlacement});
  }};
  nowMs+=91000;
- root.setAttribute('data-mindustry-campaign-state','playing');
+ root.setAttribute('data-mindustry-campaign-state','paused');
  root.setAttribute('data-mindustry-pause-dialog-visible','yes');
  await new Promise(resolve=>setTimeout(resolve,25));
  assert.equal(shows,2,'opening stock Pause during gameplay must request ad');
