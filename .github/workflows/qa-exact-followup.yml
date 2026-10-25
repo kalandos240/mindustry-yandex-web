@@ -46,7 +46,10 @@ jobs:
           import hashlib,zipfile
           from pathlib import Path,PurePosixPath
           base=Path('work/new-build')
-          assert '4864a74f264b1820cca3ee97da0596c1ad7f3a96' in (base/'EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt').read_text()
+          # pull_request builds checkout GitHub's synthetic merge commit,
+          # whose parents are the pinned base and requested PR head.
+          # Verified merge bd7a96f has parent 4864a74 (the fixed port).
+          assert 'bd7a96fce75118e6b2ddb4e9a84ee7a3fbdc1a16' in (base/'EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt').read_text()
           archive=base/'mindustry-yandex-release.zip'
           wanted=(base/'mindustry-yandex-release.zip.sha256').read_text().split()[0]
           assert hashlib.sha256(archive.read_bytes()).hexdigest()==wanted
