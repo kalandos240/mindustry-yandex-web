@@ -79,8 +79,20 @@ async def main(args):
                 raise AssertionError('Native control not reachable: '+str(key or name or label))
             async def click(**find):
                 c=await locate(**find)
-                if args.mobile:await page.touchscreen.tap(c['x'],c['y'])
-                else:await page.mouse.click(c['x'],c['y'])
+                # Stock ScrollPane has kinetic/smoothed positioning. A control
+                # can become onScreen while its row is still moving under the
+                # pointer. Wait for layout stabilization, then re-sample the
+                # live actor instead of trusting a stale hit rectangle.
+                await page.wait_for_timeout(420)
+                c=await locate(**find)
+                # The reported actor center may lie outside its ScrollPane's
+                # clipping rectangle when only a strip is visible. Use the
+                # actual visible hit rectangle, not the un-clipped center.
+                r=c['visibleCssRect']
+                x=(r['left']+r['right'])/2
+                y=(r['top']+r['bottom'])/2
+                if args.mobile:await page.touchscreen.tap(x,y)
+                else:await page.mouse.click(x,y)
                 await page.wait_for_timeout(100)
             async def settings_page(category):
                 items=await controls()
@@ -138,7 +150,26 @@ async def main(args):
                     async def music_gain():
                         volumes=await page.evaluate('()=>Array.from(__mindustryAudio.music.values()).filter(e=>!e.element.paused).map(e=>e.element.volume)')
                         return (not volumes or max(volumes)<.001) if expected==0 else bool(volumes) and 0<max(volumes)<=expected/100+.02
-                    await wait(music_gain,'actual paused music gain');return 'playing HTMLAudioElement gain while simulation paused'
+                    try:
+                        await wait(music_gain,'actual paused music gain')
+                    except AssertionError:
+                        details=await page.evaluate("""()=>({
+                            music:Array.from(__mindustryAudio.music.values()).map(e=>({
+                                id:e.id,paused:e.element.paused,volume:e.element.volume,readyState:e.element.readyState,
+                                networkState:e.element.networkState,error:e.element.error?.message||null,
+                                currentTime:e.element.currentTime,pendingPlay:e.pendingPlay,
+                                resumeAfterPlatform:e.resumeAfterPlatform,playRequest:e.playRequest,
+                                src:e.element.currentSrc.split('/').pop()
+                            })),
+                            platform:document.documentElement.getAttribute('data-mindustry-audio-platform'),
+                            lifecycle:document.documentElement.getAttribute('data-mindustry-game-state'),
+                            visible:document.visibilityState,
+                            activation:navigator.userActivation?.hasBeenActive
+                        })""")
+                        print('MUSIC_GAIN_DIAGNOSTIC '+json.dumps({'key':key,'expected':expected,'setting':await value(key),'details':details}),flush=True)
+                        await page.screenshot(path=str(out/f'{args.browser}-{"mobile" if args.mobile else "desktop"}-music-failed.png'))
+                        raise
+                    return 'playing HTMLAudioElement gain while simulation paused'
                 if key=='fpscap':
                     limit=0 if expected>240 else max(10,expected)
                     await wait(lambda:attr_equals('data-mindustry-frame-limit',str(limit)),'actual frame limiter');return 'scheduler limit'
@@ -207,7 +238,13 @@ async def main(args):
                         if isinstance(before,bool):
                             await click(key=key)
                             async def toggled():return await value(key)==(not before)
-                            await wait(toggled,'native checkbox '+key)
+                            try:
+                                await wait(toggled,'native checkbox '+key)
+                            except AssertionError:
+                                current=await locate(key=key)
+                                print('CHECKBOX_DIAGNOSTIC '+json.dumps({'key':key,'before':before,'after':await value(key),'control':current},ensure_ascii=False),flush=True)
+                                await page.screenshot(path=str(out/f'{args.browser}-{"mobile" if args.mobile else "desktop"}-checkbox-failed.png'))
+                                raise
                             effects.append(await semantic(key,not before));await assert_paused(key)
                             await click(key=key)
                             async def restored():return await value(key)==before
