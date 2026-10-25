@@ -31,14 +31,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          actual="$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/40185273224 --jq '.head_sha')"
-          test "$actual" = b0c42df270b438d535f21f9fff468469d1e0abfe
+          actual="$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/40188673370 --jq '.head_sha')"
+          test "$actual" = 28f82daf754151825b46cfcb177787eee06a7223
           echo "Compiled-source identity verified: $actual"
 
       - uses: actions/download-artifact@v4
         with:
           name: mindustry-yandex-manual-playtest-experimental
-          run-id: 40185273224
+          run-id: 40188673370
           github-token: ${{ github.token }}
           path: work/frozen-input
 
