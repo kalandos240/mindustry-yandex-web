@@ -131,7 +131,8 @@ source_try = '''                    for(Fi file : files){
                     }'''
 reported_try = source_try.replace(
     '                            ui.showException(e);',
-    '                            Log.err(e);\\n                            ui.showException(e);'
+    chr(10).join(('                            Log.err(e);',
+                  '                            ui.showException(e);'))
 )
 if dialog.count(source_try) != 1:
     raise SystemExit("Pinned native MSCH FileChooser parser callback changed")
