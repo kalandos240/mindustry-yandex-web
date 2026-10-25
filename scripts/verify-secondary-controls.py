@@ -317,7 +317,14 @@ async def config_open(ui):return await ui.attr('native-config-open')=='true'
 async def config_value(ui,value):return await ui.attr('native-config-value')==value
 async def config_changed(ui,value):return await ui.attr('native-config-value')!=value
 async def processor_code_is(ui,value):return await ui.config('code')==value
-async def factory_command_is(ui,value):return await ui.config('command.name')==value
+async def factory_command_is(ui,value):
+    # Stock UnitFactory.command may legitimately be null before a player
+    # clicks a command. The read-only TeaVM inspector throws on null.
+    # Treat that transient state as "not selected yet", not a game crash.
+    try:return await ui.config('command.name')==value
+    except Exception as exc:
+        if 'UI read target is null: name' in str(exc):return False
+        raise
 
 async def main(args):
     output=ROOT/'work/secondary-controls';output.mkdir(parents=True,exist_ok=True)
