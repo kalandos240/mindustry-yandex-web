@@ -38,6 +38,16 @@ public final class BrowserAudio extends Audio{
                         && mindustry.Vars.ui.settings.isShown() && mindustry.Vars.control != null
                         && mindustry.Vars.control.sound != null){
                         mindustry.Vars.control.sound.update();
+                        // During native Settings, the stock SoundControl may
+                        // deliberately fade a still-playing music track to
+                        // silence while the game simulation is paused. Preview
+                        // the player's actual slider value without advancing
+                        // Logic, selecting a different track or changing the
+                        // SoundControl fade policy outside this dialog.
+                        Music current = mindustry.Vars.control.sound.getCurrent();
+                        if(current != null && current.isPlaying()){
+                            current.setVolume(settingVolume("musicvol", 100));
+                        }
                     }
                 }
             }
