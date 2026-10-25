@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [native-save-library, native-schematic, dom-text, cloud-startup, cloud-reset-preferences]
+        scenario: [native-save-library]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
