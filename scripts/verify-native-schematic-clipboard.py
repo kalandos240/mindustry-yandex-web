@@ -36,6 +36,21 @@ async def main():
             try:
                 for mobile in [False,True]:
                     mode='mobile' if mobile else 'desktop';context=await browser.new_context(viewport={'width':390 if mobile else 1280,'height':844 if mobile else 800},is_mobile=mobile,has_touch=mobile)
+                    await context.add_init_script("""(() => {
+                        window.__qaMsImport = {changes:[],reads:[],loads:[],errors:[]};
+                        document.addEventListener('change', event => {
+                            if(event.target instanceof HTMLInputElement && event.target.type === 'file'){
+                                __qaMsImport.changes.push(Array.from(event.target.files||[],f=>({name:f.name,size:f.size})));
+                            }
+                        },true);
+                        const original = FileReader.prototype.readAsArrayBuffer;
+                        FileReader.prototype.readAsArrayBuffer = function(file){
+                            __qaMsImport.reads.push({name:file.name,size:file.size});
+                            this.addEventListener('load',()=>__qaMsImport.loads.push({name:file.name,bytes:this.result?.byteLength||0}),{once:true});
+                            this.addEventListener('error',()=>__qaMsImport.errors.push({name:file.name,error:String(this.error)}),{once:true});
+                            return original.call(this,file);
+                        };
+                    })()""")
                     page=await context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
                     async def controls():return await page.evaluate('()=>__mindustryUiControls({includeOffscreen:true,includeDisabled:true})')
                     async def choose(predicate,label):
@@ -127,6 +142,8 @@ async def main():
                         paths=await page.evaluate("()=>__mindustryStorage.paths()")
                         if not await file_import_done():
                             diagnostic=await page.evaluate("""()=>({
+                                fileReader:window.__qaMsImport,
+                                fileInputCount:document.querySelectorAll('input[type=file]').length,
                                 pickerState:document.documentElement.getAttribute('data-mindustry-browser-file-state'),
                                 pickerError:document.documentElement.getAttribute('data-mindustry-browser-file-error'),
                                 gameError:document.documentElement.getAttribute('data-mindustry-web-error'),
