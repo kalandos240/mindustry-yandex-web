@@ -1,0 +1,56 @@
+name: Rebuilt native save and schematic libraries
+on:
+  push:
+    branches: [qa/secondary-native-diagnostics-20261025]
+    paths: [.github/workflows/native-libraries-rebuilt.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  library:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [native-save-library, native-schematic, dom-text, cloud-startup, cloud-reset-preferences]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 40163446863
+          name: mindustry-yandex-manual-playtest-experimental
+          github-token: ${{ github.token }}
+          path: work/new-build
+      - name: Stage exact source game with verified digest
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path,PurePosixPath
+          import zipfile,hashlib
+          base=Path('work/new-build')
+          assert 'bd7a96fce75118e6b2ddb4e9a84ee7a3fbdc1a16' in (base/'EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt').read_text()
+          source=base/'mindustry-yandex-release.zip'
+          assert hashlib.sha256(source.read_bytes()).hexdigest()==(base/'mindustry-yandex-release.zip.sha256').read_text().split()[0]
+          with zipfile.ZipFile(source) as z:
+              assert z.testzip() is None
+              assert sum(f.file_size for f in z.infolist())<=100_000_000
+              for n in z.namelist():
+                  p=PurePosixPath(n)
+                  assert not p.is_absolute() and '..' not in p.parts
+              z.extractall('web-runtime/build/web')
+          PY
+      - run: python3 -m pip install playwright
+      - name: Read/write game native libraries in Chrome
+        env:
+          NATIVE_CASE: ${{ matrix.scenario }}
+        run: |
+          python3 scripts/run-persistence-qa.py --suite libraries --case "$NATIVE_CASE" --keep-going
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-library-${{ matrix.scenario }}
+          path: |
+            work/comprehensive-qa/
+            work/save-library-qa/
+            work/schematic-clipboard-qa/
+          if-no-files-found: ignore
