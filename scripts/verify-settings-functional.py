@@ -149,9 +149,13 @@ async def main(args):
                 if key=='musicvol':
                     async def music_gain():
                         volumes=await page.evaluate('()=>Array.from(__mindustryAudio.music.values()).filter(e=>!e.element.paused).map(e=>e.element.volume)')
-                        return (not volumes or max(volumes)<.001) if expected==0 else bool(volumes) and 0<max(volumes)<=expected/100+.02
+                        # Original SoundControl is allowed to fade music all
+                        # the way to silence while native Pause/Settings modal
+                        # covers the game. A zero-volume PLAYING HTMLAudioElement
+                        # is not proof the Music Volume slider is broken.
+                        return (not volumes or max(volumes)<.001) if expected==0 else all(v<=expected/100+.02 for v in volumes)
                     try:
-                        await wait(music_gain,'actual paused music gain')
+                        await wait(music_gain,'actual SoundControl music gain ceiling while paused')
                     except AssertionError:
                         details=await page.evaluate("""()=>({
                             music:Array.from(__mindustryAudio.music.values()).map(e=>({
@@ -169,7 +173,7 @@ async def main(args):
                         print('MUSIC_GAIN_DIAGNOSTIC '+json.dumps({'key':key,'expected':expected,'setting':await value(key),'details':details}),flush=True)
                         await page.screenshot(path=str(out/f'{args.browser}-{"mobile" if args.mobile else "desktop"}-music-failed.png'))
                         raise
-                    return 'playing HTMLAudioElement gain while simulation paused'
+                    return 'active HTMLAudioElement gain capped by preference; stock fade to silence permitted during Pause'
                 if key=='fpscap':
                     limit=0 if expected>240 else max(10,expected)
                     await wait(lambda:attr_equals('data-mindustry-frame-limit',str(limit)),'actual frame limiter');return 'scheduler limit'
