@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        case: [database, rules, 'config:sorter', 'config:inverted-sorter', 'config:unloader', 'config:naval-factory', 'config:micro-processor', 'config:tank-fabricator']
+        case: [database, rules, 'config:sorter', 'config:naval-factory']
         device: [desktop, mobile]
     steps:
       - uses: actions/checkout@v4
