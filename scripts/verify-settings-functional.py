@@ -40,7 +40,15 @@ async def main(args):
             options={'headless':args.browser!='firefox'}
             if args.browser=='chromium':
                 options.update(executable_path=shutil.which('google-chrome') or shutil.which('chromium'),args=['--no-sandbox'])
-            else:options['firefox_user_prefs']={'webgl.force-enabled':True,'gfx.webrender.software':True}
+            else:options['firefox_user_prefs']={
+                'webgl.force-enabled':True,'gfx.webrender.software':True,
+                # The gain/slider regression exercises audio playback itself,
+                # not browser autoplay blocking policy. CI Firefox without an
+                # attached interactive audio device remains suspended after
+                # synthetic activation in an Xvfb session; test the user-facing
+                # mixer with media enabled and keep pending/autoplay-denied
+                # behavior covered by test-audio-lifecycle.js.
+                'media.autoplay.default':0,'media.autoplay.block-webaudio':False}
             browser=await getattr(pw,args.browser).launch(**options)
             context=await browser.new_context(viewport={'width':390 if args.mobile else 1280,'height':844 if args.mobile else 800},
                 has_touch=args.mobile,**({'is_mobile':args.mobile} if args.browser=='chromium' else {}))
@@ -283,7 +291,27 @@ async def main(args):
                     await wait(lambda:settings_page('root'),'category Back '+category)
                 if args.only_music:
                     assert {'alwaysmusic','musicvol','sfxvol','ambientvol'}<=roster
-                    print('MUSIC_ONLY_PASS '+json.dumps(ledger),flush=True)
+                    # Also test audible music *during real gameplay*, not
+                    # merely within a paused Settings dialog.
+                    await click(label='Sound')
+                    await wait(lambda:settings_page('sound'),'Sound reopened for live music')
+                    if not await value('alwaysmusic'):await click(key='alwaysmusic')
+                    await close_settings()
+                    start=await state()
+                    async def music_active():
+                        return await page.evaluate("""()=>{
+                            const a=window.__mindustryAudio;
+                            return a?.unlocked && Array.from(a.music.values()).some(e=>!e.element.paused && e.element.volume>.01 && e.element.currentTime>0);
+                        }""")
+                    await wait(music_active,'live gameplay song has nonzero HTMLAudio gain',timeout=25)
+                    later=await state()
+                    await page.wait_for_timeout(600)
+                    final=await state()
+                    assert final['tick']>later['tick'] and later['tick']>=start['tick'],('music froze live simulation',start,later,final)
+                    ledger.append({'key':'musicvol','effect':'audible nonzero song gain after real Resume + advancing simulation'})
+                    result={'status':'passed','browser':args.browser,'mobile':args.mobile,'checks':ledger}
+                    (out/f'{args.browser}-{"mobile" if args.mobile else "desktop"}-music.json').write_text(json.dumps(result,indent=2))
+                    print('MUSIC_ONLY_PASS '+json.dumps(result),flush=True)
                     return
                 assert {'fpscap','uiscale','musicvol','sfxvol','ambientvol','minimap','drawhitboxes'}<=roster,roster
                 # Exercise the save-interval consumer, not only its stored number.
