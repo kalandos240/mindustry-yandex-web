@@ -216,7 +216,7 @@ async def main():
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'save' in x.get('icons',[]),'enable canonical autosave')
                         assert await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")') is True
                         await close_dialogs();await named('web-pause-resume');before=await bytes_at()
-                        await page.wait_for_function('q=>JSON.stringify(Array.from(__mindustryStorage.get(q.path)||[]))!==q.bytes',arg={'path':CANONICAL,'bytes':json.dumps(list(before),separators=(',',':'))},timeout=30000)
+                        await page.wait_for_function('q=>JSON.stringify(Array.from(Uint8Array.from(__mindustryStorage.get(q.path)||[])))!==q.bytes',arg={'path':CANONICAL,'bytes':json.dumps(list(before),separators=(',',':'))},timeout=30000)
                         # Deleting the stable slot from the stopped menu must be
                         # durable authority over older cloud data. Cancel is inert.
                         await page.keyboard.press('Escape');await page.wait_for_function('__mindustryQaSnapshot().paused')
