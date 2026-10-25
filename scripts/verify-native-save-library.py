@@ -79,7 +79,23 @@ async def main():
                         game=await page.evaluate('__mindustryQaSnapshot()')
                         if not game['menu']:
                             if not game['paused']:
-                                await page.keyboard.press('Escape');await page.wait_for_function('__mindustryQaSnapshot().paused')
+                                # A modal hide/Scene rebuild can retain the last
+                                # touch/key focus while its exit action finishes.
+                                # Exercise the actual Escape key after the
+                                # original actor transition and check real state.
+                                for attempt in range(3):
+                                    await page.wait_for_timeout(450)
+                                    await page.keyboard.press('Escape')
+                                    await page.wait_for_timeout(600)
+                                    if (await page.evaluate('__mindustryQaSnapshot()'))['paused']:break
+                                    print('NATIVE_ESCAPE_DIAGNOSTIC '+json.dumps({
+                                        'attempt':attempt+1,
+                                        'game':await page.evaluate('__mindustryQaSnapshot()'),
+                                        'modal':(await controls())['modal'],
+                                        'focus':await page.evaluate('document.activeElement?.tagName'),
+                                        'inputMode':await page.get_attribute('html','data-mindustry-input-mode')
+                                    }),flush=True)
+                                else:raise AssertionError('Live imported world did not pause after trusted Escape')
                             await named('web-pause-saves')
                         else:
                             value=await controls()
