@@ -7,7 +7,7 @@ on:
       - scripts/prepare-qa-probe.py
       - scripts/test-qa-renderer-statics.js
       - scripts/test-qa-unsigned-bytes.js
-      - scripts/verify-browser-text-input.py scripts/chrome-wait-dom.py
+      - scripts/verify-browser-text-input.py
       - web-runtime/src/main/java/mindustry/web/BrowserTextInput.java
       - scripts/verify-native-save-library.py
       - scripts/verify-native-schematic-clipboard.py
@@ -38,7 +38,7 @@ jobs:
           node scripts/test-qa-unsigned-bytes.js
           node --check scripts/browser-yandex-menu-ad-native.js
           bash -n scripts/verify-yandex-sdk.sh scripts/verify-browser-locales.sh scripts/audit-yandex-release.sh
-          python3 -m py_compile scripts/prepare-qa-probe.py scripts/verify-native-save-library.py scripts/verify-native-schematic-clipboard.py scripts/verify-browser-text-input.py
+          python3 -m py_compile scripts/prepare-qa-probe.py scripts/verify-native-save-library.py scripts/verify-native-schematic-clipboard.py scripts/verify-browser-text-input.py scripts/chrome-wait-dom.py
       - name: Verify native browser text dialog in desktop/mobile Chrome
         run: |
           python3 -m pip install playwright
