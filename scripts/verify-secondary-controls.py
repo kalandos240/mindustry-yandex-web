@@ -322,7 +322,13 @@ async def config_family(ui,family):
                 try:commands.append((await ui.config(prefix+'.name'),await ui.config(prefix+'.icon')))
                 except Exception:break
             for command,icon in commands:
-                find_command=lambda c,icon=icon:c['kind']=='button' and icon in c.get('icons',[]) and not c.get('content')
+                # On mobile the separate bottom HUD "Command" button can
+                # share a UnitCommand icon (e.g. enterPayload/units) with a
+                # selected factory. It changes player commands, NOT the
+                # factory plan. Only controls inside the real native config
+                # subtree are valid factory command selectors.
+                find_command=lambda c,icon=icon:(c['kind']=='button' and icon in c.get('icons',[])
+                    and not c.get('content') and 'web-native-config-root' in c.get('parentNames',[]))
                 control=await ui.locate(find_command,'factory command '+command,required=False)
                 if control is None:
                     ui.ledger.append({'group':'factory-command','action':family+'/'+choice['name']+'/'+command,'status':'unavailable','reason':'command not exposed under this UnitFactory capability'})
