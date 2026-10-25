@@ -64,6 +64,9 @@ async def main():
                     assert (await page.evaluate('textResults')).pop()=={'ok':True,'text':'1234'}
                     field=await open({'multiline':True,'maxLength':12})
                     await field.fill('line one');await field.press('Enter')
+                    # Wait for the browser's native textarea input event to
+                    # finish before the Ctrl+Enter confirmation gesture.
+                    await page.wait_for_function("document.querySelector('#mindustry-text-input textarea').value === 'line one\\n'")
                     assert await page.locator('#mindustry-text-input').count()==1
                     await field.press('Control+Enter')
                     assert (await page.evaluate('textResults')).pop()=={'ok':True,'text':'line one\n'}
