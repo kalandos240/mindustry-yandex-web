@@ -53,6 +53,26 @@ async def main(args):
                         raise AssertionError('Game error at '+label+': '+str(await page.evaluate('window.__mindustryErrorReport')))
                     if await fn():return
                     await page.wait_for_timeout(80)
+                if label.startswith('native checkbox '):
+                    key=label.removeprefix('native checkbox ')
+                    try:
+                        snapshot=await page.evaluate("""key=>{
+                            const all=__mindustryUiControls({includeOffscreen:true,includeDisabled:true});
+                            const related=all.controls.filter(c=>c.setting?.key===key);
+                            const target=related.find(c=>c.enabled&&c.onScreen);
+                            const hit=target?document.elementFromPoint(target.x,target.y):null;
+                            return {key,related,hitTag:hit?.tagName,hitId:hit?.id,
+                                viewport:[innerWidth,innerHeight],canvas:document.querySelector('#mindustry-canvas')?.getBoundingClientRect().toJSON(),
+                                game:__mindustryQaSnapshot(),setting:__mindustryQaSetting(key),
+                                possibleOverlaps:all.controls.filter(c=>c.onScreen&&c.enabled&&target&&
+                                    Math.abs(c.x-target.x)<25&&Math.abs(c.y-target.y)<25).slice(0,12)};
+                        }""",key)
+                        dump=out/f'{args.browser}-{"mobile" if args.mobile else "desktop"}-blocked-{key}.json'
+                        dump.write_text(json.dumps(snapshot,ensure_ascii=False,indent=2))
+                        await page.screenshot(path=str(out/f'{args.browser}-{"mobile" if args.mobile else "desktop"}-blocked-{key}.png'))
+                        print('BLOCKED_NATIVE_CHECKBOX '+json.dumps(snapshot,ensure_ascii=False),flush=True)
+                    except Exception as diagnostic_error:
+                        print('BLOCKED_CHECKBOX_DIAGNOSTIC_FAILED '+repr(diagnostic_error),flush=True)
                 raise AssertionError('Timeout: '+label)
             async def controls():
                 data=await page.evaluate('()=>__mindustryUiControls({includeOffscreen:true,includeDisabled:true})')
