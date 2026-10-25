@@ -37,14 +37,26 @@ public final class BrowserAudio extends Audio{
                         && mindustry.Vars.ui != null && mindustry.Vars.ui.settings != null
                         && mindustry.Vars.ui.settings.isShown() && mindustry.Vars.control != null
                         && mindustry.Vars.control.sound != null){
-                        mindustry.Vars.control.sound.update();
-                        // During native Settings, the stock SoundControl may
-                        // deliberately fade a still-playing music track to
-                        // silence while the game simulation is paused. Preview
-                        // the player's actual slider value without advancing
-                        // Logic, selecting a different track or changing the
-                        // SoundControl fade policy outside this dialog.
-                        Music current = mindustry.Vars.control.sound.getCurrent();
+                        // A paused world deliberately skips the normal Control
+                        // update. Calling SoundControl.update() here is NOT a
+                        // harmless gain refresh: in an ordinary in-game scene it
+                        // invokes silence() -> play(null), fades the current
+                        // track toward zero and eventually stops it. Repeating
+                        // that each paused frame left HTMLAudio playing at 0 gain
+                        // despite moving the Music Volume slider.
+                        //
+                        // Keep the stock track selection from live gameplay,
+                        // but preview only its gain while the native Settings
+                        // dialog is shown. When the prior track has finished,
+                        // explicitly start a replacement only if the user has
+                        // asked for continuous music; no world tick is advanced.
+                        mindustry.audio.SoundControl sound = mindustry.Vars.control.sound;
+                        Music current = sound.getCurrent();
+                        if(current == null && Core.settings.getBool("alwaysmusic", false)
+                            && Core.settings.getInt("musicvol", 100) > 0){
+                            sound.playRandom();
+                            current = sound.getCurrent();
+                        }
                         if(current != null && current.isPlaying()){
                             current.setVolume(settingVolume("musicvol", 100));
                         }

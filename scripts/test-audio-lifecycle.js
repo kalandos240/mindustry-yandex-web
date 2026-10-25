@@ -11,8 +11,14 @@ function harness(){
         close(){this.state='closed';return Promise.resolve();}
     }
     class Media{
-        constructor(){this.paused=true;this.plays=0;this.currentTime=0;}
-        play(){this.plays++;this.paused=false;if(this.deferPlay)return new Promise((resolve,reject)=>{this.resolvePlay=resolve;this.rejectPlay=reject;});return Promise.resolve();}
+        constructor(){this.paused=true;this.plays=0;this.currentTime=0;this.blockPlay=false;}
+        play(){
+            this.plays++;
+            if(this.blockPlay)return Promise.reject(new Error('autoplay blocked'));
+            this.paused=false;
+            if(this.deferPlay)return new Promise((resolve,reject)=>{this.resolvePlay=resolve;this.rejectPlay=reject;});
+            return Promise.resolve();
+        }
         pause(){this.paused=true;}
         removeAttribute(){}
         load(){}
@@ -54,6 +60,55 @@ async function play(h,id=1){h.api.musicPlay(id,'music.ogg',0.6,1,0,true);await t
     if(baseline){assert(reinstalled.state.unlocked);assert.equal(reinstalled.state.ctx.state,'suspended');}
     else{assert(!reinstalled.state.unlocked);reinstalled.gesture();await tick();assert.equal(reinstalled.state.ctx.state,'running');}
     if(baseline){console.log('Previous audio bugs REPRODUCED: duplicate pause loses music; explicit pause ignored; new paused track stuck; stopped track requeued; reinstalled context cannot unlock');return;}
+
+    // Regression: Arc's SoundControl observes Music.isPlaying() on every
+    // frame. A queued HTMLAudio play remains logically alive while waiting
+    // for a real user gesture; otherwise it reselects dozens of songs
+    // before browser autoplay permission resolves.
+    // Browser media and WebAudio have independent autoplay/device rules.
+    // Successful streaming must not wait for a SFX AudioContext that cannot
+    // resume on a browser without a physical sound output.
+    const separate=harness();separate.api.install();
+    separate.api.musicPrepare(7,'music.ogg');
+    separate.api.musicPlay(7,'music.ogg',0.75,1,0,true);
+    await tick();
+    assert(!separate.state.unlocked && !separate.state.music.get(7).element.paused,
+        'Allowed HTMLAudio should play independently of suspended WebAudio');
+    assert(separate.api.musicPlaying(7));
+
+    const waiting=harness();waiting.api.install();
+    waiting.api.musicPrepare(6,'music.ogg');
+    const blocked=waiting.state.music.get(6).element;blocked.blockPlay=true;
+    waiting.api.musicPlay(6,'music.ogg',0.75,1,0,true);
+    await tick();
+    assert(waiting.state.music.get(6).pendingPlay);
+    assert(blocked.paused);
+    assert(waiting.api.musicPlaying(6),'Denied autoplay remains queued instead of selecting another track');
+    waiting.api.musicPause(6,true);
+    assert(!waiting.api.musicPlaying(6),'Explicit pause must cancel queued play');
+    waiting.api.musicPlay(6,'music.ogg',0.75,1,0,true);
+    await tick();
+    assert(waiting.api.musicPlaying(6));
+    waiting.api.musicStop(6);
+    assert(!waiting.api.musicPlaying(6),'Explicit stop must cancel queued play');
+
+    const onGesture=harness();onGesture.api.install();
+    onGesture.api.musicPrepare(8,'music.ogg');
+    const deferred=onGesture.state.music.get(8).element;deferred.blockPlay=true;
+    onGesture.api.musicPlay(8,'music.ogg',0.5,1,0,true);
+    await tick();
+    const audioContext=onGesture.state.ctx;audioContext.deferResume=true;
+    deferred.blockPlay=false;onGesture.gesture();await tick();
+    assert(!onGesture.state.unlocked && !deferred.paused,
+        'A real gesture retries HTMLAudio even if the WebAudio resume promise is unresolved');
+    assert(!onGesture.state.music.get(8).pendingPlay);
+
+    const earlyUnlock=harness();earlyUnlock.api.install();
+    const pendingContext=earlyUnlock.state.ctx;pendingContext.deferResume=true;
+    earlyUnlock.gesture();assert.equal(pendingContext.resumes,1);
+    pendingContext.deferResume=false;earlyUnlock.gesture();await tick();
+    assert(earlyUnlock.state.unlocked,'A later real gesture must recover from an unresolved AudioContext.resume()');
+    assert.equal(pendingContext.state,'running');
 
     const stale=harness();stale.api.install();const old=stale.state.ctx;old.deferResume=true;
     stale.gesture();stale.api.dispose();stale.api.install();old.finishResume();await tick();

@@ -145,7 +145,10 @@
         source.start(0);
     }
 
-    const unlockEvents = ['pointerdown', 'touchstart', 'keydown'];
+    // Some engines (notably Firefox with restricted autoplay) grant Web Audio
+    // activation at click/mousedown rather than the earlier pointerdown. Every
+    // handler still runs only from an actual user gesture.
+    const unlockEvents = ['pointerdown', 'mousedown', 'touchstart', 'click', 'keydown'];
 
     function listenForUnlock(){
         unlockEvents.forEach(function(type){
@@ -186,9 +189,22 @@
     }
 
     function unlock(){
-        if(!state.ctx || state.unlocked || state.unlocking) return;
         if(state.platformPaused) return;
+        // Streamed HTMLAudioElement music does not run through the Web Audio
+        // context used for SFX. Firefox/Linux may keep AudioContext suspended
+        // when the output device is unavailable, yet HTMLMediaElement.play()
+        // can still be permitted by an actual click. Retry denied media only
+        // on a trusted gesture; the media element enforces autoplay policy.
+        state.music.forEach(function(entry){
+            if(entry.pendingPlay && entry.element.paused) requestMusicPlay(entry);
+        });
+        if(!state.ctx || state.unlocked) return;
         var context = state.ctx;
+        // AudioContext.resume() can remain pending after an early pointerdown
+        // until an eligible click/keydown grants user activation. Do not let
+        // the first unresolved promise permanently block later real gestures.
+        // The guarded completeUnlock callback is idempotent.
+        if(state.unlocking && context.state === 'running') return;
         state.unlocking = true;
         context.resume().then(function(){ completeUnlock(context); }).catch(function(){
             if(state.ctx === context) state.unlocking = false;
@@ -470,14 +486,30 @@
     function requestMusicPlay(entry){
         var request = ++entry.playRequest;
         entry.pendingPlay = true;
-        if(state.platformPaused || !state.unlocked) return;
+        // HTMLMediaElement has its own autoplay policy and need not wait for
+        // the separate SFX AudioContext. A disallowed play() rejects; retain
+        // the request and retry only after another real click/tap/key.
+        if(state.platformPaused) return;
         try{
             Promise.resolve(entry.element.play()).then(function(){
-                if(state.music.get(entry.id) === entry && entry.playRequest === request) entry.pendingPlay = false;
+                if(state.music.get(entry.id) === entry && entry.playRequest === request){
+                    entry.pendingPlay = false;
+                    if(state.unlocked && !Array.from(state.music.values()).some(function(item){ return item.pendingPlay; })){
+                        removeUnlockListeners();
+                    }
+                }
             }).catch(function(){
-                if(state.music.get(entry.id) === entry && entry.playRequest === request) entry.pendingPlay = true;
+                if(state.music.get(entry.id) === entry && entry.playRequest === request){
+                    entry.pendingPlay = true;
+                    listenForUnlock();
+                }
             });
-        }catch(ignored){ /* Leave playback pending for the next permitted attempt. */ }
+        }catch(ignored){
+            if(state.music.get(entry.id) === entry && entry.playRequest === request){
+                entry.pendingPlay = true;
+                listenForUnlock();
+            }
+        }
     }
 
     function musicPlay(id, url, volume, pitch, pan, loop){
@@ -549,7 +581,15 @@
         musicStop: musicStop,
         musicPlaying: function(id){
             var entry = state.music.get(id);
-            return !!(entry && !entry.element.paused && !entry.element.ended);
+            // HTMLAudio.play() is asynchronous. In the first frames after a
+            // real click or browser audio unlock, paused remains true until
+            // its play promise settles. Mindustry SoundControl checks
+            // Music.isPlaying() every frame; treating a queued request as
+            // stopped makes it discard the track and randomly start another
+            // one on every tick (especially in Firefox autoplay policy).
+            // Honor an explicitly queued play until musicPause/musicStop
+            // cancels it; completeUnlock will retry after a trusted gesture.
+            return !!(entry && ((!entry.element.paused && !entry.element.ended) || entry.pendingPlay));
         },
         musicLoop: function(id, loop){
             var entry = state.music.get(id);

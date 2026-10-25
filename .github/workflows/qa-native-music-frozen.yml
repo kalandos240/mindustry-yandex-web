@@ -7,6 +7,8 @@ on:
       - scripts/run-acceptance-suite.py
       - scripts/prepare-qa-probe.py
       - scripts/prepare-ui-control-probe.py
+      - scripts/test-audio-lifecycle.js
+      - web-runtime/src/web/browser-audio.js
       - .github/workflows/qa-native-music-frozen.yml
   workflow_dispatch:
 
@@ -50,6 +52,18 @@ jobs:
           test -s web-runtime/build/web/mindustry.js
           sha256sum web-runtime/build/web/mindustry.js > work/pristine-settings-runtime.sha256
 
+      - name: Verify pending music playback contract in isolated Node audio engine
+        run: node scripts/test-audio-lifecycle.js
+
+      - name: Stage exact candidate browser-audio.js patch for isolated native music validation
+        run: |
+          test -s web-runtime/build/web/browser-audio.js
+          cp web-runtime/build/web/browser-audio.js work/pristine-browser-audio.js
+          sha256sum web-runtime/build/web/browser-audio.js > work/pristine-browser-audio.sha256
+          # QA overlay only; permanent release is built separately from source.
+          cp web-runtime/src/web/browser-audio.js web-runtime/build/web/browser-audio.js
+          node --check web-runtime/build/web/browser-audio.js
+
       - name: Install browser dependencies for native pointer QA
         run: |
           python3 -m pip install playwright
@@ -74,6 +88,14 @@ jobs:
           python3 scripts/prepare-ui-control-probe.py --restore || code=1
           python3 scripts/prepare-qa-probe.py --restore || code=1
           exit "$code"
+
+      - name: Restore original browser audio resource after isolated QA overlay
+        if: always()
+        run: |
+          if [ -s work/pristine-browser-audio.js ]; then
+            cp work/pristine-browser-audio.js web-runtime/build/web/browser-audio.js
+            sha256sum -c work/pristine-browser-audio.sha256
+          fi
 
       - name: Verify QA probes restored exact original compiled runtime
         if: always()
