@@ -77,8 +77,19 @@ async def main():
                             # Start in pane padding/row gaps rather than on a
                             # slider track: native slider touchDown may change
                             # its value before the pane recognizes a swipe.
+                            # A full-screen Scene inputtarget is a parent
+                            # receiver, not a slider/button occupying the pane.
+                            # Counting it as a control forbids every possible
+                            # gesture start and wrongly fails mobile Graphics.
+                            def covers_pane(item):
+                                rect=item['visibleCssRect']
+                                return (rect['left'] <= area['left'] and
+                                        rect['top'] <= area['top'] and
+                                        rect['right'] >= area['right'] and
+                                        rect['bottom'] >= area['bottom'])
                             active = [item for item in controls if item['onScreen'] and item['enabled'] and
-                                item['kind'] in ['button','slider','textfield','clickable','inputtarget']]
+                                item['kind'] in ['button','slider','textfield','clickable','inputtarget'] and
+                                not (item['kind']=='inputtarget' and covers_pane(item))]
                             point = None
                             candidates = [area['left'] + 3, area['right'] - 3, (area['left'] + area['right']) / 2]
                             ys = list(range(int(lower), int(upper), -8)) if amount > 0 else list(range(int(upper), int(lower), 8))
