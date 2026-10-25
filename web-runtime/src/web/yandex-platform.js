@@ -52,7 +52,7 @@
     }
 
     function installSdkScript(){
-        if(globalThis.YaGames) return Promise.resolve();
+        if(globalThis.__mindustryPlaygamaSdk) return Promise.resolve();
 
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
@@ -122,11 +122,11 @@
             mark('data-yandex-sdk', 'loading');
             try{
                 await withTimeout(installSdkScript(), 5000, 'Yandex SDK loader');
-                if(!globalThis.YaGames || typeof globalThis.YaGames.init !== 'function'){
+                if(!globalThis.__mindustryPlaygamaSdk || typeof globalThis.__mindustryPlaygamaSdk.init !== 'function'){
                     throw new Error('Yandex Games SDK did not expose YaGames.init');
                 }
 
-                const ysdk = await withTimeout(globalThis.YaGames.init(), 5000, 'Yandex SDK init');
+                const ysdk = await withTimeout(globalThis.__mindustryPlaygamaSdk.init(), 5000, 'Yandex SDK init');
                 state.ysdk = ysdk;
                 state.available = true;
                 state.initialized = true;
