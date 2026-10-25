@@ -34,9 +34,27 @@ globalThis.__mindustryAmbientFocus = function(){
         amg_Vec2_set(pos,source.$x4,source.$y4);
         ag_Camera_update(a_Core_camera);
     }
+    const activeMixer=mix?.$sounds;
+    const sources=registered.slice(0,55).map(s=>({
+        name:s?.$block2?.$name?.$nativeString||null,
+        drill:s?.$block2?.$ambientSound===mg_Sounds_loopDrill,
+        x:s?.$x4,y:s?.$y4,enabled:s?.$enabled0,
+        warmup:s?.$warmup,efficiency:s?.$efficiency,
+        active:(typeof s?.$shouldAmbientSound==='function')?!!s.$shouldAmbientSound():null,
+        ambientVolume:(typeof s?.$ambientVolume==='function')?s.$ambientVolume():null,
+        configuredVolume:s?.$block2?.$ambientSoundVolume
+    }));
+    const gain=(activeMixer?.$valueTable?.data||[]).filter(Boolean).slice(0,40).map(d=>({
+        volume:d.$volume,current:d.$curVolume,total:d.$total2,
+        totalVolume:d.$totalVolume,soundId:d.$soundID,
+        sumX:d.$sumX,sumY:d.$sumY
+    }));
     return {registered:registered.length,drill:!!source,
         tile:source?[source.$x4,source.$y4]:null,
-        camera:pos?[pos.$x3,pos.$y3]:null};
+        camera:pos?[pos.$x3,pos.$y3]:null,
+        sources,mixer:{size:activeMixer?.$size10,gains:gain,
+          settingsAmbient:a_Core_settings?.$values?.$size10}};
+
 };
 """
 
