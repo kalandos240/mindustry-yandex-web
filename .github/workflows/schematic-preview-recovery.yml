@@ -1,0 +1,66 @@
+name: Schematic preview crash recovery in rebuilt Web
+on:
+  push:
+    branches: [qa/secondary-native-diagnostics-20261025]
+    paths: [.github/workflows/schematic-preview-recovery.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  native-asset-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [schematic, save-library]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 40165615584
+          name: mindustry-yandex-manual-playtest-experimental
+          github-token: ${{ github.token }}
+          path: work/rebuilt
+      - name: Check exact recovered package source and preload
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path,PurePosixPath
+          from zipfile import ZipFile
+          import hashlib
+          base=Path('work/rebuilt')
+          notice=(base/'EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt').read_text()
+          assert '4ae8700490c6e565cbbf83107074d6c2eae58c8b' in notice,notice
+          archive=base/'mindustry-yandex-release.zip'
+          assert hashlib.sha256(archive.read_bytes()).hexdigest()==(base/'mindustry-yandex-release.zip.sha256').read_text().split()[0]
+          with ZipFile(archive) as z:
+              assert z.testzip() is None
+              assert sum(i.file_size for i in z.infolist())<=100_000_000
+              assert len(z.namelist())==len(set(z.namelist()))
+              assert 'assets/sprites/schematic-background.png' in z.namelist()
+              assert b'sprites/schematic-background.png' in z.read('assets-manifest.js')
+              for name in z.namelist():
+                  part=PurePosixPath(name)
+                  assert not part.is_absolute() and '..' not in part.parts
+              z.extractall('web-runtime/build/web')
+          print('Rebuilt source and eager schematic preview bitmap verified',flush=True)
+          PY
+      - run: python3 -m pip install playwright
+      - name: Native library recovery via real Chrome controls
+        env:
+          TEST_CASE: ${{ matrix.case }}
+          PYTHONUNBUFFERED: '1'
+        run: |
+          if [ "$TEST_CASE" = schematic ]; then
+            python3 scripts/verify-native-schematic-clipboard.py
+          else
+            python3 scripts/verify-native-save-library.py
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: schematic-preview-recovery-${{ matrix.case }}
+          path: |
+            work/schematic-clipboard-qa/
+            work/save-library-qa/
+          if-no-files-found: ignore
