@@ -235,7 +235,7 @@
             const items=get(seq,'seq','items')?.data || [];
             for(const content of Array.from(items).slice(0,Math.min(get(seq,'seq','size') || 0,3000))){
                 if(!is(content,mc_UnlockableContent))continue;
-                const descriptor={type:is(content,mt_Item)?'item':is(content,mw_Block)?'block':is(content,mt_UnitType)?'unit':type(content),
+                const descriptor={type:is(content,mt_Item)?'item':is(content,mt_Liquid)?'liquid':is(content,mw_Block)?'block':is(content,mt_UnitType)?'unit':type(content),
                     name:str(get(content,'mappable','name')),localizedName:str(get(content,'unlockable','localizedName'))};
                 for(const field of ['uiIcon','fullIcon']){
                     const region=get(content,'unlockable',field);if(!region)continue;
