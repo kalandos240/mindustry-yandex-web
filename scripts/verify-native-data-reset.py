@@ -108,6 +108,12 @@ async def main(target_filter=None):
                         assert await page.evaluate('__mindustryQaSetting("web-campaign-reset-at")')==before
                         assert await page.evaluate("()=>__mindustryStorage.paths().filter(p=>p.endsWith('.msav'))")==baseline['paths'],'Cancel deleted saves'
                         assert await page.evaluate("__mindustryQaSetting('req-router-copper')")==baseline['research'],'Cancel changed research'
+                        # The stock BaseDialog closes through an Arc fade action.
+                        # A second click during the previous modal's fade may
+                        # still be consumed by its touch-focus target. Verify
+                        # the user-visible cancel state first, then allow the
+                        # normal transition to finish before acting again.
+                        await page.wait_for_timeout(850)
                         await text(target)
                         await require_confirmation('repeat')
                         await text('OK')
