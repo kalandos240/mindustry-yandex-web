@@ -65,6 +65,46 @@ if text.count(preview_old) != 1:
     raise SystemExit("Stock Schematics.getPreview changed since v159.7")
 text = text.replace(preview_old, preview_new, 1)
 
+# The upstream MSCH reader uses JsonIO.json.fromJson(IntMap.class, ...)
+# to restore the optional name->ID contentMap. TeaVM omits desktop reflection
+# constructors for Arc's IntMap, so *even an empty contentMap "{}"* aborts
+# Schematics.read(Fi) with SerializationException before any blocks load.
+# Keep the standard MSCH wire format and build the exact same lookup directly
+# from Arc's JsonValue tree; no reflection, no loss of configured content IDs.
+mapping_old = '''                IntMap<ObjectIntMap<String>> nameMap = JsonIO.json.fromJson(IntMap.class, ObjectIntMap.class, map.get("contentMap", "{}"));
+                IntMap<IntMap<Content>> contentMap = new IntMap<>();
+                for(var entry : nameMap){
+                    var inner = new IntMap<Content>();
+                    contentMap.put(entry.key, inner);
+                    for(var ce : entry.value){
+                        inner.put(ce.value, content.getByName(ContentType.all[entry.key], ce.key));
+                    }
+                }'''
+mapping_new = '''                // Web/TeaVM: avoid reflective IntMap construction for the
+                // schematic contentMap (including the common empty "{}").
+                JsonValue mapRoot = new JsonReader().parse(map.get("contentMap", "{}"));
+                IntMap<IntMap<Content>> contentMap = new IntMap<>();
+                for(JsonValue typeEntry : mapRoot){
+                    if(typeEntry.name() == null || !typeEntry.isObject()) continue;
+                    int contentType;
+                    try{
+                        contentType = Integer.parseInt(typeEntry.name());
+                    }catch(NumberFormatException ignored){
+                        continue;
+                    }
+                    if(contentType < 0 || contentType >= ContentType.all.length) continue;
+                    IntMap<Content> inner = new IntMap<>();
+                    for(JsonValue nameEntry : typeEntry){
+                        if(nameEntry.name() == null) continue;
+                        Content resolved = content.getByName(ContentType.all[contentType], nameEntry.name());
+                        if(resolved != null) inner.put(nameEntry.asInt(), resolved);
+                    }
+                    contentMap.put(contentType, inner);
+                }'''
+if text.count(mapping_old) != 1:
+    raise SystemExit("Pinned v159.7 MSCH contentMap deserialization changed")
+text = text.replace(mapping_old, mapping_new, 1)
+
 SOURCE.write_text(text, encoding="utf-8")
 
 # A browser cannot synchronously read the operating-system clipboard. Let users
