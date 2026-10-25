@@ -56,13 +56,29 @@ class Native:
         else:await self.page.mouse.click(c['x'],c['y'])
         await self.page.wait_for_timeout(100)
     async def click(self,predicate,label):
-        c=await self.locate(predicate,label);await self.pointer(c);return c
+        # ScrollPane scrolling and modal fade transitions can leave a stale
+        # actor center between inventory and pointer dispatch. Re-read the
+        # live actor after the original Arc layout settles.
+        c=await self.locate(predicate,label)
+        await self.page.wait_for_timeout(380)
+        c=await self.locate(predicate,label)
+        await self.pointer(c)
+        return c
     async def name(self,name):return await self.click(lambda c:c.get('name')==name,name)
     async def button(self,label):return await self.click(lambda c:c['kind']=='button' and clean(c['label'])==label,label)
     async def text(self,c,text):
-        await self.pointer(c);await self.page.keyboard.press('Control+A')
-        await self.page.keyboard.press('Backspace')
-        if text:await self.page.keyboard.type(str(text),delay=2)
+        await self.pointer(c)
+        native=self.page.locator('#mindustry-text-input')
+        if self.mobile and await native.count():
+            # On mobile the original Arc TextField invokes the browser-native
+            # text editor. Typing alone edits only the transient DOM field:
+            # OK is the trusted user action that commits to Rules.ruleSearch.
+            await native.locator('input, textarea').first.fill(str(text))
+            await native.get_by_role('button',name='OK',exact=True).click()
+        else:
+            await self.page.keyboard.press('Control+A')
+            await self.page.keyboard.press('Backspace')
+            if text:await self.page.keyboard.type(str(text),delay=2)
         await self.page.wait_for_timeout(120)
     async def state(self):return await self.page.evaluate('__mindustryQaSnapshot()')
     async def dialog(self,path):return await self.page.evaluate('p=>__mindustryUiDialogRead(p)',path)
@@ -78,7 +94,10 @@ class Native:
         self.ledger.append({'group':group,'action':action,'status':'passed','effect':result,**extra})
 
 async def database(ui):
-    await ui.name('web-main-database-group')
+    # Original mobile home layout has a direct Database tile. Desktop uses
+    # the grouped Database submenu; clicking the latter on mobile is a
+    # nonexistent control rather than a game failure.
+    if not ui.mobile:await ui.name('web-main-database-group')
     await ui.name('web-main-database')
     await ui.wait(lambda:ui.modal('DatabaseDialog'),'Database opens')
     initial=await ui.page.evaluate('__mindustryQaRead("ui","database.tab.name")')
@@ -116,7 +135,8 @@ async def database(ui):
     search=await ui.locate(lambda c:c['kind']=='textfield','Database search')
     await ui.text(search,'qa-no-database-result-928413')
     await ui.wait(lambda:database_search_is(ui,'qa-no-database-result-928413'),'Database search callback')
-    text=await ui.page.evaluate('__mindustryUiText().text');assert 'None found' in text,text
+    text=await ui.page.evaluate('__mindustryUiText().text')
+    assert 'none found' in text.lower(),text
     await ui.text(search,'');await ui.wait(lambda:database_search_is(ui,''),'Database search clear')
     ui.record('database','search/clear','actual search string, empty results and restored contents')
     await ui.button('Back');await ui.wait(lambda:database_closed(ui),'Database Back')
@@ -144,7 +164,10 @@ async def rules(ui):
     assert 'Survival' in text and 'Sandbox' in text,text
     await ui.button('OK');await ui.wait(lambda:ui.modal('MapPlayDialog'),'close mode help')
     ui.record('custom-mode','help/OK','actual modes help text and return to map')
-    await ui.button('Customize');await ui.wait(lambda:ui.modal('CustomRulesDialog'),'Customize rules')
+    # Stock v159.7's actual button reads "Customize Rules"; the old
+    # exact label "Customize" incorrectly failed despite the action existing.
+    await ui.click(lambda c:c['kind']=='button' and clean(c['label']).lower().startswith('customize'),'Customize Rules')
+    await ui.wait(lambda:ui.modal('CustomRulesDialog'),'Customize rules')
     search=await ui.locate(lambda c:c['kind']=='textfield' and c['onScreen'],'Rules search')
     search_id=search['id']
     spec=json.loads((ROOT/'scripts/custom-rules-action-spec.json').read_text())
@@ -183,9 +206,9 @@ async def rules(ui):
     await ui.text(search,label)
     if await ui.dialog('rules.waveTimer'):await ui.click(lambda c:c['kind']=='button' and clean(c['label'])==clean(label),'disable wave timer')
     await ui.button('Back');await ui.wait(lambda:ui.modal('MapPlayDialog'),'Rules Back')
-    assert await ui.dialog('rules.waveTimer') is False
+    assert bool(await ui.dialog('rules.waveTimer')) is False
     await ui.button('Play');await ui.wait(lambda:local_playing(ui),'customized local map')
-    assert await ui.page.evaluate('__mindustryQaRead("state","rules.waveTimer")') is False
+    assert bool(await ui.page.evaluate('__mindustryQaRead("state","rules.waveTimer")')) is False
     await ui.stable();ui.record('custom-rule','launch edited rules','actual playing Rules.waveTimer=false and live update counter')
 
 async def rule_search_is(ui,value):return await ui.dialog('ruleSearch')==value.strip().lower()
@@ -243,11 +266,54 @@ async def config_family(ui,family):
     for choice in choices:
         if await ui.attr('native-config-open')!='true':await tile();await ui.wait(lambda:config_open(ui),'reopen '+family)
         find=lambda c,q=choice:c['kind']=='button' and any(v['type']==q['type'] and v['name']==q['name'] for v in c.get('content',[]))
+        prior=await ui.attr('native-config-value')
         await ui.click(find,family+' '+choice['name'])
-        expected=str(plans.index(choice['name'])) if kind=='unit' else choice['name']
-        await ui.wait(lambda:config_value(ui,expected),family+' selected '+choice['name'])
+        # UnitFactory's stock selection button toggles an already-active plan
+        # off (-1), unlike item/liquid selectors. Exercise both directions.
+        unit_index=str(plans.index(choice['name'])) if kind=='unit' else None
+        # Compiled Java String.valueOf(Item/Liquid) is its localizedName
+        # ("Copper"/"Water"), not the registry ID ("copper"/"water").
+        expected=('-1' if prior==unit_index else unit_index) if kind=='unit' else choice.get('localizedName',choice['name'])
+        try:
+            await ui.wait(lambda:config_value(ui,expected),family+' selected '+choice['name'])
+        except AssertionError:
+            print('CONFIG_CHOICE_DIAGNOSTIC '+json.dumps({
+                'family':family,'choice':choice,'expected':expected,'before':before,
+                'actual':await ui.attr('native-config-value'),
+                'actualType':await ui.attr('native-config-type'),
+                'configOpen':await ui.attr('native-config-open'),
+                'game':await ui.state()
+            },ensure_ascii=False),flush=True)
+            raise
         ui.record('building-config',family+'/'+choice['name'],'actual Building.config='+expected)
         if kind=='unit':
+            if expected=='-1':
+                # On desktop stock config closes after toggling a plan off;
+                # on touch it can remain open. Clicking the tile unconditionally
+                # while already open toggles that dialog CLOSED, which was a
+                # false test timeout. Reopen only if the UI actually closed.
+                if await ui.attr('native-config-open')!='true':
+                    # Touch-close animations can leave the previous config
+                    # fragment consuming an immediate canvas tap. Repeat only
+                    # genuine canvas clicks until the stock table opens.
+                    for retry in range(5):
+                        await ui.page.wait_for_timeout(550)
+                        if await ui.attr('native-config-open')=='true':break
+                        await tile()
+                        await ui.page.wait_for_timeout(450)
+                        if await ui.attr('native-config-open')=='true':break
+                    else:
+                        print('FACTORY_REOPEN_DIAGNOSTIC '+json.dumps({
+                            'family':family,'choice':choice,'current':await ui.attr('native-config-value'),
+                            'configOpen':await ui.attr('native-config-open'),
+                            'selection':await ui.attr('native-config-name'),
+                            'controls':(await ui.inventory())['controls'][-24:]
+                        },ensure_ascii=False),flush=True)
+                        raise AssertionError('Native '+family+' dialog cannot reopen after toggling plan off')
+                await ui.click(find,'re-enable '+family+' '+choice['name'])
+                await ui.wait(lambda:config_value(ui,unit_index),'native plan re-enabled '+choice['name'])
+                ui.record('factory-plan',family+'/'+choice['name'],'stock selected plan off then on')
+                expected=unit_index
             if await ui.attr('native-config-open')!='true':await tile();await ui.wait(lambda:config_open(ui),'factory command table')
             index=plans.index(choice['name'])
             commands=[]
@@ -256,7 +322,13 @@ async def config_family(ui,family):
                 try:commands.append((await ui.config(prefix+'.name'),await ui.config(prefix+'.icon')))
                 except Exception:break
             for command,icon in commands:
-                find_command=lambda c,icon=icon:c['kind']=='button' and icon in c.get('icons',[]) and not c.get('content')
+                # On mobile the separate bottom HUD "Command" button can
+                # share a UnitCommand icon (e.g. enterPayload/units) with a
+                # selected factory. It changes player commands, NOT the
+                # factory plan. Only controls inside the real native config
+                # subtree are valid factory command selectors.
+                find_command=lambda c,icon=icon:(c['kind']=='button' and icon in c.get('icons',[])
+                    and not c.get('content') and 'web-native-config-root' in c.get('parentNames',[]))
                 control=await ui.locate(find_command,'factory command '+command,required=False)
                 if control is None:
                     ui.ledger.append({'group':'factory-command','action':family+'/'+choice['name']+'/'+command,'status':'unavailable','reason':'command not exposed under this UnitFactory capability'})
@@ -272,7 +344,14 @@ async def config_open(ui):return await ui.attr('native-config-open')=='true'
 async def config_value(ui,value):return await ui.attr('native-config-value')==value
 async def config_changed(ui,value):return await ui.attr('native-config-value')!=value
 async def processor_code_is(ui,value):return await ui.config('code')==value
-async def factory_command_is(ui,value):return await ui.config('command.name')==value
+async def factory_command_is(ui,value):
+    # Stock UnitFactory.command may legitimately be null before a player
+    # clicks a command. The read-only TeaVM inspector throws on null.
+    # Treat that transient state as "not selected yet", not a game crash.
+    try:return await ui.config('command.name')==value
+    except Exception as exc:
+        if 'UI read target is null: name' in str(exc):return False
+        raise
 
 async def main(args):
     output=ROOT/'work/secondary-controls';output.mkdir(parents=True,exist_ok=True)
