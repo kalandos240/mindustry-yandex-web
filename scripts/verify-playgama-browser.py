@@ -110,7 +110,21 @@ async def main():
       # A full native-to-Bridge interstitial from the actual running campaign.
       # Use the original, shipped platform wrapper and real browser sound
       # state; the external host alone is stubbed for CI.
-      await page.evaluate("() => __mindustryYandex.showFullscreenAdv()")
+      # Wait-for-first-ad is a real runtime policy (60s). Emulate elapsed
+      # session time ONLY in QA, never disable this delay in shipped files.
+      await page.evaluate("() => __mindustryPlaygamaBridge.state.sessionStartedAt=Date.now()-62000")
+      if not mobile:
+       # A real trusted Escape opens Mindustry's STOCK Pause dialog.
+       # No synthetic Arc callbacks or game-state mutation are permitted.
+       await page.locator('#mindustry-canvas').click(position={'x':100,'y':100})
+       await page.keyboard.press('Escape')
+       await page.wait_for_function(
+         "() => document.documentElement.getAttribute('data-mindustry-pause-dialog-visible')==='yes'",
+         timeout=20000)
+      else:
+       # Test the original Java->JS fullscreen ad call on mobile; the
+       # natural mobile pause is exercised by native UI regression.
+       await page.evaluate("() => __mindustryYandex.showFullscreenAdv()")
       await page.wait_for_function(
         """() => __playgamaTest.adShows===1
           && document.documentElement.getAttribute('data-playgama-interstitial-state')==='opened'
@@ -124,6 +138,7 @@ async def main():
       assert await page.evaluate("() => __playgamaTest.adShows") == 1
       assert not errors,errors
       state['ads'] = 'Playgama interstitial opened, paused, closed and resumed real gameplay'
+      state['adTrigger'] = 'real native Escape Pause' if not mobile else 'native Java bridge'
       state['adShows'] = 1
       # Native Java music/sound remains governed by BrowserAudio; do not
       # accept a browser app that crashes during the platform pause.
