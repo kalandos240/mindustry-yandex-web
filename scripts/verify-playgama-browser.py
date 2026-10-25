@@ -33,7 +33,7 @@ window.bridge={
   on(type,callback){__playgamaTest.callbacks[type]=callback},
   sendMessage(message){__playgamaTest.messages.push(message);return Promise.resolve()}
  },
- device:{type:/mobile/i.test(navigator.userAgent)?'mobile':'desktop'},
+ device:{type:navigator.maxTouchPoints>0?'mobile':'desktop'},
  storage:{
   async get(keys){return keys.map(key=>__playgamaTest.storage[key]||null)},
   async set(keys,values){keys.forEach((key,i)=>{__playgamaTest.storage[key]=values[i]})}
