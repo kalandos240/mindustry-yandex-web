@@ -549,7 +549,15 @@
         musicStop: musicStop,
         musicPlaying: function(id){
             var entry = state.music.get(id);
-            return !!(entry && !entry.element.paused && !entry.element.ended);
+            // HTMLAudio.play() is asynchronous. In the first frames after a
+            // real click or browser audio unlock, paused remains true until
+            // its play promise settles. Mindustry SoundControl checks
+            // Music.isPlaying() every frame; treating a queued request as
+            // stopped makes it discard the track and randomly start another
+            // one on every tick (especially in Firefox autoplay policy).
+            // Honor an explicitly queued play until musicPause/musicStop
+            // cancels it; completeUnlock will retry after a trusted gesture.
+            return !!(entry && ((!entry.element.paused && !entry.element.ended) || entry.pendingPlay));
         },
         musicLoop: function(id, loop){
             var entry = state.music.get(id);
