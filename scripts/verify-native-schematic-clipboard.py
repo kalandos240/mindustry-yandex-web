@@ -94,10 +94,22 @@ async def main():
                         # File import also round-trips through FileReader, native
                         # Schematics parser, persistent library and Info dialog.
                         await close_all()
-                        if not mobile:
-                            value=await controls()
-                            if not any(x['name']=='web-main-schematics' and x['onScreen'] for x in value['controls']):await choose(lambda x:x['name']=='web-main-database-group','database group')
+                        # Original BaseDialog.hide() animates its modal overlay.
+                        # A click issued while it is still fading can be consumed
+                        # by that old dialog. The desktop menu also has a
+                        # Database/Schematics submenu, not a direct home button.
+                        await page.wait_for_timeout(850)
+                        async def schematics_entry_visible():
+                            data=await controls()
+                            return any(c.get('name')=='web-main-schematics' and c['onScreen'] for c in data['controls'])
+                        for retry in range(4):
+                            if await schematics_entry_visible():break
+                            if not mobile:
+                                await choose(lambda x:x['name']=='web-main-database-group','open Database submenu for Schematics')
+                            await page.wait_for_timeout(350)
+                        assert await schematics_entry_visible(),'Stock Schematics submenu never appeared'
                         await choose(lambda x:x['name']=='web-main-schematics','schematics')
+                        await page.wait_for_function("()=>__mindustryUiControls().modal?.title === 'Schematics'")
                         await button('Import')
                         async with page.expect_file_chooser() as item:
                             await button('File')
