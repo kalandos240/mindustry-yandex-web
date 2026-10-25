@@ -34,7 +34,7 @@ def assert_sorter_mapping(value):
     # {0:{copper:0}}. The stock Java JsonReader accepts this syntax, while
     # Python's strict json.loads does not. Quote only bare keys for our QA
     # decoder; then inspect the saved TypeIO bytes independently.
-    map_text=re.sub(r'(?<=[{,])\\s*([A-Za-z_][\\w.-]*|\\d+)\\s*:',r'"\\1":',tags['contentMap'])
+    map_text=re.sub(r'(?<=[{,])\s*([A-Za-z_][\w.-]*|\d+)\s*:',r'"\1":',tags['contentMap'])
     mapping=json.loads(map_text)
     assert 'copper' in mapping.get('0',{}),mapping
     # Inspect the actual exported TypeIO config, not just the UI label or
