@@ -94,7 +94,10 @@ class Native:
         self.ledger.append({'group':group,'action':action,'status':'passed','effect':result,**extra})
 
 async def database(ui):
-    await ui.name('web-main-database-group')
+    # Original mobile home layout has a direct Database tile. Desktop uses
+    # the grouped Database submenu; clicking the latter on mobile is a
+    # nonexistent control rather than a game failure.
+    if not ui.mobile:await ui.name('web-main-database-group')
     await ui.name('web-main-database')
     await ui.wait(lambda:ui.modal('DatabaseDialog'),'Database opens')
     initial=await ui.page.evaluate('__mindustryQaRead("ui","database.tab.name")')
@@ -132,7 +135,8 @@ async def database(ui):
     search=await ui.locate(lambda c:c['kind']=='textfield','Database search')
     await ui.text(search,'qa-no-database-result-928413')
     await ui.wait(lambda:database_search_is(ui,'qa-no-database-result-928413'),'Database search callback')
-    text=await ui.page.evaluate('__mindustryUiText().text');assert 'None found' in text,text
+    text=await ui.page.evaluate('__mindustryUiText().text')
+    assert 'none found' in text.lower(),text
     await ui.text(search,'');await ui.wait(lambda:database_search_is(ui,''),'Database search clear')
     ui.record('database','search/clear','actual search string, empty results and restored contents')
     await ui.button('Back');await ui.wait(lambda:database_closed(ui),'Database Back')
