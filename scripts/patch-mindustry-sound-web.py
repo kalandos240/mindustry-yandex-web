@@ -46,6 +46,39 @@ for old, new, label in replacements:
         raise SystemExit(f"SoundControl Web patch no longer matches pinned upstream ({label})")
     text = text.replace(old, new, 1)
 
+# With native Settings open on a paused browser game, stock SoundControl
+# repeatedly invokes silence()->play(null), fading the live HTMLAudio track
+# to zero. Unlike a menu transition, the user expects to preview their Music
+# Volume slider without stopping the campaign soundtrack. Keep the normal
+# paused-world simulation frozen and manage only the current music gain.
+paused_music_anchor = """    public void update(){
+        boolean paused = state.isGame() && Core.scene.hasDialog();
+"""
+paused_music_replacement = """    public void update(){
+        // Web: the current soundtrack is retained while the native Settings
+        // dialog overlays a paused sector. Do not run the ordinary in-game
+        // silence()/fade path during slider preview.
+        if(state.isPaused() && ui != null && ui.settings != null && ui.settings.isShown()){
+            if(current != null && !current.isPlaying()){
+                current = null;
+                fade = 0f;
+            }
+            if(current == null && !state.rules.disableMusic
+                && Core.settings.getBool("alwaysmusic", false)
+                && Core.settings.getInt("musicvol", 100) > 0){
+                playRandom();
+            }
+            if(current != null && current.isPlaying()){
+                current.setVolume(volumeMultiplier());
+            }
+            return;
+        }
+        boolean paused = state.isGame() && Core.scene.hasDialog();
+"""
+if text.count(paused_music_anchor) != 1:
+    raise SystemExit("Pinned SoundControl.update() anchor changed; review paused music preview")
+text = text.replace(paused_music_anchor, paused_music_replacement, 1)
+
 reload_anchor = """        Events.fire(new MusicRegisterEvent());
     }
 
