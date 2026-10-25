@@ -163,6 +163,15 @@ async def main():
                         # from __mindustryUiText()'s generic label collection.
                         # Inspect the actual native modal rather than assuming
                         # the schematic name is a generic body label.
+                        # Stock import closes the "Import..." BaseDialog
+                        # with an Arc transition, then opens SchematicInfoDialog.
+                        # Persistent file creation happens before that animation;
+                        # don't race the rendered UI against the storage write.
+                        await page.wait_for_function("""()=>{
+                            const m=__mindustryUiControls().modal||{};
+                            return m.type?.endsWith('SchematicInfoDialog')
+                              && (m.title||'').includes('QA схема');
+                        }""",timeout=12000)
                         dialog=(await controls()).get('modal') or {}
                         assert dialog.get('type','').endswith('SchematicInfoDialog'),dialog
                         assert 'QA схема' in dialog.get('title',''),dialog
