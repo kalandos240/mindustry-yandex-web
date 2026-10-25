@@ -152,7 +152,7 @@ async def main():
                                 fileReader:window.__qaMsImport,
                                 fileInputCount:document.querySelectorAll('input[type=file]').length,
                                 console:window.__qaNativeConsole||[],
-                                stockStage:document.documentElement.getAttribute('data-mindustry-stock-schematic-stage'),
+                                stockStage:__mindustryQaSetting('qa-schematic-import-stage'),
                                 nativePhase:document.documentElement.getAttribute('data-mindustry-browser-native-import-phase'),
                                 nativeCount:document.documentElement.getAttribute('data-mindustry-browser-native-import-count'),
                                 pickerState:document.documentElement.getAttribute('data-mindustry-browser-file-state'),
