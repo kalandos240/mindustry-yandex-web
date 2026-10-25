@@ -57,17 +57,15 @@ async def main(device):
                     )
                     try:
                         await page.goto(url, timeout=180000)
+                        # Unlock audio *before* the smoke fixture constructs its
+                        # temporary mining drill. If we wait for the ore fixture
+                        # to finish first, its short-lived drill may fill up and
+                        # become silent during a later 45-second polling window.
                         await page.wait_for_function(
-                            """() => {
-                              const root=document.documentElement;
-                              return root.getAttribute('data-mindustry-web')==='ready'
-                                && root.getAttribute('data-mindustry-building-mechanics')==='passed'
-                                && root.getAttribute('data-mindustry-building-mechanics-drill')==='ore-produced';
-                            }""",
+                            """() => document.documentElement.getAttribute('data-mindustry-web')==='ready'
+                                && document.documentElement.getAttribute('data-mindustry-campaign-state')==='playing'""",
                             timeout=180000,
                         )
-                        # A genuine mouse/touch input must unlock the SFX AudioContext.
-                        # Never bypass the browser's trusted gesture restrictions.
                         if mobile:
                             await page.touchscreen.tap(180, 440)
                         else:
@@ -83,6 +81,11 @@ async def main(device):
                               && v.gain?.gain?.value>0.001
                             )""",
                             timeout=45000,
+                        )
+                        await page.wait_for_function(
+                            """() => document.documentElement.getAttribute('data-mindustry-building-mechanics')==='passed'
+                               && document.documentElement.getAttribute('data-mindustry-building-mechanics-drill')==='ore-produced'""",
+                            timeout=180000,
                         )
                         snapshot = await page.evaluate(
                             """() => ({
