@@ -67,9 +67,18 @@ class Native:
     async def name(self,name):return await self.click(lambda c:c.get('name')==name,name)
     async def button(self,label):return await self.click(lambda c:c['kind']=='button' and clean(c['label'])==label,label)
     async def text(self,c,text):
-        await self.pointer(c);await self.page.keyboard.press('Control+A')
-        await self.page.keyboard.press('Backspace')
-        if text:await self.page.keyboard.type(str(text),delay=2)
+        await self.pointer(c)
+        native=self.page.locator('#mindustry-text-input')
+        if self.mobile and await native.count():
+            # On mobile the original Arc TextField invokes the browser-native
+            # text editor. Typing alone edits only the transient DOM field:
+            # OK is the trusted user action that commits to Rules.ruleSearch.
+            await native.locator('input, textarea').first.fill(str(text))
+            await native.get_by_role('button',name='OK',exact=True).click()
+        else:
+            await self.page.keyboard.press('Control+A')
+            await self.page.keyboard.press('Backspace')
+            if text:await self.page.keyboard.type(str(text),delay=2)
         await self.page.wait_for_timeout(120)
     async def state(self):return await self.page.evaluate('__mindustryQaSnapshot()')
     async def dialog(self,path):return await self.page.evaluate('p=>__mindustryUiDialogRead(p)',path)
@@ -253,10 +262,14 @@ async def config_family(ui,family):
     for choice in choices:
         if await ui.attr('native-config-open')!='true':await tile();await ui.wait(lambda:config_open(ui),'reopen '+family)
         find=lambda c,q=choice:c['kind']=='button' and any(v['type']==q['type'] and v['name']==q['name'] for v in c.get('content',[]))
+        prior=await ui.attr('native-config-value')
         await ui.click(find,family+' '+choice['name'])
+        # UnitFactory's stock selection button toggles an already-active plan
+        # off (-1), unlike item/liquid selectors. Exercise both directions.
+        unit_index=str(plans.index(choice['name'])) if kind=='unit' else None
         # Compiled Java String.valueOf(Item/Liquid) is its localizedName
         # ("Copper"/"Water"), not the registry ID ("copper"/"water").
-        expected=str(plans.index(choice['name'])) if kind=='unit' else choice.get('localizedName',choice['name'])
+        expected=('-1' if prior==unit_index else unit_index) if kind=='unit' else choice.get('localizedName',choice['name'])
         try:
             await ui.wait(lambda:config_value(ui,expected),family+' selected '+choice['name'])
         except AssertionError:
@@ -270,6 +283,12 @@ async def config_family(ui,family):
             raise
         ui.record('building-config',family+'/'+choice['name'],'actual Building.config='+expected)
         if kind=='unit':
+            if expected=='-1':
+                await tile();await ui.wait(lambda:config_open(ui),'reopen toggled-off '+family)
+                await ui.click(find,'re-enable '+family+' '+choice['name'])
+                await ui.wait(lambda:config_value(ui,unit_index),'native plan re-enabled '+choice['name'])
+                ui.record('factory-plan',family+'/'+choice['name'],'stock selected plan off then on')
+                expected=unit_index
             if await ui.attr('native-config-open')!='true':await tile();await ui.wait(lambda:config_open(ui),'factory command table')
             index=plans.index(choice['name'])
             commands=[]
