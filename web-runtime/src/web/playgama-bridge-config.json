@@ -8,6 +8,9 @@
       "placements": [
         {
           "id": "menu_return"
+        },
+        {
+          "id": "pause"
         }
       ],
       "preloadOnStart": true
