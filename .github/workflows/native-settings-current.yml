@@ -1,0 +1,61 @@
+name: Native Settings desktop mobile exact autosave build
+on:
+  push:
+    branches: [qa/settings-on-autosave-build-20261025]
+    paths: [.github/workflows/native-settings-current.yml, scripts/verify-settings-functional.py]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  native-settings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [desktop, mobile]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 40168928694
+          name: mindustry-yandex-manual-playtest-experimental
+          github-token: ${{ github.token }}
+          path: work/rebuilt
+      - name: Verify exact autosave fix and Yandex package size
+        run: |
+          python3 - <<'PY'
+          import zipfile,hashlib
+          from pathlib import Path,PurePosixPath
+          base=Path('work/rebuilt')
+          assert '0ae8e97338caabaece4418792fbebe10266a82f4' in (base/'EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt').read_text()
+          archive=base/'mindustry-yandex-release.zip'
+          assert hashlib.sha256(archive.read_bytes()).hexdigest()==(base/'mindustry-yandex-release.zip.sha256').read_text().split()[0]
+          with zipfile.ZipFile(archive) as z:
+              assert z.testzip() is None
+              assert sum(i.file_size for i in z.infolist())<=100_000_000
+              assert len(z.namelist())==len(set(z.namelist()))
+              assert all(not PurePosixPath(p).is_absolute() and '..' not in PurePosixPath(p).parts for p in z.namelist())
+              z.extractall('web-runtime/build/web')
+          PY
+      - run: python3 -m pip install playwright
+      - name: Install read-only native game/UI settings probe
+        run: |
+          python3 scripts/prepare-qa-probe.py
+          python3 scripts/prepare-ui-control-probe.py
+      - name: Verify every exposed stock preference is functional and does not exit
+        env:
+          DEVICE: ${{ matrix.device }}
+          PYTHONUNBUFFERED: '1'
+        run: |
+          if [ "$DEVICE" = mobile ]; then
+            python3 scripts/verify-settings-functional.py --browser chromium --mobile
+          else
+            python3 scripts/verify-settings-functional.py --browser chromium
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-settings-${{ matrix.device }}-full
+          path: work/settings-functional/
+          if-no-files-found: ignore
