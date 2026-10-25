@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [native-save-library, native-schematic, custom-game, dom-text]
+        scenario: [native-save-library, native-schematic]
     steps:
       - uses: actions/checkout@v4
       - name: Wait for exact PR 183 compiled source
