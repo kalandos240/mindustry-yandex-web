@@ -293,8 +293,23 @@ async def config_family(ui,family):
                 # while already open toggles that dialog CLOSED, which was a
                 # false test timeout. Reopen only if the UI actually closed.
                 if await ui.attr('native-config-open')!='true':
-                    await tile()
-                    await ui.wait(lambda:config_open(ui),'reopen toggled-off '+family)
+                    # Touch-close animations can leave the previous config
+                    # fragment consuming an immediate canvas tap. Repeat only
+                    # genuine canvas clicks until the stock table opens.
+                    for retry in range(5):
+                        await ui.page.wait_for_timeout(550)
+                        if await ui.attr('native-config-open')=='true':break
+                        await tile()
+                        await ui.page.wait_for_timeout(450)
+                        if await ui.attr('native-config-open')=='true':break
+                    else:
+                        print('FACTORY_REOPEN_DIAGNOSTIC '+json.dumps({
+                            'family':family,'choice':choice,'current':await ui.attr('native-config-value'),
+                            'configOpen':await ui.attr('native-config-open'),
+                            'selection':await ui.attr('native-config-name'),
+                            'controls':(await ui.inventory())['controls'][-24:]
+                        },ensure_ascii=False),flush=True)
+                        raise AssertionError('Native '+family+' dialog cannot reopen after toggling plan off')
                 await ui.click(find,'re-enable '+family+' '+choice['name'])
                 await ui.wait(lambda:config_value(ui,unit_index),'native plan re-enabled '+choice['name'])
                 ui.record('factory-plan',family+'/'+choice['name'],'stock selected plan off then on')
