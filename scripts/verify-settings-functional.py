@@ -63,7 +63,7 @@ async def main(args):
                         raise AssertionError('Game error at '+label+': '+str(await page.evaluate('window.__mindustryErrorReport')))
                     if await fn():return
                     await page.wait_for_timeout(80)
-                if 'music' in label or 'audio' in label:
+                if 'music' in label or 'audio' in label or 'song' in label:
                     try:
                         audio=await page.evaluate("""()=>{
                             const a=window.__mindustryAudio||{},root=document.documentElement;
@@ -303,7 +303,11 @@ async def main(args):
                     async def music_active():
                         return await page.evaluate("""()=>{
                             const a=window.__mindustryAudio;
-                            return a?.unlocked && Array.from(a.music.values()).some(e=>!e.element.paused && e.element.volume>.01 && e.element.currentTime>0);
+                            // Streamed HTMLAudioElement does not require
+                            // unlocking the independent WebAudio SFX context.
+                            // Firefox can play music even when a headless SFX
+                            // AudioContext stays suspended without hardware.
+                            return !!a && Array.from(a.music.values()).some(e=>!e.element.paused && e.element.volume>.01 && e.element.currentTime>0);
                         }""")
                     await wait(music_active,'live gameplay song has nonzero HTMLAudio gain',timeout=25)
                     later=await state()
