@@ -64,7 +64,7 @@ def schema(source):
     # Liquid instances in stock Mindustry can be anonymous subclasses
     # (e.g. mindustry.content.Liquids$1 for water). Ensure our probe can test
     # their actual Liquid superclass instead of mislabeling them as unknown.
-    if not re.search(r'function\\s+mt_Liquid\\s*\\(', source):
+    if not re.search(r'function\s+mt_Liquid\s*\(', source):
         raise ValueError('Missing compiled Mindustry Liquid superclass: mt_Liquid')
     # These routines only read actor transforms / viewport dimensions and mutate
     # the newly allocated Vec2. A changed asynchronous implementation must be
