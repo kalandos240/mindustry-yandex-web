@@ -1,0 +1,28 @@
+name: Renderer settings QA probe
+on:
+  push:
+    branches: [qa/renderer-static-settings-20261025]
+    paths:
+      - scripts/browser-qa-probe.js
+      - scripts/prepare-qa-probe.py
+      - scripts/test-qa-renderer-statics.js
+      - .github/workflows/renderer-settings-qa.yml
+  pull_request:
+    paths:
+      - scripts/browser-qa-probe.js
+      - scripts/prepare-qa-probe.py
+      - scripts/test-qa-renderer-statics.js
+      - .github/workflows/renderer-settings-qa.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate renderer static opacity readback
+        run: |
+          node --check scripts/browser-qa-probe.js
+          node scripts/test-qa-renderer-statics.js
+          python3 -m py_compile scripts/prepare-qa-probe.py
