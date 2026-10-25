@@ -64,6 +64,7 @@ async def main(args):
                             return {key,related,hitTag:hit?.tagName,hitId:hit?.id,
                                 viewport:[innerWidth,innerHeight],canvas:document.querySelector('#mindustry-canvas')?.getBoundingClientRect().toJSON(),
                                 game:__mindustryQaSnapshot(),setting:__mindustryQaSetting(key),
+                                stageHit:target&&typeof __mindustryUiHitAt==='function'?__mindustryUiHitAt(target.stageX,target.stageY):null,
                                 possibleOverlaps:all.controls.filter(c=>c.onScreen&&c.enabled&&target&&
                                     Math.abs(c.x-target.x)<25&&Math.abs(c.y-target.y)<25).slice(0,12)};
                         }""",key)
