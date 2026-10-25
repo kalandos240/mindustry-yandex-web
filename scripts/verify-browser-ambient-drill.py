@@ -28,7 +28,22 @@ globalThis.__mindustryAmbientFocus = function(){
     const seq=mix?.$webAmbientSources;
     const raw=seq?.$items6?.data||[];
     const registered=Array.from(raw).slice(0,seq?.$size4||0);
-    const source=registered.find(s=>s?.$block2?.$ambientSound===mg_Sounds_loopDrill);
+    // Select the true production-fixture drill, not the prebuilt disabled
+    // drill blocks at the core (which correctly emit no sound).
+    const drills=registered.filter(s=>s?.$block2?.$ambientSound===mg_Sounds_loopDrill);
+    const source=drills.find(s=>s?.$enabled0 && s?.$dominantItem) || drills[0];
+    // The temporary mining fixture has no output conveyor and otherwise
+    // fills its 10-item inventory, correctly silencing stock DrillBuild.
+    // Consume mined ore via the ORIGINAL ItemModule.remove() as a simulated
+    // cargo consumer, keeping this test-only drill actually producing.
+    // No production runtime scripts or built-in building implementation
+    // are modified; entire QA probe is restored byte-for-byte after test.
+    const items=source?.$items5;
+    const capacity=source?.$this$016?.$itemCapacity0;
+    if(source?.$enabled0 && source?.$dominantItem && items?.$total0>0
+       && capacity>0 && items.$total0>=Math.max(1,capacity/2)){
+        mwm_ItemModule_remove(items,source.$dominantItem,items.$total0);
+    }
     const pos=a_Core_camera?.$position1;
     if(source && pos){
         amg_Vec2_set(pos,source.$x4,source.$y4);
@@ -39,7 +54,7 @@ globalThis.__mindustryAmbientFocus = function(){
         name:s?.$block2?.$name?.$nativeString||null,
         drill:s?.$block2?.$ambientSound===mg_Sounds_loopDrill,
         x:s?.$x4,y:s?.$y4,enabled:s?.$enabled0,
-        warmup:s?.$warmup,efficiency:s?.$efficiency,
+        warmup:s?.$warmup,efficiency:s?.$efficiency0,
         active:(typeof s?.$shouldAmbientSound==='function')?!!s.$shouldAmbientSound():null,
         ambientVolume:(typeof s?.$ambientVolume==='function')?s.$ambientVolume():null,
         configuredVolume:s?.$block2?.$ambientSoundVolume
@@ -52,6 +67,10 @@ globalThis.__mindustryAmbientFocus = function(){
     return {registered:registered.length,drill:!!source,
         tile:source?[source.$x4,source.$y4]:null,
         camera:pos?[pos.$x3,pos.$y3]:null,
+        selected:{enabled:source?.$enabled0,capacity,
+          items:items?.$total0,efficiency:source?.$efficiency0,
+          consuming:source?.$shouldAmbientSound?.(),
+          ambientVolume:source?.$ambientVolume?.()},
         sources,mixer:{size:activeMixer?.$size10,gains:gain,
           settingsAmbient:a_Core_settings?.$values?.$size10}};
 
