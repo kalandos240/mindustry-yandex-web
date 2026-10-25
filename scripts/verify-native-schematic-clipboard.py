@@ -10,8 +10,13 @@ ROOT=Path(__file__).resolve().parents[1];STAGE=ROOT/'web-runtime/build/web';OUT=
 def schematic():
     def utf(value):
         b=value.encode('utf-8');return struct.pack('>H',len(b))+b
-    # Pinned MSCH v1: one 1x1 conveyor, name tag, null config and rotation zero.
-    body=struct.pack('>hhB',1,1,1)+utf('name')+utf('QA схема')
+    # Pinned MSCH v1: 1x1 conveyor with a real nonempty contentMap
+    # (vanilla item copper and block conveyor), null tile config, zero rotation.
+    # Its clipboard import exercises non-reflective JsonValue map restoration.
+    # The subsequent native stock export re-writes this as contentMap "{}",
+    # exercising the formerly crashing empty-map file import as well.
+    content_map='{"0":{"copper":0},"1":{"conveyor":0}}'
+    body=struct.pack('>hhB',1,1,2)+utf('name')+utf('QA схема')+utf('contentMap')+utf(content_map)
     body+=bytes([1])+utf('conveyor')+struct.pack('>iBiBB',1,0,0,0,0)
     return b'msch\x01'+zlib.compress(body)
 
@@ -36,6 +41,21 @@ async def main():
             try:
                 for mobile in [False,True]:
                     mode='mobile' if mobile else 'desktop';context=await browser.new_context(viewport={'width':390 if mobile else 1280,'height':844 if mobile else 800},is_mobile=mobile,has_touch=mobile)
+                    await context.add_init_script("""(() => {
+                        window.__qaMsImport = {changes:[],reads:[],loads:[],errors:[]};
+                        document.addEventListener('change', event => {
+                            if(event.target instanceof HTMLInputElement && event.target.type === 'file'){
+                                __qaMsImport.changes.push(Array.from(event.target.files||[],f=>({name:f.name,size:f.size})));
+                            }
+                        },true);
+                        const original = FileReader.prototype.readAsArrayBuffer;
+                        FileReader.prototype.readAsArrayBuffer = function(file){
+                            __qaMsImport.reads.push({name:file.name,size:file.size});
+                            this.addEventListener('load',()=>__qaMsImport.loads.push({name:file.name,bytes:this.result?.byteLength||0}),{once:true});
+                            this.addEventListener('error',()=>__qaMsImport.errors.push({name:file.name,error:String(this.error)}),{once:true});
+                            return original.call(this,file);
+                        };
+                    })()""")
                     page=await context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
                     async def controls():return await page.evaluate('()=>__mindustryUiControls({includeOffscreen:true,includeDisabled:true})')
                     async def choose(predicate,label):
@@ -94,19 +114,51 @@ async def main():
                         # File import also round-trips through FileReader, native
                         # Schematics parser, persistent library and Info dialog.
                         await close_all()
-                        if not mobile:
-                            value=await controls()
-                            if not any(x['name']=='web-main-schematics' and x['onScreen'] for x in value['controls']):await choose(lambda x:x['name']=='web-main-database-group','database group')
+                        # Original BaseDialog.hide() animates its modal overlay.
+                        # A click issued while it is still fading can be consumed
+                        # by that old dialog. The desktop menu also has a
+                        # Database/Schematics submenu, not a direct home button.
+                        await page.wait_for_timeout(850)
+                        async def schematics_entry_visible():
+                            data=await controls()
+                            return any(c.get('name')=='web-main-schematics' and c['onScreen'] for c in data['controls'])
+                        for retry in range(4):
+                            if await schematics_entry_visible():break
+                            if not mobile:
+                                await choose(lambda x:x['name']=='web-main-database-group','open Database submenu for Schematics')
+                            await page.wait_for_timeout(350)
+                        assert await schematics_entry_visible(),'Stock Schematics submenu never appeared'
                         await choose(lambda x:x['name']=='web-main-schematics','schematics')
+                        await page.wait_for_function("()=>__mindustryUiControls().modal?.title === 'Schematics'")
                         await button('Import')
                         async with page.expect_file_chooser() as item:
                             await button('File')
                         chooser=await item.value;await chooser.set_files({'name':'roundtrip.msch','mimeType':'application/octet-stream','buffer':downloaded})
-                        await page.wait_for_timeout(1200)
-                        assert 'QA схема' in (await page.evaluate('__mindustryUiText()'))['text']
+                        # A real FileReader callback runs asynchronously; allow it
+                        # to finish before checking disk. If this is the same-name
+                        # duplicate, stock Schematics.findFile() must generate a
+                        # distinct numbered .msch file rather than clobbering it.
+                        async def file_import_done():
+                            paths=await page.evaluate("()=>__mindustryStorage.paths()")
+                            return len([p for p in paths if p.startswith('schematics/') and p.endswith('.msch')])>=2
+                        for attempt in range(70):
+                            if await file_import_done():break
+                            await page.wait_for_timeout(150)
                         paths=await page.evaluate("()=>__mindustryStorage.paths()")
+                        if not await file_import_done():
+                            diagnostic=await page.evaluate("""()=>({
+                                fileReader:window.__qaMsImport,
+                                fileInputCount:document.querySelectorAll('input[type=file]').length,
+                                pickerState:document.documentElement.getAttribute('data-mindustry-browser-file-state'),
+                                pickerError:document.documentElement.getAttribute('data-mindustry-browser-file-error'),
+                                gameError:document.documentElement.getAttribute('data-mindustry-web-error'),
+                                paths:__mindustryStorage.paths(),
+                                text:__mindustryUiText().text.slice(0,700)
+                            })""")
+                            print('SCHEMATIC_FILE_IMPORT_DIAGNOSTIC '+json.dumps(diagnostic,ensure_ascii=False),flush=True)
+                            raise AssertionError('Native MSCH file-import callback failed to persist a second numbered schematic')
+                        assert 'QA схема' in (await page.evaluate('__mindustryUiText()'))['text']
                         assert not any(p.startswith('tmp/import-') for p in paths),paths
-                        assert len([p for p in paths if p.startswith('schematics/') and p.endswith('.msch')])>=2
                         assert not errors,errors
                         await page.screenshot(path=str(OUT/(mode+'.png')))
                         print(mode+': actual MSCH clipboard import, persistent library, native copy/fallback, Blob export and FileReader round-trip PASS',flush=True)
