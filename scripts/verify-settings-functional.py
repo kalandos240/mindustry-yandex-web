@@ -53,7 +53,10 @@ async def main(args):
                 # indefinitely suspend a WebAudio context with a missing cubeb
                 # backend even after an allowed trusted pointer event.
                 # The null sink is CI-only; real users retain their OS backend.
-                'media.cubeb.backend':'null'}
+                'media.cubeb.backend':'null',
+                # The Xvfb tab is not a foreground desktop window; Firefox
+                # otherwise defers audio indefinitely despite autoplay prefs.
+                'media.block-autoplay-until-in-foreground':False}
             browser=await getattr(pw,args.browser).launch(**options)
             context=await browser.new_context(viewport={'width':390 if args.mobile else 1280,'height':844 if args.mobile else 800},
                 has_touch=args.mobile,**({'is_mobile':args.mobile} if args.browser=='chromium' else {}))
