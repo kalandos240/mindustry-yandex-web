@@ -1,3 +1,4 @@
+# Include final late SDK acknowledgement rejection isolation.
 # Final candidate build; acceptance downloads the exact frozen archive.
 name: Build comprehensive QA candidate
 'on':

@@ -806,7 +806,7 @@
                     state.cloudLastFlushedPayload = '';
                     void syncCloudCheckpoint('late-before-reset-upload', true);
                 }
-            }, () => {});
+            }, () => {}).catch(error => console.info('Yandex late cloud acknowledgement ignored:', error));
             await withTimeout(upload, 3500, 'Yandex cloud save');
             state.cloudLastPayload = built.canonical;
             state.cloudLastFlushedPayload = flush ? built.canonical : '';
