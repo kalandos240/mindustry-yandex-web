@@ -144,7 +144,10 @@ async def rules(ui):
     assert 'Survival' in text and 'Sandbox' in text,text
     await ui.button('OK');await ui.wait(lambda:ui.modal('MapPlayDialog'),'close mode help')
     ui.record('custom-mode','help/OK','actual modes help text and return to map')
-    await ui.button('Customize');await ui.wait(lambda:ui.modal('CustomRulesDialog'),'Customize rules')
+    # Stock v159.7's actual button reads "Customize Rules"; the old
+    # exact label "Customize" incorrectly failed despite the action existing.
+    await ui.click(lambda c:c['kind']=='button' and clean(c['label']).lower().startswith('customize'),'Customize Rules')
+    await ui.wait(lambda:ui.modal('CustomRulesDialog'),'Customize rules')
     search=await ui.locate(lambda c:c['kind']=='textfield' and c['onScreen'],'Rules search')
     search_id=search['id']
     spec=json.loads((ROOT/'scripts/custom-rules-action-spec.json').read_text())
@@ -245,7 +248,17 @@ async def config_family(ui,family):
         find=lambda c,q=choice:c['kind']=='button' and any(v['type']==q['type'] and v['name']==q['name'] for v in c.get('content',[]))
         await ui.click(find,family+' '+choice['name'])
         expected=str(plans.index(choice['name'])) if kind=='unit' else choice['name']
-        await ui.wait(lambda:config_value(ui,expected),family+' selected '+choice['name'])
+        try:
+            await ui.wait(lambda:config_value(ui,expected),family+' selected '+choice['name'])
+        except AssertionError:
+            print('CONFIG_CHOICE_DIAGNOSTIC '+json.dumps({
+                'family':family,'choice':choice,'expected':expected,
+                'actual':await ui.attr('native-config-value'),
+                'actualType':await ui.attr('native-config-type'),
+                'configOpen':await ui.attr('native-config-open'),
+                'game':await ui.state()
+            },ensure_ascii=False),flush=True)
+            raise
         ui.record('building-config',family+'/'+choice['name'],'actual Building.config='+expected)
         if kind=='unit':
             if await ui.attr('native-config-open')!='true':await tile();await ui.wait(lambda:config_open(ui),'factory command table')
