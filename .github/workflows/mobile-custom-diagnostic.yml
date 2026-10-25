@@ -1,0 +1,76 @@
+name: Diagnose mobile custom launch and native reset
+on:
+  push:
+    branches: [qa/mobile-custom-map-diagnostic-20261025]
+    paths:
+      - .github/workflows/mobile-custom-diagnostic.yml
+      - scripts/browser-custom-game-stress.js
+      - scripts/verify-native-data-reset.py
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 40156042223
+          name: qa-compiled-candidate
+          github-token: ${{ github.token }}
+          path: work/frozen-candidate
+      - name: Validate and stage exact compiled original candidate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path,PurePosixPath
+          import json,hashlib,zipfile
+          base=Path('work/frozen-candidate')
+          meta=json.loads((base/'source-manifest.json').read_text())
+          assert meta['source']=='597dd1ea385696295d3259e0d16efb280c431b0f'
+          src=base/'Mindustry-Yandex-qa-candidate.zip'
+          assert hashlib.sha256(src.read_bytes()).hexdigest()==meta['archive_sha256']
+          with zipfile.ZipFile(src) as z:
+              assert z.testzip() is None
+              for name in z.namelist():
+                  assert not PurePosixPath(name).is_absolute() and '..' not in PurePosixPath(name).parts
+              z.extractall('web-runtime/build/web')
+          print('Exact frozen diagnostic candidate:',meta['archive_sha256'],flush=True)
+          PY
+      - run: python3 -m pip install playwright websocket-client
+      - name: Diagnose actual mobile custom Archipelago launch
+        run: |
+          mkdir -p work/custom-diagnostic
+          python3 - <<'PY'
+          from pathlib import Path
+          raw=Path('scripts/browser-custom-game-stress.js').read_text()
+          raw=raw.replace("if(get('web')==='failed')throw Error(get('web-error'));",
+              "if(get('web')==='error')throw Error('Game frame error '+JSON.stringify(globalThis.__mindustryErrorReport));")
+          Path('work/custom-diagnostic/mobile.js').write_text(raw)
+          PY
+          python3 -m http.server 8134 --bind 127.0.0.1 --directory web-runtime/build/web >/tmp/qa-mobile-custom-http.log 2>&1 &
+          srv=$!
+          trap 'kill "$srv" 2>/dev/null || true' EXIT
+          for i in {1..40}; do curl -fsS http://127.0.0.1:8134/index.html >/dev/null && break; sleep .25; done
+          python3 scripts/chrome-wait-dom.py --emulate-mobile --cdp-input-bridge \
+            --url 'http://127.0.0.1:8134/index.html?lang=en&mindustryCustomSmoke=1' \
+            --profile /tmp/custom-diagnostic-mobile --port 9675 --timeout 135 \
+            --require 'data-mindustry-web="ready"' \
+            --require 'data-mindustry-vanilla-dialogs="ready"' \
+            --after-ready-eval "$(cat work/custom-diagnostic/mobile.js)" \
+            --after-ready-require 'data-mindustry-custom-game-stress="passed"' \
+            --screenshot work/custom-diagnostic/mobile.png \
+            > work/custom-diagnostic/mobile.html
+      - name: Diagnose native reset confirm with real mouse input
+        if: always()
+        run: |
+          python3 scripts/verify-native-data-reset.py --target 'Clear Campaign Saves'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-custom-and-data-reset-evidence
+          path: |
+            work/custom-diagnostic/
+            work/native-data-reset/
+          if-no-files-found: ignore
