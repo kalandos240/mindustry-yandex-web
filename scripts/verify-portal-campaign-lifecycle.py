@@ -23,6 +23,29 @@ CASES={
     'mobile-default':dict(mobile=True,gl1=False,high=False,planet='erekir'),
 }
 
+# A wide desktop iframe is deliberately letterboxed to a 2:1 active field.
+# Check the real designated surface and backing buffer, not CDP-only markers.
+CANVAS_FITS_SURFACE='''()=>{
+    const root=document.documentElement,c=document.getElementById('mindustry-canvas'),s=document.getElementById('mindustry-game-surface');
+    if(!c||!s)return false;
+    const a=c.getBoundingClientRect(),b=s.getBoundingClientRect(),ratio=Number(c.__mindustryPixelRatio);
+    const near=(x,y)=>Math.abs(x-y)<=1;
+    const fine=matchMedia('(pointer: fine)').matches;
+    const expectedWidth=fine?Math.min(innerWidth,2*innerHeight):innerWidth;
+    const expectedHeight=fine?Math.min(innerHeight,2*innerWidth):innerHeight;
+    return near(b.width,expectedWidth)&&near(b.height,expectedHeight)
+        &&near(b.left,(innerWidth-b.width)/2)&&near(b.top,(innerHeight-b.height)/2)
+        &&a.left>=-1&&a.top>=-1&&a.right<=innerWidth+1&&a.bottom<=innerHeight+1
+        &&near(a.left,b.left)&&near(a.top,b.top)&&near(a.width,b.width)&&near(a.height,b.height)
+        &&c.clientWidth===s.clientWidth&&c.clientHeight===s.clientHeight
+        &&Number.isFinite(ratio)&&ratio>0
+        &&c.width===Math.max(1,Math.floor(s.clientWidth*ratio))&&c.height===Math.max(1,Math.floor(s.clientHeight*ratio))
+        &&root.getAttribute('data-mindustry-resize-last')===s.clientWidth+'x'+s.clientHeight
+        &&root.getAttribute('data-mindustry-resize-buffer')===c.width+'x'+c.height
+        &&root.getAttribute('data-mindustry-container-match')==='true'
+        &&document.elementFromPoint(a.left+Math.min(20,a.width/4),a.top+Math.min(20,a.height/4))===c;
+}'''
+
 class Handler(SimpleHTTPRequestHandler):
     def log_message(self,format,*args):
         if len(args)>1 and str(args[1]) in {'200','304'}:return
@@ -119,13 +142,16 @@ async def main():
                     await game.wait_for_function("document.documentElement.getAttribute('data-mindustry-web')==='ready'",timeout=180000)
                     await game.wait_for_function('typeof __mindustryQaSnapshot==="function"&&__mindustryQaSnapshot().ready',timeout=30000)
                     assert await game.get_attribute('html','data-yandex-sdk')=='ready'
+                    assert await game.get_attribute('html','data-yandex-device-type')==('mobile' if case['mobile'] else 'desktop')
+                    assert await game.get_attribute('html','data-yandex-device-source')=='yandex-sdk'
+                    assert await game.get_attribute('html','data-mindustry-input-mode')==('mobile' if case['mobile'] else 'desktop')
                     result=await game.evaluate((ROOT/'scripts/verify-portal-campaign-go.js').read_text())
                     await asyncio.gather(*background);await advancing('fresh nested Go')
                     for width,height in ([(390,371),(320,320),(390,844)] if case['mobile'] else [(780,437),(1280,720),(2400,610)]):
                         await page.evaluate('(size)=>window.__portalSize(...size)',[width,height])
                         await game.wait_for_function('size=>innerWidth===size[0]&&innerHeight===size[1]',arg=[width,height],timeout=10000)
                         await advancing('portal resize '+str((width,height)))
-                        assert await game.get_attribute('html','data-mindustry-canvas-viewport-match')=='true'
+                        await game.wait_for_function(CANVAS_FITS_SURFACE,timeout=15000)
                     await page.keyboard.down('d')
                     await game.wait_for_function('__mindustryQaKeyDown("d")',timeout=10000)
                     await command('pause');await freeze('SDK visibility pause')
@@ -151,7 +177,7 @@ async def main():
                     print(name+': nested cross-origin native Go, combined graphics, real ticks, resize, SDK pause and three ad callback orders PASS',flush=True)
                 except Exception:
                     if game:
-                        detail=await game.evaluate('()=>({attrs:Object.fromEntries(Array.from(document.documentElement.attributes).filter(a=>/error|failure|phase|platform|yandex/.test(a.name)).map(a=>[a.name,a.value])),report:globalThis.__mindustryErrorReport,probe:globalThis.__mindustryQaSnapshot?.()})')
+                        detail=await game.evaluate('()=>({attrs:Object.fromEntries(Array.from(document.documentElement.attributes).filter(a=>/error|failure|phase|platform|yandex|device|viewport|resize|container/.test(a.name)).map(a=>[a.name,a.value])),report:globalThis.__mindustryErrorReport,probe:globalThis.__mindustryQaSnapshot?.()})')
                         print('PORTAL_FAILURE '+json.dumps({'case':name,'detail':detail,'pageErrors':errors,'console':console}),flush=True)
                     raise
                 finally:

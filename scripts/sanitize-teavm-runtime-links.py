@@ -3,6 +3,7 @@ from pathlib import Path
 import re
 import runpy
 import sys
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 JS = ROOT / "web-runtime" / "build" / "web" / "mindustry.js"
@@ -39,6 +40,17 @@ if remaining:
     raise SystemExit(1)
 
 print("Removed TeaVM documentation URL; compiled mindustry.js now contains 0 http(s)/ws(s) URL literals")
+
+# Keep the existing raw budget while adding supported browser UI behavior. This
+# does not remove functionality or rename any Java function/field used by tests:
+# Acorn tokenization changes only the compiler's collision-free local $ptr name.
+parser = ROOT / 'work' / 'qa-js-parser' / 'node_modules' / 'acorn'
+if not (parser / 'dist' / 'acorn.js').is_file():
+    subprocess.run(['npm', 'install', '--prefix', str(parser.parents[1]), '--no-save',
+                    '--no-package-lock', '--ignore-scripts', '--no-audit', '--no-fund',
+                    'acorn@8.14.1'], check=True, timeout=180)
+subprocess.run(['node', str(ROOT / 'scripts' / 'test-teavm-state-vars.cjs'), str(parser)], check=True)
+subprocess.run(['node', str(ROOT / 'scripts' / 'compact-teavm-state-vars.cjs'), str(JS), str(parser)], check=True)
 
 # Staging is complete at this point. Enforce deterministic code/package budgets
 # here so every existing CI path that sanitizes TeaVM output also guards size.

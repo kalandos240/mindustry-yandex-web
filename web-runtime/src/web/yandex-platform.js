@@ -115,38 +115,43 @@
         state.initPromise = (async () => {
             mark('data-yandex-sdk', 'loading');
             try{
-                await installSdkScript();
+                await withTimeout(installSdkScript(), 5000, 'Yandex SDK loader');
                 if(!globalThis.YaGames || typeof globalThis.YaGames.init !== 'function'){
                     throw new Error('Yandex Games SDK did not expose YaGames.init');
                 }
 
-                const ysdk = await globalThis.YaGames.init();
+                const ysdk = await withTimeout(globalThis.YaGames.init(), 5000, 'Yandex SDK init');
                 state.ysdk = ysdk;
                 state.available = true;
                 state.initialized = true;
                 state.locale = normalizeLocale(ysdk && ysdk.environment && ysdk.environment.i18n && ysdk.environment.i18n.lang);
 
-                let deviceInfo = null;
-                if(ysdk && typeof ysdk.deviceInfo === 'function'){
-                    try{
-                        deviceInfo = await Promise.resolve(ysdk.deviceInfo());
-                    }catch(error){
-                        console.info('Yandex deviceInfo unavailable:', error && error.message ? error.message : error);
-                    }
-                }
-                state.deviceType = normalizeDeviceType(deviceInfo);
-                state.deviceSource = state.deviceType ? 'yandex-sdk' : 'browser-fallback';
-
+                // Preserve lifecycle signals even while optional device info waits.
                 if(ysdk && typeof ysdk.on === 'function'){
                     ysdk.on('game_api_pause', onPlatformPause);
                     ysdk.on('game_api_resume', onPlatformResume);
                 }
 
+                let deviceType = '';
+                try{
+                    // SDK v2 exposes an info object; keep compatibility with callable
+                    // adapters too. Optional device lookup failure must not disable
+                    // an otherwise initialized SDK (cloud saves and lifecycle events).
+                    const device = ysdk && ysdk.deviceInfo;
+                    const deviceInfo = await withTimeout(typeof device === 'function' ? device.call(ysdk) : device,
+                        1000, 'Yandex device info');
+                    deviceType = normalizeDeviceType(deviceInfo);
+                }catch(error){
+                    console.info('Yandex deviceInfo unavailable:', error && error.message ? error.message : error);
+                }
+                state.deviceType = deviceType;
+                state.deviceSource = state.deviceType ? 'yandex-sdk' : 'browser-fallback';
+
                 mark('data-yandex-sdk', 'ready');
                 mark('data-yandex-locale', state.locale);
                 mark('data-yandex-device-type', state.deviceType || 'unknown');
                 mark('data-yandex-device-source', state.deviceSource);
-                mark('data-yandex-game-state', 'ready');
+                mark('data-yandex-game-state', state.paused ? 'paused' : 'ready');
                 installFullscreenControl();
                 return state;
             }catch(error){

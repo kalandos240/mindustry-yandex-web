@@ -54,16 +54,27 @@
     function hasClickListener(actor){
         const seq=get(actor,'element','listeners'),items=get(seq,'seq','items')?.data || [];
         const count=Math.min(get(seq,'seq','size') || 0,items.length);
-        for(let i=0;i<count;i++)if(is(items[i],ase_ClickListener))return true;
+        for(let i=0;i<count;i++)if(is(items[i],ase_ClickListener)){
+            const listener=items[i];
+            for(const key of Object.getOwnPropertyNames(ase_ClickListener.prototype)){
+                if(/^\$clicked\d*$/.test(key) && typeof listener[key]==='function' && listener[key]!==ase_ClickListener.prototype[key])return true;
+            }
+        }
         return false;
+    }
+    function hasHoverClickListener(actor){
+        const seq=get(actor,'element','listeners'),items=get(seq,'seq','items')?.data || [];
+        return Array.from(items).slice(0,get(seq,'seq','size') || 0).some(listener=>is(listener,ase_ClickListener));
     }
     function hasTouchDownListener(actor){
         const seq=get(actor,'element','listeners'),items=get(seq,'seq','items')?.data || [];
         const count=Math.min(get(seq,'seq','size') || 0,items.length);
         for(let i=0;i<count;i++){
             const listener=items[i];
-            if(is(listener,ase_InputListener) && typeof listener.$touchDown1==='function' &&
-                listener.$touchDown1!==ase_InputListener.prototype.$touchDown1)return true;
+            const base=is(listener,ase_ClickListener)?ase_ClickListener.prototype:ase_InputListener.prototype;
+            if(is(listener,ase_InputListener))for(const key of Object.getOwnPropertyNames(base)){
+                if(/^\$touchDown\d*$/.test(key) && typeof listener[key]==='function' && listener[key]!==base[key])return true;
+            }
         }
         return false;
     }
@@ -120,13 +131,30 @@
         if(/^jl_(?:Integer|Long|Float|Double|Short|Byte)$/.test(value.constructor?.name || ''))return plain(rawField(value,'value'));
         return {kind:'object',type:value.constructor?.name || 'Object'};
     }
-    globalThis.__mindustryUiDialogRead=function(path){
-        let value=activeDialog();if(!value)throw Error('No active UI dialog');
+    function readPath(value,path){
         for(const key of String(path).split('.')){
-            if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key))throw Error('Invalid UI field path');
-            value=rawField(value,key);
+            if(/^\d+$/.test(key)){
+                const array=value?.data || get(value,'seq','items')?.data;
+                const size=value?.data?array.length:get(value,'seq','size');
+                const index=Number(key);
+                if(!array || index>=size)throw Error('UI array index missing: '+key);
+                value=array[index];
+            }else{
+                if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key))throw Error('Invalid UI field path');
+                value=rawField(value,key);
+            }
         }
         return plain(value);
+    }
+    globalThis.__mindustryUiDialogRead=function(path){
+        let value=activeDialog();if(!value)throw Error('No active UI dialog');
+        return readPath(value,path);
+    };
+    globalThis.__mindustryUiConfigRead=function(path){
+        const fragment=rawField(rawField(m_Vars_control,'input'),'config');
+        const selected=rawField(fragment,'selected');
+        if(!selected || !get(rawField(fragment,'table'),'element','visible'))throw Error('No visible selected building config');
+        return readPath(selected,path);
     };
     globalThis.__mindustryUiText=function(options={}){
         const dialog=activeDialog(),root=dialog || get(a_Core_scene,'scene','root');
@@ -161,6 +189,7 @@
         if(is(actor,asu_ScrollPane))return 'scrollpane';
         if(hasClickListener(actor))return 'clickable';
         if(hasTouchDownListener(actor))return 'inputtarget';
+        if(hasHoverClickListener(actor))return 'hover';
         return null;
     }
     globalThis.__mindustryUiActor=function(wanted){
@@ -180,7 +209,13 @@
         if(!found)return null;
         const actor=found.actor,stageRect=rect(actor);
         const width=as_Scene_getWidth(scene),height=as_Scene_getHeight(scene);
-        const clipped=intersect(stageRect,{left:0,bottom:0,right:width,top:height});
+        let clipped=intersect(stageRect,{left:0,bottom:0,right:width,top:height});
+        for(let parent=get(actor,'element','parent');parent;parent=get(parent,'element','parent')){
+            if(is(parent,asu_ScrollPane)){
+                const area=get(parent,'scroll','widgetAreaBounds');
+                if(area)clipped=intersect(clipped,rect(parent,get(area,'rect','x'),get(area,'rect','y'),get(area,'rect','width'),get(area,'rect','height')));
+            }
+        }
         const bounds=document.getElementById('mindustry-canvas')?.getBoundingClientRect();
         return {name:wanted,type:type(actor),text:labels(actor,0,1600),
             visible:!!get(actor,'element','visible'),effectiveVisible:found.visible,
@@ -268,6 +303,7 @@
             if(k==='button')disabled=disabled || !!get(actor,'button','isDisabled');
             if(k==='slider')disabled=disabled || !!get(actor,'slider','disabled');
             if(k==='textfield')disabled=disabled || !!get(actor,'textField','disabled');
+            if(k==='hover')disabled=true;
             if(!options.includeDisabled && disabled)continue;
             if(!ids.has(actor))ids.set(actor,'ui-'+nextId++);
             const label=k==='textfield'?str(get(actor,'textField','text')):labels(actor);
@@ -275,9 +311,13 @@
                 nearbyLabels:labels(get(actor,'element','parent'),0,500),icons:actorIcons(actor),content:actorContent(actor),parentNames,
                 dialog:dialog?dialogTitle(dialog):'',setting:settingFor(actor),visible:entry.visible,enabled:!disabled,onScreen,inActiveModal,
                 hitTested:false,stageRect:full,visibleStageRect:clipped,cssRect:toCss(full),visibleCssRect:toCss(clipped)};
+            item.actionable=k!=='hover';
+            if(k==='hover')item.disabledReason='hover-only listener; no click action';
+            item.lockedIndicator=item.icons.includes('lock');
             if(onScreen){item.stageX=(clipped.left+clipped.right)/2;item.stageY=(clipped.bottom+clipped.top)/2;
                 if(bounds){item.x=bounds.left+item.stageX/width*bounds.width;item.y=bounds.bottom-item.stageY/height*bounds.height;}}
             if(k==='button')item.checked=!!get(actor,'button','isChecked');
+            if(k==='textfield')Object.assign(item,{text:label,placeholder:str(get(actor,'textField','messageText'))});
             if(k==='slider')Object.assign(item,{value:get(actor,'slider','value'),min:get(actor,'slider','min'),max:get(actor,'slider','max'),step:get(actor,'slider','stepSize'),vertical:!!get(actor,'slider','vertical')});
             if(k==='scrollpane')Object.assign(item,{scrollX:get(actor,'scroll','amountX'),scrollY:get(actor,'scroll','amountY'),maxX:get(actor,'scroll','maxX'),maxY:get(actor,'scroll','maxY')});
             controls.push(item);

@@ -66,6 +66,23 @@ async def main():
                     async def inventory():
                         return await page.evaluate('()=>__mindustryUiControls({includeOffscreen:true,includeDisabled:true})')
 
+                    async def wait_settings_root():
+                        # These are actual visible Arc actors, not the optional
+                        # Settings-smoke sampler's data-* page marker.
+                        await page.wait_for_function("""()=>{
+                            const ui=__mindustryUiControls({includeOffscreen:true,includeDisabled:true});
+                            const clean=s=>String(s).replace(/\\[[^\\]]*\\]/g,'').trim();
+                            const names=new Set(ui.controls.filter(c=>['button','clickable'].includes(c.kind)).map(c=>clean(c.label)));
+                            return !!ui.modal && !ui.controls.some(c=>c.setting) &&
+                                ['Игра','Графика','Звук'].every(name=>names.has(name));
+                        }""")
+
+                    async def escape():
+                        await page.keyboard.down('Escape')
+                        await page.wait_for_timeout(100)
+                        await page.keyboard.up('Escape')
+                        await page.wait_for_timeout(450)
+
                     async def choose(predicate, label):
                         for attempt in range(22):
                             value = await inventory()
@@ -96,8 +113,7 @@ async def main():
                             value = await inventory()
                             if not value['modal']:
                                 return
-                            await page.keyboard.press('Escape')
-                            await page.wait_for_timeout(450)
+                            await escape()
                         raise AssertionError('Dialog did not close via trusted Escape: ' + str((await inventory())['modal']))
 
                     async def named(name):
@@ -106,7 +122,7 @@ async def main():
                     async def open_settings():
                         await close_all()
                         await named('web-main-settings')
-                        await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-settings-native-page')==='root'")
+                        await wait_settings_root()
 
                     try:
                         query = '?lang=ru' + ('&mindustryDevice=mobile' if mobile else '')
@@ -119,7 +135,8 @@ async def main():
                         tabs = [('game', 'Игра'), ('graphics', 'Графика'), ('sound', 'Звук')]
                         for tab, label in tabs:
                             await choose(lambda item, label=label: item['kind'] in ['button', 'clickable'] and item['label'].strip() == label, 'settings/' + tab)
-                            await page.wait_for_function("key=>document.documentElement.getAttribute('data-mindustry-settings-native-page')===key", arg=tab)
+                            expected = {'game': 'hints', 'graphics': 'animatedwater', 'sound': 'musicvol'}[tab]
+                            await page.wait_for_function("key=>__mindustryUiControls({includeOffscreen:true,includeDisabled:true}).controls.some(c=>c.setting?.key===key)", arg=expected)
                             value = await snap('settings/' + tab)
                             keys = {item['setting']['key'] for item in value['controls'] if item.get('setting')}
                             assert keys, 'No native setting objects resolved in ' + tab
@@ -131,8 +148,8 @@ async def main():
                                 await page.mouse.move(pane['x'], pane['y'])
                                 await page.mouse.wheel(0, max(250, pane['maxY']))
                                 await snap('settings/' + tab + '/scrolled')
-                            await page.keyboard.press('Escape')
-                            await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-settings-native-page')==='root'")
+                            await escape()
+                            await wait_settings_root()
                             await snap('settings/root-return-' + tab)
                         # Data, languages and keybind controls are inventoried without
                         # destroying data, changing language, or rebinding keys here.

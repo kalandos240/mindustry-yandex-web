@@ -62,5 +62,4 @@ code=code.replace('CLOCK_METHODS',method(graphics,'public void updateFrame(doubl
 code=code.replace('HOST_METHODS',method(app,'private boolean frameDue(double timestamp)')+'\n'+method(app,'private boolean sampleFrameBudget(double timestamp)'))
 with tempfile.TemporaryDirectory() as folder:
     p=Path(folder)/'FramePacingTest.java';p.write_text(code)
-    subprocess.run(['javac',str(p)],check=True)
-    subprocess.run(['java','-cp',folder,'FramePacingTest'],check=True)
+    subprocess.run(['java',str(p)],check=True)
