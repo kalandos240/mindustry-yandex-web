@@ -383,6 +383,14 @@ require(CAMPAIGN_UI, "ui.menuGroup.addChild(erekirUiTick)", "Erekir updater is n
 
 # WebAudio saturation and decode cache are explicitly bounded on mobile.
 require(BROWSER_AUDIO, "if((++settingsPoll & 31) == 0 || mindustry.Vars.ui != null", "browser audio settings cadence")
+require(BROWSER_AUDIO, "Music current = sound.getCurrent();", "music-volume preview targets selected game track")
+require(BROWSER_AUDIO, "current.setVolume(settingVolume(\"musicvol\", 100));", "native music slider updates actual audio gain")
+require(BROWSER_AUDIO, "sound.playRandom();", "paused continuous-music replacement only when needed")
+# SoundControl.update() in a paused in-game dialog invokes silence()->play(null):
+# it must never run in the browser audio preference preview callback.
+preview = section(BROWSER_AUDIO, "if(mindustry.Vars.state != null && mindustry.Vars.state.isPaused()", "    private static float settingVolume(")
+forbid(preview, "sound.update();", "paused Music Volume may not fade game track to silence")
+forbid(preview, "mindustry.Vars.control.sound.update();", "paused Music Volume may not fade game track to silence")
 require(BROWSER_AUDIO, "if(validationSmokeRequested()){", "browser audio CI-only validation")
 # Unlock remains one-shot after success, but an unresolved first
 # AudioContext.resume() is retried on subsequent trusted user gestures.
