@@ -122,6 +122,24 @@ async function initialize(){
     mark('sdk','ready');
     mark('locale',bridge.platform?.language||navigator.language||'en');
     mark('cloud-storage',bridge.storage?.get?'bridge':'unavailable');
+    // Bridge requires GAME_READY after the actual TeaVM canvas is playable.
+    // The old Yandex LoadingAPI callback is optional in this port, so watch
+    // the real engine boot marker and emit once from a rendered frame.
+    if(typeof MutationObserver==='function' && root.getAttribute){
+      let observer;
+      const check=()=>{
+        if(root.getAttribute('data-mindustry-web')!=='ready')return;
+        if(observer)observer.disconnect();
+        if(typeof requestAnimationFrame==='function'){
+          requestAnimationFrame(()=>sdk.features.LoadingAPI.ready());
+        }else{
+          sdk.features.LoadingAPI.ready();
+        }
+      };
+      observer=new MutationObserver(check);
+      observer.observe(root,{attributes:true,attributeFilter:['data-mindustry-web']});
+      check();
+    }
     return sdk;
   })().catch(error=>{
     s.ready=false;mark('sdk','unavailable');mark('error',String(error?.message||error));
