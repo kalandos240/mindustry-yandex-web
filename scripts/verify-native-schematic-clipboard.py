@@ -1,5 +1,5 @@
 """Paste a real MSCH through native DOM input and round-trip native export."""
-import asyncio,base64,hashlib,json,os,shutil,struct,subprocess,threading,zlib
+import asyncio,base64,hashlib,json,os,re,shutil,struct,subprocess,threading,zlib
 from functools import partial
 from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
@@ -10,9 +10,13 @@ ROOT=Path(__file__).resolve().parents[1];STAGE=ROOT/'web-runtime/build/web';OUT=
 def schematic():
     def utf(value):
         b=value.encode('utf-8');return struct.pack('>H',len(b))+b
-    # Pinned MSCH v1: one 1x1 conveyor, name tag, null config and rotation zero.
-    body=struct.pack('>hhB',1,1,1)+utf('name')+utf('QA схема')
-    body+=bytes([1])+utf('conveyor')+struct.pack('>iBiBB',1,0,0,0,0)
+    # Pinned MSCH v1: a 1x1 sorter configured to copper. Deliberately use a
+    # foreign item ID to prove contentMap restores by *name* rather than ID.
+    # ContentType.item=0, TypeIO MappableContent=5, stock sorter config=Item.
+    foreign_id=1234
+    mapping=json.dumps({'0':{'copper':foreign_id}},separators=(',',':'))
+    body=struct.pack('>hhB',1,1,2)+utf('name')+utf('QA схема')+utf('contentMap')+utf(mapping)
+    body+=bytes([1])+utf('sorter')+struct.pack('>iBiBBhB',1,0,0,5,0,foreign_id,0)
     return b'msch\x01'+zlib.compress(body)
 
 def read_tags(value):
@@ -22,6 +26,32 @@ def read_tags(value):
         size=struct.unpack_from('>H',data,offset)[0];offset+=2;key=bytes(data[offset:offset+size]).decode();offset+=size
         size=struct.unpack_from('>H',data,offset)[0];offset+=2;val=bytes(data[offset:offset+size]).decode();offset+=size;tags[key]=val
     return width,height,tags
+
+def assert_sorter_mapping(value):
+    width,height,tags=read_tags(value)
+    assert (width,height)==(1,1)
+    # Arc's JsonIO writes relaxed JSON with bare object keys, e.g.
+    # {0:{copper:0}}. The stock Java JsonReader accepts this syntax, while
+    # Python's strict json.loads does not. Quote only bare keys for our QA
+    # decoder; then inspect the saved TypeIO bytes independently.
+    map_text=re.sub(r'(?<=[{,])\s*([A-Za-z_][\w.-]*|\d+)\s*:',r'"\1":',tags['contentMap'])
+    mapping=json.loads(map_text)
+    assert 'copper' in mapping.get('0',{}),mapping
+    # Inspect the actual exported TypeIO config, not just the UI label or
+    # metadata. The imported foreign ID 1234 must become the runtime copper ID.
+    data=memoryview(zlib.decompress(value[5:]));offset=5
+    for _ in range(data[4]):
+        for _ in range(2):
+            size=struct.unpack_from('>H',data,offset)[0]
+            offset+=2+size
+    assert data[offset]==1,'Expected one dictionary block'
+    offset+=1
+    size=struct.unpack_from('>H',data,offset)[0];offset+=2
+    assert bytes(data[offset:offset+size])==b'sorter'
+    offset+=size
+    total,index,position,kind,content_type,item_id,rotation=struct.unpack_from('>iBiBBhB',data,offset)
+    assert (total,index,position,kind,content_type,rotation)==(1,0,0,5,0,0)
+    assert item_id==mapping['0']['copper'] and item_id!=1234,(item_id,mapping)
 
 async def main():
     OUT.mkdir(parents=True,exist_ok=True);runtime=STAGE/'mindustry.js';pristine=runtime.read_bytes();installed=[];server=None
@@ -71,7 +101,8 @@ async def main():
                         files=await page.evaluate("()=>__mindustryStorage.paths().filter(p=>p.startsWith('schematics/')&&p.endsWith('.msch'))")
                         assert len(files)==1,files
                         saved=bytes(await page.evaluate('p=>Array.from(Uint8Array.from(__mindustryStorage.get(p)))',files[0]))
-                        assert read_tags(saved)[0:2]==(1,1) and read_tags(saved)[2]['name']=='QA схема'
+                        assert read_tags(saved)[2]['name']=='QA схема'
+                        assert_sorter_mapping(saved)
                         # Native Info -> Export -> Copy path must show selectable
                         # text even if clipboard permission is denied by the host.
                         await button('Export');await button('Clipboard')
@@ -79,6 +110,7 @@ async def main():
                         export_field=page.locator('#mindustry-text-input textarea')
                         exported=base64.b64decode(await export_field.input_value())
                         assert read_tags(exported)[2]['name']=='QA схема'
+                        assert_sorter_mapping(exported)
                         await page.locator('#mindustry-text-input button').nth(0).click()
                         await page.wait_for_function("()=>{const t=document.querySelector('#mindustry-text-input button').textContent;return t.startsWith('Copied') || t.includes('Ctrl+C');}")
                         await page.locator('#mindustry-text-input button').nth(1).click()
@@ -90,6 +122,7 @@ async def main():
                             await button('File')
                         download=await item.value;downloaded=Path(await download.path()).read_bytes()
                         assert read_tags(downloaded)[2]['name']=='QA схема'
+                        assert_sorter_mapping(downloaded)
                         assert not errors,errors
                         # File import also round-trips through FileReader, native
                         # Schematics parser, persistent library and Info dialog.
@@ -109,7 +142,7 @@ async def main():
                         assert len([p for p in paths if p.startswith('schematics/') and p.endswith('.msch')])>=2
                         assert not errors,errors
                         await page.screenshot(path=str(OUT/(mode+'.png')))
-                        print(mode+': actual MSCH clipboard import, persistent library, native copy/fallback, Blob export and FileReader round-trip PASS',flush=True)
+                        print(mode+': real MSCH item-ID remapping, clipboard import, persistent library, native copy/fallback, Blob export and FileReader round-trip PASS',flush=True)
                     except Exception:
                         (OUT/(mode+'-failure.json')).write_text(json.dumps(await controls(),ensure_ascii=False,indent=2));await page.screenshot(path=str(OUT/(mode+'-failure.png')));raise
                     finally:await context.close()

@@ -359,6 +359,24 @@ jobs:
       - name: Verify native vanilla dialogs in real desktop and mobile Chrome
         run: bash scripts/verify-browser-vanilla-dialogs.sh
 
+      # Browser import must restore MappableContent by its original name even
+      # when a foreign MSCH uses a different numeric ID for Copper. This
+      # exercises real native UI and verifies persisted TypeIO bytes on both
+      # desktop and mobile, not only the success of FileReader's callback.
+      - name: Install Playwright browser driver for real MSCH round-trip
+        run: python3 -m pip install playwright
+
+      - name: Regression check native configured schematic import and export
+        run: python3 scripts/verify-native-schematic-clipboard.py
+
+      - name: Upload configured schematic failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msch-config-import-failure-evidence
+          path: work/schematic-clipboard-qa/
+          if-no-files-found: ignore
+
       # Interactive buttons are not certified merely by compiling their dialogs.
       # Require real Chrome mouse/touch events AND a continuing TeaVM frame loop
       # after each open/close, including repeat visits and a reduced game viewport.
