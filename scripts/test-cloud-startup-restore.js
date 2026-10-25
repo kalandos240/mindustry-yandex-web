@@ -30,7 +30,7 @@ async function harness(remote=snapshot()){
         document:{documentElement:root}, window:{dispatchEvent:() => {}},
         CustomEvent:class {}, navigator:{language:'ru'},
         YaGames:{init:async () => sdk},
-        localStorage:{getItem:() => mirror, setItem:(key,value) => { assert.equal(key,settingsKey); mirrors.push(value); mirror=value; }},
+        localStorage:{getItem:key => key===settingsKey?mirror:null, setItem:(key,value) => { assert.equal(key,settingsKey); mirrors.push(value); mirror=value; }},
         __mindustryStorage:{
             get:path => memory.get(path), exists:path => memory.has(path), paths:() => Array.from(memory.keys()),
             put:(path,bytes) => { puts.push(path); memory.set(path,bytes.slice()); },
@@ -83,7 +83,7 @@ async function harness(remote=snapshot()){
     assert.equal(await h.api.syncCloudCheckpoint('restored'),true);
     assert.equal(h.uploads.length,1);
     assert.equal(h.uploads[0].files[savePath],encoded);
-    assert.equal(h.mirror(),settings('cloud'));
+    assert.equal(h.mirror(),settings('local'),'Local non-campaign preferences survive restoring remote files');
 
     const badSnapshots=[];
     for(const value of ['invalid!',Buffer.alloc(10).toString('base64'),42]){
@@ -141,7 +141,7 @@ async function harness(remote=snapshot()){
     }
     const edges=await harness(valid); edges.attrs.set('data-mindustry-storage','ready');
     assert.equal(await edges.api.restoreCloudCheckpoint(),true,'All serializer types and exact numeric boundaries remain supported');
-    assert.equal(edges.mirror(),valid.settings);
+    assert.equal(edges.mirror(),valid.settings.replace(part('tag','cloud'),part('tag','local')));
     assert.equal(await edges.api.syncCloudCheckpoint('valid-values'),true);
     const invalidLocal=await harness(); invalidLocal.attrs.set('data-mindustry-storage','ready');
     invalidLocal.memory.set(savePath,new Uint8Array(128));

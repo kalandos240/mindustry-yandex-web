@@ -266,6 +266,11 @@ public final class BrowserApplication extends WebApplicationBase{
         return true;
     }
 
+    /** A selected 10 FPS interval is six ticks; unexpected stalls stay bounded by WebGraphics. */
+    public float simulationDeltaLimit(){
+        return frameLimit > 0 ? Math.max(Vars.maxDeltaClient, 60f / frameLimit) : Vars.maxDeltaClient;
+    }
+
     private boolean sampleFrameBudget(double timestamp){
         boolean playing = !platformPaused && Vars.state != null && Vars.state.isPlaying()
             && !Vars.state.gameOver;

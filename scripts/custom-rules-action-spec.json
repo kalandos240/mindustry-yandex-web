@@ -1,0 +1,394 @@
+[
+  {
+    "key": "rules.waves",
+    "field": "waves",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Waves"
+  },
+  {
+    "key": "rules.wavesending",
+    "field": "waveSending",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Wave Sending"
+  },
+  {
+    "key": "rules.wavetimer",
+    "field": "waveTimer",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Wave Timer"
+  },
+  {
+    "key": "rules.waitForWaveToEnd",
+    "field": "waitEnemies",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Waves Wait for Enemies"
+  },
+  {
+    "key": "rules.randomwaveai",
+    "field": "randomWaveAI",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Unpredictable Wave AI"
+  },
+  {
+    "key": "rules.wavespawnatcores",
+    "field": "wavesSpawnAtCores",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Waves Spawn At Cores"
+  },
+  {
+    "key": "rules.airUseSpawns",
+    "field": "airUseSpawns",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Air Units Use Spawn Points"
+  },
+  {
+    "key": "rules.wavelimit",
+    "field": "winWave",
+    "kind": "integer",
+    "scale": 1,
+    "label": "Map Ends After Wave"
+  },
+  {
+    "key": "rules.wavespacing",
+    "field": "waveSpacing",
+    "kind": "number",
+    "scale": 60,
+    "label": "Wave Spacing:[lightgray] (sec)"
+  },
+  {
+    "key": "rules.initialwavespacing",
+    "field": "initialWaveSpacing",
+    "kind": "number",
+    "scale": 60,
+    "label": "Initial Wave Spacing:[lightgray] (sec)"
+  },
+  {
+    "key": "rules.dropzoneradius",
+    "field": "dropZoneRadius",
+    "kind": "number",
+    "scale": 8,
+    "label": "Drop Zone Radius:[lightgray] (tiles)"
+  },
+  {
+    "key": "rules.alloweditworldprocessors",
+    "field": "allowEditWorldProcessors",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Allow Editing World Processors"
+  },
+  {
+    "key": "rules.infiniteresources",
+    "field": "infiniteResources",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Infinite Resources"
+  },
+  {
+    "key": "rules.onlydepositcore",
+    "field": "onlyDepositCore",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Only Allow Core Depositing"
+  },
+  {
+    "key": "rules.coreunloaders",
+    "field": "allowCoreUnloaders",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Allow Core Unloaders"
+  },
+  {
+    "key": "rules.derelictrepair",
+    "field": "derelictRepair",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Allow Derelict Block Repair"
+  },
+  {
+    "key": "rules.reactorexplosions",
+    "field": "reactorExplosions",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Reactor Explosions"
+  },
+  {
+    "key": "rules.schematic",
+    "field": "schematicsAllowed",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Schematics Allowed"
+  },
+  {
+    "key": "rules.coreincinerates",
+    "field": "coreIncinerates",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Core Incinerates Overflow"
+  },
+  {
+    "key": "rules.cleanupdeadteams",
+    "field": "cleanupDeadTeams",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Clean Up Defeated Team Buildings (PvP)"
+  },
+  {
+    "key": "rules.disableworldprocessors",
+    "field": "disableWorldProcessors",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Disable World Processors"
+  },
+  {
+    "key": "rules.buildcostmultiplier",
+    "field": "buildCostMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Build Cost Multiplier"
+  },
+  {
+    "key": "rules.buildspeedmultiplier",
+    "field": "buildSpeedMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Build Speed Multiplier"
+  },
+  {
+    "key": "rules.deconstructrefundmultiplier",
+    "field": "deconstructRefundMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Deconstruct Refund Multiplier"
+  },
+  {
+    "key": "rules.blockhealthmultiplier",
+    "field": "blockHealthMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Block Health Multiplier"
+  },
+  {
+    "key": "rules.blockdamagemultiplier",
+    "field": "blockDamageMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Block Damage Multiplier"
+  },
+  {
+    "key": "rules.hidebannedblocks",
+    "field": "hideBannedBlocks",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Hide Banned Blocks"
+  },
+  {
+    "key": "bannedblocks.whitelist",
+    "field": "blockWhitelist",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Banned Blocks As Whitelist"
+  },
+  {
+    "key": "rules.unitcapvariable",
+    "field": "unitCapVariable",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Cores Contribute To Unit Cap"
+  },
+  {
+    "key": "rules.unitpayloadsexplode",
+    "field": "unitPayloadsExplode",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Carried Payloads Explode With The Unit"
+  },
+  {
+    "key": "rules.unitcap",
+    "field": "unitCap",
+    "kind": "integer",
+    "scale": 1,
+    "label": "Base Unit Cap"
+  },
+  {
+    "key": "rules.unitfactoryactivation",
+    "field": "unitFactoryActivationDelay",
+    "kind": "number",
+    "scale": 60,
+    "label": "Unit Factory Activation Delay"
+  },
+  {
+    "key": "rules.unitdamagemultiplier",
+    "field": "unitDamageMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Unit Damage Multiplier"
+  },
+  {
+    "key": "rules.unitcrashdamagemultiplier",
+    "field": "unitCrashDamageMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Unit Crash Damage Multiplier"
+  },
+  {
+    "key": "rules.unitminespeedmultiplier",
+    "field": "unitMineSpeedMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Unit Mine Speed Multiplier"
+  },
+  {
+    "key": "rules.unitbuildspeedmultiplier",
+    "field": "unitBuildSpeedMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Unit Production Speed Multiplier"
+  },
+  {
+    "key": "rules.unitcostmultiplier",
+    "field": "unitCostMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Unit Cost Multiplier"
+  },
+  {
+    "key": "rules.logicunitcontrol",
+    "field": "logicUnitControl",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Logic Unit Control"
+  },
+  {
+    "key": "rules.logicunitbuild",
+    "field": "logicUnitBuild",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Logic Unit Building"
+  },
+  {
+    "key": "rules.logicunitdeconstruct",
+    "field": "logicUnitDeconstruct",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Logic Unit Deconstruction"
+  },
+  {
+    "key": "bannedunits.whitelist",
+    "field": "unitWhitelist",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Banned Units As Whitelist"
+  },
+  {
+    "key": "rules.attack",
+    "field": "attackMode",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Attack Mode"
+  },
+  {
+    "key": "rules.corecapture",
+    "field": "coreCapture",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Capture Core On Destruction"
+  },
+  {
+    "key": "rules.placerangecheck",
+    "field": "placeRangeCheck",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Placement Range Check"
+  },
+  {
+    "key": "rules.polygoncoreprotection",
+    "field": "polygonCoreProtection",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Polygonal Core Protection"
+  },
+  {
+    "key": "rules.enemycorebuildradius",
+    "field": "enemyCoreBuildRadius",
+    "kind": "number",
+    "scale": 8,
+    "label": "Core No-Build Radius:[lightgray] (tiles)"
+  },
+  {
+    "key": "rules.pauseDisabled",
+    "field": "pauseDisabled",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Disable Pausing"
+  },
+  {
+    "key": "rules.explosions",
+    "field": "damageExplosions",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Block/Unit Explosion Damage"
+  },
+  {
+    "key": "rules.fire",
+    "field": "fire",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Fire"
+  },
+  {
+    "key": "rules.fog",
+    "field": "fog",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Fog of War"
+  },
+  {
+    "key": "rules.lighting",
+    "field": "lighting",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Lighting"
+  },
+  {
+    "key": "rules.limitarea",
+    "field": "limitMapArea",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Limit Map Area"
+  },
+  {
+    "key": "rules.solarmultiplier",
+    "field": "solarMultiplier",
+    "kind": "number",
+    "scale": 1,
+    "label": "Solar Power Multiplier"
+  },
+  {
+    "key": "rules.alwaysplaymusic",
+    "field": "alwaysPlayMusic",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Always Play Music"
+  },
+  {
+    "key": "rules.nomusic",
+    "field": "disableMusic",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Disable Automatic Music"
+  },
+  {
+    "key": "rules.allowedit",
+    "field": "allowEditRules",
+    "kind": "boolean",
+    "scale": 1,
+    "label": "Allow Editing Rules"
+  }
+]

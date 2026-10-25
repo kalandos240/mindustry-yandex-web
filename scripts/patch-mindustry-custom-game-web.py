@@ -79,6 +79,13 @@ for filename in ("CustomRulesDialog.java", "ColorPicker.java"):
     }
 """
     if filename == "CustomRulesDialog.java":
+        search_clear = '''                ruleSearch = "";
+                setupMain();'''
+        if source.count(search_clear) != 1:
+            raise SystemExit("Pinned custom rules search-clear callback changed")
+        source = source.replace(search_clear, '''                ruleSearch = "";
+                field.setText("");
+                setupMain();''', 1)
         checks = """        // A category's wide numeric rows must not stretch checkbox hitboxes
         // beyond the portal. Keep natural desktop widths; wrap only as needed.
         float maxCheckWidth = Math.max(1f, arc.Core.scene.getWidth() - 80f);

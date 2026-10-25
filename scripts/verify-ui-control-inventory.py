@@ -45,6 +45,7 @@ async def main():
                     context = await browser.new_context(viewport={'width': width, 'height': height},
                         is_mobile=mobile, has_touch=mobile)
                     page = await context.new_page()
+                    touch = await context.new_cdp_session(page) if mobile else None
                     errors = []
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     profile_report = {'profile': profile, 'viewport': [width, height], 'contexts': [],
@@ -65,6 +66,46 @@ async def main():
 
                     async def inventory():
                         return await page.evaluate('()=>__mindustryUiControls({includeOffscreen:true,includeDisabled:true})')
+
+                    async def scroll_pane(pane, amount):
+                        controls = (await inventory())['controls']
+                        keys = sorted({item['setting']['key'] for item in controls if item.get('setting')})
+                        before_values = await page.evaluate('keys=>Object.fromEntries(keys.map(key=>[key,__mindustryQaSetting(key)]))', keys)
+                        if mobile:
+                            area = pane['visibleCssRect']
+                            lower, upper = area['bottom'] - 12, area['top'] + 12
+                            # Start in pane padding/row gaps rather than on a
+                            # slider track: native slider touchDown may change
+                            # its value before the pane recognizes a swipe.
+                            active = [item for item in controls if item['onScreen'] and item['enabled'] and
+                                item['kind'] in ['button','slider','textfield','clickable','inputtarget']]
+                            point = None
+                            candidates = [area['left'] + 3, area['right'] - 3, (area['left'] + area['right']) / 2]
+                            ys = list(range(int(lower), int(upper), -8)) if amount > 0 else list(range(int(upper), int(lower), 8))
+                            for y in ys:
+                                for x in candidates:
+                                    if all(not (item['visibleCssRect']['left'] <= x <= item['visibleCssRect']['right'] and
+                                                item['visibleCssRect']['top'] <= y <= item['visibleCssRect']['bottom']) for item in active):
+                                        point = (x, y)
+                                        break
+                                if point:
+                                    break
+                            assert point, 'No non-control padding available for native pane swipe'
+                            x, y0 = point
+                            distance = min(abs(amount), max(0, y0 - upper if amount > 0 else lower - y0))
+                            assert distance > 8, 'Scroll surface too clipped for native swipe: ' + str(area)
+                            y1 = y0 - distance if amount > 0 else y0 + distance
+                            await touch.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': x, 'y': y0}]})
+                            for step in range(1, 11):
+                                await touch.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [{'x': x, 'y': y0 + (y1 - y0) * step / 10}]})
+                                await page.wait_for_timeout(20)
+                            await touch.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+                        else:
+                            await page.mouse.move(pane['x'], pane['y'])
+                            await page.mouse.wheel(0, amount)
+                        await page.wait_for_timeout(350)
+                        after_values = await page.evaluate('keys=>Object.fromEntries(keys.map(key=>[key,__mindustryQaSetting(key)]))', keys)
+                        assert before_values == after_values, 'Inventory scrolling changed a preference'
 
                     async def wait_settings_root():
                         # These are actual visible Arc actors, not the optional
@@ -101,9 +142,7 @@ async def main():
                             panes = [item for item in value['controls'] if item['kind'] == 'scrollpane' and item['onScreen'] and item.get('maxY', 0) > 0]
                             if panes:
                                 pane = max(panes, key=lambda item: item.get('maxY', 0))
-                                await page.mouse.move(pane['x'], pane['y'])
-                                await page.mouse.wheel(0, 230 if attempt < 14 else -230)
-                                await page.wait_for_timeout(300)
+                                await scroll_pane(pane, 230 if attempt < 14 else -230)
                             else:
                                 await page.wait_for_timeout(200)
                         raise AssertionError('Native inventory target missing: ' + label + ' / ' + json.dumps(value, ensure_ascii=False)[:12000])
@@ -125,9 +164,10 @@ async def main():
                         await wait_settings_root()
 
                     try:
-                        query = '?lang=ru' + ('&mindustryDevice=mobile' if mobile else '')
+                        query = '?lang=ru'
                         await page.goto('http://127.0.0.1:8148/index.html' + query)
                         await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-web')==='ready'", timeout=150000)
+                        assert await page.get_attribute('html', 'data-mindustry-input-mode') == ('mobile' if mobile else 'desktop')
                         initial = await snap('home')
                         assert any(item['name'] == 'web-main-settings' for item in initial['controls']), initial
                         await open_settings()
@@ -145,9 +185,15 @@ async def main():
                             panes = [item for item in value['controls'] if item['kind'] == 'scrollpane' and item['onScreen'] and item.get('maxY', 0) > 0]
                             if panes:
                                 pane = max(panes, key=lambda item: item.get('maxY', 0))
-                                await page.mouse.move(pane['x'], pane['y'])
-                                await page.mouse.wheel(0, max(250, pane['maxY']))
-                                await snap('settings/' + tab + '/scrolled')
+                                before_scroll = pane['scrollY']
+                                amount = -250 if before_scroll >= pane['maxY'] - 1 else max(250, pane['maxY'])
+                                await scroll_pane(pane, amount)
+                                scrolled = await snap('settings/' + tab + '/scrolled')
+                                actual_pane = next(item for item in scrolled['controls'] if item['id'] == pane['id'])
+                                assert abs(actual_pane['scrollY'] - before_scroll) > .5, 'Native scroll did not move ' + tab
+                                profile_report['nativeActions'].append({'label': 'settings/' + tab + '/scroll',
+                                    'input': 'touch-swipe' if mobile else 'mouse-wheel', 'before': before_scroll,
+                                    'after': actual_pane['scrollY'], 'assertion': 'Actual native ScrollPane amount changed'})
                             await escape()
                             await wait_settings_root()
                             await snap('settings/root-return-' + tab)

@@ -22,6 +22,10 @@
         cloudLastPayload: '',
         cloudLastFlushedPayload: '',
         cloudRestoreReady: false,
+        cloudResetAt: '',
+        cloudResetDurableAt: '',
+        cloudResetGeneration: 0,
+        cloudResetCommit: null,
         fullscreenButton: null,
         bannerWanted: false,
         bannerShowing: false,
@@ -34,6 +38,8 @@
     const cloudKey = 'mindustryWebCheckpointV1';
     const settingsKey = 'mindustry.web.settings.v1';
     const settingsPath = 'settings/' + settingsKey + '.mws1';
+    const resetKey = 'web-campaign-reset-at';
+    const resetIntentKey = 'mindustry.web.reset.intent.v1';
     const cloudBudgetBytes = 190 * 1024;
     const cloudFilePattern = /^saves\/(?:web-local-survival|sector-(?:serpulo|erekir)-\d+)\.msav$/;
 
@@ -517,8 +523,9 @@
         ]).finally(() => clearTimeout(timer));
     }
 
-    function settingsValue(payload, wanted){
-        if(typeof payload !== 'string' || !payload.startsWith('MWS1|')) return '';
+    function settingsEntries(payload){
+        const entries = new Map();
+        if(typeof payload !== 'string' || !payload.startsWith('MWS1|')) return entries;
         let cursor = 5;
         const part = () => {
             const colon = payload.indexOf(':', cursor);
@@ -540,9 +547,14 @@
             const key = part();
             const value = part();
             validateSettingValue(type, value);
-            if(key === wanted) return value;
+            entries.set(key, {type, value});
         }
-        return '';
+        return entries;
+    }
+
+    function settingsValue(payload, wanted){
+        const entry = settingsEntries(payload).get(wanted);
+        return entry ? entry.value : '';
     }
 
     function validateSettingValue(type, value){
@@ -591,6 +603,92 @@
 
     function encodedBytes(value){
         return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    }
+
+    function localSettings(storage){
+        const bytes = storage && storage.get(settingsPath);
+        if(bytes) return new TextDecoder().decode(bytes);
+        try{ return localStorage.getItem(settingsKey) || ''; }catch(_ignored){ return ''; }
+    }
+
+    function resetMarker(payload){
+        const entry = settingsEntries(payload).get(resetKey);
+        return entry && entry.type === 'l' && /^[1-9]\d*$/.test(entry.value) ? entry.value : '';
+    }
+
+    function campaignSetting(key){
+        return key === resetKey || ['last-sector-save','unlocks','turn','utimei','launch-resources-seq','localgamemode'].includes(key)
+            || key.startsWith('req-') || key.endsWith('-unlocked') || key.startsWith('lastloadout-') || key.startsWith('save-')
+            || /^(?:serpulo|erekir)-(?:s-\d+-info|campaign-rules|campaign-stats|last-sector)$/.test(key);
+    }
+
+    function mergedCloudSettings(remote, local){
+        const entries = settingsEntries(remote);
+        try{
+            for(const [key, entry] of settingsEntries(local)){
+                if(!campaignSetting(key)) entries.set(key, entry);
+            }
+        }catch(error){
+            console.info('Corrupt local preferences were not merged into cloud recovery:', error.message);
+        }
+        let payload = 'MWS1|';
+        for(const [key, entry] of entries){
+            payload += entry.type + key.length + ':' + key + entry.value.length + ':' + entry.value;
+        }
+        return payload;
+    }
+
+    function resetIntent(){
+        let raw;
+        try{ raw = localStorage.getItem(resetIntentKey); }catch(_ignored){ return null; }
+        if(!raw) return null;
+        const intent = JSON.parse(raw);
+        if(intent.schema !== 1 || typeof intent.settings !== 'string' || !intent.settings.startsWith('MWS1|')
+            || !Array.isArray(intent.retain) || intent.retain.length > 10000
+            || intent.retain.some(path => typeof path !== 'string' || path.startsWith('/') || path.split('/').includes('..'))
+            || !resetMarker(intent.settings)) throw new Error('Invalid durable reset intent');
+        return intent;
+    }
+
+    function onSettingsStored(payload, force = false){
+        try{
+            const marker = resetMarker(payload);
+            if(!marker) return null;
+            const storage = globalThis.__mindustryStorage;
+            if(!storage) return null;
+            let previous;
+            try{ previous = resetIntent(); }catch(_ignored){ previous = null; }
+            if(!force && marker === state.cloudResetAt && !previous) return state.cloudResetCommit;
+            state.cloudResetAt = marker;
+            state.cloudRestoreReady = true;
+            const generation = ++state.cloudResetGeneration;
+            const intent = {schema:1, settings:payload, retain:storage.paths()};
+            // Write ahead synchronously: a reload before IndexedDB commits must not
+            // revive deleted files from the old durable tree.
+            try{ localStorage.setItem(resetIntentKey, JSON.stringify(intent)); }
+            catch(error){ mark('data-yandex-reset-intent', 'unavailable'); }
+            mark('data-yandex-reset-state', 'pending');
+            const pending = Promise.resolve().then(() => storage.flush()).then(async () => {
+                if(generation !== state.cloudResetGeneration) return false;
+                state.cloudResetDurableAt = marker;
+                try{ localStorage.removeItem(resetIntentKey); }catch(_ignored){}
+                mark('data-yandex-reset-state', 'durable');
+                return syncCloudCheckpoint('confirmed-data-reset', true);
+            }).catch(error => {
+                if(generation === state.cloudResetGeneration){
+                    mark('data-yandex-reset-state', 'error');
+                    mark('data-yandex-reset-error', String(error && error.message || error));
+                    console.error('Confirmed game-data reset is not durable:', error);
+                }
+                return false;
+            }).finally(() => { if(state.cloudResetCommit === pending) state.cloudResetCommit = null; });
+            state.cloudResetCommit = pending;
+            return pending;
+        }catch(error){
+            mark('data-yandex-reset-state', 'error');
+            mark('data-yandex-reset-error', String(error && error.message || error));
+            return Promise.resolve(false);
+        }
     }
 
     function buildCloudCheckpoint(){
@@ -678,6 +776,9 @@
         }
 
         const save = async (reason, flush) => {
+            // Every upload after an explicit reset requires its local deletion and
+            // settings marker to pass the durability barrier first.
+            if(resetMarker(localSettings(storage))) await storage.flush();
             const built = buildCloudCheckpoint();
             if(!built) return false;
             if(built.canonical === state.cloudLastPayload &&
@@ -693,7 +794,20 @@
             }
 
             mark('data-yandex-cloud-state', 'saving');
-            await withTimeout(player.setData({[cloudKey]: built.snapshot}, Boolean(flush)), 3500, 'Yandex cloud save');
+            const resetAtUpload = resetMarker(built.snapshot.settings);
+            const upload = Promise.resolve(player.setData({[cloudKey]: built.snapshot}, Boolean(flush)));
+            upload.then(() => {
+                const currentReset = resetMarker(localSettings(storage));
+                if(currentReset && currentReset !== resetAtUpload){
+                    // A timed-out older SDK write can acknowledge after the reset
+                    // upload. Reassert the latest durable state even if its normal
+                    // canonical cache would otherwise classify it as unchanged.
+                    state.cloudLastPayload = '';
+                    state.cloudLastFlushedPayload = '';
+                    void syncCloudCheckpoint('late-before-reset-upload', true);
+                }
+            }, () => {});
+            await withTimeout(upload, 3500, 'Yandex cloud save');
             state.cloudLastPayload = built.canonical;
             state.cloudLastFlushedPayload = flush ? built.canonical : '';
             mark('data-yandex-cloud-state', 'saved');
@@ -730,16 +844,45 @@
     }
 
     async function restoreCloudCheckpoint(){
-        if(!state.available){
-            mark('data-yandex-cloud-restore', 'unavailable');
-            return false;
-        }
-
         const storage = globalThis.__mindustryStorage;
         if(!storage){
             mark('data-yandex-cloud-restore', 'storage-unavailable');
             return false;
         }
+        if(root.getAttribute('data-mindustry-storage') !== 'ready'){
+            mark('data-yandex-cloud-restore', 'waiting-storage');
+            return false;
+        }
+        try{
+            const intent = resetIntent();
+            if(intent){
+                const retain = new Set(intent.retain);
+                for(const path of storage.paths()) if(!retain.has(path)) storage.remove(path);
+                const bytes = new TextEncoder().encode(intent.settings);
+                storage.put(settingsPath, bytes, bytes.byteLength);
+                await onSettingsStored(intent.settings, true);
+                if(state.cloudResetDurableAt !== resetMarker(intent.settings)) throw new Error('Reset replay did not become durable');
+                try{ localStorage.setItem(settingsKey, intent.settings); }catch(_ignored){}
+                mark('data-yandex-cloud-restore', 'skipped-local-reset');
+                return false;
+            }
+            const payload = localSettings(storage);
+            if(resetMarker(payload)){
+                state.cloudRestoreReady = true;
+                void onSettingsStored(payload, true);
+                mark('data-yandex-cloud-restore', 'skipped-local-reset');
+                return false;
+            }
+        }catch(error){
+            mark('data-yandex-cloud-restore', 'reset-error');
+            mark('data-yandex-reset-error', String(error && error.message || error));
+            return false;
+        }
+        if(!state.available){
+            mark('data-yandex-cloud-restore', 'unavailable');
+            return false;
+        }
+        const resetGeneration = state.cloudResetGeneration;
 
         if(storage.paths().some(path => cloudFilePattern.test(path))){
             state.cloudRestoreReady = true;
@@ -757,6 +900,15 @@
             mark('data-yandex-cloud-restore', 'loading');
             const data = await withTimeout(player.getData([cloudKey]), 3500, 'Yandex cloud load');
             const snapshot = data && data[cloudKey];
+            if(state.cloudResetGeneration !== resetGeneration || resetMarker(localSettings(storage))){
+                mark('data-yandex-cloud-restore', 'skipped-local-reset');
+                return false;
+            }
+            if(storage.paths().some(path => cloudFilePattern.test(path))){
+                state.cloudRestoreReady = true;
+                mark('data-yandex-cloud-restore', 'skipped-local-present');
+                return false;
+            }
             if(!snapshot || snapshot.schema !== 1){
                 mark('data-yandex-cloud-restore', 'empty');
                 if(!snapshot) state.cloudRestoreReady = true;
@@ -768,14 +920,17 @@
                 throw new Error('Cloud checkpoint exceeds restore budget');
             }
             let settingsBytes = null;
+            let remoteSettings = '';
             if(snapshot.settings){
                 if(typeof snapshot.settings !== 'string' || !snapshot.settings.startsWith('MWS1|')){
                     throw new Error('Invalid cloud settings payload');
                 }
                 // A null lookup scans every field instead of stopping at a key.
                 settingsValue(snapshot.settings, null);
-                settingsBytes = new TextEncoder().encode(snapshot.settings);
+                remoteSettings = snapshot.settings;
             }
+            const localPayload = localSettings(storage);
+            if(remoteSettings || localPayload) settingsBytes = new TextEncoder().encode(mergedCloudSettings(remoteSettings, localPayload));
 
             const decodedFiles = [];
             if(snapshot.files != null && (typeof snapshot.files !== 'object' || Array.isArray(snapshot.files))){
@@ -794,7 +949,15 @@
                 storage.put(path, bytes, bytes.byteLength);
             }
             await storage.flush();
-            if(settingsBytes) try{ localStorage.setItem(settingsKey, snapshot.settings); }catch(_ignored){}
+            if(state.cloudResetGeneration !== resetGeneration){
+                mark('data-yandex-cloud-restore', 'skipped-local-reset');
+                return false;
+            }
+            if(settingsBytes){
+                const payload = new TextDecoder().decode(settingsBytes);
+                state.cloudResetAt = resetMarker(payload);
+                try{ localStorage.setItem(settingsKey, payload); }catch(_ignored){}
+            }
             state.cloudRestoreReady = true;
             mark('data-yandex-cloud-restore', 'ready');
             mark('data-yandex-cloud-restored-files', String(decodedFiles.length));
@@ -820,6 +983,7 @@
         showMenuFullscreenAdv,
         getPlayer,
         syncCloudCheckpoint,
-        restoreCloudCheckpoint
+        restoreCloudCheckpoint,
+        onSettingsStored
     });
 })();

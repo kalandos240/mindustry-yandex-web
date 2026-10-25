@@ -5,6 +5,7 @@ The Yandex client does not initialize Mods or Steam Workshop; neither is
 needed for built-in loadouts or persistent local .msch files.
 """
 from pathlib import Path
+import runpy
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "work/Mindustry/core/src/mindustry/game/Schematics.java"
@@ -113,4 +114,5 @@ if dialog.count(clipboard_old) != 1:
     raise SystemExit("Pinned schematic clipboard import changed")
 dialog = dialog.replace(clipboard_old, clipboard_new, 1)
 dialog_path.write_text(dialog, encoding="utf-8")
+runpy.run_path(str(ROOT / "scripts/patch-browser-text-input-web.py"), run_name="__main__")
 print("Stock Schematics.load: local Web schematics preserved without mandatory Mods startup")

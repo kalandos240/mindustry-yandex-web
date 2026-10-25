@@ -305,6 +305,53 @@ for old, new, label in logic_block_replacements:
     if logic_block.count(old) != 1:
         raise SystemExit(f"LogicBlock Web subphase trace anchor no longer matches pinned upstream ({label})")
     logic_block = logic_block.replace(old, new, 1)
+old_editor = '''        public void showEditDialog(boolean forceEditor){
+            ui.logic.show(code, executor, privileged, code -> {
+                boolean prev = state.rules.editor;
+                //this is a hack to allow configuration to work correctly in the editor for privileged processors
+                if(forceEditor) state.rules.editor = true;
+                byte[] bytes = compress(code, relativeConnections());
+                if(bytes.length > maxCompressedLen){
+                    ui.showErrorMessage(Core.bundle.format("logic.error.toolong", maxCompressedLen, bytes.length));
+                }else{
+                    configure(bytes);
+                    state.rules.editor = prev;
+                }
+            });
+        }'''
+new_editor = '''        public void showEditDialog(boolean forceEditor){
+            // The browser mounts the stock logic executor but not the desktop
+            // visual LogicDialog. Use the shared native multiline input path.
+            arc.Input.TextInput request = new arc.Input.TextInput();
+            request.title = Core.bundle.get("logic", "Logic");
+            request.message = Core.bundle.get("edit", "Edit");
+            request.text = code;
+            request.multiline = true;
+            request.maxLength = maxByteLen;
+            request.accepted = text -> {
+                byte[] source = text.getBytes(charset);
+                if(source.length > maxByteLen){
+                    ui.showErrorMessage(Core.bundle.format("logic.error.toolong", maxByteLen, source.length));
+                    return;
+                }
+                boolean prev = state.rules.editor;
+                try{
+                    if(forceEditor) state.rules.editor = true;
+                    byte[] bytes = compress(source, relativeConnections());
+                    if(bytes.length > maxCompressedLen){
+                        ui.showErrorMessage(Core.bundle.format("logic.error.toolong", maxCompressedLen, bytes.length));
+                    }else{
+                        configure(bytes);
+                    }
+                }finally{
+                    state.rules.editor = prev;
+                }
+            };
+            Core.input.getTextInput(request);
+        }'''
+if logic_block.count(old_editor) != 1:
+    raise SystemExit("Pinned processor editor callback changed")
+logic_block = logic_block.replace(old_editor, new_editor, 1)
 LOGIC_BLOCK.write_text(logic_block, encoding="utf-8")
 
 # Stock Logic scans Groups.unit once for state.enemies immediately before Teams scans

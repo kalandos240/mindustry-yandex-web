@@ -36,7 +36,8 @@
     };
     globalThis.__mindustryQaRead=function(target, path){
         const targets={renderer:m_Vars_renderer,state:m_Vars_state,control:m_Vars_control,ui:m_Vars_ui,
-            audio:a_Core_audio,camera:a_Core_camera,settings:a_Core_settings,graphics:a_Core_graphics,input:a_Core_input};
+            audio:a_Core_audio,camera:a_Core_camera,settings:a_Core_settings,graphics:a_Core_graphics,input:a_Core_input,
+            scene:a_Core_scene,atlas:a_Core_atlas};
         if(!Object.prototype.hasOwnProperty.call(targets,target)) throw new Error('Unknown QA target: '+target);
         let value=targets[target];
         for(const name of String(path).split('.')){

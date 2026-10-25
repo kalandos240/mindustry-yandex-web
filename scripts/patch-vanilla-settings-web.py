@@ -129,6 +129,9 @@ scale_block = control[begin:end]
 if 'Core.app.exit();' not in scale_block or 'Core.settings.getBool("uiscalechanged", false)' not in scale_block:
     raise SystemExit('Pinned Control UI-scale watchdog changed; review browser recovery')
 control_path.write_text(control[:begin] + '''        // Web: BrowserUiScale owns the persistent scale and browser-safe recovery UI.
-        Core.settings.put("uiscalechanged", false);
 ''' + control[end:], encoding="utf-8")
 print("Vanilla SettingsMenuDialog: original Sound/Game/Graphics/Data/Language/Controls/Dev UI; browser-only actions removed")
+
+import subprocess
+subprocess.run(["python3", str(ROOT / "scripts/patch-browser-keybinds-web.py")], check=True)
+subprocess.run(["python3", str(ROOT / "scripts/patch-browser-data-reset-web.py")], check=True)

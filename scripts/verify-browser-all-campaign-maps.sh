@@ -8,10 +8,24 @@ WEB_DIR="$ROOT_DIR/web-runtime/build/web"
 PORT=8111
 command -v google-chrome >/dev/null
 test -s "$WEB_DIR/mindustry.js"
+server=""
+probe_owned=0
+cleanup(){
+  local result=$?
+  if [ "$probe_owned" = 1 ]; then
+    python3 "$ROOT_DIR/scripts/prepare-qa-probe.py" --restore || result=1
+  fi
+  if [ -n "$server" ]; then kill "$server" 2>/dev/null || true; fi
+  exit "$result"
+}
+trap cleanup EXIT
+if ! grep -Fq '/* Mindustry QA read-only state probe. Test builds only. */' "$WEB_DIR/mindustry.js"; then
+  python3 "$ROOT_DIR/scripts/prepare-qa-probe.py"
+  probe_owned=1
+fi
 cd "$WEB_DIR"
 python3 -m http.server "$PORT" --bind 127.0.0.1 >/tmp/mindustry-all-campaign-maps-http.log 2>&1 &
 server=$!
-trap 'kill "$server" 2>/dev/null || true' EXIT
 for i in {1..30}; do
   if curl -fsS "http://127.0.0.1:$PORT/index.html" >/dev/null; then break; fi
   sleep 0.25
@@ -32,8 +46,8 @@ passed=0
 
 run_map(){
   local planet="$1" preset="$2" mode="$3"
-  local profile="/tmp/mindustry-campaign-map-$planet-$preset"
-  local dom="/tmp/mindustry-campaign-map-$planet-$preset.html"
+  local profile="/tmp/mindustry-campaign-map-$planet-$preset-$mode"
+  local dom="$ROOT_DIR/work/campaign-map-$planet-$preset-$mode.html"
   local device_args=()
   if [ "$mode" = mobile ]; then device_args+=(--emulate-mobile); fi
   test -s "$WEB_DIR/assets/maps/$planet/$preset.msav"
@@ -59,6 +73,9 @@ run_map(){
       const m=/^(\\d+)x(\\d+)$/.exec(world);
       if(!m||Number(m[1])<16||Number(m[2])<16)
         throw Error('Real campaign map did not create a nonempty playable World: '+world);
+      if(typeof __mindustryQaSnapshot!=='function')throw Error('Actual state probe missing');
+      const stateBefore=__mindustryQaSnapshot();
+      if(!stateBefore.playing||stateBefore.paused||!stateBefore.campaignActive)throw Error('Map did not enter actual playing state: '+JSON.stringify(stateBefore));
       const before=Number(root.getAttribute('data-mindustry-campaign-frames')||0);
       let after=before;
       // Individual late-game sector maps can have much heavier first frames
@@ -74,6 +91,8 @@ run_map(){
         throw Error('Campaign simulation did not advance after map boot: '+before+' -> '+after);
       if(root.getAttribute('data-mindustry-web')==='error')
         throw Error('Browser runtime failed while ticking map');
+      const stateAfter=__mindustryQaSnapshot();
+      if(!stateAfter.playing||stateAfter.paused||stateAfter.tick<=stateBefore.tick||BigInt(stateAfter.updateId)<=BigInt(stateBefore.updateId))throw Error('Map simulation did not advance: '+JSON.stringify({before:stateBefore,after:stateAfter}));
       root.setAttribute('data-mindustry-campaign-matrix-smoke','passed');
       return true;
     })()" \
@@ -82,7 +101,17 @@ run_map(){
   passed=$((passed+1))
 }
 
-for preset in "${serpulo[@]}"; do run_map serpulo "$preset" desktop; done
-for preset in "${erekir[@]}"; do run_map erekir "$preset" mobile; done
-test "$passed" -eq 46
-echo "All 46 pinned vanilla campaign presets loaded and ticked in live Chrome: PASS"
+mkdir -p "$ROOT_DIR/work"
+expected=0
+for device in ${MINDUSTRY_MATRIX_DEVICES:-desktop mobile}; do
+  case "$device" in desktop|mobile) ;; *) echo "Unsupported test device: $device" >&2; exit 1;; esac
+  for planet in ${MINDUSTRY_MATRIX_PLANETS:-serpulo erekir}; do
+    case "$planet" in
+      serpulo) for preset in "${serpulo[@]}"; do run_map serpulo "$preset" "$device"; expected=$((expected+1)); done;;
+      erekir) for preset in "${erekir[@]}"; do run_map erekir "$preset" "$device"; expected=$((expected+1)); done;;
+      *) echo "Unsupported test planet: $planet" >&2; exit 1;;
+    esac
+  done
+done
+test "$passed" -eq "$expected"
+echo "All $passed requested pinned campaign/device boots loaded and advanced actual simulation: PASS"

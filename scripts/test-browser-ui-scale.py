@@ -31,6 +31,8 @@ files={
    BrowserUiScale.install();check(Scl.product==1 && BrowserUiScale.prompts==0,"Default100 must not prompt");
    Core.settings.put("uiscale",125);Core.settings.put("uiscalechanged",true);BrowserUiScale.install();
    check(Scl.product==1.25f && BrowserUiScale.shownPercent==125,"Saved scale not applied before UI");
+   int pending=BrowserUiScale.prompts;Core.settings.put("uiscalechanged",false);BrowserUiScale.install();
+   check(BrowserUiScale.prompts==pending+1,"Reload before Keep lost pending scale confirmation");
    BrowserUiScale.keepForTest();check(Core.settings.getInt("web-uiscale-confirmed",0)==125,"Keep did not persist confirmation");
    check(!Core.settings.getBool("uiscalechanged",true) && Core.settings.saves==1,"Keep did not clear desktop countdown");
    check(!BrowserUiScale.reloadRequested,"Keep must not reload");int prompts=BrowserUiScale.prompts;

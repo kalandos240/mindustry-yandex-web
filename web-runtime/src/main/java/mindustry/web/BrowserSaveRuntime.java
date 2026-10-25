@@ -118,6 +118,19 @@ public final class BrowserSaveRuntime{
         return cachedLocalSessionMeta != null && file.exists() && file.length() >= 128;
     }
 
+    private static void indexLocalSession(SaveMeta meta){
+        Fi file = localSessionFile();
+        for(Saves.SaveSlot slot : saves.getSaveSlots()){
+            if(slot.file.equals(file)){
+                slot.meta = meta;
+                return;
+            }
+        }
+        Saves.SaveSlot slot = saves.new SaveSlot(file);
+        slot.meta = meta;
+        saves.getSaveSlots().add(slot);
+    }
+
     public static boolean hasLocalSession(){
         return initialized && localSessionAvailable && validLocalSessionFile();
     }
@@ -142,8 +155,12 @@ public final class BrowserSaveRuntime{
     /** Called only after the imported world, rules, map and player core validate. */
     static void commitImportedSession(){
         if(importedSessionFile == null) return;
+        boolean autosave = Core.settings.getBool("save-" + importedSessionFile.nameWithoutExtension() + "-autosave", true);
         importedSessionFile.copyTo(localSessionFile());
+        Core.settings.put("save-web-local-survival-autosave", autosave);
+        Core.settings.forceSave();
         cachedLocalSessionMeta = importedSessionMeta;
+        indexLocalSession(cachedLocalSessionMeta);
         localSessionAvailable = true;
         markLocalSessionAvailability("available");
         BrowserUiRuntime.syncLocalSaveUiState();
@@ -186,6 +203,7 @@ public final class BrowserSaveRuntime{
         }
 
         cachedLocalSessionMeta = meta;
+        indexLocalSession(meta);
         localSessionAvailable = true;
         markLocalSessionAvailability("available");
         BrowserUiRuntime.syncLocalSaveUiState();

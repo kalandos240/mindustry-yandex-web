@@ -25,6 +25,19 @@ public final class BrowserSaves extends Saves{
     private SaveSlot browserLastSector;
 
     @Override
+    public SaveSlot importSave(Fi file) throws java.io.IOException{
+        // Importing a file is not loading a world. Stock importSave assigns
+        // current immediately and can autosave the paused old world into it.
+        SaveMeta meta = SaveIO.getMeta(SaveIO.getStream(file));
+        SaveSlot slot = new SaveSlot(getNextSlotFile());
+        slot.importFile(file);
+        slot.setName(file.nameWithoutExtension());
+        slot.meta = meta;
+        getSaveSlots().add(slot);
+        return slot;
+    }
+
+    @Override
     public void load(){
         Seq<SaveSlot> slots = getSaveSlots();
         slots.clear();

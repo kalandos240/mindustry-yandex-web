@@ -1,3 +1,4 @@
+# Final candidate build; acceptance downloads the exact frozen archive.
 name: Build comprehensive QA candidate
 'on':
   push:
@@ -203,7 +204,7 @@ jobs:
     - name: Record exact candidate and production source identity
       run: "python3 - <<'PY'\nfrom pathlib import Path\nimport hashlib,json,os,shutil\nroot=Path('.')\npaths=set()\nfor folder in ['port','web-runtime/src']:\n  \
         \  paths.update(p for p in Path(folder).rglob('*') if p.is_file())\npaths.update(Path('scripts').glob('patch-*.py'))\npaths.update(Path('scripts').glob('generate-*.py'))\n\
-        paths.update(map(Path,['scripts/apply-port.sh','scripts/bootstrap.sh','upstream.lock','web-runtime/build.gradle']))\nout=Path('work/qa-candidate');out.mkdir(parents=True,exist_ok=True)\n\
+        paths.update(map(Path,['scripts/apply-port.sh','scripts/bootstrap.sh','upstream.lock','web-runtime/build.gradle','scripts/sanitize-teavm-runtime-links.py','scripts/compact-teavm-state-vars.cjs','scripts/test-teavm-state-vars.cjs']))\nout=Path('work/qa-candidate');out.mkdir(parents=True,exist_ok=True)\n\
         source=Path('work/release/mindustry-yandex-release.zip')\ntarget=out/'Mindustry-Yandex-qa-candidate.zip';shutil.copyfile(source,target)\nmanifest={'source':os.environ['GITHUB_SHA'],'archive_sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'files':{p.as_posix():hashlib.sha256(p.read_bytes()).hexdigest()\
         \ for p in sorted(paths)}}\n(out/'source-manifest.json').write_text(json.dumps(manifest,indent=2))\nprint('Candidate SHA256:',manifest['archive_sha256'])\n\
         print('Runtime source files:',len(paths))\nPY\n"

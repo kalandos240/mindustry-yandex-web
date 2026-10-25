@@ -297,11 +297,25 @@ require(BROWSER_FI, "files.putLocal(path, buf, count);", "browser save zero-extr
 forbid(BROWSER_FI, "files.putLocal(path, toByteArray());", "browser save extra full-array copy")
 require(BROWSER_FILES, "void putLocal(String path, byte[] bytes, int length)", "browser save logical length")
 require(BROWSER_FILES, "storeLocalBytes(normalized, bytes, length);", "browser save logical length")
-require(BROWSER_SAVES, "meta = SaveIO.getMeta(SaveIO.getStream(file));", "browser save index one-pass metadata")
-require(BROWSER_SAVES, "SaveIO.backupFileFor(file)", "browser save index backup recovery")
-forbid(BROWSER_SAVES, "SaveIO.isSaveValid(file)", "browser save index duplicate validation")
-if BROWSER_SAVES.count("SaveIO.getMeta(") != 2:
+# Index hydration still has exactly one normal read + exceptional backup read.
+# The separate user-triggered import validates its source once before indexing;
+# it must reuse that metadata and must not select the imported archive as current.
+save_index_code = strip_java_comments(section(BROWSER_SAVES, "public void load(){", "public void saveSector("))
+save_import_code = strip_java_comments(section(BROWSER_SAVES, "public SaveSlot importSave(", "public void load(){"))
+require(save_index_code, "meta = SaveIO.getMeta(SaveIO.getStream(file));", "browser save index one-pass metadata")
+require(save_index_code, "meta = SaveIO.getMeta(SaveIO.getStream(backup));", "browser save index backup metadata")
+require(save_index_code, "SaveIO.backupFileFor(file)", "browser save index backup recovery")
+forbid(BROWSER_SAVES, "SaveIO.isSaveValid(file)", "browser save index/import duplicate validation")
+if save_index_code.count("SaveIO.getMeta(") != 2:
     failures.append("browser save index: expected current + backup metadata call sites only")
+if save_import_code.count("SaveIO.getMeta(") != 1:
+    failures.append("browser user-triggered import: expected exactly one source metadata read")
+require(save_import_code, "SaveMeta meta = SaveIO.getMeta(SaveIO.getStream(file));", "browser import one-pass metadata")
+require(save_import_code, "slot.meta = meta;", "browser import indexed metadata reuse")
+forbid(save_import_code, "current =", "browser import must preserve active world ownership")
+forbid(save_import_code, "setCurrent(", "browser import must preserve active world ownership")
+if strip_java_comments(BROWSER_SAVES).count("SaveIO.getMeta(") != 3:
+    failures.append("browser save index/import: unexpected metadata read outside the three allowed call sites")
 
 # patch-mindustry-save-preview-web.py intentionally contains old_* upstream anchors.
 # Validate the replacement wiring/output instead of treating those removal anchors as live code.

@@ -763,7 +763,8 @@ public final class BrowserLocalMapRuntime{
 
     /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
     private static void maybePeriodicSave(){
-        if(!active || current == null || !state.isPlaying() || state.gameOver) return;
+        if(!active || current == null || !state.isPlaying() || state.gameOver
+        || !Core.settings.getBool("save-web-local-survival-autosave", true)) return;
 
         boolean smoke = periodicSaveSmoke;
         if(smoke){

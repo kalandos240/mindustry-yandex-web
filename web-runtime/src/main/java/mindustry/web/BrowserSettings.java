@@ -211,7 +211,7 @@ public final class BrowserSettings extends Settings{
     @JSBody(params = {"key"}, script = "try { return window.localStorage.getItem(key); } catch (e) { return null; }")
     private static native String storageGet(String key);
 
-    @JSBody(params = {"key", "value"}, script = "try { window.localStorage.setItem(key, value); return true; } catch (e) { return false; }")
+    @JSBody(params = {"key", "value"}, script = "var mirrored=true; try { window.localStorage.setItem(key, value); } catch (e) { mirrored=false; } var platform=globalThis.__mindustryYandex; if(platform && typeof platform.onSettingsStored==='function') platform.onSettingsStored(value); return mirrored;")
     private static native boolean storageSet(String key, String value);
 }
 

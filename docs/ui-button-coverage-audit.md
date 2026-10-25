@@ -39,6 +39,27 @@ or prove that the game simulation is advancing.
   its new confirmation dialog. The replacement drives the actual controls and
   verifies Cancel preserves the paused tick before Confirm saves and exits.
 
+## Additional native suites awaiting rebuilt browser execution
+
+`scripts/verify-secondary-controls.py` writes a finite semantic ledger to
+`work/secondary-controls/ledger.json`. Its added cases cover Database tabs,
+every currently unlocked actionable content icon and detail Back, plus search
+and clearing. The rules case enumerates 56 source-defined global Boolean/numeric
+fields, edits enabled fields and restores them, verifies both search-clear values,
+and launches the resulting wave-timer rule. Disabled fields are recorded as
+unavailable. These cases cover Survival/Sandbox; Attack and nested ban-list,
+team, weather, color, loadout and background dialogs still need dedicated cases.
+
+The opt-in configuration fixture supports sorter, inverted sorter, unloader,
+item/liquid source, switch, microprocessor, ground/air/naval factory and the
+three Erekir fabricators. Native input selects each exposed resource/unit plan;
+the ledger checks actual stock configuration fields. Processor editing checks
+Cancel and Apply, preserved links and restored editor state. Available factory
+command buttons receive actual command-field checks. Production mechanisms,
+power-node links, payload selection and every other configuration family remain
+separate coverage. These are newly written tests, not passing results until the
+rebuilt browser run succeeds.
+
 ## Rule for new button results
 
 Each enumerated visible action should record screen/state, native hitpoint,

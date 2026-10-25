@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run the production scheduler/graphics-clock methods against a deterministic rAF clock."""
 from pathlib import Path
-import subprocess,tempfile
+import re,subprocess,tempfile
 ROOT=Path(__file__).resolve().parents[1]
 
 def method(source,signature):
@@ -12,16 +12,21 @@ def method(source,signature):
 
 app=(ROOT/'web-runtime/src/main/java/mindustry/web/BrowserApplication.java').read_text()
 graphics=(ROOT/'port/arc-web/src/arc/backend/web/WebGraphics.java').read_text()
+launcher=(ROOT/'web-runtime/src/main/java/mindustry/web/WebClientLauncher.java').read_text()
+delta=launcher.split('        Time.setDeltaProvider(() -> {',1)[1].split('        });',1)[0]
 code='''public class FramePacingTest{
+ static final float maxDeltaClient=4f;
+ static class Mathf{static float clamp(float value,float low,float high){return Math.max(low,Math.min(high,value));}}
  static class Settings{int value=240;int getInt(String key,int fallback){return value;}}
- static class Core{static Settings settings=new Settings();}
+ static class Core{static Settings settings=new Settings();static Object app;static Clock graphics;}
  static class Dialog{boolean isShown(){return true;}}
  static class Ui{Dialog settings=new Dialog();}
  static class State{boolean gameOver;boolean isPlaying(){return true;}}
- static class Vars{static Ui ui=new Ui();static State state=new State();}
+ static class Vars{static Ui ui=new Ui();static State state=new State();static float maxDeltaClient=4f;}
  static class Clock{
  long frameId=-1;double lastTimestampMs=-1d,fpsWindowStartMs=-1d,maxFrameDeltaMs=50d;
  float deltaTime=1f/60f;int fps=60,fpsFrames;
+ float getDeltaTime(){return deltaTime;}
  CLOCK_METHODS
  }
  static class Host{
@@ -32,13 +37,18 @@ code='''public class FramePacingTest{
  void markFrameLimit(int n){}void markFrameBudget(int fps,float ratio,int slow,int frames){}
  HOST_METHODS
  }
+ static float providerDelta(){PROVIDER_BODY}
  static void check(boolean ok,String text){if(!ok)throw new AssertionError(text);}
  static Host run(int cap){
-   Core.settings.value=cap;Host h=new Host();int count=0;
-   for(int i=0;i<=600;i++)if(h.frameDue(i*1000d/60d)){count++;h.sampleFrameBudget(i*1000d/60d);}
+   Core.settings.value=cap;Host h=new Host();int count=0;double ticks=0;
+   Core.app=h;Core.graphics=h.graphics;
+   for(int i=0;i<=600;i++)if(h.frameDue(i*1000d/60d)){
+     count++;h.graphics.updateFrame(i*1000d/60d);ticks+=providerDelta();h.sampleFrameBudget(i*1000d/60d);
+   }
    int expected=cap>240?601:Math.min(cap,60)*10+1;
    check(Math.abs(count-expected)<=1,"Wrong frame count at cap "+cap+": "+count+" expected "+expected);
    if(cap==10||cap==30)check(h.renderRatioCap>=0.99f,"Intentional low FPS reduced render quality");
+   check(Math.abs(ticks-600)<=5,"Actual delta provider slowed simulation at cap "+cap+": "+ticks+" ticks over10seconds");
    return h;
  }
  public static void main(String[] args){
@@ -59,7 +69,9 @@ code='''public class FramePacingTest{
  }
 }'''
 code=code.replace('CLOCK_METHODS',method(graphics,'public void updateFrame(double timestampMs)')+'\n'+method(graphics,'public void setFrameRateLimit(int limit)'))
-code=code.replace('HOST_METHODS',method(app,'private boolean frameDue(double timestamp)')+'\n'+method(app,'private boolean sampleFrameBudget(double timestamp)'))
+code=code.replace('HOST_METHODS',method(app,'private boolean frameDue(double timestamp)')+'\n'+method(app,'private boolean sampleFrameBudget(double timestamp)')+'\n'+method(app,'public float simulationDeltaLimit()'))
+code=code.replace('PROVIDER_BODY',delta)
+code=re.sub(r'\bHost\b','BrowserApplication',code)
 with tempfile.TemporaryDirectory() as folder:
     p=Path(folder)/'FramePacingTest.java';p.write_text(code)
     subprocess.run(['java',str(p)],check=True)
