@@ -277,7 +277,7 @@ async def main():
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'trash' in x.get('icons',[]),'canonical delete confirm')
                         await choose(lambda x:x['kind']=='button' and x['label'].strip()=='OK','canonical delete confirmation')
                         assert not await page.evaluate('p=>__mindustryStorage.exists(p)',CANONICAL)
-                        assert await page.evaluate('__mindustryQaSetting("web-campaign-reset-at")')>0
+                        assert int(await page.evaluate('__mindustryQaSetting("web-campaign-reset-at")'))>0
                         await page.evaluate('()=>__mindustryStorage.flush()')
                         await context.close();context=await launch();page=await context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
                         await ready('?lang=en')
