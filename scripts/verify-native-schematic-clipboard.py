@@ -70,7 +70,7 @@ async def main():
                         await page.wait_for_function("()=>__mindustryUiText().text.includes('QA схема')")
                         files=await page.evaluate("()=>__mindustryStorage.paths().filter(p=>p.startsWith('schematics/')&&p.endsWith('.msch'))")
                         assert len(files)==1,files
-                        saved=bytes(await page.evaluate('p=>Array.from(__mindustryStorage.get(p))',files[0]))
+                        saved=bytes(await page.evaluate('p=>Array.from(Uint8Array.from(__mindustryStorage.get(p)))',files[0]))
                         assert read_tags(saved)[0:2]==(1,1) and read_tags(saved)[2]['name']=='QA схема'
                         # Native Info -> Export -> Copy path must show selectable
                         # text even if clipboard permission is denied by the host.
