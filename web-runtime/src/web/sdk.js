@@ -127,8 +127,8 @@ function installNaturalPauseAd(){
     if(!shown){s.pauseWasOpen=false;return}
     if(s.pauseWasOpen)return;
     s.pauseWasOpen=true;
-    const active=root.getAttribute('data-mindustry-campaign-state')==='playing'
-       ||root.getAttribute('data-mindustry-local-map-state')==='playing';
+    const active=['playing','paused'].includes(root.getAttribute('data-mindustry-campaign-state'))
+       ||['playing','paused'].includes(root.getAttribute('data-mindustry-local-map-state'));
     if(!active||!s.gameReady)return;
     if(Date.now()-s.sessionStartedAt<FIRST_AD_DELAY_MS){
       mark('interstitial-state','first-ad-wait');
