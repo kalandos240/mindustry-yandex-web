@@ -145,7 +145,10 @@
         source.start(0);
     }
 
-    const unlockEvents = ['pointerdown', 'touchstart', 'keydown'];
+    // Some engines (notably Firefox with restricted autoplay) grant Web Audio
+    // activation at click/mousedown rather than the earlier pointerdown. Every
+    // handler still runs only from an actual user gesture.
+    const unlockEvents = ['pointerdown', 'mousedown', 'touchstart', 'click', 'keydown'];
 
     function listenForUnlock(){
         unlockEvents.forEach(function(type){
@@ -186,9 +189,14 @@
     }
 
     function unlock(){
-        if(!state.ctx || state.unlocked || state.unlocking) return;
+        if(!state.ctx || state.unlocked) return;
         if(state.platformPaused) return;
         var context = state.ctx;
+        // AudioContext.resume() can remain pending after an early pointerdown
+        // until an eligible click/keydown grants user activation. Do not let
+        // the first unresolved promise permanently block later real gestures.
+        // The guarded completeUnlock callback is idempotent.
+        if(state.unlocking && context.state === 'running') return;
         state.unlocking = true;
         context.resume().then(function(){ completeUnlock(context); }).catch(function(){
             if(state.ctx === context) state.unlocking = false;
