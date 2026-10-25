@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [reset-campaign, reset-research, reset-saves, reset-planet-research, reset-planet-campaign]
+        suite: [settings-mobile]
     steps:
       - uses: actions/checkout@v4
       - name: Await exact source's experimental package
