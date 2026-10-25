@@ -327,4 +327,15 @@
             game:typeof globalThis.__mindustryQaSnapshot==='function'?globalThis.__mindustryQaSnapshot():null,
             controls};
     };
+    // Test-only read-only hit test. Geometry alone is not proof that a
+    // native click reaches the expected original Arc actor.
+    globalThis.__mindustryUiHitAt=function(x,y){
+        if(typeof as_Scene_hit!=='function')return {available:false};
+        const hit=as_Scene_hit(a_Core_scene,x,y,true);
+        const parents=[];let node=hit;
+        for(let i=0;node&&i<12;i++,node=get(node,'element','parent')){
+            parents.push({type:type(node),name:name(node),label:labels(node,0,150)});
+        }
+        return {available:true,hit:hit?{type:type(hit),name:name(hit),label:labels(hit,0,150)}:null,parents};
+    };
 })();
