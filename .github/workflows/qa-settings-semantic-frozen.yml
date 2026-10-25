@@ -60,7 +60,20 @@ jobs:
           PYTHONUNBUFFERED: '1'
           LIBGL_ALWAYS_SOFTWARE: '1'
           MOZ_WEBRENDER: '1'
-        run: xvfb-run -a python3 scripts/run-acceptance-suite.py settings-${{ matrix.browser }}-${{ matrix.device }}
+        run: |
+          # The frozen ZIP is not the older QA-candidate archive, so run the
+          # settings semantic tester directly and verify original JS bytes
+          # after removing both read-only probes, even if assertions fail.
+          python3 scripts/prepare-qa-probe.py
+          python3 scripts/prepare-ui-control-probe.py
+          set +e
+          arguments=(--browser ${{ matrix.browser }})
+          if [ "${{ matrix.device }}" = mobile ]; then arguments+=(--mobile); fi
+          xvfb-run -a python3 scripts/verify-settings-functional.py "${arguments[@]}"
+          code=$?
+          python3 scripts/prepare-ui-control-probe.py --restore || code=1
+          python3 scripts/prepare-qa-probe.py --restore || code=1
+          exit "$code"
 
       - name: Verify QA probes restored exact original compiled runtime
         if: always()
