@@ -56,7 +56,14 @@ class Native:
         else:await self.page.mouse.click(c['x'],c['y'])
         await self.page.wait_for_timeout(100)
     async def click(self,predicate,label):
-        c=await self.locate(predicate,label);await self.pointer(c);return c
+        # ScrollPane scrolling and modal fade transitions can leave a stale
+        # actor center between inventory and pointer dispatch. Re-read the
+        # live actor after the original Arc layout settles.
+        c=await self.locate(predicate,label)
+        await self.page.wait_for_timeout(380)
+        c=await self.locate(predicate,label)
+        await self.pointer(c)
+        return c
     async def name(self,name):return await self.click(lambda c:c.get('name')==name,name)
     async def button(self,label):return await self.click(lambda c:c['kind']=='button' and clean(c['label'])==label,label)
     async def text(self,c,text):
@@ -247,12 +254,14 @@ async def config_family(ui,family):
         if await ui.attr('native-config-open')!='true':await tile();await ui.wait(lambda:config_open(ui),'reopen '+family)
         find=lambda c,q=choice:c['kind']=='button' and any(v['type']==q['type'] and v['name']==q['name'] for v in c.get('content',[]))
         await ui.click(find,family+' '+choice['name'])
-        expected=str(plans.index(choice['name'])) if kind=='unit' else choice['name']
+        # Compiled Java String.valueOf(Item/Liquid) is its localizedName
+        # ("Copper"/"Water"), not the registry ID ("copper"/"water").
+        expected=str(plans.index(choice['name'])) if kind=='unit' else choice.get('localizedName',choice['name'])
         try:
             await ui.wait(lambda:config_value(ui,expected),family+' selected '+choice['name'])
         except AssertionError:
             print('CONFIG_CHOICE_DIAGNOSTIC '+json.dumps({
-                'family':family,'choice':choice,'expected':expected,
+                'family':family,'choice':choice,'expected':expected,'before':before,
                 'actual':await ui.attr('native-config-value'),
                 'actualType':await ui.attr('native-config-type'),
                 'configOpen':await ui.attr('native-config-open'),
