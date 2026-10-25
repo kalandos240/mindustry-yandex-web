@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [settings-desktop, settings-mobile]
+        suite: [reset-campaign, reset-research, reset-saves, reset-planet-research, reset-planet-campaign]
     steps:
       - uses: actions/checkout@v4
       - name: Await exact source's experimental package
@@ -75,6 +75,9 @@ jobs:
             inventory) python3 scripts/verify-ui-control-inventory.py ;;
             reset-campaign) python3 scripts/verify-native-data-reset.py --target 'Clear Campaign Saves' ;;
             reset-research) python3 scripts/verify-native-data-reset.py --target 'Clear Research' ;;
+            reset-saves) python3 scripts/verify-native-data-reset.py --target 'Clear Saves' ;;
+            reset-planet-research) python3 scripts/verify-native-data-reset.py --planet --target 'Clear Planet Research' ;;
+            reset-planet-campaign) python3 scripts/verify-native-data-reset.py --planet --target 'Clear Planet Campaign Saves' ;;
             reset-all) python3 scripts/verify-native-data-reset.py --target 'Clear Game Data...' ;;
             settings-desktop|settings-mobile)
               python3 scripts/prepare-qa-probe.py
