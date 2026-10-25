@@ -133,7 +133,7 @@ async def main():
       await page.wait_for_function(
         """() => document.documentElement.getAttribute('data-playgama-interstitial-state')==='closed'
           && document.documentElement.getAttribute('data-mindustry-platform-pause')==='running'
-          && document.documentElement.getAttribute('data-yandex-game-state')==='playing'""",
+          && document.documentElement.getAttribute('data-yandex-game-state')==='"""+('playing' if mobile else 'ready')+"""'""",
         timeout=15000)
       assert await page.evaluate("() => __playgamaTest.adShows") == 1
       assert not errors,errors
