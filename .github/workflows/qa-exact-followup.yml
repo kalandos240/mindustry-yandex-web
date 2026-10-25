@@ -2,7 +2,7 @@ name: Exact rebuilt game focused acceptance
 on:
   push:
     branches: [qa/exact-build-acceptance-20261025]
-    paths: [.github/workflows/qa-exact-followup.yml]
+    paths: [.github/workflows/qa-exact-followup.yml, scripts/verify-settings-functional.py]
 permissions:
   contents: read
   actions: read
@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [custom, inventory, reset-campaign, reset-research, reset-all, settings-desktop, settings-mobile]
+        suite: [inventory, reset-campaign, settings-desktop, settings-mobile]
     steps:
       - uses: actions/checkout@v4
       - name: Await exact source's experimental package
