@@ -384,7 +384,12 @@ require(CAMPAIGN_UI, "ui.menuGroup.addChild(erekirUiTick)", "Erekir updater is n
 # WebAudio saturation and decode cache are explicitly bounded on mobile.
 require(BROWSER_AUDIO, "if((++settingsPoll & 31) == 0 || mindustry.Vars.ui != null", "browser audio settings cadence")
 require(BROWSER_AUDIO, "if(validationSmokeRequested()){", "browser audio CI-only validation")
-require(BROWSER_AUDIO_JS, "if(!state.ctx || state.unlocked || state.unlocking) return;", "browser audio one-shot unlock")
+# Unlock remains one-shot after success, but an unresolved first
+# AudioContext.resume() is retried on subsequent trusted user gestures.
+require(BROWSER_AUDIO_JS, "if(!state.ctx || state.unlocked) return;", "browser audio one-shot successful unlock")
+require(BROWSER_AUDIO_JS, "if(state.unlocking && context.state === 'running') return;", "browser audio pending-unlock guard")
+require(BROWSER_AUDIO_JS, "'mousedown', 'touchstart', 'click', 'keydown'", "browser audio trusted-gesture fallbacks")
+require(BROWSER_AUDIO_JS, "|| entry.pendingPlay", "queued HTMLAudio track survives asynchronous startup")
 require(BROWSER_AUDIO_JS, "state.maxVoices = inputMode === 'mobile' ? 48 : 0", "mobile SFX voice cap")
 require(BROWSER_AUDIO_JS, "state.maxDecodedBuffers = inputMode === 'mobile' ? 64 : 0", "mobile decoded SFX cache cap")
 require(BROWSER_AUDIO_JS, "function trimDecodedBuffers(keepUrl)", "mobile decoded SFX LRU")
