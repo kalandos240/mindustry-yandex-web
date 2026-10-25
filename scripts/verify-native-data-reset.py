@@ -63,6 +63,12 @@ async def main(target_filter=None,planet_filter=False):
                             for sector in ['onset','groundZero']:
                                 await ready('&mindustryCampaignSmoke='+sector+'&mindustryCampaignSaveSmoke=1')
                                 await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-campaign-save-flush')==='ready'",timeout=150000)
+                            if target=='Clear Saves':
+                                # Clear Saves concerns registered manual/local Saves slots.
+                                # Campaign sector .msav files belong to the separate
+                                # "Clear Campaign Saves" action and MUST be preserved.
+                                await ready('&mindustryMapSmoke=maze&mindustryLocalMode=survival&mindustrySaveSmoke=1')
+                                await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-local-save-flush')==='ready'",timeout=150000)
                             await ready()
                         else:await ready()
                         await open_data()
@@ -88,6 +94,8 @@ async def main(target_filter=None,planet_filter=False):
                         baseline=await page.evaluate("()=>({paths:__mindustryStorage.paths().filter(p=>p.endsWith('.msav')),pref:__mindustryQaSetting('qa-device-pref'),research:__mindustryQaSetting('req-router-copper'),otherResearch:__mindustryQaSetting('req-duct-beryllium'),unlocked:__mindustryQaSetting('titanium-unlocked')})")
                         assert any('sector-serpulo-' in p for p in baseline['paths']),baseline
                         assert any('sector-erekir-' in p for p in baseline['paths']),baseline
+                        if target=='Clear Saves':
+                            assert any(p.endswith('web-local-survival.msav') for p in baseline['paths']),baseline
                         assert baseline['pref']=='retain-me',baseline
                         assert baseline['research']==99 and baseline['otherResearch']==77 and baseline['unlocked'] is True,baseline
                         await text(target)
@@ -132,7 +140,8 @@ async def main(target_filter=None,planet_filter=False):
                             if planet:assert [p for p in after['paths'] if 'sector-erekir-' in p]==[p for p in baseline['paths'] if 'sector-erekir-' in p],after
                             else:assert not any('sector-erekir-' in p for p in after['paths']),after
                         elif 'saves' in action:
-                            assert not after['paths'],after
+                            assert not any('web-local-survival.msav' in p for p in after['paths']),after
+                            assert sorted(p for p in after['paths'] if 'sector-' in p)==sorted(p for p in baseline['paths'] if 'sector-' in p),'Clear Saves wrongly deleted campaign sectors'
                         else:
                             assert not after['paths'] and after['pref'] is None,after
                         if 'research' in action or 'campaign' in action or 'saves' in action:assert after['pref']==baseline['pref'],'Selective reset changed device preference'
