@@ -2,7 +2,7 @@ name: Rebuilt native save and schematic libraries
 on:
   push:
     branches: [qa/secondary-native-diagnostics-20261025]
-    paths: [.github/workflows/native-libraries-rebuilt.yml]
+    paths: [.github/workflows/native-libraries-rebuilt.yml, scripts/verify-native-save-library.py]
 permissions:
   contents: read
   actions: read
