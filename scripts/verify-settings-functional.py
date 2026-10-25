@@ -79,8 +79,14 @@ async def main(args):
                 raise AssertionError('Native control not reachable: '+str(key or name or label))
             async def click(**find):
                 c=await locate(**find)
-                if args.mobile:await page.touchscreen.tap(c['x'],c['y'])
-                else:await page.mouse.click(c['x'],c['y'])
+                # The reported actor center may lie outside its ScrollPane's
+                # clipping rectangle when only a strip is visible. Use the
+                # actual visible hit rectangle, not the un-clipped center.
+                r=c['visibleCssRect']
+                x=(r['left']+r['right'])/2
+                y=(r['top']+r['bottom'])/2
+                if args.mobile:await page.touchscreen.tap(x,y)
+                else:await page.mouse.click(x,y)
                 await page.wait_for_timeout(100)
             async def settings_page(category):
                 items=await controls()
@@ -207,7 +213,13 @@ async def main(args):
                         if isinstance(before,bool):
                             await click(key=key)
                             async def toggled():return await value(key)==(not before)
-                            await wait(toggled,'native checkbox '+key)
+                            try:
+                                await wait(toggled,'native checkbox '+key)
+                            except AssertionError:
+                                current=await locate(key=key)
+                                print('CHECKBOX_DIAGNOSTIC '+json.dumps({'key':key,'before':before,'after':await value(key),'control':current},ensure_ascii=False),flush=True)
+                                await page.screenshot(path=str(out/f'{args.browser}-{"mobile" if args.mobile else "desktop"}-checkbox-failed.png'))
+                                raise
                             effects.append(await semantic(key,not before));await assert_paused(key)
                             await click(key=key)
                             async def restored():return await value(key)==before
