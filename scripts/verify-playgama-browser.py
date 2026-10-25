@@ -45,7 +45,7 @@ window.bridge={
    if(placement!=='menu_return')throw Error('Wrong ad placement');
    __playgamaTest.adShows++;
    setTimeout(()=>__playgamaTest.callbacks.interstitial_state_changed('opened'),20);
-   setTimeout(()=>__playgamaTest.callbacks.interstitial_state_changed('closed'),100);
+   setTimeout(()=>__playgamaTest.callbacks.interstitial_state_changed('closed'),800);
   }
  }
 };
@@ -107,6 +107,24 @@ async def main():
       await page.wait_for_function(
         "() => document.documentElement.getAttribute('data-mindustry-platform-pause')==='running'")
       assert not errors,errors
+      # A full native-to-Bridge interstitial from the actual running campaign.
+      # Use the original, shipped platform wrapper and real browser sound
+      # state; the external host alone is stubbed for CI.
+      await page.evaluate("() => __mindustryYandex.showFullscreenAdv()")
+      await page.wait_for_function(
+        """() => __playgamaTest.adShows===1
+          && document.documentElement.getAttribute('data-playgama-interstitial-state')==='opened'
+          && document.documentElement.getAttribute('data-mindustry-platform-pause')==='paused'""",
+        timeout=15000)
+      await page.wait_for_function(
+        """() => document.documentElement.getAttribute('data-playgama-interstitial-state')==='closed'
+          && document.documentElement.getAttribute('data-mindustry-platform-pause')==='running'
+          && document.documentElement.getAttribute('data-yandex-game-state')==='playing'""",
+        timeout=15000)
+      assert await page.evaluate("() => __playgamaTest.adShows") == 1
+      assert not errors,errors
+      state['ads'] = 'Playgama interstitial opened, paused, closed and resumed real gameplay'
+      state['adShows'] = 1
       # Native Java music/sound remains governed by BrowserAudio; do not
       # accept a browser app that crashes during the platform pause.
       (OUT/(device+'.json')).write_text(json.dumps(state,indent=2))
