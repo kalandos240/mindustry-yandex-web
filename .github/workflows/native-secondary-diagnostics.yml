@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        case: [database]
+        case: [rules]
         device: [desktop, mobile]
     steps:
       - uses: actions/checkout@v4
