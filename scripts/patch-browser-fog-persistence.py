@@ -148,8 +148,24 @@ new_helper = '''    /**
     /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
     private static void maybePeriodicSave(){
 '''
+# The fixed browser port supports the player's native Save Interval instead of
+# hardcoding three minutes. Keep this source bootstrap idempotent for both
+# committed post-periodic runtime variants.
 if text.count(old_helper) != 1:
-    raise SystemExit("Fog persistence helper insertion anchor no longer matches periodic runtime")
+    configured_header = """    /**
+     * Respect the player's stock Settings -> Game -> Save Interval (seconds).
+     * The original Saves.update() interprets that preference as seconds of
+     * simulation, not a hard-coded three minutes. Only live, unpaused local
+     * worlds may update their persistent checkpoint, and the native per-save
+     * autosave toggle remains authoritative.
+     */
+    private static void maybePeriodicSave(){
+"""
+    if text.count(configured_header) == 1:
+        new_helper = new_helper.replace(old_helper, configured_header)
+        old_helper = configured_header
+    else:
+        raise SystemExit("Fog persistence helper insertion anchor no longer matches periodic runtime")
 text = text.replace(old_helper, new_helper, 1)
 
 old_cache = '''        periodicSaveSmoke = periodicSaveSmokeRequested();
