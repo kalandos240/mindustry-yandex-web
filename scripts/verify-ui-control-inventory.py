@@ -1,0 +1,180 @@
+#!/usr/bin/env python3
+"""Discover actual Arc controls using trusted browser navigation.
+
+This is an inventory and navigation gate, not a claim that every discovered
+control's business function was tested. Destructive controls and setting effects
+are explicitly listed as discovered-only for dedicated isolated-profile suites.
+"""
+import asyncio
+import hashlib
+import json
+import shutil
+import subprocess
+import threading
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+from playwright.async_api import async_playwright
+
+ROOT = Path(__file__).resolve().parents[1]
+STAGE = ROOT / 'web-runtime/build/web'
+OUT = ROOT / 'work/ui-control-inventory'
+
+
+async def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    runtime = STAGE / 'mindustry.js'
+    pristine = runtime.read_bytes()
+    installed = []
+    server = None
+    report = {'format': 'mindustry-ui-control-coverage-v1', 'profiles': [],
+              'scope': 'Native navigation and live control discovery; effects are separate gates',
+              'destructiveActionsExecuted': False}
+    try:
+        for script in ['prepare-qa-probe.py', 'prepare-ui-control-probe.py']:
+            subprocess.run(['python3', str(ROOT / 'scripts' / script)], check=True)
+            installed.append(script)
+        server = ThreadingHTTPServer(('127.0.0.1', 8148), partial(SimpleHTTPRequestHandler, directory=str(STAGE)))
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(executable_path=shutil.which('google-chrome'), headless=True,
+                args=['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
+            try:
+                for profile, width, height, mobile in [('desktop', 1280, 800, False), ('narrow', 780, 437, False), ('mobile', 390, 844, True)]:
+                    context = await browser.new_context(viewport={'width': width, 'height': height},
+                        is_mobile=mobile, has_touch=mobile)
+                    page = await context.new_page()
+                    errors = []
+                    page.on('pageerror', lambda error: errors.append(str(error)))
+                    profile_report = {'profile': profile, 'viewport': [width, height], 'contexts': [],
+                                      'nativeActions': [], 'settingKeys': [], 'discoveredOnly': []}
+                    report['profiles'].append(profile_report)
+
+                    async def snap(label):
+                        await page.wait_for_timeout(300)
+                        value = await page.evaluate('()=>__mindustryUiControls({includeOffscreen:true,includeDisabled:true})')
+                        assert value['ready'] and not value['truncated'], value
+                        assert not errors, errors
+                        assert await page.get_attribute('html', 'data-mindustry-web') == 'ready'
+                        # Opening a menu/dialog must not create a gameplay session.
+                        assert value['game']['menu'] and not value['game']['playing'], value['game']
+                        value['context'] = label
+                        profile_report['contexts'].append(value)
+                        return value
+
+                    async def inventory():
+                        return await page.evaluate('()=>__mindustryUiControls({includeOffscreen:true,includeDisabled:true})')
+
+                    async def choose(predicate, label):
+                        for attempt in range(22):
+                            value = await inventory()
+                            candidates = [item for item in value['controls'] if predicate(item) and item['enabled'] and item['onScreen']]
+                            if candidates:
+                                target = candidates[0]
+                                if mobile:
+                                    await page.touchscreen.tap(target['x'], target['y'])
+                                else:
+                                    await page.mouse.click(target['x'], target['y'])
+                                profile_report['nativeActions'].append({'label': label, 'control': target,
+                                    'assertion': 'Expected destination is checked separately'})
+                                await page.wait_for_timeout(450)
+                                return
+                            # Root category lists can be below the fold in narrow portals.
+                            panes = [item for item in value['controls'] if item['kind'] == 'scrollpane' and item['onScreen'] and item.get('maxY', 0) > 0]
+                            if panes:
+                                pane = max(panes, key=lambda item: item.get('maxY', 0))
+                                await page.mouse.move(pane['x'], pane['y'])
+                                await page.mouse.wheel(0, 230 if attempt < 14 else -230)
+                                await page.wait_for_timeout(300)
+                            else:
+                                await page.wait_for_timeout(200)
+                        raise AssertionError('Native inventory target missing: ' + label + ' / ' + json.dumps(value, ensure_ascii=False)[:12000])
+
+                    async def close_all():
+                        for _ in range(5):
+                            value = await inventory()
+                            if not value['modal']:
+                                return
+                            await page.keyboard.press('Escape')
+                            await page.wait_for_timeout(450)
+                        raise AssertionError('Dialog did not close via trusted Escape: ' + str((await inventory())['modal']))
+
+                    async def named(name):
+                        await choose(lambda item: item['name'] == name, name)
+
+                    async def open_settings():
+                        await close_all()
+                        await named('web-main-settings')
+                        await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-settings-native-page')==='root'")
+
+                    try:
+                        query = '?lang=ru' + ('&mindustryDevice=mobile' if mobile else '')
+                        await page.goto('http://127.0.0.1:8148/index.html' + query)
+                        await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-web')==='ready'", timeout=150000)
+                        initial = await snap('home')
+                        assert any(item['name'] == 'web-main-settings' for item in initial['controls']), initial
+                        await open_settings()
+                        root_settings = await snap('settings/root')
+                        tabs = [('game', 'Игра'), ('graphics', 'Графика'), ('sound', 'Звук')]
+                        for tab, label in tabs:
+                            await choose(lambda item, label=label: item['kind'] in ['button', 'clickable'] and item['label'].strip() == label, 'settings/' + tab)
+                            await page.wait_for_function("key=>document.documentElement.getAttribute('data-mindustry-settings-native-page')===key", arg=tab)
+                            value = await snap('settings/' + tab)
+                            keys = {item['setting']['key'] for item in value['controls'] if item.get('setting')}
+                            assert keys, 'No native setting objects resolved in ' + tab
+                            profile_report['settingKeys'].extend(sorted(keys))
+                            # Exercise the real scroll surface and refresh coordinates.
+                            panes = [item for item in value['controls'] if item['kind'] == 'scrollpane' and item['onScreen'] and item.get('maxY', 0) > 0]
+                            if panes:
+                                pane = max(panes, key=lambda item: item.get('maxY', 0))
+                                await page.mouse.move(pane['x'], pane['y'])
+                                await page.mouse.wheel(0, max(250, pane['maxY']))
+                                await snap('settings/' + tab + '/scrolled')
+                            await page.keyboard.press('Escape')
+                            await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-settings-native-page')==='root'")
+                            await snap('settings/root-return-' + tab)
+                        # Data, languages and keybind controls are inventoried without
+                        # destroying data, changing language, or rebinding keys here.
+                        profile_report['discoveredOnly'].extend({'reason': 'Dedicated isolated mutation/semantic suite required',
+                            'control': item} for item in root_settings['controls'] if item['kind'] in ['button', 'clickable'] and
+                            item['label'].strip() not in ['Игра', 'Графика', 'Звук', 'Назад'])
+                        await close_all()
+                        actions = [('play', 'planets'), ('play', 'custom'), ('play', 'saves'),
+                                   ('database-group', 'database'), ('database-group', 'research'),
+                                   ('database-group', 'schematics'), ('database-group', 'controls')]
+                        for group, action in actions:
+                            await close_all()
+                            if not mobile:
+                                # A previous submenu may remain open; the desired
+                                # target itself is the authoritative fresh actor.
+                                value = await inventory()
+                                if not any(item['name'] == 'web-main-' + action and item['onScreen'] and item['enabled'] for item in value['controls']):
+                                    await named('web-main-' + group)
+                                    await snap('submenu/' + group)
+                            target = 'web-main-play' if mobile and action == 'planets' else 'web-main-' + action
+                            await named(target)
+                            destination = await snap('dialog/' + action)
+                            assert destination['modal'], 'Native ' + action + ' did not open a Dialog'
+                            await close_all()
+                            await snap('home-after-' + action)
+                        profile_report['settingKeys'] = sorted(set(profile_report['settingKeys']))
+                        await page.screenshot(path=str(OUT / (profile + '.png')))
+                        print(profile + ': actual Arc control inventory, setting key associations and trusted menu/category navigation PASS', flush=True)
+                    finally:
+                        (OUT / (profile + '.json')).write_text(json.dumps(profile_report, ensure_ascii=False, indent=2))
+                        if errors:
+                            (OUT / (profile + '-errors.json')).write_text(json.dumps(errors, ensure_ascii=False, indent=2))
+                        await context.close()
+            finally:
+                await browser.close()
+    finally:
+        if server:
+            server.shutdown()
+        for script in reversed(installed):
+            subprocess.run(['python3', str(ROOT / 'scripts' / script), '--restore'], check=True)
+        assert hashlib.sha256(runtime.read_bytes()).digest() == hashlib.sha256(pristine).digest(), 'Read-only probes must restore exact runtime bytes'
+        (OUT / 'coverage.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+asyncio.run(main())
