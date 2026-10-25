@@ -49,6 +49,22 @@
   await click('pause-button-exit-confirm');
   await wait(()=>get('campaign-state')==='menu' &&
                 getYandex('menu-ad-state')==='closed-shown','saved return and SDK ad completion');
+  // The SDK ad close callback precedes the asynchronous platform resume
+  // and cloud checkpoint. Observe their real completion rather than reading
+  // markers in the same JavaScript turn as the ad-close event.
+  await wait(() =>
+    getYandex('test-cloud-set-count')==='1' &&
+    getYandex('test-cloud-flush')==='true' &&
+    getYandex('test-cloud-under-limit')==='yes' &&
+    getYandex('test-cloud-settings')==='yes' &&
+    getYandex('test-cloud-campaign-file')==='yes' &&
+    getYandex('test-ad-resume-sent')==='yes' &&
+    get('platform-resume-observed')==='yes' &&
+    get('platform-resume-frame')==='ready' &&
+    get('platform-resume-frame-state')==='not-playing' &&
+    get('audio-platform')==='running' &&
+    getYandex('game-state')==='ready',
+    'cloud checkpoint and post-interstitial platform resume');
   if(getYandex('test-menu-ad-gameplay-before')!=='stopped')
     throw Error('Yandex interstitial started before GameplayAPI stopped');
   root.setAttribute('data-mindustry-native-menu-ad-input','passed');
