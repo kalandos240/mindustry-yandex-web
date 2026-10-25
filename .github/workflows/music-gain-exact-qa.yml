@@ -1,0 +1,85 @@
+name: Real music volume Settings desktop/mobile on exact PR184 build
+on:
+  push:
+    branches: [qa/music-gain-acceptance-20261025]
+    paths:
+      - scripts/verify-settings-functional.py
+      - .github/workflows/music-gain-exact-qa.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  stock-settings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [desktop, mobile]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for exact new browser game archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          from urllib.request import Request,urlopen
+          import os,time,json
+          url='https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/40169898363/artifacts?per_page=100'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          for attempt in range(180):
+              with urlopen(Request(url,headers=headers),timeout=20) as r: artifacts=json.load(r)['artifacts']
+              if any(a['name']=='mindustry-yandex-manual-playtest-experimental' and not a['expired'] for a in artifacts):
+                  print('PR184 compiled game artifact found',flush=True);break
+              if attempt%12==0:print('Waiting for exact TeaVM archive',attempt,flush=True)
+              time.sleep(10)
+          else:raise SystemExit('No PR184 playable game build')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 40169898363
+          name: mindustry-yandex-manual-playtest-experimental
+          github-token: ${{ github.token }}
+          path: work/rebuilt
+      - name: Validate original build SHA, asset completeness, and Yandex 100MB ceiling
+        run: |
+          python3 - <<'PY'
+          import hashlib,zipfile
+          from pathlib import Path,PurePosixPath
+          base=Path('work/rebuilt')
+          assert '0f05b6e1fc834e442d7ca8f6c8e93701fea2f8c3' in (base/'EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt').read_text()
+          archive=base/'mindustry-yandex-release.zip'
+          assert hashlib.sha256(archive.read_bytes()).hexdigest()==(base/'mindustry-yandex-release.zip.sha256').read_text().split()[0]
+          with zipfile.ZipFile(archive) as z:
+              assert z.testzip() is None
+              names=z.namelist()
+              assert len(names)==len(set(names))
+              assert sum(x.file_size for x in z.infolist()) <= 100_000_000
+              for name in names:
+                  p=PurePosixPath(name)
+                  assert not p.is_absolute() and '..' not in p.parts and not name.endswith('.map')
+              z.extractall('web-runtime/build/web')
+          print('Verified current PR184 compiled game build and size',flush=True)
+          PY
+      - name: Install real Chrome QA prerequisites
+        run: python3 -m pip install playwright websocket-client
+      - name: Install read-only TeaVM Settings and native UI probes
+        run: |
+          python3 scripts/prepare-qa-probe.py
+          python3 scripts/prepare-ui-control-probe.py
+      - name: Exercise stock Settings and actual paused-world music gain
+        env:
+          DEVICE: ${{ matrix.device }}
+          PYTHONUNBUFFERED: '1'
+        run: |
+          if [ "$DEVICE" = mobile ]; then
+            python3 scripts/verify-settings-functional.py --browser chromium --mobile
+          else
+            python3 scripts/verify-settings-functional.py --browser chromium
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-paused-music-${{ matrix.device }}
+          path: work/settings-functional/
+          if-no-files-found: ignore
