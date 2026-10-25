@@ -162,6 +162,10 @@ async def main():
                         archive=await choose(lambda x:x['kind']=='button' and 'QA paused archive' in x['label'] and x['cssRect']['bottom']-x['cssRect']['top']>90,'paused archive card',False)
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(archive['path']+'.') and 'trash' in x.get('icons',[]),'paused archive delete')
                         await choose(lambda x:x['kind']=='button' and x['label'].strip()=='OK','paused archive delete confirmation')
+                        # Stock BaseDialog confirmation fades out asynchronously.
+                        # Wait for that transition to finish so the next *real*
+                        # save-card click is not intercepted by the old modal.
+                        await page.wait_for_timeout(850)
                         # Restore the untouched original imported fixture before the
                         # cold restart and ensure the canonical adopts its bytes.
                         await choose(lambda x:x['kind']=='button' and 'QA imported sandbox' in x['label'] and x['cssRect']['bottom']-x['cssRect']['top']>90,'original import reload')
