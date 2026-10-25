@@ -266,7 +266,9 @@ async def main(args):
                 await open_settings()
                 roster=set()
                 for category in (['Sound'] if args.only_music else ['Game','Graphics','Sound','Developer']):
-                    await click(label=category)
+                    # Vanilla bundle.properties says "Developer Options", not
+                    # "Developer". Match the actual native Arc button label.
+                    await click(label='Developer Options' if category=='Developer' else category)
                     await wait(lambda:settings_page({'Game':'game','Graphics':'graphics','Sound':'sound','Developer':'dev'}[category]),'category '+category)
                     entries=await controls();keys=[]
                     for c in entries:
