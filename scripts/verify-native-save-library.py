@@ -108,7 +108,7 @@ async def main():
                             gameState:document.documentElement.getAttribute('data-mindustry-local-map-state')
                         })""")
                         print('SANDBOX_RULES_DIAGNOSTIC '+json.dumps(actual_rules),flush=True)
-                        assert actual_rules['native'] is True,actual_rules
+                        assert bool(actual_rules['native']) is True,actual_rules
                         await context.close();context=await launch();page=await context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
                         await ready('?lang=en')
                         await open_saves()
@@ -143,8 +143,8 @@ async def main():
                         await page.wait_for_function('__mindustryQaSnapshot().playing && !__mindustryQaSnapshot().campaign',timeout=90000)
                         state=await page.evaluate('__mindustryQaSnapshot()');tick=state['tick']
                         await page.wait_for_function('t=>__mindustryQaSnapshot().tick>t+30',arg=tick)
-                        assert await page.evaluate('__mindustryQaRead("state","rules.infiniteResources")') is True
-                        assert await page.evaluate('__mindustryQaRead("state","rules.waveTimer")') is False
+                        assert bool(await page.evaluate('__mindustryQaRead("state","rules.infiniteResources")')) is True
+                        assert bool(await page.evaluate('__mindustryQaRead("state","rules.waveTimer")')) is False
                         assert await bytes_at()==seed,'Canonical changes only to the completely validated imported bytes'
                         sources=await page.evaluate("()=>__mindustryStorage.paths().filter(p=>/^saves\\/\\d+\\.msav$/.test(p))")
                         assert sources and await bytes_at(sources[0])==seed,'Original imported slot retained'
@@ -174,8 +174,8 @@ async def main():
                         await open_saves()
                         await choose(lambda x:x['kind']=='button' and 'QA imported sandbox' in x['label'] and x['cssRect']['bottom']-x['cssRect']['top']>90,'cold imported card')
                         await page.wait_for_function('__mindustryQaSnapshot().playing && !__mindustryQaSnapshot().campaign',timeout=90000)
-                        assert await page.evaluate('__mindustryQaRead("state","rules.infiniteResources")') is True
-                        assert await page.evaluate('__mindustryQaRead("state","rules.waveTimer")') is False
+                        assert bool(await page.evaluate('__mindustryQaRead("state","rules.infiniteResources")')) is True
+                        assert bool(await page.evaluate('__mindustryQaRead("state","rules.waveTimer")')) is False
                         assert await bytes_at()==seed
                         # The Saved Games action also works from the paused world.
                         await open_saves()
@@ -210,7 +210,7 @@ async def main():
                         card=await choose(lambda x:x['kind']=='button' and 'untitled' in x['label'].lower() and x['cssRect']['bottom']-x['cssRect']['top']>90,'canonical card',False)
                         assert any(x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'trash' in x.get('icons',[]) and not x['enabled'] for x in (await controls())['controls']),'Active canonical delete must be guarded'
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'save' in x.get('icons',[]),'disable canonical autosave')
-                        assert await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")') is False
+                        assert bool(await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")')) is False
                         await close_dialogs();await named('web-pause-resume')
                         tick=(await page.evaluate('__mindustryQaSnapshot()'))['tick'];before=await bytes_at()
                         await page.wait_for_function('t=>__mindustryQaSnapshot().tick>t+660',arg=tick,timeout=30000)
@@ -222,7 +222,7 @@ async def main():
                         await open_saves()
                         card=await choose(lambda x:x['kind']=='button' and 'untitled' in x['label'].lower() and x['cssRect']['bottom']-x['cssRect']['top']>90,'canonical card',False)
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'save' in x.get('icons',[]),'enable canonical autosave')
-                        assert await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")') is True
+                        assert bool(await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")')) is True
                         await close_dialogs();await named('web-pause-resume');before=await bytes_at()
                         await page.wait_for_function('q=>JSON.stringify(Array.from(Uint8Array.from(__mindustryStorage.get(q.path)||[])))!==q.bytes',arg={'path':CANONICAL,'bytes':json.dumps(list(before),separators=(',',':'))},timeout=30000)
                         # Deleting the stable slot from the stopped menu must be
