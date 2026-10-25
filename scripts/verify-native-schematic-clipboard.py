@@ -1,5 +1,5 @@
 """Paste a real MSCH through native DOM input and round-trip native export."""
-import asyncio,base64,hashlib,json,os,shutil,struct,subprocess,threading,zlib
+import asyncio,base64,hashlib,json,os,re,shutil,struct,subprocess,threading,zlib
 from functools import partial
 from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
@@ -30,7 +30,12 @@ def read_tags(value):
 def assert_sorter_mapping(value):
     width,height,tags=read_tags(value)
     assert (width,height)==(1,1)
-    mapping=json.loads(tags['contentMap'])
+    # Arc's JsonIO writes relaxed JSON with bare object keys, e.g.
+    # {0:{copper:0}}. The stock Java JsonReader accepts this syntax, while
+    # Python's strict json.loads does not. Quote only bare keys for our QA
+    # decoder; then inspect the saved TypeIO bytes independently.
+    map_text=re.sub(r'(?<=[{,])\\s*([A-Za-z_][\\w.-]*|\\d+)\\s*:',r'"\\1":',tags['contentMap'])
+    mapping=json.loads(map_text)
     assert 'copper' in mapping.get('0',{}),mapping
     # Inspect the actual exported TypeIO config, not just the UI label or
     # metadata. The imported foreign ID 1234 must become the runtime copper ID.
