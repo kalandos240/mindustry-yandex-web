@@ -79,11 +79,12 @@ async def main():
       await page.goto('http://127.0.0.1:8158/game/index.html?lang=en&mindustryCampaignSmoke='+sector,
         timeout=180000)
       await page.wait_for_function(
-        """() => {const root=document.documentElement;return
+        """() => {const root=document.documentElement;return (
            root.getAttribute('data-playgama-sdk')==='ready'
            &&root.getAttribute('data-mindustry-web')==='ready'
            &&root.getAttribute('data-mindustry-campaign-state')==='playing'
            &&root.getAttribute('data-playgama-game-ready')==='sent'
+          );
         }""",timeout=30000)
       state=await page.evaluate("""() => ({
        playgama:document.documentElement.getAttribute('data-playgama-sdk'),
