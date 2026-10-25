@@ -49,7 +49,7 @@ public final class BrowserLocalMapRuntime{
     private static long pauseUpdateId;
     private static int pausedFrames;
     private static boolean saveSmokeArmed;
-    private static final double periodicSaveIntervalTicks = 180.0 * 60.0;
+    private static final int defaultPeriodicSaveSeconds = 180;
     private static double periodicSaveTick;
     private static boolean periodicSaveSmokeDone;
     private static Map current;
@@ -761,7 +761,13 @@ public final class BrowserLocalMapRuntime{
         }
     }
 
-    /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
+    /**
+     * Respect the player's stock Settings -> Game -> Save Interval (seconds).
+     * The original Saves.update() interprets that preference as seconds of
+     * simulation, not a hard-coded three minutes. Only live, unpaused local
+     * worlds may update their persistent checkpoint, and the native per-save
+     * autosave toggle remains authoritative.
+     */
     private static void maybePeriodicSave(){
         if(!active || current == null || !state.isPlaying() || state.gameOver
         || !Core.settings.getBool("save-web-local-survival-autosave", true)) return;
@@ -769,8 +775,9 @@ public final class BrowserLocalMapRuntime{
         boolean smoke = periodicSaveSmoke;
         if(smoke){
             if(periodicSaveSmokeDone || frames < 3) return;
-        }else if(state.tick - periodicSaveTick < periodicSaveIntervalTicks){
-            return;
+        }else{
+            int seconds = Math.max(10, Core.settings.getInt("saveinterval", defaultPeriodicSaveSeconds));
+            if(state.tick - periodicSaveTick < seconds * 60.0) return;
         }
 
         int savedWave = state.wave;
