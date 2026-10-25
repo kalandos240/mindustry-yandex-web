@@ -134,6 +134,39 @@ reported_try = source_try.replace(
     chr(10).join(('                            Log.err(e);',
                   '                            ui.showException(e);'))
 )
+# Stage callbacks on the *actual* pinned stock dialog, rather than assuming
+# BrowserFileChooser.handleChooseResult returning means parser/write succeeded.
+# No file names, bytes, or user content are recorded.
+reported_try = reported_try.replace(
+    '                            Schematic s = Schematics.read(file);',
+    chr(10).join((
+        '                            mindustry.web.BrowserFileChooser.markSchematicStage("before-read");',
+        '                            Schematic s = Schematics.read(file);',
+        '                            mindustry.web.BrowserFileChooser.markSchematicStage("after-read");'
+    ))
+)
+reported_try = reported_try.replace(
+    '                            schematics.add(s);',
+    chr(10).join((
+        '                            mindustry.web.BrowserFileChooser.markSchematicStage("before-add");',
+        '                            schematics.add(s);',
+        '                            mindustry.web.BrowserFileChooser.markSchematicStage("after-add");'
+    ))
+)
+reported_try = reported_try.replace(
+    '                            last = s;',
+    chr(10).join((
+        '                            last = s;',
+        '                            mindustry.web.BrowserFileChooser.markSchematicStage("success");'
+    ))
+)
+reported_try = reported_try.replace(
+    '                            Log.err(e);',
+    chr(10).join((
+        '                            mindustry.web.BrowserFileChooser.markSchematicStage("catch");',
+        '                            Log.err(e);'
+    ))
+)
 if dialog.count(source_try) != 1:
     raise SystemExit("Pinned native MSCH FileChooser parser callback changed")
 dialog = dialog.replace(source_try, reported_try, 1)
