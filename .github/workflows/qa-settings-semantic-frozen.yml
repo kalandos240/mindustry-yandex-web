@@ -64,7 +64,7 @@ jobs:
 
       - name: Verify QA probes restored exact original compiled runtime
         if: always()
-        run: (cd web-runtime/build/web && sha256sum -c ../../../work/pristine-settings-runtime.sha256)
+        run: sha256sum -c work/pristine-settings-runtime.sha256
 
       - name: Upload native settings semantic ledger and evidence
         if: always()
