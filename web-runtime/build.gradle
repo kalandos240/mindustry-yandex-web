@@ -75,6 +75,12 @@ tasks.register("stageWeb", Copy) {
         include "logicids.dat"
         include "sprites/error.png"
         include "sprites/block_colors.png"
+        // Stock Schematics.getPreview() creates a Texture from this file on
+        // the first library thumbnail. Atlas pages do not contain that Fi
+        // asset. It MUST be packaged + eagerly loaded before Java main(), or
+        // opening Schematics aborts the live render loop with
+        // "Asset not loaded: sprites/schematic-background.png".
+        include "sprites/schematic-background.png"
 
         // Package the original built-in local skirmish maps from the pinned Mindustry
         // release. They remain same-origin assets inside the Yandex upload and form the

@@ -19,6 +19,11 @@ public final class BrowserStockCustomGameUi{
         if(!checked){ enabled = requested(); checked = true; }
         if(!enabled || ui.custom == null || !ui.custom.isShown()) return;
         Dialog top = Core.scene.getDialog();
+        // After Play the stock dialog closes before the test sampler's next
+        // frame. Element.isDescendantOf(null) throws in Arc, even though the
+        // live map is already running. Do not let QA-only marker sampling
+        // crash the actual game during the menu -> world transition.
+        if(top == null || (top != ui.custom && !(top instanceof CustomRulesDialog) && !(top instanceof MapPlayDialog))) return;
         String page = top instanceof CustomRulesDialog ? "rules" : top instanceof MapPlayDialog ? "map" : "catalog";
         int previews = 0;
         for(Map map : BrowserLocalMapRuntime.catalog()) if(map.texture != null) previews++;

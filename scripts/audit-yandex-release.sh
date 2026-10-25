@@ -35,11 +35,19 @@ grep -Fq 'c38f8f5ff27f47a5886d0903aadeba42e4302411' "$WEB_DIR/licenses/SOURCE-NO
 # sets loadPlanetData=true, and tools:pack generates planets/serpulo.json at build time;
 # Planet.getData() consumes that same-origin file for attack-sector/preset metadata.
 # Erekir does not use loadPlanetData, so no Erekir JSON asset is required or staged.
-[ -s "$PLANETS_SOURCE" ] || fail "pinned Mindustry Planets.java missing from build workspace"
-grep -Fq 'erekir = new Planet("erekir", sun, 1f, 2)' "$PLANETS_SOURCE" || fail "pinned Erekir planet definition changed or missing"
-grep -Fq 'serpulo = new Planet("serpulo", sun, 1f, 3)' "$PLANETS_SOURCE" || fail "pinned Serpulo planet definition changed or missing"
-sed -n '/serpulo = new Planet("serpulo", sun, 1f, 3){{/,/verilus = makeAsteroid/p' "$PLANETS_SOURCE" | grep -Fq 'loadPlanetData = true;' || fail "pinned Serpulo PlanetData loading flag missing"
-grep -Fq 'campaignRuleDefaults.rtsAI = true' "$PLANETS_SOURCE" || fail "pinned Erekir campaign RTS rule missing"
+if [ -s "$PLANETS_SOURCE" ]; then
+  echo "Yandex release: verifying pinned planet source from build workspace"
+elif [ "${MINDUSTRY_ALLOW_ARTIFACT_ONLY_AUDIT:-0}" = "1" ]; then
+  echo "Yandex release: artifact-only check, pinned planet source is verified in the separate compilation gate"
+else
+  fail "pinned Mindustry Planets.java missing from build workspace"
+fi
+if [ -s "$PLANETS_SOURCE" ]; then
+  grep -Fq 'erekir = new Planet("erekir", sun, 1f, 2)' "$PLANETS_SOURCE" || fail "pinned Erekir planet definition changed or missing"
+  grep -Fq 'serpulo = new Planet("serpulo", sun, 1f, 3)' "$PLANETS_SOURCE" || fail "pinned Serpulo planet definition changed or missing"
+  sed -n '/serpulo = new Planet("serpulo", sun, 1f, 3){{/,/verilus = makeAsteroid/p' "$PLANETS_SOURCE" | grep -Fq 'loadPlanetData = true;' || fail "pinned Serpulo PlanetData loading flag missing"
+  grep -Fq 'campaignRuleDefaults.rtsAI = true' "$PLANETS_SOURCE" || fail "pinned Erekir campaign RTS rule missing"
+fi
 grep -Fq 'erekir' "$WEB_DIR/mindustry.js" || fail "compiled Erekir content is not reachable in TeaVM output"
 grep -Fq 'serpulo' "$WEB_DIR/mindustry.js" || fail "compiled Serpulo content is not reachable in TeaVM output"
 [ -s "$SERPULO_DATA" ] || fail "generated Serpulo PlanetData asset missing"

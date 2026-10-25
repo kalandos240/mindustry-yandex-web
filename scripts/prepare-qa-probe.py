@@ -34,7 +34,8 @@ def main():
     if data.count(ANCHOR)!=1:raise SystemExit('TeaVM export anchor changed')
     for required in [b'mw_Campaign_active =',b'mc_GameState_isPlaying =',b'mc_GameState_isPaused =',
                      b'mc_GameState_isMenu =',b'mc_GameState_isCampaign =',b'a_Settings_get =',
-                     b'as_ObjectMap_get =',b'a_Input_keyDown0 =',b'$updateId',b'$tick',b'$wave']:
+                     b'as_ObjectMap_get =',b'a_Input_keyDown0 =',b'$updateId',b'$tick',b'$wave',
+                     b'mc_Renderer_laserOpacity',b'mc_Renderer_unitLaserOpacity',b'mc_Renderer_bridgeOpacity']:
         if required not in data:raise SystemExit('QA probe prerequisite missing: '+required.decode())
     settings_get=data.split(b'a_Settings_get =',1)[1].split(b'\n},',1)[0]
     if b'jl_Object_monitorEnter' in settings_get:raise SystemExit('QA settings read requires browser-confined Settings implementation')

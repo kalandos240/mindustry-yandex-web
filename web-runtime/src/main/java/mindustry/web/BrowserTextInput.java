@@ -56,7 +56,7 @@ public final class BrowserTextInput{
         field.setAttribute('aria-label',message||title||'');
         field.style.cssText='width:100%;box-sizing:border-box;font:16px monospace;margin:10px 0;min-height:42px';
         if(multiline) field.style.height='160px';
-        if(maxLength>=0) field.maxLength=maxLength;
+        // Numeric input is sanitized *after* the input event. Native maxlength\n        // would discard valid trailing digits before non-digits can be removed.\n        if(maxLength>=0 && !numeric) field.maxLength=maxLength;
         if(numeric) field.inputMode='numeric';
         panel.appendChild(field);
         var accept=document.createElement('button');accept.textContent=acceptLabel;
@@ -96,7 +96,10 @@ public final class BrowserTextInput{
         });
         ['keyup','pointerdown','pointerup','click','wheel'].forEach(function(name){overlay.addEventListener(name,function(event){event.stopPropagation();});});
         panel.appendChild(accept);panel.appendChild(cancel);overlay.appendChild(panel);document.body.appendChild(overlay);
-        setTimeout(function(){field.focus();field.select();},0);
+        // The dialog has already been mounted. Focus/select synchronously so
+        // a deferred timer cannot select text that the player just typed.
+        // This also preserves the trusted-gesture opportunity for mobile focus.
+        field.focus();field.select();
         """)
     private static native void show(String title, String message, String value, boolean multiline,
         boolean numeric, boolean allowEmpty, int maxLength, boolean copyMode,

@@ -57,6 +57,15 @@ async def main():
                     assert await page.evaluate('textResults')==[{'ok':True,'text':unicode}]
                     assert await page.evaluate('gameKeys')==0
                     assert await page.evaluate('releases')==['text-input','text-input-close']
+                    # Regression: an old setTimeout focus/select could fire
+                    # after the first typed value and replace it on Enter.
+                    field=await open({'value':'previous'})
+                    await field.fill('fresh text')
+                    await page.wait_for_timeout(100)
+                    caret=await field.evaluate('(e)=>[e.selectionStart,e.selectionEnd]')
+                    assert caret==[len('fresh text')]*2,(mode,'deferred selection erased input',caret)
+                    await field.press('Escape')
+                    assert (await page.evaluate('textResults')).pop()=={'ok':False,'text':'fresh text'}
                     field=await open({'numeric':True,'maxLength':4,'value':'bad'})
                     assert await field.input_value()==''
                     await field.fill('a12b345');assert await field.input_value()=='1234'
@@ -64,6 +73,11 @@ async def main():
                     assert (await page.evaluate('textResults')).pop()=={'ok':True,'text':'1234'}
                     field=await open({'multiline':True,'maxLength':12})
                     await field.fill('line one');await field.press('Enter')
+                    # Wait for the browser's native textarea input event to
+                    # finish before the Ctrl+Enter confirmation gesture.
+                    await page.wait_for_timeout(150)
+                    entered=await field.input_value()
+                    assert entered=='line one\n',(mode,'mobile multiline Enter unexpected',repr(entered))
                     assert await page.locator('#mindustry-text-input').count()==1
                     await field.press('Control+Enter')
                     assert (await page.evaluate('textResults')).pop()=={'ok':True,'text':'line one\n'}

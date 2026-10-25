@@ -254,6 +254,7 @@ jobs:
           test -s web-runtime/build/web/assets/sprites/rays.png
           test -s web-runtime/build/web/assets/sprites/distortAlpha.png
           test -s web-runtime/build/web/assets/sprites/error.png
+          test -s web-runtime/build/web/assets/sprites/schematic-background.png
           test -s web-runtime/build/web/assets/sprites/block_colors.png
           test -s web-runtime/build/web/assets/sprites/sprites.aatls
           test -s web-runtime/build/web/assets/sprites/sprites.png
@@ -289,6 +290,7 @@ jobs:
           grep -q 'sprites/rays.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/distortAlpha.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/error.png' web-runtime/build/web/assets-manifest.js
+          grep -q 'sprites/schematic-background.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.aatls' web-runtime/build/web/assets-manifest.js
           grep -q 'sprites/sprites.png' web-runtime/build/web/assets-manifest.js

@@ -34,7 +34,21 @@
         const key=$rt_str(String(name));
         return plain(a_Settings_get(a_Core_settings,key,as_ObjectMap_get(field(a_Core_settings,'defaults'),key)));
     };
+    // Laser/bridge opacity lives on Renderer as Java *static* fields, not
+    // on Vars.renderer. Reading the instance incorrectly makes the native
+    // settings QA report an absent field, even when the renderer works.
+    function rendererStatic(name){
+        switch(name){
+            case 'laserOpacity': return mc_Renderer_laserOpacity;
+            case 'unitLaserOpacity': return mc_Renderer_unitLaserOpacity;
+            case 'bridgeOpacity': return mc_Renderer_bridgeOpacity;
+            default: throw new Error('Unknown renderer static: '+name);
+        }
+    }
     globalThis.__mindustryQaRead=function(target, path){
+        if(target==='renderer' && ['laserOpacity','unitLaserOpacity','bridgeOpacity'].includes(path)){
+            return plain(rendererStatic(path));
+        }
         const targets={renderer:m_Vars_renderer,state:m_Vars_state,control:m_Vars_control,ui:m_Vars_ui,
             audio:a_Core_audio,camera:a_Core_camera,settings:a_Core_settings,graphics:a_Core_graphics,input:a_Core_input,
             scene:a_Core_scene,atlas:a_Core_atlas};
