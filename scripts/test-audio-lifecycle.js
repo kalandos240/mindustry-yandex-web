@@ -55,6 +55,23 @@ async function play(h,id=1){h.api.musicPlay(id,'music.ogg',0.6,1,0,true);await t
     else{assert(!reinstalled.state.unlocked);reinstalled.gesture();await tick();assert.equal(reinstalled.state.ctx.state,'running');}
     if(baseline){console.log('Previous audio bugs REPRODUCED: duplicate pause loses music; explicit pause ignored; new paused track stuck; stopped track requeued; reinstalled context cannot unlock');return;}
 
+    // Regression: Arc's SoundControl observes Music.isPlaying() on every
+    // frame. A queued HTMLAudio play remains logically alive while waiting
+    // for a real user gesture; otherwise it reselects dozens of songs
+    // before browser autoplay permission resolves.
+    const waiting=harness();waiting.api.install();
+    waiting.api.musicPrepare(6,'music.ogg');
+    waiting.api.musicPlay(6,'music.ogg',0.75,1,0,true);
+    assert(waiting.state.music.get(6).pendingPlay);
+    assert(waiting.state.music.get(6).element.paused);
+    assert(waiting.api.musicPlaying(6),'Queued browser track must not be discarded as stopped');
+    waiting.api.musicPause(6,true);
+    assert(!waiting.api.musicPlaying(6),'Explicit pause must cancel queued play');
+    waiting.api.musicPlay(6,'music.ogg',0.75,1,0,true);
+    assert(waiting.api.musicPlaying(6));
+    waiting.api.musicStop(6);
+    assert(!waiting.api.musicPlaying(6),'Explicit stop must cancel queued play');
+
     const stale=harness();stale.api.install();const old=stale.state.ctx;old.deferResume=true;
     stale.gesture();stale.api.dispose();stale.api.install();old.finishResume();await tick();
     assert(!stale.state.unlocked,'Disposed context cannot unlock its replacement');
