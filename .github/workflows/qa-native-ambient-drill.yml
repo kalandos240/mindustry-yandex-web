@@ -1,0 +1,64 @@
+name: QA true vanilla drill ambient sound in Chrome
+
+on:
+  pull_request:
+    paths:
+      - scripts/verify-browser-ambient-drill.py
+      - .github/workflows/qa-native-ambient-drill.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  real-ambient-drill:
+    name: real ambient drill (${{ matrix.device }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [desktop, mobile]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact compiled source for positional audio candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          actual="$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/40195542281 --jq '.head_sha')"
+          test "$actual" = 5fcf43139e53939f92b8184566ca0f6feb404c69
+          echo "Compiled candidate: $actual"
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 40195542281
+          github-token: ${{ github.token }}
+          path: work/frozen-ambient-input
+      - name: Verify unchanged packaged ZIP and stage original game
+        run: |
+          (cd work/frozen-ambient-input && sha256sum -c mindustry-yandex-release.zip.sha256)
+          mkdir -p web-runtime/build/web
+          unzip -q work/frozen-ambient-input/mindustry-yandex-release.zip -d web-runtime/build/web
+          test -s web-runtime/build/web/assets/sounds/loops/loopDrill.ogg
+          test -s web-runtime/build/web/mindustry.js
+          sha256sum web-runtime/build/web/mindustry.js > work/pristine-ambient-runtime.sha256
+      - name: Install actual Chromium Playwright driver
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Require real drill ambience in ${{ matrix.device }} gameplay
+        env:
+          PYTHONUNBUFFERED: '1'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: xvfb-run -a python3 scripts/verify-browser-ambient-drill.py --device ${{ matrix.device }}
+      - name: Require no game bundle mutations
+        if: always()
+        run: sha256sum -c work/pristine-ambient-runtime.sha256
+      - name: Preserve ambient regression browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ambient-drill-evidence-${{ matrix.device }}
+          path: work/ambient-drill-evidence
+          if-no-files-found: ignore
