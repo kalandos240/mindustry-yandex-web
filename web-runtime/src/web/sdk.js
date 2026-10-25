@@ -9,7 +9,8 @@ const bridgeUrl='https://bridge.playgama.com/v2/stable/playgama-bridge.js';
 const listeners={game_api_pause:[],game_api_resume:[]};
 const s={bridge:null,loading:null,hostPaused:false,hostAudio:true,adPaused:false,
   hidden:document.visibilityState==='hidden',paused:false,ready:false,
-  pendingAd:false,lastAdAttempt:0,adCount:0,gameReady:false,currentAdHandler:null};
+  pendingAd:false,lastAdAttempt:0,adCount:0,gameReady:false,currentAdHandler:null,
+  sessionStartedAt:Date.now(),pauseWasOpen:false,adsObserver:null,intentPlacement:''};
 const mark=(key,value)=>root.setAttribute('data-playgama-'+key,String(value));
 function emit(name){for(const fn of listeners[name]||[]){try{fn()}catch(e){console.error(e)}}}
 function updatePause(){
@@ -67,17 +68,26 @@ async function setData(record){
   mark('cloud-save','completed');
   return true;
 }
+const FIRST_AD_DELAY_MS=60000;
+const AD_COOLDOWN_MS=90000;
 function showAd(request){
   const callbacks=request?.callbacks||{},ad=s.bridge?.advertisement;
-  if(!ad||ad.isInterstitialSupported!==true||s.pendingAd){
-    callbacks.onError?.(new Error('Interstitial unavailable'));
+  const placement=s.intentPlacement||request?.placement||'menu_return';
+  s.intentPlacement='';
+  const deny=(reason)=>{
+    mark('interstitial-state',reason);
+    try{callbacks.onError?.(new Error(reason))}catch(error){console.error(error)}
     return Promise.resolve(false);
-  }
-  if(s.lastAdAttempt&&Date.now()-s.lastAdAttempt<90000){
-    callbacks.onError?.(new Error('Interstitial cooldown'));
-    return Promise.resolve(false);
-  }
-  s.pendingAd=true;s.lastAdAttempt=Date.now();mark('interstitial-attempt',++s.adCount);
+  };
+  if(!s.ready||!ad||typeof ad.showInterstitial!=='function')return deny('sdk-unavailable');
+  if(ad.isInterstitialSupported!==true)return deny('not-supported-by-platform');
+  if(s.pendingAd)return deny('already-open');
+  if(Date.now()-s.sessionStartedAt<FIRST_AD_DELAY_MS)return deny('first-ad-wait');
+  if(s.lastAdAttempt&&Date.now()-s.lastAdAttempt<AD_COOLDOWN_MS)return deny('cooldown');
+  s.pendingAd=true;s.lastAdAttempt=Date.now();
+  mark('interstitial-placement',placement);
+  mark('interstitial-state','requested');
+  mark('interstitial-attempt',++s.adCount);
   return new Promise(resolve=>{
     let done=false,opened=false,waitTimer,openTimer;
     const finish=shown=>{
@@ -103,9 +113,44 @@ function showAd(request){
       else if(state==='failed')finish(false);
     };
     waitTimer=setTimeout(()=>finish(false),12000);
-    try{Promise.resolve(ad.showInterstitial('menu_return')).catch(()=>finish(false))}
+    try{Promise.resolve(ad.showInterstitial(placement)).catch(()=>finish(false))}
     catch(e){finish(false)}
   });
+}
+function installNaturalPauseAd(){
+  // Ordinary user path: open Mindustry's ORIGINAL Pause panel after playing.
+  // A full-screen ad is safe here, but must never interrupt an active battle.
+  // The existing native Back->menu path remains supported independently.
+  if(typeof MutationObserver!=='function'||!root.getAttribute)return;
+  const onChange=()=>{
+    const shown=root.getAttribute('data-mindustry-pause-dialog-visible')==='yes';
+    if(!shown){s.pauseWasOpen=false;return}
+    if(s.pauseWasOpen)return;
+    s.pauseWasOpen=true;
+    const active=root.getAttribute('data-mindustry-campaign-state')==='playing'
+       ||root.getAttribute('data-mindustry-local-map-state')==='playing';
+    if(!active||!s.gameReady)return;
+    if(Date.now()-s.sessionStartedAt<FIRST_AD_DELAY_MS){
+      mark('interstitial-state','first-ad-wait');
+      return;
+    }
+    if(s.pendingAd||(s.lastAdAttempt&&Date.now()-s.lastAdAttempt<AD_COOLDOWN_MS))return;
+    // Give the native Pause dialog a frame to settle; use the same game
+    // lifecycle wrapper used by the real native exit button.
+    const request=()=>{
+      if(root.getAttribute('data-mindustry-pause-dialog-visible')!=='yes')return;
+      if(!globalThis.__mindustryYandex?.showFullscreenAdv)return;
+      s.intentPlacement='pause';
+      const accepted=globalThis.__mindustryYandex.showFullscreenAdv();
+      if(accepted===false)s.intentPlacement='';
+    };
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(request);
+    else Promise.resolve().then(request);
+  };
+  s.adsObserver=new MutationObserver(onChange);
+  s.adsObserver.observe(root,{attributes:true,attributeFilter:[
+    'data-mindustry-pause-dialog-visible','data-mindustry-campaign-state','data-mindustry-local-map-state']});
+  onChange();
 }
 async function initialize(){
   if(s.initPromise)return s.initPromise;
@@ -122,6 +167,13 @@ async function initialize(){
     mark('sdk','ready');
     mark('locale',bridge.platform?.language||navigator.language||'en');
     mark('cloud-storage',bridge.storage?.get?'bridge':'unavailable');
+    mark('interstitial-supported',String(bridge.advertisement?.isInterstitialSupported===true));
+    mark('interstitial-state','idle');
+    // Playgama Bridge has its OWN interstitial throttle. Configure it with
+    // the documented setter, in addition to our gameplay timing policy.
+    try{bridge.advertisement?.setMinimumDelayBetweenInterstitial?.(90)}
+    catch(error){console.info('Playgama SDK ad throttle:',error)}
+    installNaturalPauseAd();
     // Bridge requires GAME_READY after the actual TeaVM canvas is playable.
     // The old Yandex LoadingAPI callback is optional in this port, so watch
     // the real engine boot marker and emit once from a rendered frame.
