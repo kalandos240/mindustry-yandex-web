@@ -96,7 +96,10 @@ public final class BrowserTextInput{
         });
         ['keyup','pointerdown','pointerup','click','wheel'].forEach(function(name){overlay.addEventListener(name,function(event){event.stopPropagation();});});
         panel.appendChild(accept);panel.appendChild(cancel);overlay.appendChild(panel);document.body.appendChild(overlay);
-        setTimeout(function(){field.focus();field.select();},0);
+        // The dialog has already been mounted. Focus/select synchronously so
+        // a deferred timer cannot select text that the player just typed.
+        // This also preserves the trusted-gesture opportunity for mobile focus.
+        field.focus();field.select();
         """)
     private static native void show(String title, String message, String value, boolean multiline,
         boolean numeric, boolean allowEmpty, int maxLength, boolean copyMode,
