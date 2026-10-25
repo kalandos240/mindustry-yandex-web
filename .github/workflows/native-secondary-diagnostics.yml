@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        case: ['config:liquid-source']
+        case: ['config:air-factory', 'config:ground-factory']
         device: [desktop, mobile]
     steps:
       - uses: actions/checkout@v4
