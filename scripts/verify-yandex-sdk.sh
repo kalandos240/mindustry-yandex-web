@@ -303,6 +303,7 @@ for i in {1..30}; do
   sleep 0.25
 done
 
+if [ "${MINDUSTRY_YANDEX_MENU_AD_ONLY:-0}" != "1" ]; then
 python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --url "http://127.0.0.1:$PORT/index.html?mindustrySmoke=1" \
   --profile "$PROFILE" \
@@ -539,6 +540,8 @@ run_ad_lifecycle(){
 run_ad_lifecycle desktop 9266
 run_ad_lifecycle mobile 9267
 
+fi
+
 run_menu_ad_transition(){
   local device="$1"
   local cdp="$2"
@@ -613,6 +616,8 @@ run_menu_ad_transition(){
 run_menu_ad_transition desktop 9268
 run_menu_ad_transition mobile 9269
 
+if [ "${MINDUSTRY_YANDEX_MENU_AD_ONLY:-0}" != "1" ]; then
+
 run_fullscreen_control(){
   local profile="/tmp/mindustry-yandex-fullscreen-profile"
   local dom="/tmp/mindustry-yandex-fullscreen.html"
@@ -639,3 +644,6 @@ run_fullscreen_control(){
 run_fullscreen_control
 
 echo 'Yandex lifecycle matrix: desktop + mobile gameplay ad race + menu-only interstitial transition + fullscreen control PASS'
+else
+  echo 'Yandex menu-only acceptance: trusted native desktop and mobile Back/Cancel/Confirm + SDK cloud/ad lifecycle PASS'
+fi
