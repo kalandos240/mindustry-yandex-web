@@ -79,6 +79,12 @@ async def main(args):
                 raise AssertionError('Native control not reachable: '+str(key or name or label))
             async def click(**find):
                 c=await locate(**find)
+                # Stock ScrollPane has kinetic/smoothed positioning. A control
+                # can become onScreen while its row is still moving under the
+                # pointer. Wait for layout stabilization, then re-sample the
+                # live actor instead of trusting a stale hit rectangle.
+                await page.wait_for_timeout(420)
+                c=await locate(**find)
                 # The reported actor center may lie outside its ScrollPane's
                 # clipping rectangle when only a strip is visible. Use the
                 # actual visible hit rectangle, not the un-clipped center.
