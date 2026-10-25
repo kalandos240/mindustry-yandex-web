@@ -1,0 +1,99 @@
+name: Playgama Bridge v2 release and real browser QA
+
+on:
+  pull_request:
+    paths:
+      - web-runtime/src/web/sdk.js
+      - web-runtime/src/web/playgama-bridge-config.json
+      - web-runtime/src/web/index.html
+      - web-runtime/src/web/yandex-platform.js
+      - scripts/package-playgama-release.py
+      - scripts/test-playgama-adapter.js
+      - scripts/verify-playgama-browser.py
+      - .github/workflows/playgama-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  playgama:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - name: Checkout dedicated Playgama branch
+        uses: actions/checkout@v4
+
+      - name: Check Bridge adapter and required mocked host contract
+        run: |
+          node --check web-runtime/src/web/sdk.js
+          node scripts/test-playgama-adapter.js
+          python3 -m py_compile scripts/package-playgama-release.py scripts/verify-playgama-browser.py
+
+      - name: Require exact original green Mindustry release game source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha="$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/40195542281 --jq '.head_sha')"
+          test "$sha" = 5fcf43139e53939f92b8184566ca0f6feb404c69
+          conclusion="$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/40195542281 --jq '.conclusion')"
+          test "$conclusion" = success
+          echo "Verified original vanilla engine + all original campaign tests: $sha"
+
+      - name: Download authentic fully tested Mindustry release ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-release
+          run-id: 40195542281
+          github-token: ${{ github.token }}
+          path: work/source-yandex
+
+      - name: Package independent Playgama archive with Bridge SDK
+        run: |
+          (cd work/source-yandex && sha256sum -c mindustry-yandex-release.zip.sha256)
+          python3 scripts/package-playgama-release.py work/source-yandex/mindustry-yandex-release.zip
+          (cd work/playgama && sha256sum -c mindustry-playgama.zip.sha256)
+          before="$(sha256sum work/playgama/mindustry-playgama.zip | cut -d' ' -f1)"
+          python3 scripts/package-playgama-release.py work/source-yandex/mindustry-yandex-release.zip
+          test "$before" = "$(sha256sum work/playgama/mindustry-playgama.zip | cut -d' ' -f1)"
+          python3 - <<'PY'
+          import zipfile
+          p='work/playgama/mindustry-playgama.zip'
+          with zipfile.ZipFile(p) as z:
+              assert z.testzip() is None
+              assert z.read('mindustry.js') == zipfile.ZipFile('work/source-yandex/mindustry-yandex-release.zip').read('mindustry.js')
+              assert 'playgama-bridge-config.json' in z.namelist()
+              assert 'sdk.js' in z.namelist()
+              assert len(z.namelist()) >= 759
+          print('Playgama package exact compiled game, SDK and deterministic archive PASS')
+          PY
+
+      - name: Install real Chromium Playwright browser
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: Boot packaged Mindustry on desktop and mobile using Playgama host Bridge
+        env:
+          PYTHONUNBUFFERED: '1'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: xvfb-run -a python3 scripts/verify-playgama-browser.py
+
+      - name: Upload tested Playgama ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-playgama-bridge-v2-candidate
+          path: |
+            work/playgama/mindustry-playgama.zip
+            work/playgama/mindustry-playgama.zip.sha256
+            work/playgama/mindustry-playgama-release-report.json
+          if-no-files-found: error
+
+      - name: Preserve Chrome PC/mobile screenshots and Bridge traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playgama-browser-qa-evidence
+          path: work/playgama/browser-evidence/
+          if-no-files-found: ignore

@@ -1,0 +1,21 @@
+{
+  "advertisement": {
+    "minimumDelayBetweenInterstitial": 90,
+    "initialInterstitialDelay": 120,
+    "interstitial": {
+      "disable": false,
+      "placementFallback": "menu_return",
+      "placements": [
+        {
+          "id": "menu_return"
+        }
+      ]
+    },
+    "rewarded": {
+      "disable": true
+    },
+    "banner": {
+      "disable": true
+    }
+  }
+}

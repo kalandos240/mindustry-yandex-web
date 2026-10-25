@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing" data-yandex-sdk="booting" data-mindustry-storage="booting" data-mindustry-audio="booting">
+<html lang="en" data-mindustry-web="booting" data-mindustry-network="installing" data-playgama-sdk="booting" data-yandex-sdk="booting" data-mindustry-storage="booting" data-mindustry-audio="booting">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -28,7 +28,7 @@
 <body>
     <main id="mindustry-game-surface">
         <canvas id="mindustry-canvas" width="1280" height="720" tabindex="0"></canvas>
-        <div id="mindustry-web-status">Initializing Yandex Games and storage...</div>
+        <div id="mindustry-web-status">Initializing Playgama Bridge and storage...</div>
     </main>
     <script src="browser-storage.js"></script>
     <script src="browser-audio.js"></script>
@@ -161,7 +161,7 @@
                 }
                 root.setAttribute('data-mindustry-network', 'local-only');
             }else{
-                root.setAttribute('data-mindustry-network', 'yandex-sdk-only');
+                root.setAttribute('data-mindustry-network', 'playgama-sdk-only');
             }
 
             const nativeWindowOpen = window.open.bind(window);
@@ -254,7 +254,7 @@
             // eager to make deterministic multi-sector smoke independent of background timing.
             const params = new URLSearchParams(location.search);
             // Full 46-sector map CI must preload ALL stock .msav files before
-            // any Java sector boot. Normal Yandex launches still defer 44 maps.
+            // any Java sector boot. Normal Playgama launches still defer 44 maps.
             const forceCampaignEager = params.get('mindustryCampaignProgressSmoke') === '1' ||
                 params.get('mindustryCampaignMapMatrix') === '1';
             const isAudio = path => path.startsWith('sounds/') || path.startsWith('music/');
