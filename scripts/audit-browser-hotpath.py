@@ -398,7 +398,9 @@ require(SOUND_PATCH, "source.getAmbientSound()", "spatial ambient source type")
 require(SOUND_PATCH, "loop(data, ambient, source, volume, 1f);", "spatial ambient mixed into native SoundData accumulator")
 require(SOUND_PATCH, "webAmbientSources.remove(i);", "stale ambient source pruning")
 require(SOUND_PATCH, 'Core.settings.getInt("ambientvol", 100)', "stock ambient volume multiplier remains effective")
-forbid(SOUND_PATCH, "new AudioThread()", "browser ambient mixing never starts unsupported Java worker")
+# The pinned upstream snippet containing new AudioThread() must stay present
+# as an old-pattern replacement; the patch itself validates it is absent
+# from the transformed Java file.
 
 require(SOUND_PATCH, "        boolean paused = state.isGame() && Core.scene.hasDialog();", "original SoundControl path intact after paused preview")
 require(BROWSER_AUDIO, "current.setVolume(settingVolume(\"musicvol\", 100));", "native music slider updates actual audio gain")
