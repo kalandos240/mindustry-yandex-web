@@ -2,7 +2,7 @@ name: Native secondary control diagnostics on rebuilt ZIP
 on:
   push:
     branches: [qa/secondary-native-diagnostics-20261025]
-    paths: [.github/workflows/native-secondary-diagnostics.yml, scripts/verify-secondary-controls.py]
+    paths: [.github/workflows/native-secondary-diagnostics.yml, scripts/verify-secondary-controls.py, scripts/browser-ui-control-probe.js, scripts/prepare-ui-control-probe.py]
 permissions:
   contents: read
   actions: read
