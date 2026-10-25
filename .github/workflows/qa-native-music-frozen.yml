@@ -1,0 +1,90 @@
+name: QA native paused music actual playback in Chrome and Firefox
+
+on:
+  pull_request:
+    paths:
+      - scripts/verify-settings-functional.py
+      - scripts/run-acceptance-suite.py
+      - scripts/prepare-qa-probe.py
+      - scripts/prepare-ui-control-probe.py
+      - .github/workflows/qa-native-music-frozen.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  native-settings:
+    name: native-music (${{ matrix.browser }}, ${{ matrix.device }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+        device: [desktop, mobile]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify exact current compiled input revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          actual="$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/40185273224 --jq '.head_sha')"
+          test "$actual" = b0c42df270b438d535f21f9fff468469d1e0abfe
+          echo "Compiled-source identity verified: $actual"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 40185273224
+          github-token: ${{ github.token }}
+          path: work/frozen-input
+
+      - name: Verify authentic unchanged ZIP and stage browser
+        run: |
+          (cd work/frozen-input && sha256sum -c mindustry-yandex-release.zip.sha256)
+          mkdir -p web-runtime/build/web
+          unzip -q work/frozen-input/mindustry-yandex-release.zip -d web-runtime/build/web
+          test -s web-runtime/build/web/mindustry.js
+          sha256sum web-runtime/build/web/mindustry.js > work/pristine-settings-runtime.sha256
+
+      - name: Install browser dependencies for native pointer QA
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Require native Sound sliders and actual audio playback
+        env:
+          PYTHONUNBUFFERED: '1'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MOZ_WEBRENDER: '1'
+        run: |
+          # The frozen ZIP is not the older QA-candidate archive, so run the
+          # settings semantic tester directly and verify original JS bytes
+          # after removing both read-only probes, even if assertions fail.
+          python3 scripts/prepare-qa-probe.py
+          python3 scripts/prepare-ui-control-probe.py
+          set +e
+          arguments=(--browser ${{ matrix.browser }})
+          if [ "${{ matrix.device }}" = mobile ]; then arguments+=(--mobile); fi
+          xvfb-run -a python3 scripts/verify-settings-functional.py --only-music "${arguments[@]}"
+          code=$?
+          python3 scripts/prepare-ui-control-probe.py --restore || code=1
+          python3 scripts/prepare-qa-probe.py --restore || code=1
+          exit "$code"
+
+      - name: Verify QA probes restored exact original compiled runtime
+        if: always()
+        run: sha256sum -c work/pristine-settings-runtime.sha256
+
+      - name: Upload native settings semantic ledger and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actual-native-music-${{ matrix.browser }}-${{ matrix.device }}
+          path: |
+            work/settings-functional/
+            work/comprehensive-qa/
+          if-no-files-found: ignore
