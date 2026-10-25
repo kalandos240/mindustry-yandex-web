@@ -40,6 +40,22 @@ public final class BrowserUiRuntime{
 
     private BrowserUiRuntime(){}
 
+    private static void registerSchematicBackground(){
+        final String path = "sprites/schematic-background.png";
+        if(Core.assets == null || Core.files == null){
+            throw new IllegalStateException("Stock schematic preview needs initialized browser assets");
+        }
+        if(Core.assets.isLoaded(path, arc.graphics.Texture.class)) return;
+        arc.files.Fi source = Core.files.internal(path);
+        if(!source.exists()){
+            throw new IllegalStateException("Stock schematic preview asset is absent from Yandex package: " + path);
+        }
+        // The file is already present in the eager JS byte cache. Construct
+        // and register synchronously to avoid blocking TeaVM's frame loop on
+        // asynchronous AssetManager.load()/finishLoadingAsset() pumping.
+        Core.assets.addAsset(path, arc.graphics.Texture.class, new arc.graphics.Texture(source));
+    }
+
     public static void init(InputHandler input){
         if(initialized) return;
         if(ui == null || Core.scene == null || Core.scene.root == null || input == null){
@@ -49,6 +65,13 @@ public final class BrowserUiRuntime{
         UI.billions = Core.bundle.get("unit.billions");
         UI.millions = Core.bundle.get("unit.millions");
         UI.thousands = Core.bundle.get("unit.thousands");
+
+        // SchematicsDialog.SchematicPreview.draw() uses Core.assets.get()
+        // rather than new Texture(Fi). The Web launcher runs UI.loadSync()
+        // without the desktop eager asset stage: having the bitmap in the
+        // browser preload cache alone is NOT enough. Register one real GPU
+        // Texture under the exact stock AssetManager key before any dialog.
+        registerSchematicBackground();
 
         // Map.rules() may request stock Waves while metadata/rules are prepared. The
         // desktop Vars.init() creates this earlier; the lean Web launcher reaches the
