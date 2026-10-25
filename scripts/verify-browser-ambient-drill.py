@@ -4,6 +4,7 @@ This is a regression for the former no-op SoundControl.addAmbientSource port.
 The game is unmodified; only a stock CI fixture places a real DrillBuild on
 a mineable Ground Zero ore tile through the regular game world.
 """
+import argparse
 import asyncio
 import json
 import shutil
@@ -19,7 +20,7 @@ STAGE = ROOT / "web-runtime/build/web"
 OUT = ROOT / "work/ambient-drill-evidence"
 
 
-async def main():
+async def main(device):
     assert (STAGE / "mindustry.js").stat().st_size > 0
     assert (STAGE / "assets/sounds/loops/loopDrill.ogg").stat().st_size > 0
     OUT.mkdir(parents=True, exist_ok=True)
@@ -38,7 +39,8 @@ async def main():
             )
             try:
                 for mobile in (False, True):
-                    device = "mobile" if mobile else "desktop"
+                    if mobile != (device == 'mobile'):
+                        continue
                     context = await browser.new_context(
                         viewport={"width": 390 if mobile else 1280, "height": 844 if mobile else 800},
                         is_mobile=mobile,
@@ -127,4 +129,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--device", choices=["desktop","mobile"], required=True)
+    args = parser.parse_args()
+    asyncio.run(main(args.device))
