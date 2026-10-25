@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        case: ['config:naval-factory']
+        case: ['config:liquid-source']
         device: [desktop, mobile]
     steps:
       - uses: actions/checkout@v4
