@@ -36,7 +36,24 @@ async def main():
             try:
                 for mobile in [False,True]:
                     mode='mobile' if mobile else 'desktop';context=await browser.new_context(viewport={'width':390 if mobile else 1280,'height':844 if mobile else 800},is_mobile=mobile,has_touch=mobile)
-                    page=await context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                    await context.add_init_script("""(() => {
+                        window.__qaMsImport = {changes:[],reads:[],loads:[],errors:[]};
+                        document.addEventListener('change', event => {
+                            if(event.target instanceof HTMLInputElement && event.target.type === 'file'){
+                                __qaMsImport.changes.push(Array.from(event.target.files||[],f=>({name:f.name,size:f.size})));
+                            }
+                        },true);
+                        const original = FileReader.prototype.readAsArrayBuffer;
+                        FileReader.prototype.readAsArrayBuffer = function(file){
+                            __qaMsImport.reads.push({name:file.name,size:file.size});
+                            this.addEventListener('load',()=>__qaMsImport.loads.push({name:file.name,bytes:this.result?.byteLength||0}),{once:true});
+                            this.addEventListener('error',()=>__qaMsImport.errors.push({name:file.name,error:String(this.error)}),{once:true});
+                            return original.call(this,file);
+                        };
+                    })()""")
+                    page=await context.new_page();errors=[];console_events=[]
+                    page.on('pageerror',lambda e:errors.append(str(e)))
+                    page.on('console',lambda m:console_events.append({'type':m.type,'text':m.text[:1600]}) if m.type in ['error','warning','log'] else None)
                     async def controls():return await page.evaluate('()=>__mindustryUiControls({includeOffscreen:true,includeDisabled:true})')
                     async def choose(predicate,label):
                         for attempt in range(28):
@@ -89,24 +106,65 @@ async def main():
                         async with page.expect_download() as item:
                             await button('File')
                         download=await item.value;downloaded=Path(await download.path()).read_bytes()
+                        # Preserve the actual *stock-exported* MSCH bytes for
+                        # offline v1 parsing. Header/tag-only validation cannot
+                        # prove that the block-data section round-trips.
+                        (OUT/(mode+'-native-export.msch')).write_bytes(downloaded)
+                        (OUT/(mode+'-original-fixture.msch')).write_bytes(payload)
                         assert read_tags(downloaded)[2]['name']=='QA схема'
                         assert not errors,errors
                         # File import also round-trips through FileReader, native
                         # Schematics parser, persistent library and Info dialog.
                         await close_all()
-                        if not mobile:
-                            value=await controls()
-                            if not any(x['name']=='web-main-schematics' and x['onScreen'] for x in value['controls']):await choose(lambda x:x['name']=='web-main-database-group','database group')
+                        # Original BaseDialog.hide() animates its modal overlay.
+                        # A click issued while it is still fading can be consumed
+                        # by that old dialog. The desktop menu also has a
+                        # Database/Schematics submenu, not a direct home button.
+                        await page.wait_for_timeout(850)
+                        async def schematics_entry_visible():
+                            data=await controls()
+                            return any(c.get('name')=='web-main-schematics' and c['onScreen'] for c in data['controls'])
+                        for retry in range(4):
+                            if await schematics_entry_visible():break
+                            if not mobile:
+                                await choose(lambda x:x['name']=='web-main-database-group','open Database submenu for Schematics')
+                            await page.wait_for_timeout(350)
+                        assert await schematics_entry_visible(),'Stock Schematics submenu never appeared'
                         await choose(lambda x:x['name']=='web-main-schematics','schematics')
+                        await page.wait_for_function("()=>__mindustryUiControls().modal?.title === 'Schematics'")
                         await button('Import')
                         async with page.expect_file_chooser() as item:
                             await button('File')
                         chooser=await item.value;await chooser.set_files({'name':'roundtrip.msch','mimeType':'application/octet-stream','buffer':downloaded})
-                        await page.wait_for_timeout(1200)
-                        assert 'QA схема' in (await page.evaluate('__mindustryUiText()'))['text']
+                        # A real FileReader callback runs asynchronously; allow it
+                        # to finish before checking disk. If this is the same-name
+                        # duplicate, stock Schematics.findFile() must generate a
+                        # distinct numbered .msch file rather than clobbering it.
+                        async def file_import_done():
+                            paths=await page.evaluate("()=>__mindustryStorage.paths()")
+                            return len([p for p in paths if p.startswith('schematics/') and p.endswith('.msch')])>=2
+                        for attempt in range(70):
+                            if await file_import_done():break
+                            await page.wait_for_timeout(150)
                         paths=await page.evaluate("()=>__mindustryStorage.paths()")
+                        if not await file_import_done():
+                            diagnostic=await page.evaluate("""()=>({
+                                fileReader:window.__qaMsImport,
+                                fileInputCount:document.querySelectorAll('input[type=file]').length,
+                                console:window.__qaNativeConsole||[],
+                                nativePhase:document.documentElement.getAttribute('data-mindustry-browser-native-import-phase'),
+                                nativeCount:document.documentElement.getAttribute('data-mindustry-browser-native-import-count'),
+                                pickerState:document.documentElement.getAttribute('data-mindustry-browser-file-state'),
+                                pickerError:document.documentElement.getAttribute('data-mindustry-browser-file-error'),
+                                gameError:document.documentElement.getAttribute('data-mindustry-web-error'),
+                                paths:__mindustryStorage.paths(),
+                                text:__mindustryUiText().text.slice(0,700)
+                            })""")
+                            diagnostic['consoleEvents']=console_events[-35:]
+                            print('SCHEMATIC_FILE_IMPORT_DIAGNOSTIC '+json.dumps(diagnostic,ensure_ascii=False),flush=True)
+                            raise AssertionError('Native MSCH file-import callback failed to persist a second numbered schematic')
+                        assert 'QA схема' in (await page.evaluate('__mindustryUiText()'))['text']
                         assert not any(p.startswith('tmp/import-') for p in paths),paths
-                        assert len([p for p in paths if p.startswith('schematics/') and p.endswith('.msch')])>=2
                         assert not errors,errors
                         await page.screenshot(path=str(OUT/(mode+'.png')))
                         print(mode+': actual MSCH clipboard import, persistent library, native copy/fallback, Blob export and FileReader round-trip PASS',flush=True)
