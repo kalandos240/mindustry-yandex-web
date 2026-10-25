@@ -1,0 +1,90 @@
+name: Exact MSCH native FileChooser callback stages
+on:
+  push:
+    branches: [qa/native-msch-upload-phases-20261025]
+    paths:
+      - scripts/verify-native-save-library.py
+      - scripts/verify-native-schematic-clipboard.py
+      - .github/workflows/qa-msch-import-phases.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [native-schematic]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for exact PR 185 compiled source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/40172545078/artifacts?per_page=100'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          for attempt in range(170):
+              with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=20) as response:
+                  matches=json.load(response)['artifacts']
+              if any(a['name']=='mindustry-yandex-manual-playtest-experimental' and not a['expired'] for a in matches):
+                  print('Exact game artifact is available',flush=True)
+                  break
+              if attempt%10==0:print('Awaiting recompiled autosave/preview game',attempt,flush=True)
+              time.sleep(10)
+          else:raise SystemExit('PR 185 compilation did not produce a new runnable artifact')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 40172545078
+          name: mindustry-yandex-manual-playtest-experimental
+          github-token: ${{ github.token }}
+          path: work/new-exact-game
+      - name: Verify rebuilt TeaVM merge provenance and Yandex budget
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path,PurePosixPath
+          import hashlib,zipfile
+          base=Path('work/new-exact-game')
+          provenance=(base/'EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt').read_text()
+          assert '97ebcdbc7cf26c5147f7109169bde365ea353496' in provenance,provenance
+          archive=base/'mindustry-yandex-release.zip'
+          assert hashlib.sha256(archive.read_bytes()).hexdigest()==(base/'mindustry-yandex-release.zip.sha256').read_text().split()[0]
+          with zipfile.ZipFile(archive) as z:
+              assert z.testzip() is None
+              names=z.namelist()
+              assert len(names)==len(set(names))
+              assert sum(f.file_size for f in z.infolist())<=100_000_000
+              for name in names:
+                  p=PurePosixPath(name)
+                  assert not p.is_absolute() and '..' not in p.parts and not name.endswith('.map')
+              assert 'assets/sprites/schematic-background.png' in names
+              assert b'sprites/schematic-background.png' in z.read('assets-manifest.js')
+              z.extractall('web-runtime/build/web')
+          print('Compiled source SHA and byte budget PASS',flush=True)
+          PY
+      - name: Browser smoke prerequisites
+        run: python3 -m pip install playwright
+      - name: Drive actual native game UI and save/restore
+        env:
+          TEST_SCENARIO: ${{ matrix.scenario }}
+          PYTHONUNBUFFERED: '1'
+        run: |
+          case "$TEST_SCENARIO" in
+            native-save-library) python3 scripts/verify-native-save-library.py ;;
+            native-schematic) python3 scripts/verify-native-schematic-clipboard.py ;;
+            custom-game) bash scripts/verify-browser-custom-game.sh ;;
+            dom-text) python3 scripts/verify-browser-text-input.py ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exact-autosave-schematic-${{ matrix.scenario }}
+          path: |
+            work/save-library-qa/
+            work/schematic-clipboard-qa/
+            work/menu-ui/
+          if-no-files-found: ignore
