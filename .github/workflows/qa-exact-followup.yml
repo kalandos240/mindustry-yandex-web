@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [reset-campaign]
+        suite: [settings-desktop, settings-mobile]
     steps:
       - uses: actions/checkout@v4
       - name: Await exact source's experimental package
