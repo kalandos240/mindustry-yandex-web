@@ -359,6 +359,24 @@ jobs:
       - name: Verify native vanilla dialogs in real desktop and mobile Chrome
         run: bash scripts/verify-browser-vanilla-dialogs.sh
 
+      # A healthy menu is not sufficient: actual loss of the last core must
+      # display Game Over, accept a native exit click, and keep rendering in
+      # the returned menu across local/Serpulo/Erekir and desktop/mobile.
+      # This executes against the freshly compiled binary, not the frozen
+      # independent QA archive. A failure BLOCKS release.
+      - name: Require actionable core-loss Game Over on six real Chrome surfaces
+        run: bash scripts/verify-browser-defeat-exit.sh
+
+      - name: Preserve core-loss browser evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-core-loss-regression-evidence
+          path: |
+            work/defeat-*.png
+            work/defeat-*.html
+          if-no-files-found: ignore
+
       # Browser import must restore MappableContent by its original name even
       # when a foreign MSCH uses a different numeric ID for Copper. This
       # exercises real native UI and verifies persisted TypeIO bytes on both
