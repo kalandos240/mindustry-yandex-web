@@ -2,7 +2,7 @@
   const r=document.documentElement,c=document.getElementById('mindustry-canvas');
   const get=n=>r.getAttribute('data-mindustry-'+n);
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-  const wait=async(fn,label)=>{for(let i=0;i<180;i++){if(get('web')==='failed')throw Error(get('web-error'));if(fn())return;await sleep(100);}throw Error(label+' / page='+get('custom-page'));};
+  const wait=async(fn,label)=>{for(let i=0;i<180;i++){if(get('web')==='error')throw Error('Custom map frame crashed: '+JSON.stringify(globalThis.__mindustryErrorReport));if(fn())return;await sleep(100);}throw Error(label+' / page='+get('custom-page'));};
   let seq=0;
   const click=async prefix=>{
     await wait(()=>r.hasAttribute('data-mindustry-'+prefix+'-x'),prefix+' coordinates');
