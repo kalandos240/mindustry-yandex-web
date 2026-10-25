@@ -54,7 +54,40 @@ for old, new, label in replacements:
 # Restore vanilla spatial ambience without JVM worker threads. A source
 # contributes to the SAME SoundData accumulator as SoundControl.loop(), so
 # ambientvol, falloff, pan and pitch go through the normal protected voice mix.
-ambient_loop_anchor = """        float avol = Core.settings.getInt("ambientvol", 100) / 100f;\n\n        sounds.each((sound, data) -> {\n"""\nambient_loop_replacement = """        float avol = Core.settings.getInt("ambientvol", 100) / 100f;\n\n        // Frame-local spatial mixing replaces the desktop AudioThread. Invalid\n        // sources are pruned, and all contributions share the same avol gain.\n        for(int i = 0; i < webAmbientSources.size; ){\n            AmbientSource source = webAmbientSources.get(i);\n            if(!source.isValid()){\n                webAmbientSources.remove(i);\n                continue;\n            }\n            if(source.shouldAmbientSound()){\n                float volume = source.getAmbientVolume();\n                if(volume > 0.00001f){\n                    Sound ambient = source.getAmbientSound();\n                    if(ambient != null){\n                        SoundData data = sounds.get(ambient, SoundData::new);\n                        loop(data, ambient, source, volume, 1f);\n                    }\n                }\n            }\n            i++;\n        }\n\n        sounds.each((sound, data) -> {\n"""\nif text.count(ambient_loop_anchor) != 1:\n    raise SystemExit("Pinned SoundControl ambient mixer anchor changed; review per-frame spatial mixing")\ntext = text.replace(ambient_loop_anchor, ambient_loop_replacement, 1)\n\npaused_music_anchor = """    public void update(){
+ambient_loop_anchor = """        float avol = Core.settings.getInt("ambientvol", 100) / 100f;
+
+        sounds.each((sound, data) -> {
+"""
+ambient_loop_replacement = """        float avol = Core.settings.getInt("ambientvol", 100) / 100f;
+
+        // Frame-local spatial mixing replaces the desktop AudioThread. Invalid
+        // sources are pruned, and all contributions share the same avol gain.
+        for(int i = 0; i < webAmbientSources.size; ){
+            AmbientSource source = webAmbientSources.get(i);
+            if(!source.isValid()){
+                webAmbientSources.remove(i);
+                continue;
+            }
+            if(source.shouldAmbientSound()){
+                float volume = source.getAmbientVolume();
+                if(volume > 0.00001f){
+                    Sound ambient = source.getAmbientSound();
+                    if(ambient != null){
+                        SoundData data = sounds.get(ambient, SoundData::new);
+                        loop(data, ambient, source, volume, 1f);
+                    }
+                }
+            }
+            i++;
+        }
+
+        sounds.each((sound, data) -> {
+"""
+if text.count(ambient_loop_anchor) != 1:
+    raise SystemExit("Pinned SoundControl ambient mixer anchor changed; review per-frame spatial mixing")
+text = text.replace(ambient_loop_anchor, ambient_loop_replacement, 1)
+
+paused_music_anchor = """    public void update(){
         boolean paused = state.isGame() && Core.scene.hasDialog();
 """
 paused_music_replacement = """    public void update(){
