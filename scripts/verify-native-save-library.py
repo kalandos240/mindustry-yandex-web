@@ -224,6 +224,10 @@ async def main():
                         card=await choose(lambda x:x['kind']=='button' and renamed in x['label'] and x['cssRect']['bottom']-x['cssRect']['top']>90,'renamed source card',False)
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'trash' in x.get('icons',[]),'source delete')
                         await choose(lambda x:x['kind']=='button' and x['label'].strip()=='OK','delete confirmation')
+                        # The original confirmation modal fades out after its
+                        # clicked() handler returns. A nested SaveSlot toggle
+                        # under that overlay must not be clicked during fade.
+                        await page.wait_for_timeout(950)
                         assert not await page.evaluate('p=>__mindustryStorage.exists(p)',sources[0])
                         assert await bytes_at()==before,'Deleting source archive must not delete canonical checkpoint'
                         assert not await page.evaluate('__mindustryQaSetting("web-campaign-reset-at")'),'Deleting non-cloud archive wrote cloud reset marker'
