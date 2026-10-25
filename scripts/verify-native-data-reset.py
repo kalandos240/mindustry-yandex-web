@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 STAGE=ROOT/'web-runtime/build/web'
 OUT=ROOT/'work/native-data-reset'
 
-async def main(target_filter=None):
+async def main(target_filter=None,planet_filter=False):
     OUT.mkdir(parents=True,exist_ok=True)
     runtime=STAGE/'mindustry.js';original=runtime.read_bytes();installed=[];server=None
     reports=[]
@@ -152,7 +152,7 @@ async def main(target_filter=None):
                         if target and errors:(OUT/'errors.json').write_text(json.dumps(errors,indent=2))
                         await context.close()
                 if target_filter:
-                    await run(target_filter)
+                    await run(target_filter,planet=planet_filter)
                     return
                 ordinary=await run();planet=await run(planet=True)
                 assert len(ordinary)==4,ordinary
@@ -171,5 +171,6 @@ async def main(target_filter=None):
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--target',help='Limit to one destructive action for isolated native diagnostics')
+    parser.add_argument('--planet',action='store_true',help='Open actual native Planet Data panel before action')
     args=parser.parse_args()
-    asyncio.run(main(args.target))
+    asyncio.run(main(args.target,args.planet))
