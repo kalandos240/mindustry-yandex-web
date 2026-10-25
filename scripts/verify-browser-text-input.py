@@ -68,7 +68,7 @@ async def main():
                     # finish before the Ctrl+Enter confirmation gesture.
                     await page.wait_for_timeout(150)
                     entered=await field.input_value()
-                    assert entered=='line one\\n',(mode,'mobile multiline Enter unexpected',repr(entered))
+                    assert entered=='line one\n',(mode,'mobile multiline Enter unexpected',repr(entered))
                     assert await page.locator('#mindustry-text-input').count()==1
                     await field.press('Control+Enter')
                     assert (await page.evaluate('textResults')).pop()=={'ok':True,'text':'line one\n'}
