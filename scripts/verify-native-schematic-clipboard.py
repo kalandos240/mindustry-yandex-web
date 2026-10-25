@@ -157,7 +157,15 @@ async def main():
                             })""")
                             print('SCHEMATIC_FILE_IMPORT_DIAGNOSTIC '+json.dumps(diagnostic,ensure_ascii=False),flush=True)
                             raise AssertionError('Native MSCH file-import callback failed to persist a second numbered schematic')
-                        assert 'QA схема' in (await page.evaluate('__mindustryUiText()'))['text']
+                        # Stock Schematics.showImport() opens the native
+                        # SchematicInfoDialog after a successful FileReader
+                        # import. Its title is an Arc dialog heading, omitted
+                        # from __mindustryUiText()'s generic label collection.
+                        # Inspect the actual native modal rather than assuming
+                        # the schematic name is a generic body label.
+                        dialog=(await controls()).get('modal') or {}
+                        assert dialog.get('type','').endswith('SchematicInfoDialog'),dialog
+                        assert 'QA схема' in dialog.get('title',''),dialog
                         assert not any(p.startswith('tmp/import-') for p in paths),paths
                         assert not errors,errors
                         await page.screenshot(path=str(OUT/(mode+'.png')))
