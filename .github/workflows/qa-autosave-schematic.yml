@@ -25,7 +25,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import json,os,time,urllib.request
-          url='https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/40168729633/artifacts?per_page=100'
+          url='https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/40168928694/artifacts?per_page=100'
           headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
           for attempt in range(170):
               with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=20) as response:
@@ -39,7 +39,7 @@ jobs:
           PY
       - uses: actions/download-artifact@v4
         with:
-          run-id: 40168729633
+          run-id: 40168928694
           name: mindustry-yandex-manual-playtest-experimental
           github-token: ${{ github.token }}
           path: work/new-exact-game
@@ -50,7 +50,7 @@ jobs:
           import hashlib,zipfile
           base=Path('work/new-exact-game')
           provenance=(base/'EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt').read_text()
-          assert '06933b434c39beebee23e788a103fb2e75a17fb9' in provenance,provenance
+          assert '0ae8e97338caabaece4418792fbebe10266a82f4' in provenance,provenance
           archive=base/'mindustry-yandex-release.zip'
           assert hashlib.sha256(archive.read_bytes()).hexdigest()==(base/'mindustry-yandex-release.zip.sha256').read_text().split()[0]
           with zipfile.ZipFile(archive) as z:
