@@ -88,7 +88,7 @@ async def main(args):
                     found=[c for c in found if c.get('enabled') and c['kind'] in ['button','slider']]
                     if found:
                         c=next((c for c in found if c['onScreen']),found[0])
-                        if c['onScreen'] and c['visibleCssRect']['right']-c['visibleCssRect']['left']>5 and c['visibleCssRect']['bottom']-c['visibleCssRect']['top']>5:return c
+                        if c['onScreen'] and c['visibleCssRect']['right']-c['visibleCssRect']['left']>5 and c['visibleCssRect']['bottom']-c['visibleCssRect']['top']>max(18,(c['cssRect']['bottom']-c['cssRect']['top'])*.72):return c
                         panes=[p for p in all_controls if p['kind']=='scrollpane' and p['onScreen'] and p.get('maxY',0)>1]
                         ancestors=[p for p in panes if str(c.get('path','')).startswith(str(p.get('path',''))+'.')]
                         panes=ancestors or panes
@@ -99,10 +99,29 @@ async def main(args):
                     await page.wait_for_timeout(120)
                 raise AssertionError('Native control not reachable: '+str(key or name or label))
             async def click(**find):
-                c=await locate(**find)
-                if args.mobile:await page.touchscreen.tap(c['x'],c['y'])
-                else:await page.mouse.click(c['x'],c['y'])
-                await page.wait_for_timeout(100)
+                # Inertial ScrollPane movement can continue after a wheel event,
+                # moving the real button between inventory read and pointer down.
+                c=await locate(**find);settled=0
+                for _ in range(18):
+                    await page.wait_for_timeout(110)
+                    next_c=await locate(**find)
+                    if next_c['id']==c['id'] and abs(next_c['x']-c['x'])<.65 and abs(next_c['y']-c['y'])<.65:
+                        settled+=1
+                        if settled>=3:
+                            c=next_c;break
+                    else:settled=0
+                    c=next_c
+                else:raise AssertionError('Native setting did not settle before input: '+str(find))
+                # CheckSetting contains a child Label; activate the real leading
+                # check icon area instead of the Label center to avoid event
+                # routing ambiguity in Arc's nested ScrollPane on touch.
+                x=c['x'];y=c['y']
+                if find.get('key') and c['kind']=='button':
+                    rect=c['visibleCssRect']
+                    x=rect['left']+min(24,(rect['right']-rect['left'])*.16)
+                if args.mobile:await page.touchscreen.tap(x,y)
+                else:await page.mouse.click(x,y)
+                await page.wait_for_timeout(120)
             async def settings_page(category):
                 items=await controls()
                 keys={(c.get('setting') or {}).get('key') for c in items}
