@@ -163,7 +163,10 @@ reported_try = reported_try.replace(
 reported_try = reported_try.replace(
     '                            Log.err(e);',
     chr(10).join((
+        '                            arc.Core.settings.put("qa-schematic-last-stage", arc.Core.settings.getString("qa-schematic-import-stage", "none"));',
         '                            arc.Core.settings.put("qa-schematic-import-stage", "catch");',
+        '                            arc.Core.settings.put("qa-schematic-error-class", e.getClass().getName());',
+        '                            arc.Core.settings.put("qa-schematic-error-message", String.valueOf(e.getMessage()));',
         '                            Log.err(e);'
     ))
 )
