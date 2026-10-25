@@ -26,7 +26,13 @@ fi
 grep -Fq 'Core.bundle.get("mode.attack.name", "Attack")' \
   "$ROOT_DIR/web-runtime/src/main/java/mindustry/web/BrowserUiRuntime.java"
 
-bash "$ROOT_DIR/scripts/audit-yandex-release.sh"
+if [ -s "$ROOT_DIR/work/Mindustry/core/src/mindustry/content/Planets.java" ]; then
+  bash "$ROOT_DIR/scripts/audit-yandex-release.sh"
+else
+  # Exact candidate QA stages only the already-built release ZIP; the pinned
+  # Java source was checked by the separate full compilation/release job.
+  MINDUSTRY_ALLOW_ARTIFACT_ONLY_AUDIT=1 bash "$ROOT_DIR/scripts/audit-yandex-release.sh"
+fi
 
 for bundle in "$EN_BUNDLE" "$RU_BUNDLE"; do
   if grep -EIn 'https?://|www\.|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' "$bundle"; then
