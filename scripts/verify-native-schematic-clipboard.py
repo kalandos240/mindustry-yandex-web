@@ -102,11 +102,29 @@ async def main():
                         async with page.expect_file_chooser() as item:
                             await button('File')
                         chooser=await item.value;await chooser.set_files({'name':'roundtrip.msch','mimeType':'application/octet-stream','buffer':downloaded})
-                        await page.wait_for_timeout(1200)
-                        assert 'QA схема' in (await page.evaluate('__mindustryUiText()'))['text']
+                        # A real FileReader callback runs asynchronously; allow it
+                        # to finish before checking disk. If this is the same-name
+                        # duplicate, stock Schematics.findFile() must generate a
+                        # distinct numbered .msch file rather than clobbering it.
+                        async def file_import_done():
+                            paths=await page.evaluate("()=>__mindustryStorage.paths()")
+                            return len([p for p in paths if p.startswith('schematics/') and p.endswith('.msch')])>=2
+                        for attempt in range(70):
+                            if await file_import_done():break
+                            await page.wait_for_timeout(150)
                         paths=await page.evaluate("()=>__mindustryStorage.paths()")
+                        if not await file_import_done():
+                            diagnostic=await page.evaluate("""()=>({
+                                pickerState:document.documentElement.getAttribute('data-mindustry-browser-file-state'),
+                                pickerError:document.documentElement.getAttribute('data-mindustry-browser-file-error'),
+                                gameError:document.documentElement.getAttribute('data-mindustry-web-error'),
+                                paths:__mindustryStorage.paths(),
+                                text:__mindustryUiText().text.slice(0,700)
+                            })""")
+                            print('SCHEMATIC_FILE_IMPORT_DIAGNOSTIC '+json.dumps(diagnostic,ensure_ascii=False),flush=True)
+                            raise AssertionError('Native MSCH file-import callback failed to persist a second numbered schematic')
+                        assert 'QA схема' in (await page.evaluate('__mindustryUiText()'))['text']
                         assert not any(p.startswith('tmp/import-') for p in paths),paths
-                        assert len([p for p in paths if p.startswith('schematics/') and p.endswith('.msch')])>=2
                         assert not errors,errors
                         await page.screenshot(path=str(OUT/(mode+'.png')))
                         print(mode+': actual MSCH clipboard import, persistent library, native copy/fallback, Blob export and FileReader round-trip PASS',flush=True)
