@@ -41,6 +41,7 @@ LOGIC_PATCH = (SCRIPTS / "patch-mindustry-logic-web.py").read_text(encoding="utf
 FOG_PATCH = (SCRIPTS / "patch-mindustry-fog-web.py").read_text(encoding="utf-8")
 SAVE_PREVIEW_PATCH = (SCRIPTS / "patch-mindustry-save-preview-web.py").read_text(encoding="utf-8")
 RENDERER_PATCH = (SCRIPTS / "patch-mindustry-renderer-web.py").read_text(encoding="utf-8")
+SOUND_PATCH = (SCRIPTS / "patch-mindustry-sound-web.py").read_text(encoding="utf-8")
 STOCK_PLACEMENT = (WEB_JAVA / "BrowserStockPlacement.java").read_text(encoding="utf-8")
 LEAN_PALETTE = (WEB_JAVA / "BrowserBuildPalette.java").read_text(encoding="utf-8")
 STOCK_PLACEMENT_PATCH = (SCRIPTS / "patch-mindustry-placement-web.py").read_text(encoding="utf-8")
@@ -384,6 +385,9 @@ require(CAMPAIGN_UI, "ui.menuGroup.addChild(erekirUiTick)", "Erekir updater is n
 # WebAudio saturation and decode cache are explicitly bounded on mobile.
 require(BROWSER_AUDIO, "if((++settingsPoll & 31) == 0 || mindustry.Vars.ui != null", "browser audio settings cadence")
 require(BROWSER_AUDIO, "Music current = sound.getCurrent();", "music-volume preview targets selected game track")
+require(SOUND_PATCH, "if(state.isPaused() && ui != null && ui.settings != null && ui.settings.isShown())", "native soundtrack survives paused Settings")
+require(SOUND_PATCH, "current.setVolume(volumeMultiplier());", "native SoundControl previews real music gain")
+require(SOUND_PATCH, "        boolean paused = state.isGame() && Core.scene.hasDialog();", "original SoundControl path intact after paused preview")
 require(BROWSER_AUDIO, "current.setVolume(settingVolume(\"musicvol\", 100));", "native music slider updates actual audio gain")
 require(BROWSER_AUDIO, "sound.playRandom();", "paused continuous-music replacement only when needed")
 # SoundControl.update() in a paused in-game dialog invokes silence()->play(null):
