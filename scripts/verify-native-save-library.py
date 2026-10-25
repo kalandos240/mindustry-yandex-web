@@ -79,7 +79,23 @@ async def main():
                         game=await page.evaluate('__mindustryQaSnapshot()')
                         if not game['menu']:
                             if not game['paused']:
-                                await page.keyboard.press('Escape');await page.wait_for_function('__mindustryQaSnapshot().paused')
+                                # A modal hide/Scene rebuild can retain the last
+                                # touch/key focus while its exit action finishes.
+                                # Exercise the actual Escape key after the
+                                # original actor transition and check real state.
+                                for attempt in range(3):
+                                    await page.wait_for_timeout(450)
+                                    await page.keyboard.press('Escape')
+                                    await page.wait_for_timeout(600)
+                                    if (await page.evaluate('__mindustryQaSnapshot()'))['paused']:break
+                                    print('NATIVE_ESCAPE_DIAGNOSTIC '+json.dumps({
+                                        'attempt':attempt+1,
+                                        'game':await page.evaluate('__mindustryQaSnapshot()'),
+                                        'modal':(await controls())['modal'],
+                                        'focus':await page.evaluate('document.activeElement?.tagName'),
+                                        'inputMode':await page.get_attribute('html','data-mindustry-input-mode')
+                                    }),flush=True)
+                                else:raise AssertionError('Live imported world did not pause after trusted Escape')
                             await named('web-pause-saves')
                         else:
                             value=await controls()
@@ -100,7 +116,15 @@ async def main():
                         await ready('?lang=en&mindustryMapSmoke=maze&mindustryLocalMode=sandbox&mindustrySaveSmoke=1')
                         await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-local-save-flush')==='ready'",timeout=120000)
                         seed=await bytes_at();assert len(seed)>128
-                        assert await page.evaluate('__mindustryQaRead("state","rules.infiniteResources")') is True
+                        actual_rules=await page.evaluate("""()=>({
+                            native:__mindustryQaRead('state','rules.infiniteResources'),
+                            mode:document.documentElement.getAttribute('data-mindustry-local-map-mode'),
+                            infinite:document.documentElement.getAttribute('data-mindustry-local-map-infinite-resources'),
+                            waveTimer:document.documentElement.getAttribute('data-mindustry-local-map-wave-timer'),
+                            gameState:document.documentElement.getAttribute('data-mindustry-local-map-state')
+                        })""")
+                        print('SANDBOX_RULES_DIAGNOSTIC '+json.dumps(actual_rules),flush=True)
+                        assert bool(actual_rules['native']) is True,actual_rules
                         await context.close();context=await launch();page=await context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
                         await ready('?lang=en')
                         await open_saves()
@@ -135,8 +159,8 @@ async def main():
                         await page.wait_for_function('__mindustryQaSnapshot().playing && !__mindustryQaSnapshot().campaign',timeout=90000)
                         state=await page.evaluate('__mindustryQaSnapshot()');tick=state['tick']
                         await page.wait_for_function('t=>__mindustryQaSnapshot().tick>t+30',arg=tick)
-                        assert await page.evaluate('__mindustryQaRead("state","rules.infiniteResources")') is True
-                        assert await page.evaluate('__mindustryQaRead("state","rules.waveTimer")') is False
+                        assert bool(await page.evaluate('__mindustryQaRead("state","rules.infiniteResources")')) is True
+                        assert bool(await page.evaluate('__mindustryQaRead("state","rules.waveTimer")')) is False
                         assert await bytes_at()==seed,'Canonical changes only to the completely validated imported bytes'
                         sources=await page.evaluate("()=>__mindustryStorage.paths().filter(p=>/^saves\\/\\d+\\.msav$/.test(p))")
                         assert sources and await bytes_at(sources[0])==seed,'Original imported slot retained'
@@ -154,6 +178,10 @@ async def main():
                         archive=await choose(lambda x:x['kind']=='button' and 'QA paused archive' in x['label'] and x['cssRect']['bottom']-x['cssRect']['top']>90,'paused archive card',False)
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(archive['path']+'.') and 'trash' in x.get('icons',[]),'paused archive delete')
                         await choose(lambda x:x['kind']=='button' and x['label'].strip()=='OK','paused archive delete confirmation')
+                        # Stock BaseDialog confirmation fades out asynchronously.
+                        # Wait for that transition to finish so the next *real*
+                        # save-card click is not intercepted by the old modal.
+                        await page.wait_for_timeout(850)
                         # Restore the untouched original imported fixture before the
                         # cold restart and ensure the canonical adopts its bytes.
                         await choose(lambda x:x['kind']=='button' and 'QA imported sandbox' in x['label'] and x['cssRect']['bottom']-x['cssRect']['top']>90,'original import reload')
@@ -166,8 +194,8 @@ async def main():
                         await open_saves()
                         await choose(lambda x:x['kind']=='button' and 'QA imported sandbox' in x['label'] and x['cssRect']['bottom']-x['cssRect']['top']>90,'cold imported card')
                         await page.wait_for_function('__mindustryQaSnapshot().playing && !__mindustryQaSnapshot().campaign',timeout=90000)
-                        assert await page.evaluate('__mindustryQaRead("state","rules.infiniteResources")') is True
-                        assert await page.evaluate('__mindustryQaRead("state","rules.waveTimer")') is False
+                        assert bool(await page.evaluate('__mindustryQaRead("state","rules.infiniteResources")')) is True
+                        assert bool(await page.evaluate('__mindustryQaRead("state","rules.waveTimer")')) is False
                         assert await bytes_at()==seed
                         # The Saved Games action also works from the paused world.
                         await open_saves()
@@ -196,13 +224,31 @@ async def main():
                         card=await choose(lambda x:x['kind']=='button' and renamed in x['label'] and x['cssRect']['bottom']-x['cssRect']['top']>90,'renamed source card',False)
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'trash' in x.get('icons',[]),'source delete')
                         await choose(lambda x:x['kind']=='button' and x['label'].strip()=='OK','delete confirmation')
+                        # The original confirmation modal fades out after its
+                        # clicked() handler returns. A nested SaveSlot toggle
+                        # under that overlay must not be clicked during fade.
+                        await page.wait_for_timeout(950)
                         assert not await page.evaluate('p=>__mindustryStorage.exists(p)',sources[0])
                         assert await bytes_at()==before,'Deleting source archive must not delete canonical checkpoint'
                         assert not await page.evaluate('__mindustryQaSetting("web-campaign-reset-at")'),'Deleting non-cloud archive wrote cloud reset marker'
                         card=await choose(lambda x:x['kind']=='button' and 'untitled' in x['label'].lower() and x['cssRect']['bottom']-x['cssRect']['top']>90,'canonical card',False)
                         assert any(x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'trash' in x.get('icons',[]) and not x['enabled'] for x in (await controls())['controls']),'Active canonical delete must be guarded'
+                        before_auto=await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")')
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'save' in x.get('icons',[]),'disable canonical autosave')
-                        assert await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")') is False
+                        # Stock SaveSlot.setAutosave writes the setting directly in
+                        # the nested ImageButton clicked() handler. A deferred
+                        # test result must not be confused with a never-hit icon.
+                        for trial in range(15):
+                            if not bool(await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")')):break
+                            await page.wait_for_timeout(100)
+                        actual_auto=await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")')
+                        if bool(actual_auto):
+                            ui_state=await controls()
+                            related=[{k:c.get(k) for k in ('path','label','icons','enabled','onScreen','x','y','checked','visibleCssRect')}
+                                     for c in ui_state['controls'] if c.get('path','').startswith(card['path']+'.') and 'save' in c.get('icons',[])]
+                            print('NATIVE_AUTOSAVE_TOGGLE_DIAGNOSTIC '+json.dumps({'before':before_auto,'after':actual_auto,'controls':related,
+                               'game':await page.evaluate('__mindustryQaSnapshot()')},ensure_ascii=False),flush=True)
+                        assert bool(actual_auto) is False,('native save slot toggled without callback',before_auto,actual_auto)
                         await close_dialogs();await named('web-pause-resume')
                         tick=(await page.evaluate('__mindustryQaSnapshot()'))['tick'];before=await bytes_at()
                         await page.wait_for_function('t=>__mindustryQaSnapshot().tick>t+660',arg=tick,timeout=30000)
@@ -214,7 +260,7 @@ async def main():
                         await open_saves()
                         card=await choose(lambda x:x['kind']=='button' and 'untitled' in x['label'].lower() and x['cssRect']['bottom']-x['cssRect']['top']>90,'canonical card',False)
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'save' in x.get('icons',[]),'enable canonical autosave')
-                        assert await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")') is True
+                        assert bool(await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")')) is True
                         await close_dialogs();await named('web-pause-resume');before=await bytes_at()
                         await page.wait_for_function('q=>JSON.stringify(Array.from(Uint8Array.from(__mindustryStorage.get(q.path)||[])))!==q.bytes',arg={'path':CANONICAL,'bytes':json.dumps(list(before),separators=(',',':'))},timeout=30000)
                         # Deleting the stable slot from the stopped menu must be
@@ -231,7 +277,7 @@ async def main():
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'trash' in x.get('icons',[]),'canonical delete confirm')
                         await choose(lambda x:x['kind']=='button' and x['label'].strip()=='OK','canonical delete confirmation')
                         assert not await page.evaluate('p=>__mindustryStorage.exists(p)',CANONICAL)
-                        assert await page.evaluate('__mindustryQaSetting("web-campaign-reset-at")')>0
+                        assert int(await page.evaluate('__mindustryQaSetting("web-campaign-reset-at")'))>0
                         await page.evaluate('()=>__mindustryStorage.flush()')
                         await context.close();context=await launch();page=await context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
                         await ready('?lang=en')
