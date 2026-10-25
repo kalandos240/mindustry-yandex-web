@@ -93,7 +93,7 @@ async def main():
                         await picker.set_files({'name':name,'mimeType':'application/octet-stream','buffer':data})
                         await page.wait_for_timeout(1200)
                     async def bytes_at(path=CANONICAL):
-                        return bytes(await page.evaluate('p=>Array.from(__mindustryStorage.get(p)||[])',path))
+                        return bytes(await page.evaluate('p=>Array.from(Uint8Array.from(__mindustryStorage.get(p)||[]))',path))
                     try:
                         # Only seed creation uses a deterministic map fixture. Every
                         # subsequent import, slot action and Continue is native input.
