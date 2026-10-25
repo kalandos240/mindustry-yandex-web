@@ -6,6 +6,11 @@ on:
       - scripts/browser-qa-probe.js
       - scripts/prepare-qa-probe.py
       - scripts/test-qa-renderer-statics.js
+      - scripts/test-qa-unsigned-bytes.js
+      - scripts/verify-browser-text-input.py
+      - web-runtime/src/main/java/mindustry/web/BrowserTextInput.java
+      - scripts/verify-native-save-library.py
+      - scripts/verify-native-schematic-clipboard.py
       - .github/workflows/renderer-settings-qa.yml
   pull_request:
     paths:
@@ -25,4 +30,9 @@ jobs:
         run: |
           node --check scripts/browser-qa-probe.js
           node scripts/test-qa-renderer-statics.js
-          python3 -m py_compile scripts/prepare-qa-probe.py
+          node scripts/test-qa-unsigned-bytes.js
+          python3 -m py_compile scripts/prepare-qa-probe.py scripts/verify-native-save-library.py scripts/verify-native-schematic-clipboard.py scripts/verify-browser-text-input.py
+      - name: Verify native browser text dialog in desktop/mobile Chrome
+        run: |
+          python3 -m pip install playwright
+          python3 scripts/verify-browser-text-input.py
