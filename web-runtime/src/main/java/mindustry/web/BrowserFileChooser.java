@@ -32,6 +32,11 @@ public final class BrowserFileChooser{
                 accept.append(".").append(extension);
             }
             chooseFiles(accept.toString(), params.allowMultiple, (name, bytes, last) -> {
+                // Telemetry is deliberately name- and content-free. This lets
+                // real Chrome QA tell whether a browser FileReader delivery
+                // crossed TeaVM's JS byte[] bridge, and whether stock FileChooser
+                // actually dispatched the result to native Schematics/SaveIO.
+                markImportPhase("received", bytes == null ? -1 : bytes.length);
                 // Browser input is an untrusted file boundary. The extension and size
                 // are checked before any parsed .msch/.msav data reaches Mindustry.
                 boolean supported = false;
@@ -46,13 +51,17 @@ public final class BrowserFileChooser{
                     staged.parent().mkdirs();
                     staged.writeBytes(bytes);
                     selected.add(staged);
+                    markImportPhase("staged", bytes.length);
                 }
                 if(last){
                     if(selected.isEmpty()){
+                        markImportPhase("rejected", 0);
                         if(mindustry.Vars.ui != null) mindustry.Vars.ui.showInfo("@none.found");
                     }else{
                         try{
+                            markImportPhase("dispatch", selected.size());
                             params.handleChooseResult(selected.toArray(new Fi[0]));
+                            markImportPhase("handled", selected.size());
                         }finally{
                             // Original Mindustry import callbacks fully read each Fi before
                             // returning. Do not accumulate duplicate uploaded files in
@@ -74,6 +83,9 @@ public final class BrowserFileChooser{
             params.handleChooseResult(staged);
         }
     }
+
+    @JSBody(params={"phase","count"}, script="var r=document.documentElement; r.setAttribute('data-mindustry-browser-native-import-phase',phase); r.setAttribute('data-mindustry-browser-native-import-count',String(count));")
+    private static native void markImportPhase(String phase, int count);
 
     // TeaVM 0.15 JSBody uses an ES5 parser: no arrow functions/async/await.
     // FileReader callbacks serially deliver each validated browser-local upload.
