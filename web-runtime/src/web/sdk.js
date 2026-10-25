@@ -163,7 +163,7 @@ const sdk={
 document.addEventListener('visibilitychange',()=>{
   s.hidden=document.visibilityState==='hidden';updatePause();
 });
-global.YaGames={init:initialize};
+global.__mindustryPlaygamaSdk={init:initialize};
 global.__mindustryPlaygamaBridge={state:s,initialize,displayInterstitial:showAd,refreshPause:updatePause};
 mark('sdk','adapter-ready');
 })(globalThis);
