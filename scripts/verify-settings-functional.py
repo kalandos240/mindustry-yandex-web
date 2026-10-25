@@ -150,7 +150,26 @@ async def main(args):
                     async def music_gain():
                         volumes=await page.evaluate('()=>Array.from(__mindustryAudio.music.values()).filter(e=>!e.element.paused).map(e=>e.element.volume)')
                         return (not volumes or max(volumes)<.001) if expected==0 else bool(volumes) and 0<max(volumes)<=expected/100+.02
-                    await wait(music_gain,'actual paused music gain');return 'playing HTMLAudioElement gain while simulation paused'
+                    try:
+                        await wait(music_gain,'actual paused music gain')
+                    except AssertionError:
+                        details=await page.evaluate("""()=>({
+                            music:Array.from(__mindustryAudio.music.values()).map(e=>({
+                                id:e.id,paused:e.element.paused,volume:e.element.volume,readyState:e.element.readyState,
+                                networkState:e.element.networkState,error:e.element.error?.message||null,
+                                currentTime:e.element.currentTime,pendingPlay:e.pendingPlay,
+                                resumeAfterPlatform:e.resumeAfterPlatform,playRequest:e.playRequest,
+                                src:e.element.currentSrc.split('/').pop()
+                            })),
+                            platform:document.documentElement.getAttribute('data-mindustry-audio-platform'),
+                            lifecycle:document.documentElement.getAttribute('data-mindustry-game-state'),
+                            visible:document.visibilityState,
+                            activation:navigator.userActivation?.hasBeenActive
+                        })""")
+                        print('MUSIC_GAIN_DIAGNOSTIC '+json.dumps({'key':key,'expected':expected,'setting':await value(key),'details':details}),flush=True)
+                        await page.screenshot(path=str(out/f'{args.browser}-{"mobile" if args.mobile else "desktop"}-music-failed.png'))
+                        raise
+                    return 'playing HTMLAudioElement gain while simulation paused'
                 if key=='fpscap':
                     limit=0 if expected>240 else max(10,expected)
                     await wait(lambda:attr_equals('data-mindustry-frame-limit',str(limit)),'actual frame limiter');return 'scheduler limit'
