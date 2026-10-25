@@ -314,7 +314,27 @@ async def config_family(ui,family):
                 await ui.wait(lambda:config_value(ui,unit_index),'native plan re-enabled '+choice['name'])
                 ui.record('factory-plan',family+'/'+choice['name'],'stock selected plan off then on')
                 expected=unit_index
-            if await ui.attr('native-config-open')!='true':await tile();await ui.wait(lambda:config_open(ui),'factory command table')
+            if await ui.attr('native-config-open')!='true':
+                # Selecting a unit plan may close the stock config table on
+                # touch while the block remains selected. Let the close
+                # transition finish and retry actual canvas taps; a stale
+                # selected tile must not count as a successful panel reopen.
+                for attempt in range(5):
+                    await ui.page.wait_for_timeout(550)
+                    if await ui.attr('native-config-open')=='true':break
+                    await tile()
+                    await ui.page.wait_for_timeout(450)
+                    if await ui.attr('native-config-open')=='true':break
+                else:
+                    state={'family':family,'choice':choice,
+                           'selected':await ui.attr('native-config-name'),
+                           'configValue':await ui.attr('native-config-value'),
+                           'configOpen':await ui.attr('native-config-open'),
+                           'game':await ui.state(),
+                           'visibleButtons':[{k:c.get(k) for k in ('name','label','icons','parentNames','x','y')}
+                             for c in (await ui.inventory())['controls'] if c.get('kind')=='button' and c.get('onScreen')][-20:]}
+                    print('FACTORY_COMMAND_OPEN_DIAGNOSTIC '+json.dumps(state,ensure_ascii=False),flush=True)
+                    raise AssertionError('Stock '+family+' command table will not reopen after choosing '+choice['name'])
             index=plans.index(choice['name'])
             commands=[]
             for i in range(20):
