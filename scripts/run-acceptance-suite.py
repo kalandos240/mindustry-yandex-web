@@ -19,6 +19,9 @@ def main():
         elif suite.startswith('portal-'):
             browser=suite.split('-',1)[1]
             run(['python3','scripts/verify-portal-campaign-lifecycle.py','--browser',browser]+(['--headless'] if browser=='chromium' else []))
+        elif suite=='data-reset':
+            run(['node','scripts/test-cloud-reset-preferences.js'])
+            run(['python3','scripts/verify-native-data-reset.py'])
         elif suite in ['campaign','maps-serpulo','maps-erekir']:
             run(['python3','scripts/run-campaign-qa.py','--suite',suite])
         elif suite in ['controls','secondary-desktop','secondary-mobile']:

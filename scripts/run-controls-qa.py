@@ -18,11 +18,33 @@ SUITES=[
     ('research','navigation',['bash','scripts/verify-browser-native-research.sh'],1500),
     ('custom-existing','navigation',['bash','scripts/verify-browser-custom-game.sh'],1200),
     ('sorter-existing','navigation',['bash','scripts/verify-browser-building-config-stress.sh'],600),
+    ('hud-layout','navigation',['bash','scripts/verify-browser-hud-layout.sh'],900),
+    ('narrow-menu','navigation',['bash','scripts/verify-browser-narrow-menu.sh'],600),
+    ('pause-captions','navigation',['bash','scripts/verify-browser-pause-captions.sh'],600),
+    ('campaign-menu-entry','campaign',['bash','scripts/verify-browser-play-campaign-stress.sh'],600),
+    ('planet-dialog','campaign',['bash','scripts/verify-browser-planet-dialog.sh'],600),
     ('save-library','library',['python3','scripts/verify-native-save-library.py'],1800),
     ('schematic-library','library',['python3','scripts/verify-native-schematic-clipboard.py'],1200),
     ('secondary-desktop','secondary',['python3','scripts/verify-secondary-controls.py'],3600),
     ('secondary-mobile','secondary',['python3','scripts/verify-secondary-controls.py','--mobile'],3600),
 ]
+SCOPE={
+    'inventory':'Actual control discovery and navigation; not inner-action business effects',
+    'menu':'Desktop/mobile menu callbacks and full button bounds',
+    'pause':'Local/campaign pause actions and exit Cancel/Confirm',
+    'mobile-hud':'Mobile toolbar callbacks, dialog navigation and compact scrolling',
+    'planet-hud':'Cross-planet native HUD entry, selected Go, actual pause/frozen/advancing simulation',
+    'research':'Native node purchase/resources, roots, mouse drag and resizing in all configured targets',
+    'custom-existing':'Catalog preview, first-map selection, mode/rule callback and map launch',
+    'sorter-existing':'Sorter native Copper choice, reopen and clear',
+    'hud-layout':'HUD bounds/non-overlap, native category/conveyor selection, scaled resize input and minimap open/Escape; legacy heartbeat is not independent tick proof',
+    'narrow-menu':'Russian narrow desktop full-button hit rectangles and menu callbacks',
+    'pause-captions':'English pause labels, 320px stacked layout, wide resize and native callbacks',
+    'campaign-menu-entry':'Home Play to native 3D Campaign, first chooser closed, Java scheduler continuity; not sector launch',
+    'planet-dialog':'Serpulo/Erekir selector buttons, 3D rendering and native TechTree entry; not sector launch',
+    'secondary-desktop':'Finite Database/56-rule/config-family semantic ledger, desktop',
+    'secondary-mobile':'Finite Database/56-rule/config-family semantic ledger, mobile',
+}
 
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -51,7 +73,7 @@ def main():
     if not args.dry_run and before is None:parser.error('Compile web-runtime/build/web/mindustry.js before running')
     try:
         for name,group,command,timeout in chosen:
-            entry={'name':name,'group':group,'command':command,'timeoutSeconds':timeout,'status':'planned'}
+            entry={'name':name,'group':group,'command':command,'timeoutSeconds':timeout,'status':'planned','assertionScope':SCOPE.get(name,'See individual suite')}
             report['commands'].append(entry);print(name+': '+subprocess.list2cmdline(command),flush=True)
             if args.dry_run:continue
             start=time.monotonic()

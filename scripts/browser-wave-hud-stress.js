@@ -19,6 +19,10 @@
       '; sending='+val('wave-hud-sending'));
   };
   await wait(()=>val('campaign-state')==='playing','real campaign live');
+  if(typeof __mindustryQaSnapshot!=='function')throw Error('Read-only QA state probe missing');
+  const initialState=__mindustryQaSnapshot();
+  if(!initialState.playing||initialState.paused||!initialState.campaignActive)
+    throw Error('Wave HUD test started outside actual playing campaign: '+JSON.stringify(initialState));
   await wait(()=>val('wave-hud-ready')==='yes','stock visible Wave skip button');
   const rect=canvas.getBoundingClientRect();
   const x=Number(val('wave-hud-x')), y=Number(val('wave-hud-y'));
@@ -39,8 +43,12 @@
   await wait(()=>val('wave-hud-result')==='passed','original Logic.runWave');
   const oldWave=Number(val('wave-hud-start')), nextWave=Number(val('wave-hud-end'));
   if(nextWave<=oldWave)throw Error('Stock HUD did not increment wave number');
-  const sample=Number(val('cpu-sample'));
-  await wait(()=>Number(val('cpu-sample'))>sample,'game loop lives after native wave');
+  await wait(()=>{
+    const s=__mindustryQaSnapshot();
+    return s.playing&&!s.paused&&s.campaignActive&&s.wave>initialState.wave&&
+      s.tick>initialState.tick&&BigInt(s.updateId)>BigInt(initialState.updateId);
+  },'actual wave, tick and updateId advance after native wave click');
+  root.setAttribute('data-mindustry-qa-wave-state',JSON.stringify(__mindustryQaSnapshot()));
   root.setAttribute('data-mindustry-wave-hud-browser','passed');
   root.setAttribute('data-mindustry-wave-hud-native-clicks','1');
   return 'Actual HudFragment skip button advanced wave and TeaVM remained alive';
