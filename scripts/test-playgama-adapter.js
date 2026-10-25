@@ -42,7 +42,7 @@ async function run(initialAudio){
    Error,Math,String,JSON,setTimeout,clearTimeout};
  ctx.globalThis=ctx;
  vm.runInNewContext(script,ctx);
- const sdk=await ctx.YaGames.init();
+ const sdk=await ctx.__mindustryPlaygamaSdk.init();
  assert.equal(sdk.environment.i18n.lang,'ru');
  let paused=0,resumed=0;
  sdk.on('game_api_pause',()=>paused++);
