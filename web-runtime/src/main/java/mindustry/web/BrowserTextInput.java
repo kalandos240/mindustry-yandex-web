@@ -56,7 +56,7 @@ public final class BrowserTextInput{
         field.setAttribute('aria-label',message||title||'');
         field.style.cssText='width:100%;box-sizing:border-box;font:16px monospace;margin:10px 0;min-height:42px';
         if(multiline) field.style.height='160px';
-        if(maxLength>=0) field.maxLength=maxLength;
+        // Numeric input is sanitized *after* the input event. Native maxlength\n        // would discard valid trailing digits before non-digits can be removed.\n        if(maxLength>=0 && !numeric) field.maxLength=maxLength;
         if(numeric) field.inputMode='numeric';
         panel.appendChild(field);
         var accept=document.createElement('button');accept.textContent=acceptLabel;
