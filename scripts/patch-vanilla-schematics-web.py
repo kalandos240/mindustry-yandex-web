@@ -113,6 +113,30 @@ clipboard_new = '''                t.button("@load.clipboard", Icon.copy, style,
 if dialog.count(clipboard_old) != 1:
     raise SystemExit("Pinned schematic clipboard import changed")
 dialog = dialog.replace(clipboard_old, clipboard_new, 1)
+
+# Upstream SchematicsDialog silently presents errors in a desktop load fragment
+# that does not always exist in the minimal Web UI. Keep the stock exception
+# handler, but also report the real parser failure to browser console so users
+# (and automated Chrome tests) can diagnose rejected MSCH files.
+source_try = '''                    for(Fi file : files){
+                        try{
+                            Schematic s = Schematics.read(file);
+                            s.removeSteamID();
+                            schematics.add(s);
+                            checkTags(s);
+                            last = s;
+                        }catch(Exception e){
+                            ui.showException(e);
+                        }
+                    }'''
+reported_try = source_try.replace(
+    '                            ui.showException(e);',
+    chr(10).join(('                            Log.err(e);',
+                  '                            ui.showException(e);'))
+)
+if dialog.count(source_try) != 1:
+    raise SystemExit("Pinned native MSCH FileChooser parser callback changed")
+dialog = dialog.replace(source_try, reported_try, 1)
 dialog_path.write_text(dialog, encoding="utf-8")
 runpy.run_path(str(ROOT / "scripts/patch-browser-text-input-web.py"), run_name="__main__")
 print("Stock Schematics.load: local Web schematics preserved without mandatory Mods startup")
