@@ -215,7 +215,10 @@ async def main(args):
                 await open_settings()
                 roster=set()
                 for category in ['Game','Graphics','Sound','Developer']:
-                    await click(label=category)
+                    # Pinned Mindustry's actual English root caption is
+                    # "Developer Options" (bundle key settings.dev), not
+                    # "Developer". Keep category identity separate from label.
+                    await click(label='Developer Options' if category=='Developer' else category)
                     await wait(lambda:settings_page({'Game':'game','Graphics':'graphics','Sound':'sound','Developer':'dev'}[category]),'category '+category)
                     entries=await controls();keys=[]
                     for c in entries:
