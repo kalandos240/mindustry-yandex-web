@@ -8,12 +8,18 @@ if not RUNTIME.is_file():
     raise SystemExit(f"Missing browser local-map runtime source: {RUNTIME}")
 
 text = RUNTIME.read_text(encoding="utf-8")
-if all(marker in text for marker in (
-    "private static final double periodicSaveIntervalTicks = 180.0 * 60.0;",
-    "private static void maybePeriodicSave()",
-    "private static native boolean periodicSaveSmokeRequested();",
-    "private static native void markPeriodicSaved(",
-)):
+# The committed Web runtime may implement the original fixed 180s interval
+# or the newer player-configurable Settings > Game > Save Interval. Both are
+# completed milestones, not a reason to reapply this bootstrap patch.
+if (
+    ("private static final double periodicSaveIntervalTicks = 180.0 * 60.0;" in text
+     or "private static final int defaultPeriodicSaveSeconds = 180;" in text)
+    and all(marker in text for marker in (
+        "private static void maybePeriodicSave()",
+        "private static native boolean periodicSaveSmokeRequested();",
+        "private static native void markPeriodicSaved(",
+    ))
+):
     print("Periodic local autosave milestone already present in committed Web overlay")
     raise SystemExit(0)
 
