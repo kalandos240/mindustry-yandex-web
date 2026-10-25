@@ -5,10 +5,19 @@ WEB_DIR="$ROOT_DIR/web-runtime/build/web"
 PORT=8128
 command -v google-chrome >/dev/null
 test -s "$WEB_DIR/mindustry.js"
+qa_probe_owned=no
+if [ ! -f "$WEB_DIR/mindustry.js.qa-probe-original" ]; then
+  python3 "$ROOT_DIR/scripts/prepare-qa-probe.py"
+  qa_probe_owned=yes
+fi
 cd "$WEB_DIR"
 python3 -m http.server "$PORT" --bind 127.0.0.1 >/tmp/mindustry-hud-planet-http.log 2>&1 &
 server=$!
-trap 'kill "$server" 2>/dev/null || true' EXIT
+cleanup_hud_planet(){
+  kill "$server" 2>/dev/null || true
+  if [ "$qa_probe_owned" = yes ]; then python3 "$ROOT_DIR/scripts/prepare-qa-probe.py" --restore; fi
+}
+trap cleanup_hud_planet EXIT
 for i in {1..30}; do
   if curl -fsS "http://127.0.0.1:$PORT/index.html" >/dev/null; then break; fi
   sleep 0.25
@@ -25,7 +34,7 @@ python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
   --require 'data-mindustry-campaign-state="playing"' \
   --after-ready-eval "$(cat "$ROOT_DIR/scripts/browser-hud-planet-stress.js")" \
   --after-ready-require 'data-mindustry-hud-planet-browser="passed"' \
-  --after-ready-require 'data-mindustry-hud-planet-open="yes"' \
+  --after-ready-require 'data-mindustry-hud-planet-open="no"' \
   --after-ready-require 'data-mindustry-hud-planet-cross-campaign="passed"' \
   --after-ready-require 'data-mindustry-campaign-planet="serpulo"' \
   --after-ready-require 'data-mindustry-web="ready"' \

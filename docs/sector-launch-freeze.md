@@ -1,0 +1,9 @@
+# Sector Go queue, bounded downloads and recovery export
+
+The supplied Firefox portal log has no game exception or Java stack. The user confirmed that Ground Zero freezes after Go, rather than while choosing a sector. A cold lost-core Ground Zero/Onset Go on the previously delivered bff9509 runtime also passed native Firefox at 2400×660; this does not reproduce the user's real checkpoint. Do not claim the exact freeze was reproduced.
+
+The asset boundary did contain a verified bug: a single global pending flag discarded Go while selection/warmup was waiting for a map, and even blocked a cached starting sector behind an unrelated request. The boundary now keeps the latest action for the pending map, invalidates older callbacks on a different choice, and never defers a cached map. Download promises abort and expire after 20 seconds, remove the in-flight cache entry for retry, and cannot publish bytes from a late timed-out response.
+
+Tests compile the production Java boundary with controlled file/posted-task/prepare adapters, exercise selection then immediate/repeated Go, cached and uncached retargeting, stale posted completion, failure and retry. The production JavaScript loader is exercised with slow/shared requests, HTTP/truncation errors, an unresponsive fetch, abort and late-result isolation.
+
+Saved sectors gain a native Export action in the selected-sector panel. The JSON contains the selected MSAV, its existing lost-backup if any, and this game's durable settings mirrors; unrelated saves are excluded. Export does not write game storage. The native Firefox test downloads it before Go and compares the selected save bytes. Launch requests and start/resume stages now log to the console, providing a last-stage record if the real checkpoint still freezes. The next required evidence in that case is the user's exported Ground Zero JSON.

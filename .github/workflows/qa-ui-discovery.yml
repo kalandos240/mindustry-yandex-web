@@ -1,0 +1,38 @@
+name: QA live control inventory
+on:
+  push:
+    branches: [sector-settings-recovery]
+    paths: ['.github/workflows/qa-ui-discovery.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-renderer-diagnostic-verified
+          run-id: 40086065368
+          github-token: ${{ github.token }}
+          path: work/base
+      - name: Stage exact game for read-only control discovery
+        run: |
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          import hashlib
+          p=Path('work/base/Mindustry-Yandex-renderer-diagnostic.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='620fb35071755028b6863d4d513bf90cb2449b09726218d2e1f4ed3c6d4e7439'
+          with ZipFile(p) as z:z.extractall('web-runtime/build/web')
+          PY
+      - run: python3 -m pip install playwright
+      - name: Inventory and navigate actual Arc controls
+        run: python3 scripts/verify-ui-control-inventory.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-ui-control-inventory
+          path: work/ui-control-inventory

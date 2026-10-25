@@ -22,7 +22,7 @@ public final class BrowserWaveHudSmoke{
 
     public static void update(){
         if(!requested() || passed || state == null || !state.isPlaying()
-        || state.gameOver || !BrowserCampaignRuntime.active()
+        || state.gameOver || !Campaign.active()
         || Core.scene == null || state.rules == null) return;
 
         if(++frames > 1100){

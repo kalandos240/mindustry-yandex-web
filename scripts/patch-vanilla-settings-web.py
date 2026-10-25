@@ -101,5 +101,37 @@ src = src[:start] + '''            // Web: ZIP backup/import and OS log-folder o
 replace('                Slider slider = new Slider(min, max, step, false);',
         '                Slider slider = new Slider(min, max, step, false);\n                slider.name = "setting-" + name;',
         "native slider identity")
+
+# These controls belong to stock systems that are deliberately absent from this
+# permanent single-player browser graph. Do not expose preferences that only
+# change a stored value while having no consumer or effect in this runtime.
+for statement, label in (
+    ('        game.checkPref("savecreate", true);\n', 'desktop automatic save-slot creation'),
+    ('            game.checkPref("backgroundpause", true);\n', 'mandatory platform background pause'),
+    ('        graphics.sliderPref("chatopacity", 100, 0, 100, 5, s -> s + "%");\n', 'absent chat opacity'),
+    ('        graphics.checkPref("playerchat", true);\n', 'absent multiplayer chat bubbles'),
+    ('        dev.checkPref("console", false);\n', 'absent JavaScript console fragment'),
+    ('        dev.checkPref("showperformance", false);\n', 'absent desktop performance fragment'),
+    ('            dev.checkPref("modcrashdisable", true);\n', 'disabled mod loader crash preference'),
+):
+    replace(statement, '', label)
+
 PATH.write_text(src, encoding="utf-8")
+
+# The browser installs its saved Scl product before actors are built and provides
+# an unscaled HTML Keep/Reset prompt. The desktop countdown calls app.exit(),
+# which permanently stops the browser scheduler and cannot restore a usable UI.
+control_path = ROOT / "work/Mindustry/core/src/mindustry/core/Control.java"
+control = control_path.read_text(encoding="utf-8")
+begin = control.index('        //display UI scale changed dialog\n')
+end = control.index('\n    }\n\n    @Override\n    public void update(){', begin)
+scale_block = control[begin:end]
+if 'Core.app.exit();' not in scale_block or 'Core.settings.getBool("uiscalechanged", false)' not in scale_block:
+    raise SystemExit('Pinned Control UI-scale watchdog changed; review browser recovery')
+control_path.write_text(control[:begin] + '''        // Web: BrowserUiScale owns the persistent scale and browser-safe recovery UI.
+''' + control[end:], encoding="utf-8")
 print("Vanilla SettingsMenuDialog: original Sound/Game/Graphics/Data/Language/Controls/Dev UI; browser-only actions removed")
+
+import subprocess
+subprocess.run(["python3", str(ROOT / "scripts/patch-browser-keybinds-web.py")], check=True)
+subprocess.run(["python3", str(ROOT / "scripts/patch-browser-data-reset-web.py")], check=True)

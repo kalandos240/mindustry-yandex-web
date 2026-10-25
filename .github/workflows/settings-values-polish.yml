@@ -1,0 +1,147 @@
+name: Verify settings values and SDK timeout
+# Reject malformed settings framing before staging a restored checkpoint.
+# Keep the hot-path guard aware of uncommitted failed writes.
+on:
+  push:
+    branches: [sector-settings-recovery]
+    paths: ['.github/workflows/settings-values-polish.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Check production loaders and sector actions
+        run: |
+          set -euo pipefail
+          node scripts/test-player-lookup-timeout.js
+          node scripts/test-cloud-startup-restore.js
+          node scripts/test-cloud-checkpoint-queue.js
+          node --check web-runtime/src/web/browser-storage.js
+          node --check scripts/browser-storage-faults.js
+          node scripts/test-asset-network-recovery.js
+          node scripts/test-campaign-map-loading.js
+          node scripts/test-sector-export.js
+          python3 scripts/test-campaign-deferred-actions.py
+          python3 scripts/audit-browser-hotpath.py
+          python3 scripts/audit-campaign-consistency.py
+          python3 scripts/audit-yandex-ui-controls.py
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-defeat-settings-verified
+          run-id: 39761008608
+          github-token: ${{ github.token }}
+          path: work/source
+      - name: Package the updated loader with the verified runtime
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile,ZIP_DEFLATED
+          import hashlib
+          source=Path('work/source/mindustry-yandex-release.zip')
+          assert hashlib.sha256(source.read_bytes()).hexdigest()=='4673cfba9da58fa365e37ef0879309a8742db2493fb23ba16255c67da8c442b5'
+          root=Path('web-runtime/build/web')
+          with ZipFile(source) as z:
+              assert z.testzip() is None
+              assert all(not n.startswith('/') and '..' not in Path(n).parts for n in z.namelist())
+              z.extractall(root)
+              original={n:hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist()}
+          Path('work/legacy-platform.js').write_bytes((root/'yandex-platform.js').read_bytes())
+          (root/'yandex-platform.js').write_bytes(Path('web-runtime/src/web/yandex-platform.js').read_bytes())
+          Path('work/legacy-storage.js').write_bytes((root/'browser-storage.js').read_bytes())
+          (root/'browser-storage.js').write_bytes(Path('web-runtime/src/web/browser-storage.js').read_bytes())
+          (root/'index.html').write_bytes(Path('web-runtime/src/web/index.html').read_bytes())
+          files=sorted(p for p in root.rglob('*') if p.is_file())
+          assert len(files)==756
+          assert sum(p.stat().st_size for p in files)<100_000_000
+          for p in files:
+              name=p.relative_to(root).as_posix()
+              if name not in {'index.html','browser-storage.js','yandex-platform.js'}: assert hashlib.sha256(p.read_bytes()).hexdigest()==original[name],name
+          Path('work/release').mkdir()
+          package=Path('work/release/Mindustry-Yandex-settings-polish.zip')
+          with ZipFile(package,'w',ZIP_DEFLATED,compresslevel=9) as z:
+              for p in files: z.write(p,p.relative_to(root).as_posix())
+          print('Release SHA256:',hashlib.sha256(package.read_bytes()).hexdigest())
+          print('Files:',len(files),'Unpacked:',sum(p.stat().st_size for p in files))
+          PY
+      - name: Prove the previous cloud queue loses newer snapshots
+        run: |
+          node scripts/test-cloud-checkpoint-queue.js work/legacy-platform.js
+          node scripts/test-cloud-startup-restore.js work/legacy-platform.js
+          node scripts/test-cloud-startup-restore.js work/legacy-platform.js values
+          node scripts/test-player-lookup-timeout.js work/legacy-platform.js
+      - name: Reproduce the old bug and verify real IndexedDB recovery and cold reload
+        run: |
+          set -euo pipefail
+          root=web-runtime/build/web
+          cp work/legacy-storage.js "$root/test-legacy-storage.js"
+          cp scripts/browser-storage-faults.js "$root/test-storage-faults.js"
+          python3 - <<'PYHTML'
+          from pathlib import Path
+          root=Path('web-runtime/build/web')
+          for kind,script in [('legacy','test-legacy-storage.js'),('fixed','browser-storage.js')]:
+              (root/('test-storage-'+kind+'.html')).write_text('<!doctype html><html><head><meta charset="utf-8"></head><body><script src="'+script+'"></script><script src="test-storage-faults.js"></script></body></html>')
+          PYHTML
+          python3 -m http.server 8153 --bind 127.0.0.1 --directory "$root" >work/storage-http.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          python3 scripts/chrome-wait-dom.py --url 'http://127.0.0.1:8153/test-storage-legacy.html?legacy' --profile /tmp/storage-legacy --port 9753 --timeout 45 --require 'data-storage-fault-test="legacy-reproduced"' >work/storage-legacy.html
+          echo 'Legacy falsely acknowledged aborted write REPRODUCED'
+          for device in desktop mobile; do
+            args=()
+            if [ "$device" = mobile ]; then args+=(--emulate-mobile); fi
+            for phase in initial cold; do
+              query=''
+              if [ "$phase" = cold ]; then query='?cold'; fi
+              python3 scripts/chrome-wait-dom.py "${args[@]}" --url "http://127.0.0.1:8153/test-storage-fixed.html$query" --profile "/tmp/storage-$device" --port 9753 --timeout 45 --require 'data-storage-fault-test="passed"' >"work/storage-$device-$phase.html"
+              echo "$device $phase real IndexedDB abort, retry, settings and deletions PASS"
+            done
+          done
+      - name: Launch both campaigns on desktop and mobile Chrome
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8152 --bind 127.0.0.1 --directory web-runtime/build/web >work/network-http.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for device in desktop mobile; do
+            args=()
+            if [ "$device" = mobile ]; then args+=(--emulate-mobile); fi
+            for sector in groundZero onset; do
+              python3 scripts/chrome-wait-dom.py "${args[@]}" --url "http://127.0.0.1:8152/index.html?lang=ru&mindustryCampaignSmoke=$sector&mindustryCampaignSaveSmoke=1" --profile "/tmp/network-$device-$sector" --port 9752 --timeout 180 --require 'data-mindustry-web="ready"' --require 'data-mindustry-campaign-state="playing"' --require 'data-mindustry-campaign-core="ready"' --require 'data-mindustry-campaign-save-flush="ready"' --require 'data-mindustry-campaign-assets="ready"' > "work/network-$device-$sector.html"
+              python3 scripts/verify-browser-bootstrap-dom.py "work/network-$device-$sector.html"
+              echo "$device $sector packaged boot, campaign, save and all maps PASS"
+            done
+          done
+      - name: Install Firefox for native settings, pause and defeat checks
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps firefox
+      - name: Verify native Firefox controls on both planets
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MOZ_WEBRENDER: '1'
+        run: xvfb-run -a python3 scripts/verify-firefox-defeat-settings.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-settings-polish-verified
+          path: work/release/Mindustry-Yandex-settings-polish.zip
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: settings-polish-evidence
+          path: |
+            work/network-*.html
+            work/network-http.log
+            work/storage-*.html
+            work/storage-http.log
+            work/firefox-defeat-*.png
+          if-no-files-found: ignore

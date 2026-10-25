@@ -1,0 +1,118 @@
+# Validate raw inputs against frozen compile commit and preserve generated overlay hashes.
+# All jobs verify frozen candidate 597dd1e / run40156042223.
+name: Exact candidate comprehensive browser acceptance
+'on':
+  push:
+    branches:
+    - sector-settings-recovery
+    paths:
+    - .github/workflows/qa-comprehensive.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  candidate-ready:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+    - env:
+        GH_TOKEN: ${{ github.token }}
+      run: "python3 - <<'PYCODE'\nimport json,os,time,urllib.request\nurl='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs/40156042223'\n\
+        for attempt in range(120):\n    request=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})\n\
+        \    with urllib.request.urlopen(request,timeout=25) as response:data=json.load(response)\n    if data['status']=='completed':\n\
+        \        assert data['conclusion']=='success','Frozen candidate build failed: '+str(data['conclusion'])\n        assert\
+        \ data['head_sha']=='597dd1ea385696295d3259e0d16efb280c431b0f','Unexpected candidate source'\n        print('Frozen\
+        \ compiled candidate is ready');break\n    if attempt%6==0:print('Waiting for frozen candidate compilation',flush=True)\n\
+        \    time.sleep(10)\nelse:raise SystemExit('Candidate compilation deadline exceeded')\nPYCODE"
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+        - controls
+        - secondary-desktop
+        - secondary-mobile
+        - campaign
+        - maps-serpulo
+        - maps-erekir
+        - factories
+        - platform
+        - audio
+        - persistence
+        - libraries
+        - settings-chromium-desktop
+        - settings-chromium-mobile
+        - settings-firefox-desktop
+        - settings-firefox-mobile
+        - portal-chromium
+        - portal-firefox
+        - data-reset
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: '17'
+    - uses: actions/download-artifact@v4
+      with:
+        name: qa-compiled-candidate
+        run-id: 40156042223
+        github-token: ${{ github.token }}
+        path: work/qa-candidate
+    - name: Validate exact compiled source identity and archive
+      run: python3 scripts/stage-qa-candidate.py work/qa-candidate
+    - run: python3 -m pip install playwright websocket-client
+    - name: Install browser dependencies
+      run: python3 -m playwright install --with-deps chromium firefox
+    - name: Run native acceptance suite
+      env:
+        LIBGL_ALWAYS_SOFTWARE: '1'
+        MOZ_WEBRENDER: '1'
+        PYTHONUNBUFFERED: '1'
+      run: xvfb-run -a python3 scripts/run-acceptance-suite.py "${{ matrix.suite }}"
+    - name: Require pristine archive bytes after every fixture
+      if: always()
+      run: python3 scripts/verify-qa-stage-identity.py
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: qa-results-${{ matrix.suite }}
+        path: 'work/comprehensive-qa
+
+          work/*-results.json
+
+          work/settings-functional
+
+          work/ui-control-inventory
+
+          work/*.png
+
+          work/*.html'
+        if-no-files-found: warn
+    needs:
+    - candidate-ready
+  verified:
+    needs:
+    - acceptance
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
+      with:
+        name: qa-compiled-candidate
+        run-id: 40156042223
+        github-token: ${{ github.token }}
+        path: work/qa-candidate
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: qa-results-*
+        path: work/collected-results
+    - run: python3 scripts/package-verified-qa.py work/collected-results
+    - uses: actions/upload-artifact@v4
+      with:
+        name: mindustry-comprehensive-verified
+        path: work/verified-qa/*
+        compression-level: 0
+        if-no-files-found: error

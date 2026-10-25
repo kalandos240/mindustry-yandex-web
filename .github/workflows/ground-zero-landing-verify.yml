@@ -1,0 +1,113 @@
+name: Verify Ground Zero landing fix
+on:
+  push:
+    branches: [sector-settings-recovery]
+    paths: ['.github/workflows/ground-zero-landing-verify.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 40081456460
+          github-token: ${{ github.token }}
+          path: work/compiled
+      - name: Stage the exact compiled settings fix and retain package hash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import hashlib
+          root=Path('web-runtime/build/web');root.mkdir(parents=True)
+          source=Path('work/compiled/mindustry-yandex-release.zip')
+          digest=hashlib.sha256(source.read_bytes()).hexdigest()
+          assert digest==Path(str(source)+'.sha256').read_text().split()[0]
+          with ZipFile(source) as z:
+              assert z.testzip() is None and len(z.namelist())==756
+              assert all(not n.startswith('/') and '..' not in Path(n).parts for n in z.namelist())
+              assert sum(i.file_size for i in z.infolist())<100_000_000
+              assert z.getinfo('mindustry.js').file_size<41_200_000
+              z.extractall(root)
+          for name in ['index.html','browser-audio.js','browser-storage.js','yandex-platform.js']:
+              assert (root/name).read_bytes()==Path('web-runtime/src/web',name).read_bytes(),name
+          assert b'jl_Object_monitorEnter($this)' not in (root/'mindustry.js').read_bytes().split(b'a_Settings_put =',1)[1].split(b'\n},',1)[0]
+          Path('work/landing-js.sha256').write_text(hashlib.sha256((root/'mindustry.js').read_bytes()).hexdigest())
+          Path('work/release').mkdir()
+          target=Path('work/release/Mindustry-Yandex-sector-landing-fix.zip');target.write_bytes(source.read_bytes())
+          print('Release SHA256:',digest)
+          print('ZIP bytes:',target.stat().st_size)
+          with ZipFile(target) as z:print('Files:',len(z.namelist()),'Unpacked:',sum(i.file_size for i in z.infolist()),'Raw JS:',z.getinfo('mindustry.js').file_size)
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-defeat-settings-verified
+          run-id: 39761008608
+          github-token: ${{ github.token }}
+          path: work/monitor-original
+      - name: Install native Firefox
+        timeout-minutes: 5
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps firefox
+      - name: Reproduce old Settings wait and verify native Ground Zero Go
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MOZ_WEBRENDER: '1'
+        run: xvfb-run -a python3 scripts/verify-firefox-settings-monitor.py
+      - name: Native Firefox settings, same-world save and defeat exit on both planets
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MOZ_WEBRENDER: '1'
+        run: xvfb-run -a python3 scripts/verify-firefox-defeat-settings.py
+      - name: Real desktop and mobile audio and interrupted-context recovery
+        run: |
+          python3 scripts/verify-browser-audio-lifecycle.py
+          python3 scripts/verify-browser-sfx-recovery.py
+      - name: Desktop and mobile campaign save, cold restore and inventory
+        run: bash scripts/verify-browser-campaign-save-resume.sh
+      - name: Preserve both full campaign progression paths
+        run: |
+          bash scripts/verify-browser-campaign-capture.sh
+          bash scripts/verify-browser-erekir-progression.sh
+      - name: Cold native Go with lost cores on both devices and planets
+        run: MINDUSTRY_LOST_CORE=1 bash scripts/verify-browser-cold-sector-go.sh
+      - name: Check that every native fixture restored the exact compiled runtime
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          from zipfile import ZipFile
+          js=Path('web-runtime/build/web/mindustry.js').read_bytes()
+          assert hashlib.sha256(js).hexdigest()==Path('work/landing-js.sha256').read_text()
+          with ZipFile('work/release/Mindustry-Yandex-sector-landing-fix.zip') as z:
+              assert z.testzip() is None and z.read('mindustry.js')==js
+          print('Exact verified package unchanged by fixtures PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-sector-landing-verified
+          path: work/release/Mindustry-Yandex-sector-landing-fix.zip
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sector-landing-evidence
+          path: |
+            work/monitor-*.html
+            work/monitor-*.png
+            work/firefox-defeat-*.png
+            work/campaign-*.html
+            work/cold-*.html
+            work/cold-*.png
+          if-no-files-found: ignore

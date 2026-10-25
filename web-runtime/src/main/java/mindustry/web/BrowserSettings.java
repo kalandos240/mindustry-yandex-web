@@ -17,6 +17,7 @@ import java.util.Map;
  * as decimal text so their full 64-bit value never passes through a JavaScript
  * Number.
  */
+/** Confined to the browser event loop; no JVM monitor may suspend a Scene callback. */
 public final class BrowserSettings extends Settings{
     private static final String header = "MWS1|";
     private static final String hex = "0123456789abcdef";
@@ -46,28 +47,28 @@ public final class BrowserSettings extends Settings{
     }
 
     @Override
-    public synchronized void load(){
+    public void load(){
         loadValues();
         loaded = true;
         modified = false;
     }
 
     @Override
-    public synchronized void forceSave(){
+    public void forceSave(){
         if(!loaded) return;
         saveValues();
         modified = false;
     }
 
     @Override
-    public synchronized void manualSave(){
+    public void manualSave(){
         // Logic.reset() invokes manualSave() on every map/sector transition. Browser
         // localStorage is synchronous, so do not serialize/rewrite an unchanged map.
         if(modified) forceSave();
     }
 
     @Override
-    public synchronized void autosave(){
+    public void autosave(){
         // Arc changes slider preferences on every pointer move. localStorage
         // rewrites the whole campaign/settings payload synchronously; doing that
         // every drag frame can starve input/rendering on slower devices. Commit
@@ -78,7 +79,7 @@ public final class BrowserSettings extends Settings{
     }
 
     @Override
-    public synchronized void loadValues(){
+    public void loadValues(){
         values.clear();
         Fi durable = storageFile();
         String payload = durable.exists()
@@ -113,7 +114,7 @@ public final class BrowserSettings extends Settings{
     }
 
     @Override
-    public synchronized void saveValues(){
+    public void saveValues(){
         StringBuilder payload = new StringBuilder(header);
         for(Map.Entry<String, Object> entry : values.entrySet()){
             Object value = entry.getValue();
@@ -210,6 +211,7 @@ public final class BrowserSettings extends Settings{
     @JSBody(params = {"key"}, script = "try { return window.localStorage.getItem(key); } catch (e) { return null; }")
     private static native String storageGet(String key);
 
-    @JSBody(params = {"key", "value"}, script = "try { window.localStorage.setItem(key, value); return true; } catch (e) { return false; }")
+    @JSBody(params = {"key", "value"}, script = "var mirrored=true; try { window.localStorage.setItem(key, value); } catch (e) { mirrored=false; } var platform=globalThis.__mindustryYandex; if(platform && typeof platform.onSettingsStored==='function') platform.onSettingsStored(value); return mirrored;")
     private static native boolean storageSet(String key, String value);
 }
+

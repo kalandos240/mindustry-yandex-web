@@ -7,6 +7,7 @@ import arc.scene.style.*;
 import arc.scene.ui.*;
 import mindustry.content.*;
 import mindustry.gen.*;
+import mindustry.ctype.*;
 import mindustry.world.*;
 import mindustry.world.blocks.distribution.*;
 import org.teavm.jso.JSBody;
@@ -25,19 +26,34 @@ public final class BrowserBuildingConfigSmoke{
     private static boolean checked, enabled, finished;
     private static int frames, scan, stage, stageFrames;
     private static Tile fixture;
+    private static String familyName = "";
+    private static Block familyBlock;
 
     private BrowserBuildingConfigSmoke(){}
 
     public static void update(){
         if(!requested() || finished) return;
         if(state == null || !state.isPlaying() || state.gameOver ||
-            !BrowserCampaignRuntime.active() || state.rules == null ||
-            state.rules.sector == null || state.rules.sector.planet != Planets.serpulo ||
+            !Campaign.active() || state.rules == null ||
+            state.rules.sector == null || familyName.isEmpty() && state.rules.sector.planet != Planets.serpulo ||
             state.rules.defaultTeam.core() == null ||
             control == null || control.input == null || Core.scene == null) return;
 
-        if(++frames > 1800) throw new IllegalStateException("Sorter native config smoke exceeded 1800 Java frames");
+        if(++frames > 1800 && familyName.isEmpty()) throw new IllegalStateException("Sorter native config smoke exceeded 1800 Java frames");
         if(stage == 0){
+            Block block = Blocks.sorter;
+            if(!familyName.isEmpty()){
+                if(familyBlock == null){
+                    familyBlock = content.getByName(ContentType.block, familyName);
+                    if(familyBlock == null || !familyBlock.configurable) throw new IllegalStateException("Unsupported native config fixture: " + familyName);
+                    // Isolated QA profile setup only. No configure() callback is
+                    // called here; actual browser input must select each value.
+                    familyBlock.quietUnlock();
+                    for(var unit : content.units()) unit.quietUnlock();
+                    state.rules.infiniteResources = true;
+                }
+                block = familyBlock;
+            }
             Building core = state.rules.defaultTeam.core();
             // Search in small batches instead of freezing the JavaScript main
             // thread; favor tiles close to the live player and visible camera.
@@ -45,23 +61,49 @@ public final class BrowserBuildingConfigSmoke{
                 int x = core.tile.x + scan % 41 - 20;
                 int y = core.tile.y + scan / 41 - 20;
                 Tile t = world.tile(x, y);
-                if(t == null || !Build.validPlace(Blocks.sorter, state.rules.defaultTeam,
-                    x, y, 0, false)) continue;
+                if(t == null) continue;
                 Vec2 p = Core.camera.project(new Vec2(t.worldx(), t.worldy()));
                 if(p.x < 80f || p.y < 80f || p.x > Core.graphics.getWidth() - 80f ||
                     p.y > Core.graphics.getHeight() - 80f ||
                     Core.scene.hasMouse(p.x, p.y)) continue;
-                t.setBlock(Blocks.sorter, state.rules.defaultTeam, 0);
-                if(!(t.build instanceof Sorter.SorterBuild)){
+                if(familyName.equals("naval-factory")){
+                    // Ground Zero need not have water next to its core. Only
+                    // this disposable QA fixture gets an empty water footprint
+                    // and output ring; never replace an existing building.
+                    boolean empty = true;
+                    for(int dx = -2; dx <= 2; dx++) for(int dy = -2; dy <= 2; dy++){
+                        Tile part = world.tile(x + dx, y + dy);
+                        if(part == null || part.block() != Blocks.air) empty = false;
+                    }
+                    if(!empty) continue;
+                    for(int dx = -2; dx <= 2; dx++) for(int dy = -2; dy <= 2; dy++){
+                        world.tile(x + dx, y + dy).setFloor(Blocks.water.asFloor());
+                    }
+                }
+                if(!Build.validPlace(block, state.rules.defaultTeam, x, y, 0, false)) continue;
+                t.setBlock(block, state.rules.defaultTeam, 0);
+                if(familyName.isEmpty() && !(t.build instanceof Sorter.SorterBuild)){
                     throw new IllegalStateException("Original SorterBuild not constructed");
                 }
                 fixture = t;
                 stage = 1;
                 stageFrames = 0;
-                markFixture(p.x, p.y);
+                if(familyName.isEmpty()) markFixture(p.x, p.y);
                 return;
             }
             if(scan == 41 * 41) throw new IllegalStateException("No reachable visible ground for stock Sorter config");
+            return;
+        }
+
+        if(!familyName.isEmpty()){
+            if(fixture == null || fixture.build == null || fixture.build.block != familyBlock) throw new IllegalStateException("Native config fixture disappeared: " + familyName);
+            Vec2 point = Core.camera.project(new Vec2(fixture.worldx(), fixture.worldy()));
+            // A processor's config() compresses the full program. Its code and
+            // link values are read by the test probe instead of recompressing
+            // them on every render tick.
+            Object value = familyName.equals("micro-processor") ? null : fixture.build.config();
+            markFamilyValue(familyName, String.valueOf(value), value == null ? "null" : value.getClass().getName(),
+                control.input.config.isShown() && control.input.config.getSelected() == fixture.build, point.x, point.y);
             return;
         }
 
@@ -120,6 +162,8 @@ public final class BrowserBuildingConfigSmoke{
     private static boolean requested(){
         if(!checked){
             enabled = queryRequested();
+            familyName = queryFamily();
+            enabled |= !familyName.isEmpty();
             checked = true;
         }
         return enabled;
@@ -127,6 +171,20 @@ public final class BrowserBuildingConfigSmoke{
 
     @JSBody(script = "return new URLSearchParams(location.search).get('mindustryBuildingConfigSmoke') === '1';")
     private static native boolean queryRequested();
+
+    @JSBody(script = "return new URLSearchParams(location.search).get('mindustryConfigFamily') || '';")
+    private static native String queryFamily();
+
+    @JSBody(params={"name","value","type","open","x","y"},script="""
+        var r=document.documentElement;
+        r.setAttribute('data-mindustry-native-config-name',name);
+        r.setAttribute('data-mindustry-native-config-value',value);
+        r.setAttribute('data-mindustry-native-config-type',type);
+        r.setAttribute('data-mindustry-native-config-open',String(open));
+        r.setAttribute('data-mindustry-native-config-x',String(x));
+        r.setAttribute('data-mindustry-native-config-y',String(y));
+        """)
+    private static native void markFamilyValue(String name,String value,String type,boolean open,float x,float y);
 
     @JSBody(params={"x","y"},script="""
         const r = document.documentElement;

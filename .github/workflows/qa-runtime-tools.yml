@@ -1,0 +1,26 @@
+name: Prepare local QA browser tools
+on:
+  push:
+    branches: [sector-settings-recovery]
+    paths: ['.github/workflows/qa-runtime-tools.yml']
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Bundle browser and Python automation dependencies
+        run: |
+          mkdir -p qa-tools/python qa-tools/bin
+          cp -a /opt/google/chrome qa-tools/chrome
+          python3 -m pip install --target qa-tools/python playwright websocket-client
+          printf '#!/bin/sh\nexec "$(dirname "$0")/../chrome/chrome" "$@"\n' >qa-tools/bin/google-chrome
+          chmod +x qa-tools/bin/google-chrome
+          tar -czf qa-runtime-tools.tar.gz qa-tools
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qa-runtime-tools
+          path: qa-runtime-tools.tar.gz
+          compression-level: 0
+          retention-days: 5

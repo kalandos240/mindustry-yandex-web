@@ -1,0 +1,217 @@
+# Include final late SDK acknowledgement rejection isolation.
+# Final candidate build; acceptance downloads the exact frozen archive.
+name: Build comprehensive QA candidate
+'on':
+  push:
+    branches:
+    - sector-settings-recovery
+    paths:
+    - .github/workflows/qa-build-candidate.yml
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+    - name: Checkout port repository
+      uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: '17'
+        cache: gradle
+    - name: Static-check release and browser test harness
+      run: "python3 -m py_compile scripts/*.py\npython3 scripts/test_yandex_size_budget.py\nnode scripts/test-campaign-map-loading.js\npython3 scripts/audit-campaign-consistency.py\n\
+        python3 scripts/audit-browser-hotpath.py\npython3 scripts/audit-yandex-ui-controls.py\nfor script in scripts/*.sh; do\n  bash -n \"$script\"\ndone\n"
+    - name: Verify actual frame-pacing and low-FPS simulation methods
+      run: python3 scripts/test-browser-frame-pacing.py
+    - name: Bootstrap pinned upstream sources
+      run: bash scripts/bootstrap.sh
+    - name: Verify pinned built-in Attack map list
+      run: 'python3 scripts/verify-pinned-attack-maps.py
+
+        python3 scripts/generate-map-filter-codec.py --check
+
+        '
+    - name: Audit complete English and Russian localization
+      run: 'python3 scripts/audit-i18n.py
+
+        cat work/web-i18n-report.txt
+
+        '
+    - name: Generate pinned vanilla sprite atlas
+      working-directory: work/Mindustry
+      run: "chmod +x gradlew\n# Maven Central can return HTTP 429 on parallel hosted GitHub runners.\n# Retry transient upstream dependency resolution with bounded\
+        \ backoff\n# instead of marking a game/rendering regression before compilation.\npacked=no\nfor attempt in 1 2 3; do\n  if ./gradlew tools:pack '-Pargs=[]'\
+        \ --no-daemon --stacktrace; then\n    packed=yes\n    break\n  fi\n  if [ \"$attempt\" -lt 3 ]; then\n    echo \"Atlas Gradle dependency/build attempt $attempt\
+        \ failed; retrying after rate-limit cooldown\"\n    sleep $((attempt * 20))\n  fi\ndone\ntest \"$packed\" = yes\ntest -s core/assets/sprites/sprites.aatls\n\
+        test -s core/assets/sprites/sprites.png\npages=\"$(find core/assets/sprites -maxdepth 1 -type f -name 'sprites*.png' | wc -l)\"\necho \"Vanilla AATLS bytes:\
+        \ $(wc -c < core/assets/sprites/sprites.aatls)\"\necho \"Vanilla atlas pages: $pages\"\ntest \"$pages\" -gt 0\n"
+    - name: Bake browser-safe Mindustry UI fonts
+      run: "bash scripts/install-web-font-baker.sh\ncd work/Mindustry\nchmod +x gradlew\n./gradlew tools:webFontBake --no-daemon --stacktrace\nfor name in default\
+        \ outline monospace icon iconLarge tech logic; do\n  test -s \"core/assets/webfonts/$name.fnt\"\n  test -s \"core/assets/webfonts/$name-0.png\"\n  pages=\"\
+        $(find core/assets/webfonts -maxdepth 1 -type f -name \"$name-*.png\" | wc -l)\"\n  echo \"Baked font $name: fnt=$(wc -c < \"core/assets/webfonts/$name.fnt\"\
+        ) bytes pages=$pages\"\n  test \"$pages\" -gt 0\ndone\n"
+    - name: Apply current Web compatibility overlays
+      run: 'bash scripts/apply-port.sh
+
+        python3 scripts/patch-arc-fi-web.py work/Arc/arc-core/src/arc/files/Fi.java
+
+        python3 scripts/patch-mindustry-block-reflection.py work/Mindustry/core/src/mindustry/world/Block.java
+
+        python3 scripts/patch-mindustry-fonts-web.py work/Mindustry/core/src/mindustry/ui/Fonts.java
+
+        python3 scripts/patch-mindustry-no-links-web.py
+
+        python3 scripts/patch-vanilla-schematics-web.py
+
+        python3 scripts/patch-vanilla-database-web.py
+
+        python3 scripts/patch-vanilla-planet-web.py
+
+        python3 scripts/patch-vanilla-settings-web.py
+
+        python3 scripts/patch-mindustry-external-urls-web.py
+
+        '
+    - name: Verify applied local gameplay overlays
+      run: 'logic=''work/Mindustry/core/src/mindustry/core/Logic.java''
+
+        local_runtime=''web-runtime/src/main/java/mindustry/web/BrowserLocalMapRuntime.java''
+
+        browser_app=''web-runtime/src/main/java/mindustry/web/BrowserApplication.java''
+
+        grep -Fq ''Local attack-mode maps are supported on Web; preserve the selected map rule.'' "$local_runtime"
+
+        grep -Fq ''int countAlive = state.teams.getActive().count(t -> t.isAlive() && t.team != Team.derelict);'' "$logic"
+
+        grep -Fq ''stock buildAi/rtsAi/prebuildAi/fillItems are now supported by the Web loop.'' "$local_runtime"
+
+        grep -Fq ''if(data.rtsAi == null) data.rtsAi = new RtsAI(data);'' "$logic"
+
+        grep -Fq ''if(data.buildAi == null) data.buildAi = new BaseBuilderAI(data);'' "$logic"
+
+        grep -Fq ''Vars.state.isPlaying() && !Vars.state.gameOver'' "$browser_app"
+
+        echo ''Local Attack + stock Team AI + Yandex Game Over lifecycle applied before TeaVM compile''
+
+        '
+    - name: Verify applied Web renderer hot-path patch
+      run: "sprite='work/Arc/arc-core/src/arc/graphics/g2d/SpriteBatch.java'\ngrep -Fq 'int[] sortOrder = new int[0], sortScratch = new int[0];' \"$sprite\"\ngrep\
+        \ -Fq 'int[] runs = contiguous;' \"$sprite\"\ngrep -Fq 'dst[out++] = za <= zb ? src[a++] : src[b++];' \"$sprite\"\ngrep -Fq 'System.arraycopy(requests, pos,\
+        \ copy, ptr, length);' \"$sprite\"\nif grep -Fq 'long[] sortKeys' \"$sprite\"; then\n  echo 'Web SpriteBatch regressed to TeaVM long-key sorting.' >&2\n \
+        \ exit 1\nfi\nif grep -Fq 'commonPool = new ForkJoinHolder();' \"$sprite\"; then\n  echo 'Web SpriteBatch unexpectedly initializes the JVM ForkJoin sorter.'\
+        \ >&2\n  exit 1\nfi\n"
+    - name: Compile Arc Web backend
+      working-directory: work/Arc
+      run: 'chmod +x gradlew
+
+        ./gradlew :arc-core:compileJava :backends:backend-web:compileJava --no-daemon --stacktrace
+
+        '
+    - name: Compile Mindustry core bytecode for TeaVM reachability
+      working-directory: work/Mindustry
+      run: 'chmod +x gradlew
+
+        ./gradlew core:compileJava --no-daemon --stacktrace
+
+        test -s core/build/classes/java/main/mindustry/core/Version.class
+
+        '
+    - name: Compile current Mindustry and Arc bytecode with TeaVM
+      run: "set -o pipefail\nwork/Arc/gradlew -p web-runtime generateJavaScript stageWeb --no-daemon --stacktrace 2>&1 | tee work/teavm-compile.log\nif grep -Fq 'Error\
+        \ in @JSBody' work/teavm-compile.log; then\n  echo 'TeaVM rejected a browser annotation script: release BLOCKED.' >&2\n  exit 1\nfi\n"
+    - name: Remove TeaVM runtime documentation link
+      run: python3 scripts/sanitize-teavm-runtime-links.py
+    - name: Verify exact 100 MB Yandex unpacked size budget
+      run: 'python3 scripts/test_yandex_size_budget.py
+
+        node scripts/test-campaign-map-loading.js
+
+        python3 scripts/yandex_size_budget.py
+
+        '
+    - name: Upload Yandex size-budget report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: yandex-size-budget
+        path: 'work/release/mindustry-yandex-size-budget.txt
+
+          work/release/mindustry-yandex-size-budget.json
+
+          '
+        if-no-files-found: warn
+    - name: Validate staged browser smoke package
+      run: "test -s web-runtime/build/web/index.html\ntest -s web-runtime/build/web/mindustry.js\ntest -z \"$(find web-runtime/build/web -type f -name '*.map' -print\
+        \ -quit)\"\ntest -s web-runtime/build/web/yandex-platform.js\ntest -s web-runtime/build/web/browser-storage.js\ntest -s web-runtime/build/web/browser-audio.js\n\
+        test -s web-runtime/build/web/assets-manifest.js\ntest -s web-runtime/build/web/assets/sounds/ui/uiButton.ogg\ntest -s web-runtime/build/web/assets/logicids.dat\n\
+        test -s web-runtime/build/web/licenses/Mindustry-GPL-3.0.txt\ntest -s web-runtime/build/web/licenses/Arc-Apache-2.0.txt\ntest -s web-runtime/build/web/licenses/SOURCE-NOTICE.txt\n\
+        test -s web-runtime/build/web/licenses/upstream.lock\ntest -s web-runtime/build/web/assets/sprites/clouds.png\ntest -s web-runtime/build/web/assets/sprites/rays.png\n\
+        test -s web-runtime/build/web/assets/sprites/distortAlpha.png\ntest -s web-runtime/build/web/assets/sprites/error.png\ntest -s web-runtime/build/web/assets/sprites/block_colors.png\n\
+        test -s web-runtime/build/web/assets/sprites/sprites.aatls\ntest -s web-runtime/build/web/assets/sprites/sprites.png\ntest -s web-runtime/build/web/assets/bundles/bundle.properties\n\
+        test -s web-runtime/build/web/assets/bundles/bundle_ru.properties\ntest -s web-runtime/build/web/assets/icons/icons.properties\ntest -s web-runtime/build/web/assets/locales\n\
+        grep -qx 'en' web-runtime/build/web/assets/locales\ngrep -qx 'ru' web-runtime/build/web/assets/locales\ntest \"$(wc -l < web-runtime/build/web/assets/locales)\"\
+        \ -eq 2\nfor name in default outline monospace icon iconLarge tech logic; do\n  test -s \"web-runtime/build/web/assets/webfonts/$name.fnt\"\n  test -s \"\
+        web-runtime/build/web/assets/webfonts/$name-0.png\"\n  grep -q \"webfonts/$name.fnt\" web-runtime/build/web/assets-manifest.js\n  grep -q \"webfonts/$name-0.png\"\
+        \ web-runtime/build/web/assets-manifest.js\ndone\ntest ! -e web-runtime/build/web/assets/fonts/font.woff\ntest ! -e web-runtime/build/web/assets/fonts/monospace.woff\n\
+        test ! -e web-runtime/build/web/assets/fonts/icon.ttf\ntest ! -e web-runtime/build/web/assets/fonts/logic.ttf\ntest ! -e web-runtime/build/web/assets/fonts/tech.ttf\n\
+        grep -q 'mindustry-canvas' web-runtime/build/web/index.html\ngrep -q 'mindustry-web-status' web-runtime/build/web/index.html\ngrep -q 'data-mindustry-network'\
+        \ web-runtime/build/web/index.html\ngrep -q 'data-mindustry-storage' web-runtime/build/web/index.html\ngrep -q 'data-mindustry-audio' web-runtime/build/web/index.html\n\
+        grep -q 'browser-storage.js' web-runtime/build/web/index.html\ngrep -q 'browser-audio.js' web-runtime/build/web/index.html\ngrep -q 'assets-manifest.js' web-runtime/build/web/index.html\n\
+        grep -q 'sounds/ui/uiButton.ogg' web-runtime/build/web/assets-manifest.js\ngrep -q 'logicids.dat' web-runtime/build/web/assets-manifest.js\ngrep -q 'sprites/clouds.png'\
+        \ web-runtime/build/web/assets-manifest.js\ngrep -q 'sprites/rays.png' web-runtime/build/web/assets-manifest.js\ngrep -q 'sprites/distortAlpha.png' web-runtime/build/web/assets-manifest.js\n\
+        grep -q 'sprites/error.png' web-runtime/build/web/assets-manifest.js\ngrep -q 'sprites/block_colors.png' web-runtime/build/web/assets-manifest.js\ngrep -q\
+        \ 'sprites/sprites.aatls' web-runtime/build/web/assets-manifest.js\ngrep -q 'sprites/sprites.png' web-runtime/build/web/assets-manifest.js\ngrep -q 'bundles/bundle.properties'\
+        \ web-runtime/build/web/assets-manifest.js\ngrep -q 'bundles/bundle_ru.properties' web-runtime/build/web/assets-manifest.js\ngrep -q 'icons/icons.properties'\
+        \ web-runtime/build/web/assets-manifest.js\ngrep -q 'locales' web-runtime/build/web/assets-manifest.js\necho \"TeaVM JS bytes: $(wc -c < web-runtime/build/web/mindustry.js)\"\
+        \necho \"Staged AATLS bytes: $(wc -c < web-runtime/build/web/assets/sprites/sprites.aatls)\"\necho \"Staged atlas pages: $(find web-runtime/build/web/assets/sprites\
+        \ -maxdepth 1 -type f -name 'sprites*.png' | wc -l)\"\necho \"Total baked font PNGs: $(find web-runtime/build/web/assets/webfonts -maxdepth 1 -type f -name\
+        \ '*.png' | wc -l)\"\n"
+    - name: Enforce self-contained no-links Yandex package
+      run: "if grep -REn --include='*.html' --include='*.css' --include='*.fnt' --include='*.properties' --include='*.js' 'https?://|wss?://' web-runtime/build/web;\
+        \ then\n  echo 'External URL found in deployable HTML/CSS/font/bundle/JavaScript files.' >&2\n  exit 1\nfi\nif grep -RFn 'Core.app.openURI(' work/Mindustry/core/src/mindustry/ui\
+        \ work/Mindustry/core/src/mindustry/editor; then\n  echo 'Direct external navigation call remained in patched UI/editor source.' >&2\n  exit 1\nfi\ngrep -q\
+        \ \"requireLocal(input, 'fetch')\" web-runtime/build/web/index.html\ngrep -q \"data-mindustry-network', 'local-only'\" web-runtime/build/web/index.html\n\
+        echo 'Deployable package contains no external URL literals in staged HTML/CSS/BMFont/bundles/JavaScript.'\n"
+    - name: Audit Yandex release package requirements
+      run: bash scripts/audit-yandex-release.sh
+    - name: Package experimental game for manual playtesting
+      run: 'python3 scripts/package-yandex-release.py
+
+        (cd work/release && sha256sum -c mindustry-yandex-release.zip.sha256)
+
+        cat > work/release/EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt <<EOF
+
+        This is a DEVELOPMENT playtest build, not a verified Yandex Games release.
+
+        Git SHA: ${GITHUB_SHA}
+
+        Includes original 3D Serpulo/Erekir planet interface in this source revision.
+
+        IMPORTANT: Native browser interaction, 46 campaign maps, saves and
+
+        gameplay factory regressions have NOT finished running at publication.
+
+        Some features may be incomplete or malfunction. Please report bugs.
+
+        Hard release gates later in this workflow are NOT bypassed.
+
+        EOF
+
+        '
+    - name: Record exact candidate and production source identity
+      run: "python3 - <<'PY'\nfrom pathlib import Path\nimport hashlib,json,os,shutil\nroot=Path('.')\npaths=set()\nfor folder in ['port','web-runtime/src']:\n  \
+        \  paths.update(p for p in Path(folder).rglob('*') if p.is_file())\npaths.update(Path('scripts').glob('patch-*.py'))\npaths.update(Path('scripts').glob('generate-*.py'))\n\
+        paths.update(map(Path,['scripts/apply-port.sh','scripts/bootstrap.sh','upstream.lock','web-runtime/build.gradle','scripts/sanitize-teavm-runtime-links.py','scripts/compact-teavm-state-vars.cjs','scripts/test-teavm-state-vars.cjs']))\nout=Path('work/qa-candidate');out.mkdir(parents=True,exist_ok=True)\n\
+        source=Path('work/release/mindustry-yandex-release.zip')\ntarget=out/'Mindustry-Yandex-qa-candidate.zip';shutil.copyfile(source,target)\nmanifest={'source':os.environ['GITHUB_SHA'],'archive_sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'files':{p.as_posix():hashlib.sha256(p.read_bytes()).hexdigest()\
+        \ for p in sorted(paths)}}\n(out/'source-manifest.json').write_text(json.dumps(manifest,indent=2))\nprint('Candidate SHA256:',manifest['archive_sha256'])\n\
+        print('Runtime source files:',len(paths))\nPY\n"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: qa-compiled-candidate
+        path: work/qa-candidate/*
+        compression-level: 0
+        if-no-files-found: error

@@ -202,8 +202,8 @@ check('id: real_campaign_launch' in workflow and
 check("'planet-hit-launch'" in real_launch and "'data-mindustry-campaign-assets','error'" in real_launch,
       "Original sector launch must be tested after unrelated deferred-map failure")
 planet_bridge = (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserPlanetBridge.java").read_text(encoding="utf-8")
-check("BrowserCampaignRuntime.returnToMenu();" in planet_bridge and
-      "BrowserCampaignRuntime.active()" in planet_bridge,
+check("Campaign.returnToMenu();" in planet_bridge and
+      "Campaign.active()" in planet_bridge,
       "3D planet sector transition no longer saves live campaign before switching")
 planet_map = (ROOT / "web-runtime/src/main/java/mindustry/ui/dialogs/BrowserPlanetDialog.java").read_text(encoding="utf-8")
 check("focusStartingSector()" in planet_map and
@@ -239,11 +239,11 @@ for real_planet_test in (
           "Native planet Chrome acceptance can wrongly pass with null SectorPreset.uiIcon: " + real_planet_test)
 
 check('Sector findLauncher(Sector to)' in planet_map and
-      'BrowserCampaignRuntime.preparePresetGenerator(to)' in planet_map and
+      'Campaign.preparePresetGenerator(to)' in planet_map and
       'return super.findLauncher(to)' in planet_map,
       "Original globe must bind preset maps before the stock launch-candidate renderer")
 check('public static boolean preparePresetGenerator(Sector sector)' in
-      (ROOT / "web-runtime/src/main/java/mindustry/web/BrowserCampaignRuntime.java").read_text(),
+      (ROOT / "web-runtime/src/main/java/mindustry/web/Campaign.java").read_text(),
       "FileMapGenerator created before maps initialization must be rebound")
 
 print(f"Yandex UI compliance: {len(seen)} approved main menu entries, "

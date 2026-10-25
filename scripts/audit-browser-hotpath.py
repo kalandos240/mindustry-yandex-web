@@ -17,7 +17,7 @@ DATABASE_UI = (WEB_JAVA / "BrowserStockDatabaseUi.java").read_text(encoding="utf
 RESEARCH_UI = (WEB_JAVA / "BrowserResearchUi.java").read_text(encoding="utf-8")
 WEB_LAUNCHER = (WEB_JAVA / "WebClientLauncher.java").read_text(encoding="utf-8")
 GAMEPLAY = (WEB_JAVA / "BrowserGameplayRuntime.java").read_text(encoding="utf-8")
-CAMPAIGN_RUNTIME = (WEB_JAVA / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
+CAMPAIGN_RUNTIME = (WEB_JAVA / "Campaign.java").read_text(encoding="utf-8")
 BROWSER_FILES = (WEB_JAVA / "BrowserFiles.java").read_text(encoding="utf-8")
 BROWSER_FI = (WEB_JAVA / "BrowserFi.java").read_text(encoding="utf-8")
 BROWSER_SETTINGS = (WEB_JAVA / "BrowserSettings.java").read_text(encoding="utf-8")
@@ -235,8 +235,8 @@ require(FACTORY_FREEZE, "target.setBlock(Blocks.tankFabricator", "completed Erek
 require(CONTROL_PATH_WEB, "fullClusterSteps++ < 1", "bounded complete cluster regeneration during building bursts")
 require(CONTROL_PATH_WEB, "innerClusterSteps++ < 2", "bounded inner cluster regeneration during building bursts")
 
-require(GAMEPLAY, "BrowserCampaignRuntime.pause()", "campaign pause clock bridge")
-require(GAMEPLAY, "BrowserCampaignRuntime.resume()", "campaign resume keyboard action")
+require(GAMEPLAY, "Campaign.pause()", "campaign pause clock bridge")
+require(GAMEPLAY, "Campaign.resume()", "campaign resume keyboard action")
 require(GAMEPLAY, "BrowserLocalMapRuntime.pause()", "local map pause clock bridge")
 require(GAMEPLAY, "BrowserLocalMapRuntime.resume()", "local map resume keyboard action")
 require(CONTROL_PAUSE, 'state.set(state.isPaused() ? State.playing : State.paused);', "removal of unsafe desktop Space state transition")
@@ -297,11 +297,25 @@ require(BROWSER_FI, "files.putLocal(path, buf, count);", "browser save zero-extr
 forbid(BROWSER_FI, "files.putLocal(path, toByteArray());", "browser save extra full-array copy")
 require(BROWSER_FILES, "void putLocal(String path, byte[] bytes, int length)", "browser save logical length")
 require(BROWSER_FILES, "storeLocalBytes(normalized, bytes, length);", "browser save logical length")
-require(BROWSER_SAVES, "meta = SaveIO.getMeta(SaveIO.getStream(file));", "browser save index one-pass metadata")
-require(BROWSER_SAVES, "SaveIO.backupFileFor(file)", "browser save index backup recovery")
-forbid(BROWSER_SAVES, "SaveIO.isSaveValid(file)", "browser save index duplicate validation")
-if BROWSER_SAVES.count("SaveIO.getMeta(") != 2:
+# Index hydration still has exactly one normal read + exceptional backup read.
+# The separate user-triggered import validates its source once before indexing;
+# it must reuse that metadata and must not select the imported archive as current.
+save_index_code = strip_java_comments(section(BROWSER_SAVES, "public void load(){", "public void saveSector("))
+save_import_code = strip_java_comments(section(BROWSER_SAVES, "public SaveSlot importSave(", "public void load(){"))
+require(save_index_code, "meta = SaveIO.getMeta(SaveIO.getStream(file));", "browser save index one-pass metadata")
+require(save_index_code, "meta = SaveIO.getMeta(SaveIO.getStream(backup));", "browser save index backup metadata")
+require(save_index_code, "SaveIO.backupFileFor(file)", "browser save index backup recovery")
+forbid(BROWSER_SAVES, "SaveIO.isSaveValid(file)", "browser save index/import duplicate validation")
+if save_index_code.count("SaveIO.getMeta(") != 2:
     failures.append("browser save index: expected current + backup metadata call sites only")
+if save_import_code.count("SaveIO.getMeta(") != 1:
+    failures.append("browser user-triggered import: expected exactly one source metadata read")
+require(save_import_code, "SaveMeta meta = SaveIO.getMeta(SaveIO.getStream(file));", "browser import one-pass metadata")
+require(save_import_code, "slot.meta = meta;", "browser import indexed metadata reuse")
+forbid(save_import_code, "current =", "browser import must preserve active world ownership")
+forbid(save_import_code, "setCurrent(", "browser import must preserve active world ownership")
+if strip_java_comments(BROWSER_SAVES).count("SaveIO.getMeta(") != 3:
+    failures.append("browser save index/import: unexpected metadata read outside the three allowed call sites")
 
 # patch-mindustry-save-preview-web.py intentionally contains old_* upstream anchors.
 # Validate the replacement wiring/output instead of treating those removal anchors as live code.
@@ -407,7 +421,8 @@ require(BROWSER_STORAGE, "mutate(store => store.put", "IndexedDB put coalescing"
 require(BROWSER_STORAGE, "mutate(store => store.delete", "IndexedDB delete coalescing")
 require(BROWSER_STORAGE, "TransactionInactiveError", "IndexedDB coalescing retry")
 require(BROWSER_STORAGE, "let durableGeneration = -1", "IndexedDB durable generation")
-require(BROWSER_STORAGE, "if(durableGeneration >= targetGeneration)", "IndexedDB redundant flush fast path")
+require(BROWSER_STORAGE, "if(durableGeneration >= targetGeneration && !failedPaths.size)", "IndexedDB redundant flush fast path")
+require(BROWSER_STORAGE, "pending.then(retryFailedWrites)", "IndexedDB failed writes repaired before durability confirmation")
 require(BROWSER_STORAGE, "durableGeneration = Math.max(durableGeneration, targetGeneration)", "IndexedDB durable generation commit")
 forbid(BROWSER_STORAGE, "transaction('readwrite').put(", "IndexedDB per-file put transaction")
 forbid(BROWSER_STORAGE, "transaction('readwrite').delete(", "IndexedDB per-file delete transaction")
@@ -438,10 +453,8 @@ require(BROWSER_UI, 'nativeButton.name = "web-research-hud"', "existing native b
 require(BROWSER_UI, "if(mobile){", "keep a single native-style mobile research button")
 if 'controls.top().left()' in BROWSER_UI or '"web-command-mode-hud"' in BROWSER_UI:
     failures.append("stock UI: intrusive left-hand Back/Pause/Command overlay remains")
-CAMPAIGN_RUNTIME = (WEB_JAVA / "BrowserCampaignRuntime.java").read_text(encoding="utf-8")
+CAMPAIGN_RUNTIME = (WEB_JAVA / "Campaign.java").read_text(encoding="utf-8")
 require(CAMPAIGN_RUNTIME, "snapshotSectorInventory(current);", "persist live core inventory in SectorInfo")
-require(CAMPAIGN_RUNTIME, 'sector.save.file.name() + ".items"', "durable sidecar persists core inventory beside SaveIO")
-require(CAMPAIGN_RUNTIME, "writeCoreItemCheckpoint(current);", "save paths persist core item sidecar")
 require(CAMPAIGN_RUNTIME, 'markSectorInventory("resume");', "cold campaign resource diagnostics")
 SECTOR_INFO_CODEC = (WEB_JAVA / "BrowserSectorInfoCodec.java").read_text(encoding="utf-8")
 require(BROWSER_SETTINGS, "new BrowserSectorInfoCodec()", "explicit SectorInfo persistence without reflection")

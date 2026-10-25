@@ -155,7 +155,7 @@ def trim_web_runtime_diagnostics(path_rel, prefix):
     print(f"Trimmed {index} {prefix} Web diagnostic messages")
 
 trim_web_runtime_diagnostics(
-    "web-runtime/src/main/java/mindustry/web/BrowserCampaignRuntime.java", "c:"
+    "web-runtime/src/main/java/mindustry/web/Campaign.java", "c:"
 )
 trim_web_runtime_diagnostics(
     "web-runtime/src/main/java/mindustry/web/BrowserLocalMapRuntime.java", "l:"
@@ -165,7 +165,7 @@ trim_web_runtime_diagnostics(
 # Strip the generated c:N payloads from the staged TeaVM source entirely; keeping
 # dozens of tiny exception strings costs several KB in the minified JS at the very
 # tight complete-campaign budget.
-campaign_runtime_path = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "BrowserCampaignRuntime.java"
+campaign_runtime_path = ROOT / "web-runtime" / "src" / "main" / "java" / "mindustry" / "web" / "Campaign.java"
 campaign_runtime_text = campaign_runtime_path.read_text(encoding="utf-8")
 campaign_runtime_pattern = re.compile(
     r'throw new (IllegalStateException|IllegalArgumentException)\(\s*"c:\d+"'

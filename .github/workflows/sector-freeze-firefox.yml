@@ -1,0 +1,59 @@
+name: Reproduce Firefox lost-sector Go freeze
+on:
+  push:
+    branches: [sector-settings-recovery]
+    paths: ['.github/workflows/sector-freeze-firefox.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  firefox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native Firefox
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps firefox
+      - name: Wait for exact compiled package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import urllib.request,json,os,time
+          for attempt in range(60):
+              u='https://api.github.com/repos/kalandos240/mindustry-yandex-web/actions/runs/39760840880/artifacts'
+              r=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(r,timeout=30) as f: data=json.load(f)
+              found=[a for a in data['artifacts'] if a['name']=='mindustry-yandex-manual-playtest-experimental']
+              if found:
+                  assert found[0]['workflow_run']['head_sha']=='1d139adb3582e15f87c2429d6116690b6d329a3e'
+                  break
+              time.sleep(15)
+          else: raise SystemExit('Compiled package unavailable')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-yandex-manual-playtest-experimental
+          run-id: 39760840880
+          github-token: ${{ github.token }}
+          path: work/package
+      - name: Extract unchanged package
+        run: |
+          (cd work/package && sha256sum -c mindustry-yandex-release.zip.sha256)
+          mkdir -p web-runtime/build/web
+          unzip -q work/package/mindustry-yandex-release.zip -d web-runtime/build/web
+      - name: Real Firefox settings and defeat input
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MOZ_WEBRENDER: '1'
+        run: xvfb-run -a python3 scripts/verify-firefox-lost-sector.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firefox-lost-sector-evidence
+          path: |
+            work/firefox-lost-*.png
+            work/firefox-lost-*.html
+            work/firefox-export-*.json

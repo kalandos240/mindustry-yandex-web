@@ -645,6 +645,7 @@ public final class BrowserLocalMapRuntime{
         player.set(state.rules.defaultTeam.core());
         Core.camera.position.set(state.rules.defaultTeam.core());
 
+        BrowserSaveRuntime.commitImportedSession();
         current = builtin;
         frames = 0;
         perfSmoke = false;
@@ -672,6 +673,12 @@ public final class BrowserLocalMapRuntime{
         state.set(mindustry.core.GameState.State.playing);
         markContinued(slug(builtin), meta.wave, meta.version, restoredMode.name(),
             state.rules.infiniteResources, state.rules.waveTimer, world.width(), world.height());
+    }
+
+    public static boolean canContinueMeta(SaveMeta meta){
+        return meta != null && meta.version == 13 && meta.rules != null
+            && meta.rules.sector == null && !meta.rules.pvp && !meta.rules.editor
+            && byName(meta.tags.get("mapname", "")) != null;
     }
 
     public static void pause(){
@@ -756,7 +763,8 @@ public final class BrowserLocalMapRuntime{
 
     /** Save every three minutes of active simulation ticks; never from paused/game-over state. */
     private static void maybePeriodicSave(){
-        if(!active || current == null || !state.isPlaying() || state.gameOver) return;
+        if(!active || current == null || !state.isPlaying() || state.gameOver
+        || !Core.settings.getBool("save-web-local-survival-autosave", true)) return;
 
         boolean smoke = periodicSaveSmoke;
         if(smoke){

@@ -25,7 +25,7 @@ public final class BrowserBuildingMechanicsSmoke{
 
     public static void update(){
         if(!requested() || finished) return;
-        if(state == null || !state.isPlaying() || !BrowserCampaignRuntime.active()
+        if(state == null || !state.isPlaying() || !Campaign.active()
             || state.rules == null || state.rules.sector == null
             || state.rules.sector.planet != Planets.serpulo
             || state.rules.defaultTeam.core() == null) return;

@@ -49,7 +49,14 @@ old = '    protected ExecutorService executor = Threads.executor("Settings Backu
 new = '    protected ExecutorService executor; // Web: BrowserSettings persists synchronously without JVM threads.'
 if old not in text:
     raise SystemExit('Arc Settings.executor initializer no longer matches pinned upstream; update the Web patch explicitly.')
-path.write_text(text.replace(old, new))
+text = text.replace(old, new)
+# BrowserSettings has no executor and its map/storage operations never yield to
+# another Java thread. Desktop synchronized access creates TeaVM monitor waits
+# inside native Scene callbacks (including SaveSlot.setAutosave after world load).
+# Keep the same Settings operations and value validation, without JVM monitors.
+if text.count('public synchronized ') != 19:
+    raise SystemExit('Pinned Arc Settings monitor methods changed; review Web confinement.')
+path.write_text(text.replace('public synchronized ', 'public '))
 PY
 
 # Desktop Arc Sound lazy-loads with ExecutorService and calls JNI SoLoud. Keep all
@@ -305,3 +312,4 @@ echo "Applied Web-only Mindustry startup/single-player/save/input/gameplay patch
 
 python3 "$ROOT_DIR/scripts/patch-mindustry-hud-items-web.py"
 python3 "$ROOT_DIR/scripts/patch-mindustry-research-web.py"
+

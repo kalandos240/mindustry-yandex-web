@@ -65,11 +65,11 @@ public final class BrowserVanillaDialogs{
             // is installed by BrowserSaveRuntime before this point.
             schematics.load();
         }
-        ui.schematics = new SchematicsDialog();
+        ui.schematics = new BrowserSchematicsDialog();
 
         // PlanetRenderer has been initialized by WebClientLauncher before this
         // dialog graph. The original 3D planet UI and TechTree now share stock
-        // navigation, while sector loading still uses BrowserCampaignRuntime.
+        // navigation, while sector loading still uses Campaign.
         markPlanetStage("constructing");
         String constructorPhase = "planet";
         try{

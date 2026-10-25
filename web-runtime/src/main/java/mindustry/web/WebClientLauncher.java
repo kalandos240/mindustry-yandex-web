@@ -43,6 +43,7 @@ public final class WebClientLauncher extends ClientLauncher{
         ios = Core.app.isIOS();
         android = Core.app.isAndroid();
         markMindustryDeviceMode(mobile ? "mobile" : "desktop");
+        BrowserUiScale.install();
         installRendererDefaults(mobile);
 
         // Stock Renderer is initialized below after the content/save substrate exists.
@@ -57,9 +58,10 @@ public final class WebClientLauncher extends ClientLauncher{
 
         Time.setDeltaProvider(() -> {
             float result = Core.graphics.getDeltaTime() * 60f;
+            float limit = Core.app instanceof BrowserApplication browser ? browser.simulationDeltaLimit() : maxDeltaClient;
             return (Float.isNaN(result) || Float.isInfinite(result))
                 ? 1f
-                : Mathf.clamp(result, 0.0001f, maxDeltaClient);
+                : Mathf.clamp(result, 0.0001f, limit);
         });
 
         UI.loadColors();

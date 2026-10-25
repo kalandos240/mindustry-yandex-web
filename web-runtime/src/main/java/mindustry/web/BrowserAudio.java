@@ -31,6 +31,14 @@ public final class BrowserAudio extends Audio{
                 if((++settingsPoll & 31) == 0 || mindustry.Vars.ui != null
                     && mindustry.Vars.ui.settings != null && mindustry.Vars.ui.settings.isShown()){
                     sfxVolume = settingVolume("sfxvol", 100);
+                    // Paused Web frames omit Control.update(), but SoundControl owns
+                    // music/ambient gain. Preview these sliders without advancing Logic.
+                    if(mindustry.Vars.state != null && mindustry.Vars.state.isPaused()
+                        && mindustry.Vars.ui != null && mindustry.Vars.ui.settings != null
+                        && mindustry.Vars.ui.settings.isShown() && mindustry.Vars.control != null
+                        && mindustry.Vars.control.sound != null){
+                        mindustry.Vars.control.sound.update();
+                    }
                 }
             }
 

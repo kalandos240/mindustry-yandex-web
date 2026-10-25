@@ -40,6 +40,8 @@ public final class BrowserApplication extends WebApplicationBase{
     private int browserFrameCallbacks;
     private double cpuFrameStart, cpuUpdateStart, cpuUpdateMs, cpuPostedMs;
     private int cpuSampleCount;
+    private int frameLimit = 240, frameLimitPoll;
+    private double nextFrameTimestamp = -1d;
 
     public BrowserApplication(ApplicationListener listener, WebConfig config){
         super(listener, config);
@@ -48,6 +50,7 @@ public final class BrowserApplication extends WebApplicationBase{
         pixelRatioCap = mobileBrowser ? Math.min(config.maxPixelRatio, 1.5f) : config.maxPixelRatio;
         renderRatioCap = Math.min(pixelRatioCap, 1f);
         markFrameBudget(60, renderRatioCap, 0, 0);
+        markFrameLimit(frameLimit);
         markBrowserInputMode(mobileBrowser ? "mobile" : "desktop");
         markPixelRatioPolicy(pixelRatioCap, mobileBrowser ? "mobile" : "desktop");
 
@@ -66,6 +69,7 @@ public final class BrowserApplication extends WebApplicationBase{
         Core.graphics = graphics;
 
         input = new WebInput();
+        BrowserTextInput.install(input);
         Core.input = input;
         BrowserInputBridge.install(config.canvasId, input);
 
@@ -91,6 +95,12 @@ public final class BrowserApplication extends WebApplicationBase{
         boolean traceStartup = callbackIndex <= 3;
         String phase = "entry";
         try{
+            phase = "frame-limit";
+            if(!frameDue(timestamp)){
+                browserFrameCallbacks--;
+                requestAnimationFrame(frameCallback);
+                return;
+            }
             // Sample only every 64th callback to avoid profiling overhead on
             // the other 63 frames. JS performance.now() is monotonic.
             boolean cpuSample = (callbackIndex & 63) == 0;
@@ -228,6 +238,39 @@ public final class BrowserApplication extends WebApplicationBase{
         }
     }
 
+    /** Pace browser callbacks without sleeping/blocking the event loop. */
+    private boolean frameDue(double timestamp){
+        boolean settingsOpen = Vars.ui != null && Vars.ui.settings != null && Vars.ui.settings.isShown();
+        if(Core.settings != null && ((frameLimitPoll++ & 31) == 0 || settingsOpen)){
+            int requested = Core.settings.getInt("fpscap", 240);
+            int limit = requested <= 0 || requested > 240 ? 0 : Math.max(10, requested);
+            if(limit != frameLimit){
+                frameLimit = limit;
+                nextFrameTimestamp = -1d;
+                lastBudgetTimestamp = -1d;
+                budgetWindowMs = 0d;
+                budgetFrames = budgetSlowFrames = budgetHealthyWindows = 0;
+                graphics.setFrameRateLimit(limit);
+                markFrameLimit(limit);
+            }
+        }
+        if(frameLimit == 0){
+            nextFrameTimestamp = -1d;
+            return true;
+        }
+        double interval = 1000d / frameLimit;
+        if(nextFrameTimestamp < 0d || timestamp + 1000d < nextFrameTimestamp) nextFrameTimestamp = timestamp;
+        if(timestamp + 0.5d < nextFrameTimestamp) return false;
+        double periods = Math.max(1d, Math.floor((timestamp - nextFrameTimestamp) / interval) + 1d);
+        nextFrameTimestamp += periods * interval;
+        return true;
+    }
+
+    /** A selected 10 FPS interval is six ticks; unexpected stalls stay bounded by WebGraphics. */
+    public float simulationDeltaLimit(){
+        return frameLimit > 0 ? Math.max(Vars.maxDeltaClient, 60f / frameLimit) : Vars.maxDeltaClient;
+    }
+
     private boolean sampleFrameBudget(double timestamp){
         boolean playing = !platformPaused && Vars.state != null && Vars.state.isPlaying()
             && !Vars.state.gameOver;
@@ -252,8 +295,10 @@ public final class BrowserApplication extends WebApplicationBase{
         }
         budgetWindowMs += elapsed;
         budgetFrames++;
-        // More than ~18.5ms exceeds the 60Hz budget after scheduling jitter.
-        if(elapsed > 18.5d) budgetSlowFrames++;
+        // An intentional low FPS cap is not a GPU overload. Preserve the existing
+        // 60Hz governor above 60 FPS, but scale its thresholds below that target.
+        double target = frameLimit == 0 ? 60d : Math.min(60d, frameLimit);
+        if(elapsed > 1110d / target) budgetSlowFrames++;
         if(budgetWindowMs < 1250d || budgetFrames < 8) return false;
 
         double fps = budgetFrames * 1000d / budgetWindowMs;
@@ -262,12 +307,12 @@ public final class BrowserApplication extends WebApplicationBase{
         budgetFrames = budgetSlowFrames = 0;
 
         float previous = renderRatioCap;
-        if(fps < 55d && slow * 4 >= frames){
+        if(fps < target * 55d / 60d && slow * 4 >= frames){
             // React within a few seconds to persistent frame drops. 0.5x
             // keeps 25% of native fill-rate on very constrained hardware.
             renderRatioCap = Math.max(0.5f, renderRatioCap - 0.2f);
             budgetHealthyWindows = 0;
-        }else if(fps > 59d && slow * 12 <= frames){
+        }else if(fps > target * 59d / 60d && slow * 12 <= frames){
             if(++budgetHealthyWindows >= 5){
                 renderRatioCap = Math.min(pixelRatioCap, renderRatioCap + 0.125f);
                 budgetHealthyWindows = 0;
@@ -302,6 +347,7 @@ public final class BrowserApplication extends WebApplicationBase{
 
     private void setPlatformPaused(boolean paused){
         platformPaused = paused;
+        nextFrameTimestamp = -1d;
         if(paused == lastPlatformPaused) return;
         lastPlatformPaused = paused;
         BrowserYandex.markPauseState(paused ? "paused" : "running");
@@ -402,6 +448,9 @@ public final class BrowserApplication extends WebApplicationBase{
 
     @JSBody(params = {"sample", "total", "update", "posted"}, script = "const d=document.documentElement; d.setAttribute('data-mindustry-cpu-sample',String(sample)); d.setAttribute('data-mindustry-cpu-frame-ms',String(Math.round(total*10)/10)); d.setAttribute('data-mindustry-cpu-update-ms',String(Math.round(update*10)/10)); d.setAttribute('data-mindustry-cpu-posted-ms',String(Math.round(posted*10)/10));")
     private static native void markCpuFrame(int sample, double total, double update, double posted);
+
+    @JSBody(params = {"limit"}, script = "document.documentElement.setAttribute('data-mindustry-frame-limit',String(limit)); document.documentElement.setAttribute('data-mindustry-frame-budget-target',String(limit > 0 ? Math.min(60,limit) : 60));")
+    private static native void markFrameLimit(int limit);
 
     @JSBody(params = {"fps", "ratio", "slow", "frames"}, script = "const root=document.documentElement; root.setAttribute('data-mindustry-frame-budget-policy','adaptive-ratio-1250ms-60fps'); root.setAttribute('data-mindustry-frame-budget-fps',String(fps)); root.setAttribute('data-mindustry-frame-budget-dpr',String(ratio)); root.setAttribute('data-mindustry-frame-budget-slow',String(slow)); root.setAttribute('data-mindustry-frame-budget-samples',String(frames));")
     private static native void markFrameBudget(int fps, float ratio, int slow, int frames);

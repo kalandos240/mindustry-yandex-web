@@ -30,11 +30,6 @@ import static mindustry.Vars.*;
  * The small Back control is likewise local and returns directly to the stable map menu.
  */
 public final class BrowserUiRuntime{
-    @JSFunctor
-    private interface SettingsAction extends JSObject{
-        void run(int setting, int value);
-    }
-
     private static boolean initialized;
     private static boolean hudOnlyPause;
     private static boolean captionDiagnostics;
@@ -42,7 +37,6 @@ public final class BrowserUiRuntime{
     private static TextButton localModeButton;
     private static int hudResearchPointerFrames;
     private static int hudDatabasePointerFrames;
-    private static final SettingsAction settingsAction = BrowserUiRuntime::applySettingAction;
 
     private BrowserUiRuntime(){}
 
@@ -91,12 +85,12 @@ public final class BrowserUiRuntime{
         }
 
         buildLocalMapMenu();
-        installSettingsUi(settingsAction,
+        installSettingsUi(
             Core.settings.getInt("sfxvol", 100),
             Core.settings.getInt("musicvol", 100),
             Core.settings.getBool("effects", true),
             qualityVisuals());
-        installLocalModeUi(settingsAction, BrowserLocalMapRuntime.customModeCode());
+        installLocalModeUi(BrowserLocalMapRuntime.customModeCode());
         buildLocalHudControls();
         buildLocalPauseOverlay();
         buildLocalGameOverOverlay();
@@ -159,13 +153,13 @@ public final class BrowserUiRuntime{
         TextButton startSerpulo = campaignStarts.button(
             mindustry.content.Planets.serpulo.localizedName + " - " +
                 Core.bundle.get("play", "Play"),
-            Icon.play, BrowserCampaignRuntime::playGroundZero)
+            Icon.play, Campaign::playGroundZero)
             .width(mobile ? 152f : 181f).height(mobile ? 51f : 47f)
             .name("web-play-serpulo").get();
         TextButton startErekir = campaignStarts.button(
             mindustry.content.Planets.erekir.localizedName + " - " +
                 Core.bundle.get("play", "Play"),
-            Icon.play, BrowserCampaignRuntime::playOnset)
+            Icon.play, Campaign::playOnset)
             .width(mobile ? 152f : 181f).height(mobile ? 51f : 47f)
             .name("web-play-erekir").get();
         // Both start maps are eager; an unrelated deferred-map failure must
@@ -219,7 +213,8 @@ public final class BrowserUiRuntime{
         Table mapButtons = new Table();
         // Native mode choice belongs to Custom Game, never above the main menu.
         localModeButton = root.button(localModeLabel(), Icon.settings, () -> {
-            applySettingAction(5, BrowserLocalMapRuntime.customModeCode() == 0 ? 1 : 0);
+            Core.settings.put("localgamemode", BrowserLocalMapRuntime.customModeCode() == 0 ? 1 : 0);
+            Core.settings.forceSave();
             syncLocalModeUi();
         }).width(mobile ? 320f : 380f).height(mobile ? 52f : 46f)
             .name("web-custom-mode").get();
@@ -287,22 +282,6 @@ public final class BrowserUiRuntime{
         r.setAttribute('data-mindustry-play-direct-'+planet+'-y',String(y));
         """)
     private static native void markDirectCampaignHit(String planet, float x, float y);
-
-    private static void applySettingAction(int setting, int value){
-        switch(setting){
-            case 1 -> Core.settings.put("sfxvol", value);
-            case 2 -> Core.settings.put("musicvol", value);
-            case 3 -> Core.settings.put("effects", value != 0);
-            case 4 -> {
-                boolean enabled = value != 0;
-                Core.settings.put("animatedwater", enabled);
-                Core.settings.put("animatedshields", enabled);
-                Core.settings.put("drawlight", enabled);
-            }
-            case 5 -> Core.settings.put("localgamemode", value == 1 ? 1 : 0);
-        }
-        Core.settings.forceSave();
-    }
 
     private static boolean qualityVisuals(){
         return Core.settings.getBool("animatedwater", !mobile)
@@ -506,8 +485,8 @@ public final class BrowserUiRuntime{
     private static native void markHudDatabaseHitPoint(float x, float y);
 
     private static void pauseActiveSession(){
-        if(BrowserCampaignRuntime.active()){
-            BrowserCampaignRuntime.pause();
+        if(Campaign.active()){
+            Campaign.pause();
         }else{
             BrowserLocalMapRuntime.pause();
         }
@@ -515,16 +494,16 @@ public final class BrowserUiRuntime{
 
     private static void resumeActiveSession(){
         hudOnlyPause = false;
-        if(BrowserCampaignRuntime.active()){
-            BrowserCampaignRuntime.resume();
+        if(Campaign.active()){
+            Campaign.resume();
         }else{
             BrowserLocalMapRuntime.resume();
         }
     }
 
     private static void saveActiveSession(){
-        if(BrowserCampaignRuntime.active()){
-            BrowserCampaignRuntime.saveCurrentSession();
+        if(Campaign.active()){
+            Campaign.saveCurrentSession();
         }else{
             BrowserLocalMapRuntime.saveLocalSession();
         }
@@ -533,10 +512,33 @@ public final class BrowserUiRuntime{
     private static void returnToMenuWithAd(){
         // A closing native modal must consume its entire pointer/key gesture.
         if(!BrowserVanillaDialogs.menuExitAllowed()) return;
+        if(!state.gameOver){
+            Dialog confirm = new Dialog(Core.bundle.get("confirm", "Confirm"));
+            confirm.setFillParent(false);
+            confirm.cont.add(Core.bundle.get("quit.confirm", "Return to the main menu?"))
+                .width(Math.min(400f, Core.scene.getWidth() - 50f)).wrap().pad(16f);
+            confirm.buttons.defaults().size(140f, 54f).pad(4f);
+            TextButton cancel = confirm.buttons.button("@cancel", confirm::hide).get();
+            TextButton accept = confirm.buttons.button("@ok", () -> {
+                confirm.hide();
+                exitSessionToMenu();
+            }).get();
+            confirm.closeOnBack();
+            confirm.update(() -> {
+                markPauseHitPoint(cancel, "exit-cancel");
+                markPauseHitPoint(accept, "exit-confirm");
+            });
+            confirm.show();
+            return;
+        }
+        exitSessionToMenu();
+    }
+
+    private static void exitSessionToMenu(){
         BrowserStockMainMenu.showHome();
         BrowserYandex.beginMenuFullscreenAdv();
-        if(BrowserCampaignRuntime.active()){
-            BrowserCampaignRuntime.returnToMenu();
+        if(Campaign.active()){
+            Campaign.returnToMenu();
         }else{
             BrowserLocalMapRuntime.returnToMenu();
         }
@@ -632,7 +634,7 @@ public final class BrowserUiRuntime{
         dialog.button(Core.bundle.get("research", "Research"), Icon.tree, 32f,
             BrowserResearchUi::show)
             .size(width, height).name("web-pause-research")
-            .visible(() -> BrowserCampaignRuntime.active() && state.isCampaign());
+            .visible(() -> Campaign.active() && state.isCampaign());
         dialog.row();
 
         dialog.button(Core.bundle.get("schematics", "Schematics"), Icon.paste, 32f,
@@ -667,7 +669,7 @@ public final class BrowserUiRuntime{
         // Invisible Arc actors do not receive update callbacks. Observe both
         // transitions in the visibility provider, including modal dismissal.
         overlay.visible(() -> {
-            boolean show = (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
+            boolean show = (BrowserLocalMapRuntime.active() || Campaign.active())
                 && state.isPaused() && !hudOnlyPause && !state.gameOver && !Core.scene.hasDialog();
             if(show != wasVisible[0]){
                 wasVisible[0] = show;
@@ -720,7 +722,7 @@ public final class BrowserUiRuntime{
             markPauseHitPoint(dialog.find("web-pause-resume"), "resume");
             markPauseHitPoint(dialog.find("web-pause-settings"), "settings");
             markPauseHitPoint(dialog.find("web-pause-save"), "save");
-            if(BrowserCampaignRuntime.active() && state.isCampaign()){
+            if(Campaign.active() && state.isCampaign()){
                 markPauseHitPoint(dialog.find("web-pause-research"), "research");
             }
             markPauseHitPoint(dialog.find("web-pause-schematics"), "schematics");
@@ -793,7 +795,7 @@ public final class BrowserUiRuntime{
         overlay.setFillParent(true);
         overlay.setBackground(Styles.black6);
         overlay.touchable = Touchable.enabled;
-        overlay.visible(() -> (BrowserLocalMapRuntime.active() || BrowserCampaignRuntime.active())
+        overlay.visible(() -> (BrowserLocalMapRuntime.active() || Campaign.active())
             && state.isGame() && state.gameOver);
 
         Table dialog = new Table(Tex.pane2);
@@ -863,11 +865,11 @@ public final class BrowserUiRuntime{
     @JSBody(script = "document.documentElement.setAttribute('data-mindustry-local-ui', 'ready'); document.documentElement.setAttribute('data-mindustry-input-ui', 'bound'); document.documentElement.setAttribute('data-mindustry-input-ui-fragments', 'deferred');")
     private static native void markReady();
 
-    @JSBody(params = {"action", "sfx", "music", "effects", "quality"}, script = "globalThis.__mindustryInstallSettings(action,sfx,music,effects,quality);")
-    private static native void installSettingsUi(SettingsAction action, int sfx, int music, boolean effects, boolean quality);
+    @JSBody(params = {"sfx", "music", "effects", "quality"}, script = "globalThis.__mindustryInstallSettings(null,sfx,music,effects,quality);")
+    private static native void installSettingsUi(int sfx, int music, boolean effects, boolean quality);
 
-    @JSBody(params = {"action", "mode"}, script = "globalThis.__mindustryInstallLocalMode(action,mode);")
-    private static native void installLocalModeUi(SettingsAction action, int mode);
+    @JSBody(params = {"mode"}, script = "globalThis.__mindustryInstallLocalMode(null,mode);")
+    private static native void installLocalModeUi(int mode);
 
     @JSBody(params = {"mode"}, script = "if(globalThis.__mindustrySetLocalMode){ globalThis.__mindustrySetLocalMode(mode); }")
     private static native void setLocalModeUi(int mode);

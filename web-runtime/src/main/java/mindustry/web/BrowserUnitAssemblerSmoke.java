@@ -43,7 +43,7 @@ public final class BrowserUnitAssemblerSmoke{
 
     public static void update(){
         if(!requested() || completed) return;
-        if(state == null || !state.isPlaying() || !BrowserCampaignRuntime.active()
+        if(state == null || !state.isPlaying() || !Campaign.active()
             || state.rules == null || state.rules.sector == null
             || state.rules.sector.planet != Planets.erekir
             || state.rules.defaultTeam.core() == null) return;

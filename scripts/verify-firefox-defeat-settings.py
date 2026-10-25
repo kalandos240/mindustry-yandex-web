@@ -16,7 +16,7 @@ async def main():
         async with async_playwright() as pw:
             for seed in ['groundZero','onset']:
                 browser=await pw.firefox.launch(headless=False,firefox_user_prefs={'webgl.force-enabled':True,'gfx.webrender.software':True})
-                page=await browser.new_page(viewport={'width':1280,'height':800})
+                page=await browser.new_page(viewport={'width':2400,'height':660})
                 async def native(request):
                     kind=request['kind']; q=request['request']
                     if kind=='click':

@@ -36,7 +36,7 @@ public final class BrowserUnitProductionSmoke{
 
     public static void update(){
         if(!requested() || completed) return;
-        if(state == null || !state.isPlaying() || !BrowserCampaignRuntime.active()
+        if(state == null || !state.isPlaying() || !Campaign.active()
             || state.rules == null || state.rules.sector == null
             || state.rules.defaultTeam.core() == null || content == null) return;
 

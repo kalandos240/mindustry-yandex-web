@@ -50,10 +50,18 @@ if [ -d "$WEB_DIR/assets/cursors" ] && find "$WEB_DIR/assets/cursors" -type f -n
   exit 1
 fi
 
+qa_probe_owned=no
+if [ ! -f "$WEB_DIR/mindustry.js.qa-probe-original" ]; then
+  python3 "$ROOT_DIR/scripts/prepare-qa-probe.py"
+  qa_probe_owned=yes
+fi
 cd "$WEB_DIR"
 python3 -m http.server 8081 --bind 127.0.0.1 >/tmp/mindustry-web-i18n-http.log 2>&1 &
 server_pid=$!
-cleanup_locale(){ kill "$server_pid" 2>/dev/null || true; }
+cleanup_locale(){
+  kill "$server_pid" 2>/dev/null || true
+  if [ "$qa_probe_owned" = yes ]; then python3 "$ROOT_DIR/scripts/prepare-qa-probe.py" --restore; fi
+}
 trap cleanup_locale EXIT
 for i in {1..20}; do
   if curl -fsS http://127.0.0.1:8081/index.html >/dev/null; then break; fi

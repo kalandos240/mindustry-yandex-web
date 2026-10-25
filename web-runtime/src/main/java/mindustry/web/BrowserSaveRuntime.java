@@ -30,6 +30,8 @@ public final class BrowserSaveRuntime{
     private static boolean initialized;
     private static boolean localSessionAvailable;
     private static SaveMeta cachedLocalSessionMeta;
+    private static Fi importedSessionFile;
+    private static SaveMeta importedSessionMeta;
 
     private BrowserSaveRuntime(){}
 
@@ -116,8 +118,53 @@ public final class BrowserSaveRuntime{
         return cachedLocalSessionMeta != null && file.exists() && file.length() >= 128;
     }
 
+    private static void indexLocalSession(SaveMeta meta){
+        Fi file = localSessionFile();
+        for(Saves.SaveSlot slot : saves.getSaveSlots()){
+            if(slot.file.equals(file)){
+                slot.meta = meta;
+                return;
+            }
+        }
+        Saves.SaveSlot slot = saves.new SaveSlot(file);
+        slot.meta = meta;
+        saves.getSaveSlots().add(slot);
+    }
+
     public static boolean hasLocalSession(){
-        return initialized && localSessionAvailable;
+        return initialized && localSessionAvailable && validLocalSessionFile();
+    }
+
+    /** Load an imported built-in-map save before changing the current browser slot. */
+    public static void continueImportedSession(Saves.SaveSlot slot){
+        if(importedSessionFile != null || slot == null || slot.file == null || !slot.file.exists()) return;
+        SaveMeta meta = SaveIO.getMeta(SaveIO.getStream(slot.file));
+        if(!BrowserLocalMapRuntime.canContinueMeta(meta)){
+            throw new IllegalArgumentException("Unsupported browser local save");
+        }
+        importedSessionFile = slot.file;
+        importedSessionMeta = meta;
+        try{
+            BrowserLocalMapRuntime.continueSaved();
+        }finally{
+            importedSessionFile = null;
+            importedSessionMeta = null;
+        }
+    }
+
+    /** Called only after the imported world, rules, map and player core validate. */
+    static void commitImportedSession(){
+        if(importedSessionFile == null) return;
+        boolean autosave = Core.settings.getBool("save-" + importedSessionFile.nameWithoutExtension() + "-autosave", true);
+        importedSessionFile.copyTo(localSessionFile());
+        Core.settings.put("save-web-local-survival-autosave", autosave);
+        Core.settings.forceSave();
+        cachedLocalSessionMeta = importedSessionMeta;
+        indexLocalSession(cachedLocalSessionMeta);
+        localSessionAvailable = true;
+        markLocalSessionAvailability("available");
+        BrowserUiRuntime.syncLocalSaveUiState();
+        flushLocalSessionStorage();
     }
 
     public static SaveMeta localSessionMeta(){
@@ -156,6 +203,7 @@ public final class BrowserSaveRuntime{
         }
 
         cachedLocalSessionMeta = meta;
+        indexLocalSession(meta);
         localSessionAvailable = true;
         markLocalSessionAvailability("available");
         BrowserUiRuntime.syncLocalSaveUiState();
@@ -166,7 +214,7 @@ public final class BrowserSaveRuntime{
     }
 
     public static SaveMeta loadLocalSession(){
-        if(!initialized || !localSessionAvailable || !validLocalSessionFile()){
+        if(!initialized || importedSessionFile == null && (!localSessionAvailable || !validLocalSessionFile())){
             localSessionAvailable = false;
             markLocalSessionAvailability("empty");
             throw new IllegalStateException("Browser local survival save is missing or invalid");
@@ -175,8 +223,8 @@ public final class BrowserSaveRuntime{
             throw new IllegalStateException("Browser local continue escaped permanent single-player mode");
         }
 
-        SaveMeta meta = localSessionMeta();
-        SaveIO.load(localSessionFile());
+        SaveMeta meta = importedSessionMeta == null ? localSessionMeta() : importedSessionMeta;
+        SaveIO.load(importedSessionFile == null ? localSessionFile() : importedSessionFile);
         if(Vars.state == null || Vars.world == null || Vars.world.width() <= 0 || Vars.world.height() <= 0){
             throw new IllegalStateException("Browser local survival save restored an invalid world");
         }

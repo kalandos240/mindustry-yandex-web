@@ -15,28 +15,23 @@ import static mindustry.Vars.*;
  * from the main menu or invoking ui.planet.show() from a test shortcut.
  */
 public final class BrowserHudPlanetSmoke{
-    private static boolean checked, enabled, complete;
+    private static boolean checked, enabled;
     private static int frames, waiting;
     private static boolean armed;
 
     private BrowserHudPlanetSmoke(){}
 
     public static void update(){
-        if(!requested() || complete || state == null || !state.isCampaign()
-        || !BrowserCampaignRuntime.active() || Core.scene == null || ui == null
+        if(!requested() || state == null || !state.isCampaign()
+        || !Campaign.active() || Core.scene == null || ui == null
         || ui.planet == null) return;
-        if(++frames > 950){
-            throw new IllegalStateException("Campaign HUD original planet map stalled; armed="+armed);
+        frames++;
+        if(ui.planet.isShown()){
+            if(armed && ++waiting > 30) markOpened();
+            return;
         }
-        if(armed){
-            if(ui.planet.isShown()){
-                if(++waiting > 30){
-                    complete = true;
-                    markOpened();
-                }
-            }
-            if(ui.planet.isShown()) return;
-        }
+        waiting = 0;
+        markClosed();
         if(!state.isPlaying() || ui.hudGroup == null) return;
         Element table = Core.scene.root.find("inputTable");
         Element icon = findMapButton(table);
@@ -50,10 +45,11 @@ public final class BrowserHudPlanetSmoke{
         || point.x >= Core.graphics.getWidth()
         || point.y >= Core.graphics.getHeight()) return;
         // The responsive placement graph can finish scaling after the first
-        // game frame. Keep the native hitpoint current until the dialog opens.
+        // game frame. Keep sampling after each sector/dialog transition too:
+        // PlacementFragment may rebuild the HUD at a different position.
         if(frames < 64) return;
         armed = true;
-        markHitpoint(point.x,point.y);
+        markHitpoint(point.x,point.y,frames);
     }
 
     private static Element findMapButton(Element node){
@@ -76,14 +72,18 @@ public final class BrowserHudPlanetSmoke{
     @JSBody(script="return new URLSearchParams(location.search).get('mindustryHudPlanetSmoke') === '1';")
     private static native boolean queryRequested();
 
-    @JSBody(params={"x","y"},script="""
+    @JSBody(params={"x","y","sample"},script="""
         const root=document.documentElement;
         root.setAttribute('data-mindustry-hud-planet-ready','yes');
         root.setAttribute('data-mindustry-hud-planet-x',String(x));
         root.setAttribute('data-mindustry-hud-planet-y',String(y));
+        root.setAttribute('data-mindustry-hud-planet-sample',String(sample));
         """)
-    private static native void markHitpoint(float x,float y);
+    private static native void markHitpoint(float x,float y,int sample);
 
     @JSBody(script="document.documentElement.setAttribute('data-mindustry-hud-planet-open','yes');")
     private static native void markOpened();
+
+    @JSBody(script="document.documentElement.setAttribute('data-mindustry-hud-planet-open','no');")
+    private static native void markClosed();
 }

@@ -1,0 +1,59 @@
+name: QA portal lifecycle and combined graphics
+on:
+  push:
+    branches: [sector-settings-recovery]
+    paths: ['.github/workflows/qa-portal-regression.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  portal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+        scenario: [desktop-default, desktop-combined, webgl1-combined, mobile-default]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mindustry-renderer-diagnostic-verified
+          run-id: 40086065368
+          github-token: ${{ github.token }}
+          path: work/base
+      - name: Stage exact previously delivered runtime
+        run: |
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          import hashlib
+          p=Path('work/base/Mindustry-Yandex-renderer-diagnostic.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='620fb35071755028b6863d4d513bf90cb2449b09726218d2e1f4ed3c6d4e7439'
+          with ZipFile(p) as z:z.extractall('web-runtime/build/web')
+          PY
+      - name: Install browser automation
+        run: python3 -m pip install playwright
+      - name: Install native Firefox
+        if: matrix.browser == 'firefox'
+        timeout-minutes: 5
+        run: python3 -m playwright install --with-deps firefox
+      - name: Exercise actual world state and SDK callback order
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MOZ_WEBRENDER: '1'
+        run: |
+          if [ '${{ matrix.browser }}' = firefox ]; then
+            xvfb-run -a python3 scripts/verify-portal-campaign-lifecycle.py --browser firefox --case '${{ matrix.scenario }}'
+          else
+            python3 scripts/verify-portal-campaign-lifecycle.py --browser chromium --headless --case '${{ matrix.scenario }}'
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: portal-${{ matrix.browser }}-${{ matrix.scenario }}
+          path: |
+            work/portal-*.html
+            work/portal-*.png
+            work/portal-*-results.json

@@ -23,22 +23,22 @@ public class BrowserPlanetDialog extends PlanetDialog{
     Sector findLauncher(Sector to){
         // Original renderOverProjections calls this while drawing hovered
         // sectors, BEFORE the browser launch action can bind their maps.
-        if(!BrowserCampaignRuntime.preparePresetGenerator(to)) return null;
+        if(!Campaign.preparePresetGenerator(to)) return null;
         return super.findLauncher(to);
     }
 
     @Override
     boolean hasNoCandidate(Sector sector){
-        return !sector.hasBase() && !BrowserCampaignRuntime.preparePresetGenerator(sector) || super.hasNoCandidate(sector);
+        return !sector.hasBase() && !Campaign.preparePresetGenerator(sector) || super.hasNoCandidate(sector);
     }
 
     @Override
     public void selectSector(Sector sector){
-        waitingForMap = sector == null || sector.hasBase() || BrowserCampaignRuntime.preparePresetGenerator(sector) ? null : sector;
+        waitingForMap = sector == null || sector.hasBase() || Campaign.preparePresetGenerator(sector) ? null : sector;
         super.selectSector(sector);
         if(waitingForMap != null){
             BrowserCampaignAssets.defer(sector.preset, () -> {
-                if(selected == sector && BrowserCampaignRuntime.preparePresetGenerator(sector)){
+                if(selected == sector && Campaign.preparePresetGenerator(sector)){
                     waitingForMap = null;
                     updateSelected();
                 }
@@ -54,6 +54,52 @@ public class BrowserPlanetDialog extends PlanetDialog{
             BrowserResearchUi.show();
         }).size(200f, 54f).visible(() -> mode == Mode.look).pad(2).bottom().name("web-planet-tech");
     }
+
+    @Override
+    void updateSelected(){
+        clearSelectedHitPoints();
+        super.updateSelected();
+        if(mode == Mode.look && selected != null && selected.save != null){
+            int columns = Math.max(1, sectorTop.getColumns());
+            sectorTop.row();
+            sectorTop.button("@export", mindustry.gen.Icon.upload, this::exportSelectedSave)
+                .height(42f).growX().colspan(columns).pad(4f).name("web-planet-export");
+        }
+    }
+
+    /** Export only this game's selected checkpoint and settings for recovery. */
+    private void exportSelectedSave(){
+        if(selected == null || selected.save == null || selected.save.file == null) return;
+        exportSelectedSave(selected.save.file.path(), selected.preset == null ? String.valueOf(selected.id) : selected.preset.name);
+    }
+
+    @JSBody(params={"path","sector"},script="""
+        var storage=globalThis.__mindustryStorage;
+        var source=storage && storage.get(path);
+        if(!source) return;
+        var encode=function(bytes){
+            var binary='';
+            for(var i=0;i<bytes.length;i+=16384) binary+=String.fromCharCode.apply(null,new Uint8Array(bytes.buffer,bytes.byteOffset+i,Math.min(16384,bytes.length-i)));
+            return btoa(binary);
+        };
+        var files={};
+        files[path]=encode(source);
+        var backup=storage.get(path+'.lost-backup');
+        if(backup) files[path+'.lost-backup']=encode(backup);
+        var names=storage.paths();
+        for(var n=0;n<names.length;n++){
+            var name=names[n];
+            if(name.startsWith('settings/') && name.endsWith('.mws1')) files[name]=encode(storage.get(name));
+        }
+        var data=JSON.stringify({format:'mindustry-web-sector-v1',sector:sector,savePath:path,files:files});
+        var url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
+        var link=document.createElement('a');
+        link.href=url;link.download='Mindustry-sector-'+sector+'.json';
+        document.body.appendChild(link);link.click();link.remove();
+        setTimeout(function(){URL.revokeObjectURL(url);},60000);
+        document.documentElement.setAttribute('data-mindustry-sector-export','ready');
+        """)
+    private static native void exportSelectedSave(String path,String sector);
 
     @Override
     public Dialog show(){
@@ -133,7 +179,7 @@ public class BrowserPlanetDialog extends PlanetDialog{
         try{
             super.act(delta);
             if(waitingForMap != null && selected == waitingForMap
-            && BrowserCampaignRuntime.preparePresetGenerator(waitingForMap)){
+            && Campaign.preparePresetGenerator(waitingForMap)){
                 waitingForMap = null;
                 updateSelected();
             }
@@ -186,7 +232,10 @@ public class BrowserPlanetDialog extends PlanetDialog{
             sampleButton("web-planet-choice-serpulo", "serpulo");
             sampleButton("web-planet-choice-erekir", "erekir");
             sampleButton("web-planet-tech", "tech");
+            sampleButton("web-planet-export", "export");
             sampleButton("web-planet-launch", "launch");
+            markSampledSelection(selected == null ? "none" : selected.planet.name + "/"
+                + (selected.preset == null ? String.valueOf(selected.id) : selected.preset.name));
             markZoom(state.zoom);
             markFirstIntroStep(Core.settings.getString("web-planet-intro-step", "not-clicked"));
 
@@ -250,6 +299,20 @@ public class BrowserPlanetDialog extends PlanetDialog{
             markButtonPosition(marker, at.x, at.y);
         }
     }
+
+    @JSBody(script="""
+        var r=document.documentElement;
+        r.removeAttribute('data-mindustry-planet-hit-selection');
+        ['launch','export'].forEach(function(action){
+            ['x','y','exposed','receiver'].forEach(function(field){
+                r.removeAttribute('data-mindustry-planet-hit-'+action+'-'+field);
+            });
+        });
+        """)
+    private static native void clearSelectedHitPoints();
+
+    @JSBody(params={"selection"},script="document.documentElement.setAttribute('data-mindustry-planet-hit-selection',selection);")
+    private static native void markSampledSelection(String selection);
 
     @JSBody(params={"choice","ok","phase"}, script="""
         var root=document.documentElement;
