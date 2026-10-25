@@ -100,7 +100,15 @@ async def main():
                         await ready('?lang=en&mindustryMapSmoke=maze&mindustryLocalMode=sandbox&mindustrySaveSmoke=1')
                         await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-local-save-flush')==='ready'",timeout=120000)
                         seed=await bytes_at();assert len(seed)>128
-                        assert await page.evaluate('__mindustryQaRead("state","rules.infiniteResources")') is True
+                        actual_rules=await page.evaluate("""()=>({
+                            native:__mindustryQaRead('state','rules.infiniteResources'),
+                            mode:document.documentElement.getAttribute('data-mindustry-local-map-mode'),
+                            infinite:document.documentElement.getAttribute('data-mindustry-local-map-infinite-resources'),
+                            waveTimer:document.documentElement.getAttribute('data-mindustry-local-map-wave-timer'),
+                            gameState:document.documentElement.getAttribute('data-mindustry-local-map-state')
+                        })""")
+                        print('SANDBOX_RULES_DIAGNOSTIC '+json.dumps(actual_rules),flush=True)
+                        assert actual_rules['native'] is True,actual_rules
                         await context.close();context=await launch();page=await context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
                         await ready('?lang=en')
                         await open_saves()
