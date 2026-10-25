@@ -59,6 +59,9 @@ paused_music_replacement = """    public void update(){
         // dialog overlays a paused sector. Do not run the ordinary in-game
         // silence()/fade path during slider preview.
         if(state.isPaused() && ui != null && ui.settings != null && ui.settings.isShown()){
+            // Preserve the ordinary paused SFX bus policy even though we
+            // bypass the soundtrack fade and the rest of the update loop.
+            Core.audio.setPaused(Core.audio.soundBus.id, true);
             if(current != null && !current.isPlaying()){
                 current = null;
                 fade = 0f;
