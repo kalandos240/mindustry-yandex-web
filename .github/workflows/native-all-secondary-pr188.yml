@@ -1,0 +1,59 @@
+name: PR188 native controls, rules and all supported factories
+on:
+  push:
+    branches: [qa/schematic-contentmap-regression-20261025]
+    paths: [.github/workflows/native-all-secondary-pr188.yml, scripts/verify-secondary-controls.py]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  native-secondary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [database, rules, 'config:sorter', 'config:inverted-sorter', 'config:unloader', 'config:item-source', 'config:liquid-source', 'config:switch', 'config:micro-processor', 'config:ground-factory', 'config:air-factory', 'config:naval-factory']
+        device: [desktop, mobile]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 40180099301
+          name: mindustry-yandex-manual-playtest-experimental
+          github-token: ${{ github.token }}
+          path: work/new-build
+      - name: Verify same code and unpack compiled Mindustry
+        run: |
+          python3 - <<'PY'
+          import hashlib,zipfile
+          from pathlib import Path,PurePosixPath
+          base=Path('work/new-build')
+          provenance=(base/'EXPERIMENTAL-PLAYTEST-NOT-APPROVED.txt').read_text()
+          # GitHub's PR checkout is a synthetic merge of port head 4864a74f.
+          assert 'b240075c63908c2f3c66df88d759ecec0a8b6af7' in provenance,provenance
+          archive=base/'mindustry-yandex-release.zip'
+          assert hashlib.sha256(archive.read_bytes()).hexdigest()==(base/'mindustry-yandex-release.zip.sha256').read_text().split()[0]
+          with zipfile.ZipFile(archive) as z:
+              assert z.testzip() is None
+              assert sum(i.file_size for i in z.infolist()) <= 100_000_000
+              for name in z.namelist():
+                  item=PurePosixPath(name)
+                  assert not item.is_absolute() and '..' not in item.parts
+              z.extractall('web-runtime/build/web')
+          PY
+      - run: python3 -m pip install playwright
+      - name: Real native secondary control interactions
+        env:
+          TARGET_CASE: ${{ matrix.case }}
+          TARGET_DEVICE: ${{ matrix.device }}
+        run: |
+          extra=()
+          if [ "$TARGET_DEVICE" = mobile ]; then extra+=(--mobile); fi
+          python3 scripts/verify-secondary-controls.py ${extra[@]} --case "$TARGET_CASE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: secondary-diagnostic-${{ strategy.job-index }}
+          path: work/secondary-controls/
+          if-no-files-found: ignore
