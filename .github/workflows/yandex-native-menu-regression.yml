@@ -1,0 +1,62 @@
+name: Frozen package native Yandex menu regression
+on:
+  push:
+    branches: [qa/renderer-static-settings-20261025]
+    paths:
+      - scripts/browser-yandex-menu-ad-native.js
+      - scripts/chrome-wait-dom.py
+      - scripts/verify-yandex-sdk.sh
+      - scripts/audit-yandex-release.sh
+      - scripts/verify-browser-locales.sh
+      - .github/workflows/yandex-native-menu-regression.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify-menu-ad:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 40156042223
+          name: qa-compiled-candidate
+          github-token: ${{ github.token }}
+          path: work/frozen-candidate
+      - name: Audit and unpack exact frozen QA candidate
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path,PurePosixPath
+          base=Path('work/frozen-candidate')
+          report=json.loads((base/'source-manifest.json').read_text())
+          assert report['source']=='597dd1ea385696295d3259e0d16efb280c431b0f'
+          path=base/'Mindustry-Yandex-qa-candidate.zip'
+          assert hashlib.sha256(path.read_bytes()).hexdigest()==report['archive_sha256']
+          with zipfile.ZipFile(path) as z:
+              assert z.testzip() is None
+              names=z.namelist()
+              assert len(names)==len(set(names))
+              assert sum(f.file_size for f in z.infolist()) < 100_000_000
+              assert all(not PurePosixPath(n).is_absolute() and '..' not in PurePosixPath(n).parts for n in names)
+              assert not any(n.endswith('.map') for n in names)
+              stage=Path('web-runtime/build/web')
+              stage.mkdir(parents=True,exist_ok=True)
+              z.extractall(stage)
+          print('Frozen binary for original game regression:',report['archive_sha256'])
+          PY
+      - name: Install browser smoke dependencies
+        run: python3 -m pip install websocket-client
+      - name: Real native game exit and Yandex interstitial
+        run: bash scripts/verify-yandex-sdk.sh
+      - name: Verify release locales without rebuilding pinned source
+        run: bash scripts/verify-browser-locales.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yandex-native-menu-test-logs
+          path: |
+            work/*.html
+            work/*.png
+          if-no-files-found: ignore
