@@ -387,6 +387,21 @@ require(BROWSER_AUDIO, "if((++settingsPoll & 31) == 0 || mindustry.Vars.ui != nu
 require(BROWSER_AUDIO, "Music current = sound.getCurrent();", "music-volume preview targets selected game track")
 require(SOUND_PATCH, "if(state.isPaused() && ui != null && ui.settings != null && ui.settings.isShown())", "native soundtrack survives paused Settings")
 require(SOUND_PATCH, "current.setVolume(volumeMultiplier());", "native SoundControl previews real music gain")
+# AmbientSource registration had become a no-op during the no-thread port.
+# Require native source lifecycle and actual mixing back through the stock
+# SoundControl.loop accumulator, which obeys ambientvol and positional pan.
+require(SOUND_PATCH, "webAmbientSources.add(source);", "ambient source registration no longer a no-op")
+require(SOUND_PATCH, "webAmbientSources.clear();", "ambient sources reset between sectors")
+require(SOUND_PATCH, "source.shouldAmbientSound()", "active spatial ambient source check")
+require(SOUND_PATCH, "source.getAmbientVolume()", "spatial ambient source volume")
+require(SOUND_PATCH, "source.getAmbientSound()", "spatial ambient source type")
+require(SOUND_PATCH, "loop(data, ambient, source, volume, 1f);", "spatial ambient mixed into native SoundData accumulator")
+require(SOUND_PATCH, "webAmbientSources.remove(i);", "stale ambient source pruning")
+require(SOUND_PATCH, 'Core.settings.getInt("ambientvol", 100)', "stock ambient volume multiplier remains effective")
+# The pinned upstream snippet containing new AudioThread() must stay present
+# as an old-pattern replacement; the patch itself validates it is absent
+# from the transformed Java file.
+
 require(SOUND_PATCH, "        boolean paused = state.isGame() && Core.scene.hasDialog();", "original SoundControl path intact after paused preview")
 require(BROWSER_AUDIO, "current.setVolume(settingVolume(\"musicvol\", 100));", "native music slider updates actual audio gain")
 require(BROWSER_AUDIO, "sound.playRandom();", "paused continuous-music replacement only when needed")

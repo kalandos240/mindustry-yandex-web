@@ -16,22 +16,22 @@ replacements = [
     ),
     (
         """    protected @Nullable AudioThread ambientThread;\n    protected boolean launchingAmbientThread;\n    protected Seq<SoundData> localData = new Seq<>();\n\n""",
-        """    // Web: ambient-source spatial mixing must run without a JVM worker thread.\n\n""",
+        """    // Keep original spatial ambient sources on the simulation thread.\n    // TeaVM does not support Mindustry's desktop AudioThread worker.\n    protected final Seq<AmbientSource> webAmbientSources = new Seq<>(false, 16, AmbientSource.class);\n\n""",
         "ambient thread fields",
     ),
     (
         """            launchingAmbientThread = false;\n            if(ambientThread != null){\n                ambientThread.running = false;\n                ambientThread.interrupt();\n                ambientThread = null;\n            }\n""",
-        """            // Web: no ambient JVM worker exists to stop.\n""",
+        """            // Clear old sector sources before the next sector is loaded.\n            webAmbientSources.clear();\n""",
         "reset ambient thread shutdown",
     ),
     (
         """    public void addAmbientSource(AmbientSource source){\n        if(headless) return;\n\n        if(launchingAmbientThread && ambientThread != null){\n            ambientThread.sources.add(source); //directly add to buffer while thread is launching; this prevents a million add calls to the queue during map load\n        }else if(ambientThread != null){\n            ambientThread.inputSources.add(source);\n        }else{\n            launchingAmbientThread = true;\n            ambientThread = new AudioThread();\n            ambientThread.setDaemon(true);\n\n            //start thread with all the sources that were added during launch\n            Core.app.post(() -> {\n                if(ambientThread != null){\n                    if(!ambientThread.isAlive()) ambientThread.start();\n                    launchingAmbientThread = false;\n                }\n            });\n        }\n    }\n""",
-        """    public void addAmbientSource(AmbientSource source){\n        // Web: ordinary Sound/Music playback is provided by BrowserAudio, but Arc's\n        // desktop ambient-source mixer is worker-thread based. Keep this registration\n        // API safe for world content until ambient spatial mixing is moved onto frames.\n    }\n""",
+        """    public void addAmbientSource(AmbientSource source){\n        // Sources are registered by vanilla blocks/units during world loading.\n        // Process them on the game thread; never spawn Java workers under TeaVM.\n        if(!headless && source != null && !webAmbientSources.contains(source, true)){\n            webAmbientSources.add(source);\n        }\n    }\n""",
         "addAmbientSource",
     ),
     (
         """        //grab data from ambient thread\n        if(ambientThread != null){\n            synchronized(ambientThread.outputData){\n                localData.set(ambientThread.outputData);\n            }\n\n            for(var data : localData){\n                var target = sounds.get(data.sound, SoundData::new);\n\n                target.pitch = data.pitch;\n                target.volume = data.volume;\n                target.total = data.total;\n                target.totalVolume = data.totalVolume;\n                target.sumX = data.sumX;\n                target.sumY = data.sumY;\n            }\n        }\n""",
-        """        // Web: no ambient worker buffer to merge; ordinary loop aggregation above remains intact.\n""",
+        """        // Web: spatial AmbientSource contributions are already incorporated\n        // into sounds before the normal mixer pass above. No JVM audio worker.\n""",
         "ambient output merge",
     ),
     (
@@ -51,6 +51,42 @@ for old, new, label in replacements:
 # to zero. Unlike a menu transition, the user expects to preview their Music
 # Volume slider without stopping the campaign soundtrack. Keep the normal
 # paused-world simulation frozen and manage only the current music gain.
+# Restore vanilla spatial ambience without JVM worker threads. A source
+# contributes to the SAME SoundData accumulator as SoundControl.loop(), so
+# ambientvol, falloff, pan and pitch go through the normal protected voice mix.
+ambient_loop_anchor = """        float avol = Core.settings.getInt("ambientvol", 100) / 100f;
+
+        sounds.each((sound, data) -> {
+"""
+ambient_loop_replacement = """        float avol = Core.settings.getInt("ambientvol", 100) / 100f;
+
+        // Frame-local spatial mixing replaces the desktop AudioThread. Invalid
+        // sources are pruned, and all contributions share the same avol gain.
+        for(int i = 0; i < webAmbientSources.size; ){
+            AmbientSource source = webAmbientSources.get(i);
+            if(!source.isValid()){
+                webAmbientSources.remove(i);
+                continue;
+            }
+            if(source.shouldAmbientSound()){
+                float volume = source.getAmbientVolume();
+                if(volume > 0.00001f){
+                    Sound ambient = source.getAmbientSound();
+                    if(ambient != null){
+                        SoundData data = sounds.get(ambient, SoundData::new);
+                        loop(data, ambient, source, volume, 1f);
+                    }
+                }
+            }
+            i++;
+        }
+
+        sounds.each((sound, data) -> {
+"""
+if text.count(ambient_loop_anchor) != 1:
+    raise SystemExit("Pinned SoundControl ambient mixer anchor changed; review per-frame spatial mixing")
+text = text.replace(ambient_loop_anchor, ambient_loop_replacement, 1)
+
 paused_music_anchor = """    public void update(){
         boolean paused = state.isGame() && Core.scene.hasDialog();
 """
