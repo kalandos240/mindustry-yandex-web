@@ -53,6 +53,26 @@ async def main(args):
                         raise AssertionError('Game error at '+label+': '+str(await page.evaluate('window.__mindustryErrorReport')))
                     if await fn():return
                     await page.wait_for_timeout(80)
+                if 'music' in label or 'audio' in label:
+                    try:
+                        audio=await page.evaluate("""()=>{
+                            const a=window.__mindustryAudio||{},root=document.documentElement;
+                            return {label:root.getAttribute('data-mindustry-audio'),
+                                audioUnlocked:root.getAttribute('data-mindustry-audio-unlocked'),
+                                contextState:a.ctx?.state,unlocked:a.unlocked,platformPaused:a.platformPaused,
+                                music:Array.from(a.music?.entries()||[]).map(([id,e])=>({
+                                    id,src:e.element.currentSrc||e.element.src,paused:e.element.paused,
+                                    ended:e.element.ended,volume:e.element.volume,readyState:e.element.readyState,
+                                    networkState:e.element.networkState,currentTime:e.element.currentTime,
+                                    pendingPlay:e.pendingPlay,playRequest:e.playRequest,error:e.element.error?.code||null})),
+                                settings:{alwaysmusic:__mindustryQaSetting('alwaysmusic'),
+                                    musicvol:__mindustryQaSetting('musicvol')},
+                                game:__mindustryQaSnapshot()};
+                        }""")
+                        fname=out/f'{args.browser}-{"mobile" if args.mobile else "desktop"}-music-diagnostic.json'
+                        fname.write_text(json.dumps({'at':label,'audio':audio},ensure_ascii=False,indent=2))
+                        print('BLOCKED_NATIVE_MUSIC '+json.dumps({'at':label,'audio':audio},ensure_ascii=False),flush=True)
+                    except Exception as e:print('NATIVE_MUSIC_DIAGNOSTIC_FAILED '+repr(e),flush=True)
                 if label.startswith('native checkbox '):
                     key=label.removeprefix('native checkbox ')
                     try:
@@ -219,7 +239,7 @@ async def main(args):
                 await wait(playing_state,'campaign starts');await page.wait_for_timeout(800)
                 await open_settings()
                 roster=set()
-                for category in ['Game','Graphics','Sound','Developer']:
+                for category in (['Sound'] if args.only_music else ['Game','Graphics','Sound','Developer']):
                     await click(label=category)
                     await wait(lambda:settings_page({'Game':'game','Graphics':'graphics','Sound':'sound','Developer':'dev'}[category]),'category '+category)
                     entries=await controls();keys=[]
@@ -261,6 +281,10 @@ async def main(args):
                     if category=='Sound' and music_original is False:await click(key='alwaysmusic')
                     await page.keyboard.press('Escape')
                     await wait(lambda:settings_page('root'),'category Back '+category)
+                if args.only_music:
+                    assert {'alwaysmusic','musicvol','sfxvol','ambientvol'}<=roster
+                    print('MUSIC_ONLY_PASS '+json.dumps(ledger),flush=True)
+                    return
                 assert {'fpscap','uiscale','musicvol','sfxvol','ambientvol','minimap','drawhitboxes'}<=roster,roster
                 # Exercise the save-interval consumer, not only its stored number.
                 await click(label='Game');await slider('saveinterval',10);await page.keyboard.press('Escape')
@@ -326,5 +350,5 @@ async def main(args):
     finally:server.shutdown()
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('--browser',choices=['chromium','firefox'],default='chromium');parser.add_argument('--mobile',action='store_true');parser.add_argument('--port',type=int,default=8159)
+    parser=argparse.ArgumentParser();parser.add_argument('--browser',choices=['chromium','firefox'],default='chromium');parser.add_argument('--mobile',action='store_true');parser.add_argument('--only-music',action='store_true');parser.add_argument('--port',type=int,default=8159)
     asyncio.run(main(parser.parse_args()))
