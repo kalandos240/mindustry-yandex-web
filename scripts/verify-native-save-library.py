@@ -229,8 +229,22 @@ async def main():
                         assert not await page.evaluate('__mindustryQaSetting("web-campaign-reset-at")'),'Deleting non-cloud archive wrote cloud reset marker'
                         card=await choose(lambda x:x['kind']=='button' and 'untitled' in x['label'].lower() and x['cssRect']['bottom']-x['cssRect']['top']>90,'canonical card',False)
                         assert any(x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'trash' in x.get('icons',[]) and not x['enabled'] for x in (await controls())['controls']),'Active canonical delete must be guarded'
+                        before_auto=await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")')
                         await choose(lambda x:x['kind']=='button' and x['path'].startswith(card['path']+'.') and 'save' in x.get('icons',[]),'disable canonical autosave')
-                        assert bool(await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")')) is False
+                        # Stock SaveSlot.setAutosave writes the setting directly in
+                        # the nested ImageButton clicked() handler. A deferred
+                        # test result must not be confused with a never-hit icon.
+                        for trial in range(15):
+                            if not bool(await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")')):break
+                            await page.wait_for_timeout(100)
+                        actual_auto=await page.evaluate('__mindustryQaSetting("save-web-local-survival-autosave")')
+                        if bool(actual_auto):
+                            ui_state=await controls()
+                            related=[{k:c.get(k) for k in ('path','label','icons','enabled','onScreen','x','y','checked','visibleCssRect')}
+                                     for c in ui_state['controls'] if c.get('path','').startswith(card['path']+'.') and 'save' in c.get('icons',[])]
+                            print('NATIVE_AUTOSAVE_TOGGLE_DIAGNOSTIC '+json.dumps({'before':before_auto,'after':actual_auto,'controls':related,
+                               'game':await page.evaluate('__mindustryQaSnapshot()')},ensure_ascii=False),flush=True)
+                        assert bool(actual_auto) is False,('native save slot toggled without callback',before_auto,actual_auto)
                         await close_dialogs();await named('web-pause-resume')
                         tick=(await page.evaluate('__mindustryQaSnapshot()'))['tick'];before=await bytes_at()
                         await page.wait_for_function('t=>__mindustryQaSnapshot().tick>t+660',arg=tick,timeout=30000)
