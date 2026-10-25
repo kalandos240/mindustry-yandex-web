@@ -84,7 +84,7 @@ async def main():
            &&root.getAttribute('data-mindustry-web')==='ready'
            &&root.getAttribute('data-mindustry-campaign-state')==='playing'
            &&root.getAttribute('data-playgama-game-ready')==='sent'
-        }""",timeout=180000)
+        }""",timeout=30000)
       state=await page.evaluate("""() => ({
        playgama:document.documentElement.getAttribute('data-playgama-sdk'),
        ready:document.documentElement.getAttribute('data-playgama-game-ready'),
@@ -112,8 +112,21 @@ async def main():
       await page.screenshot(path=str(OUT/(device+'.png')))
       print(device+': nested-path Playgama SDK, game_ready, campaign sector, audio pause/resume PASS',flush=True)
      except Exception:
+      diag=await page.evaluate("""() => ({
+        attrs:Object.fromEntries([...document.documentElement.attributes].map(a=>[a.name,a.value])
+          .filter(([n])=>/mindustry|playgama|yandex/.test(n))),
+        bridge:window.__playgamaTest?{
+          messages:__playgamaTest.messages,keys:Object.keys(__playgamaTest.storage),
+          callbacks:Object.keys(__playgamaTest.callbacks)
+        }:null,
+        sdk:window.__mindustryPlaygamaBridge?{
+          ready:__mindustryPlaygamaBridge.state.ready,
+          paused:__mindustryPlaygamaBridge.state.paused,
+          hasFacade:!!window.__mindustryPlaygamaSdk
+        }:null
+      })""")
       (OUT/(device+'-failure.json')).write_text(
-        json.dumps({'errors':errors,'url':page.url},indent=2))
+        json.dumps({'errors':errors,'url':page.url,'diag':diag},indent=2))
       await page.screenshot(path=str(OUT/(device+'-failure.png')))
       raise
      finally:await context.close()
