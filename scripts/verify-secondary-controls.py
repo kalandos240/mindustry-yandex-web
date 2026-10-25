@@ -288,7 +288,13 @@ async def config_family(ui,family):
         ui.record('building-config',family+'/'+choice['name'],'actual Building.config='+expected)
         if kind=='unit':
             if expected=='-1':
-                await tile();await ui.wait(lambda:config_open(ui),'reopen toggled-off '+family)
+                # On desktop stock config closes after toggling a plan off;
+                # on touch it can remain open. Clicking the tile unconditionally
+                # while already open toggles that dialog CLOSED, which was a
+                # false test timeout. Reopen only if the UI actually closed.
+                if await ui.attr('native-config-open')!='true':
+                    await tile()
+                    await ui.wait(lambda:config_open(ui),'reopen toggled-off '+family)
                 await ui.click(find,'re-enable '+family+' '+choice['name'])
                 await ui.wait(lambda:config_value(ui,unit_index),'native plan re-enabled '+choice['name'])
                 ui.record('factory-plan',family+'/'+choice['name'],'stock selected plan off then on')
