@@ -57,6 +57,7 @@ public class BrowserPlanetDialog extends PlanetDialog{
 
     @Override
     void updateSelected(){
+        clearSelectedHitPoints();
         super.updateSelected();
         if(mode == Mode.look && selected != null && selected.save != null){
             int columns = Math.max(1, sectorTop.getColumns());
@@ -233,6 +234,8 @@ public class BrowserPlanetDialog extends PlanetDialog{
             sampleButton("web-planet-tech", "tech");
             sampleButton("web-planet-export", "export");
             sampleButton("web-planet-launch", "launch");
+            markSampledSelection(selected == null ? "none" : selected.planet.name + "/"
+                + (selected.preset == null ? String.valueOf(selected.id) : selected.preset.name));
             markZoom(state.zoom);
             markFirstIntroStep(Core.settings.getString("web-planet-intro-step", "not-clicked"));
 
@@ -296,6 +299,20 @@ public class BrowserPlanetDialog extends PlanetDialog{
             markButtonPosition(marker, at.x, at.y);
         }
     }
+
+    @JSBody(script="""
+        var r=document.documentElement;
+        r.removeAttribute('data-mindustry-planet-hit-selection');
+        ['launch','export'].forEach(function(action){
+            ['x','y','exposed','receiver'].forEach(function(field){
+                r.removeAttribute('data-mindustry-planet-hit-'+action+'-'+field);
+            });
+        });
+        """)
+    private static native void clearSelectedHitPoints();
+
+    @JSBody(params={"selection"},script="document.documentElement.setAttribute('data-mindustry-planet-hit-selection',selection);")
+    private static native void markSampledSelection(String selection);
 
     @JSBody(params={"choice","ok","phase"}, script="""
         var root=document.documentElement;

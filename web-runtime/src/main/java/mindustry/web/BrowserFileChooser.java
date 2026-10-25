@@ -42,8 +42,7 @@ public final class BrowserFileChooser{
                     }
                 }
                 if(supported && bytes != null && bytes.length <= 16 * 1024 * 1024){
-                    String extension = name.substring(name.lastIndexOf('.') + 1);
-                    Fi staged = Core.files.local("tmp/import-" + (++uploadIndex) + "." + extension);
+                    Fi staged = Core.files.local("tmp/import-" + (++uploadIndex) + "/" + Strings.sanitizeFilename(name));
                     staged.parent().mkdirs();
                     staged.writeBytes(bytes);
                     selected.add(staged);
@@ -58,7 +57,10 @@ public final class BrowserFileChooser{
                             // Original Mindustry import callbacks fully read each Fi before
                             // returning. Do not accumulate duplicate uploaded files in
                             // browser-persistent temporary storage.
-                            for(Fi file : selected) file.delete();
+                            for(Fi file : selected){
+                                file.delete();
+                                file.parent().delete();
+                            }
                         }
                     }
                 }
@@ -82,6 +84,10 @@ public final class BrowserFileChooser{
         input.multiple = multiple;
         input.style.display = 'none';
         document.body.appendChild(input);
+        input.addEventListener('cancel',function(){
+            if(input.parentNode) input.parentNode.removeChild(input);
+            document.documentElement.setAttribute('data-mindustry-browser-file-state','cancelled');
+        });
         input.addEventListener('change', function(){
             var files = input.files || [];
             var allowed = extensions.toLowerCase().split(',');
@@ -94,6 +100,12 @@ public final class BrowserFileChooser{
                         break;
                     }
                 }
+            }
+            if(!filtered.length){
+                if(input.parentNode) input.parentNode.removeChild(input);
+                if(files.length) callback('',null,true);
+                document.documentElement.setAttribute('data-mindustry-browser-file-state',files.length?'rejected':'cancelled');
+                return;
             }
             var next = 0;
             function loadNext(){

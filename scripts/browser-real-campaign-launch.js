@@ -93,9 +93,19 @@
   const m=/^(\d+)x(\d+)$/.exec(size);
   if(!m||Number(m[1])<16||Number(m[2])<16)
     throw Error('Campaign has no real map, world='+size);
-  const initial=Number(get('cpu-sample'));
-  await wait(()=>Number(get('cpu-sample'))>initial+1,
-    'live original World advances after real native menu launch');
+  if(typeof globalThis.__mindustryQaSnapshot!=='function')
+    throw Error('Missing read-only QA probe; install scripts/prepare-qa-probe.py before this native test');
+  await wait(()=>{
+    const s=globalThis.__mindustryQaSnapshot();
+    return s.ready&&s.playing&&!s.paused&&s.campaign&&s.campaignActive;
+  },'actual selected campaign is playing, not paused');
+  const initial=globalThis.__mindustryQaSnapshot();
+  await wait(()=>{
+    const s=globalThis.__mindustryQaSnapshot();
+    return s.playing&&!s.paused&&s.campaign&&s.campaignActive&&
+      s.tick>initial.tick&&BigInt(s.updateId)>BigInt(initial.updateId)+30n;
+  },'actual campaign simulation tick and updateId advance after native launch');
+  root.setAttribute('data-mindustry-qa-native-launch-state',JSON.stringify(globalThis.__mindustryQaSnapshot()));
   root.setAttribute('data-mindustry-ui-campaign-start','passed');
   root.setAttribute('data-mindustry-ui-campaign-scenario',scenario);
   root.setAttribute('data-mindustry-ui-campaign-clicks',String(clicks));

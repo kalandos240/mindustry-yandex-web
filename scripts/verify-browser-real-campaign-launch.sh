@@ -11,24 +11,37 @@ test -s "$WEB/mindustry.js"
 for map in serpulo/groundZero erekir/onset; do
   test -s "$WEB/assets/maps/$map.msav"
 done
+qa_owned=0
+server=""
+cleanup(){
+  local result=$?
+  if [ -n "$server" ]; then kill "$server" 2>/dev/null || true; fi
+  if [ "$qa_owned" = 1 ]; then
+    python3 "$ROOT/scripts/prepare-qa-probe.py" "$WEB/mindustry.js" --restore || result=1
+  fi
+  exit "$result"
+}
+trap cleanup EXIT
+if ! grep -Fq '/* Mindustry QA read-only state probe. Test builds only. */' "$WEB/mindustry.js"; then
+  python3 "$ROOT/scripts/prepare-qa-probe.py" "$WEB/mindustry.js"
+  qa_owned=1
+fi
 cd "$WEB"
 python3 -m http.server "$PORT" --bind 127.0.0.1 >/tmp/mindustry-real-campaign-http.log 2>&1 &
 server=$!
-trap 'kill "$server" 2>/dev/null || true' EXIT
 for i in {1..35}; do
   if curl -fsS "http://127.0.0.1:$PORT/index.html" >/dev/null; then break; fi
   sleep 0.2
 done
-for scenario in direct-serpulo direct-erekir planet-serpulo planet-erekir; do
+for device in desktop mobile; do
+ for scenario in direct-serpulo direct-erekir planet-serpulo planet-erekir; do
   args=()
-  device=desktop
-  if [[ "$scenario" == *erekir ]]; then
+  if [ "$device" = mobile ]; then
     args+=(--emulate-mobile)
-    device=mobile
   fi
-  profile="/tmp/mindustry-real-campaign-$scenario"
+  profile="/tmp/mindustry-real-campaign-$device-$scenario"
   rm -rf "$profile"
-  output="/tmp/mindustry-real-campaign-$scenario.html"
+  output="/tmp/mindustry-real-campaign-$device-$scenario.html"
   python3 "$ROOT/scripts/chrome-wait-dom.py" "${args[@]}" \
     --url "http://127.0.0.1:$PORT/index.html?lang=ru&mindustryUiCampaignStart=$scenario" \
     --profile "$profile" --port 9544 --timeout 210 --cdp-input-bridge \
@@ -48,6 +61,7 @@ for scenario in direct-serpulo direct-erekir planet-serpulo planet-erekir; do
   else
     grep -Fq 'data-mindustry-campaign-preset="groundZero"' "$output"
   fi
-  echo "$scenario/$device: native buttons -> real World load -> continuing game loop PASS"
+  echo "$scenario/$device: native buttons -> real World -> actual playing tick/updateId advance PASS"
+ done
 done
 echo 'Both Serpulo and Erekir campaigns genuinely playable from native Play/3D map interface.'

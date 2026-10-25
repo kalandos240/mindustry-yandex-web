@@ -30,6 +30,8 @@ public final class BrowserSaveRuntime{
     private static boolean initialized;
     private static boolean localSessionAvailable;
     private static SaveMeta cachedLocalSessionMeta;
+    private static Fi importedSessionFile;
+    private static SaveMeta importedSessionMeta;
 
     private BrowserSaveRuntime(){}
 
@@ -117,7 +119,35 @@ public final class BrowserSaveRuntime{
     }
 
     public static boolean hasLocalSession(){
-        return initialized && localSessionAvailable;
+        return initialized && localSessionAvailable && validLocalSessionFile();
+    }
+
+    /** Load an imported built-in-map save before changing the current browser slot. */
+    public static void continueImportedSession(Saves.SaveSlot slot){
+        if(importedSessionFile != null || slot == null || slot.file == null || !slot.file.exists()) return;
+        SaveMeta meta = SaveIO.getMeta(SaveIO.getStream(slot.file));
+        if(!BrowserLocalMapRuntime.canContinueMeta(meta)){
+            throw new IllegalArgumentException("Unsupported browser local save");
+        }
+        importedSessionFile = slot.file;
+        importedSessionMeta = meta;
+        try{
+            BrowserLocalMapRuntime.continueSaved();
+        }finally{
+            importedSessionFile = null;
+            importedSessionMeta = null;
+        }
+    }
+
+    /** Called only after the imported world, rules, map and player core validate. */
+    static void commitImportedSession(){
+        if(importedSessionFile == null) return;
+        importedSessionFile.copyTo(localSessionFile());
+        cachedLocalSessionMeta = importedSessionMeta;
+        localSessionAvailable = true;
+        markLocalSessionAvailability("available");
+        BrowserUiRuntime.syncLocalSaveUiState();
+        flushLocalSessionStorage();
     }
 
     public static SaveMeta localSessionMeta(){
@@ -166,7 +196,7 @@ public final class BrowserSaveRuntime{
     }
 
     public static SaveMeta loadLocalSession(){
-        if(!initialized || !localSessionAvailable || !validLocalSessionFile()){
+        if(!initialized || importedSessionFile == null && (!localSessionAvailable || !validLocalSessionFile())){
             localSessionAvailable = false;
             markLocalSessionAvailability("empty");
             throw new IllegalStateException("Browser local survival save is missing or invalid");
@@ -175,8 +205,8 @@ public final class BrowserSaveRuntime{
             throw new IllegalStateException("Browser local continue escaped permanent single-player mode");
         }
 
-        SaveMeta meta = localSessionMeta();
-        SaveIO.load(localSessionFile());
+        SaveMeta meta = importedSessionMeta == null ? localSessionMeta() : importedSessionMeta;
+        SaveIO.load(importedSessionFile == null ? localSessionFile() : importedSessionFile);
         if(Vars.state == null || Vars.world == null || Vars.world.width() <= 0 || Vars.world.height() <= 0){
             throw new IllegalStateException("Browser local survival save restored an invalid world");
         }

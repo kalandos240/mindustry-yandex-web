@@ -5,6 +5,18 @@
   const canvas=document.getElementById('mindustry-canvas');
   const v=k=>root.getAttribute('data-mindustry-'+k);
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  if(typeof globalThis.__mindustryQaSnapshot!=='function')throw Error('Install the read-only QA probe before HUD acceptance');
+  const snapshot=()=>globalThis.__mindustryQaSnapshot();
+  const running=async label=>{
+    const before=snapshot();
+    await wait(()=>{const after=snapshot();return after.playing&&!after.paused&&after.campaignActive&&
+      BigInt(after.updateId)>BigInt(before.updateId)&&after.tick>before.tick;},label+' real simulation advances');
+  };
+  const paused=async label=>{
+    await wait(()=>snapshot().paused,label+' real paused state');
+    const before=snapshot();await sleep(220);const after=snapshot();
+    if(!after.paused||after.updateId!==before.updateId||after.tick!==before.tick)throw Error(label+' paused world advanced');
+  };
   const wait=async(fn,label)=>{
     for(let i=0;i<180;i++){
       if(v('web')==='error')throw Error('Mindustry froze after '+label+
@@ -17,9 +29,12 @@
     }
     throw Error('Native campaign planet HUD failed: '+label+
       ', hud='+v('hud-planet-ready')+', planet='+v('hud-planet-open')+
-      ', frame='+v('vanilla-planet-frame')+', game='+v('campaign-state'));
+      ', frame='+v('vanilla-planet-frame')+', game='+v('campaign-state')+
+      ', sampled-selection='+v('planet-hit-selection')+', launch='+v('planet-launch-result')+
+      ', actual-state='+JSON.stringify(snapshot()));
   };
   await wait(()=>v('campaign-state')==='playing','live campaign');
+  await running('initial Onset');
   await wait(()=>v('hud-planet-ready')==='yes','native map button exposed');
   const rect=canvas.getBoundingClientRect();
   const x=Number(v('hud-planet-x')),y=Number(v('hud-planet-y'));
@@ -35,6 +50,7 @@
     'trusted canvas click receipt');
   if(v('cdp-click-ack')!==id)throw Error('Chrome rejected stock planet click');
   await wait(()=>v('hud-planet-open')==='yes','original 3D planet dialog');
+  await paused('initial globe');
   await wait(()=>v('vanilla-planet-frame')==='rendered','real 3D rendering');
   await wait(()=>v('planet-first-chooser')==='closed','no first-run modal blocking globe');
   const prior=Number(v('cpu-sample'));
@@ -53,10 +69,11 @@
   if(!(selectX>0&&selectX<rect.width&&selectY>0&&selectY<rect.height))
     throw Error('Original Serpulo globe button out of game canvas');
   const clickStock=async(x,y,name)=>{
+    const current=canvas.getBoundingClientRect();
     const req='hud-switch-'+name;
     root.setAttribute('data-mindustry-cdp-click-ack','');
     root.setAttribute('data-mindustry-cdp-click-request',JSON.stringify({
-      id:req,x:rect.left+x,y:rect.bottom-y
+      id:req,x:current.left+x,y:current.bottom-y
     }));
     await wait(()=>v('cdp-click-ack')===req ||
       (v('cdp-click-ack')||'').startsWith('ERROR:'),
@@ -66,8 +83,8 @@
   await clickStock(selectX,selectY,'serpulo-planet');
   await wait(()=>v('planet-start-sector-planet')==='serpulo',
     'start-sector panel changes to real Serpulo');
-  await wait(()=>v('planet-hit-launch-exposed')==='yes' &&
-    v('planet-hit-launch-disabled')==='no',
+  await wait(()=>v('planet-hit-selection')==='serpulo/groundZero' &&
+    v('planet-hit-launch-exposed')==='yes' && v('planet-hit-launch-disabled')==='no',
     'original selected-sector Launch button');
   const launchX=Number(v('planet-hit-launch-x'));
   const launchY=Number(v('planet-hit-launch-y'));
@@ -77,23 +94,27 @@
   await wait(()=>v('campaign-state')==='playing' &&
     v('campaign-preset')==='groundZero' && v('campaign-planet')==='serpulo',
     'live Erekir -> autosaved -> real Serpulo campaign world');
+  await running('new Ground Zero');
   const stable=Number(v('cpu-sample'));
   await wait(()=>Number(v('cpu-sample'))>stable,
     'TeaVM lives after native cross-planet campaign transition');
   // Returning to an existing sector must load its persisted MSAV, not generate it.
   for(const [planet,preset] of [['erekir','onset'],['serpulo','groundZero']]){
     let sample=Number(v('cpu-sample'));
-    await wait(()=>Number(v('cpu-sample'))>=sample+2,'HUD settles before saved-sector return');
+    const hudSample=Number(v('hud-planet-sample'));
+    await wait(()=>Number(v('cpu-sample'))>=sample+2&&Number(v('hud-planet-sample'))>hudSample&&v('hud-planet-open')==='no','fresh rebuilt HUD before saved-sector return');
     await clickStock(Number(v('hud-planet-x')),Number(v('hud-planet-y')),'reopen-'+preset);
     await wait(()=>v('hud-planet-open')==='yes','globe for saved '+preset);
+    await paused('saved '+preset+' globe');
     sample=Number(v('cpu-sample'));
     await wait(()=>Number(v('cpu-sample'))>=sample+2,'globe coordinates for '+preset);
     await clickStock(Number(v('planet-hit-'+planet+'-x')),Number(v('planet-hit-'+planet+'-y')),'select-'+preset);
-    await wait(()=>v('planet-start-sector-planet')===planet&&v('planet-hit-launch-exposed')==='yes'&&v('planet-hit-launch-disabled')==='no','Go to saved '+preset);
+    await wait(()=>v('planet-start-sector-planet')===planet&&v('planet-hit-selection')===planet+'/'+preset&&v('planet-hit-launch-exposed')==='yes'&&v('planet-hit-launch-disabled')==='no','Go to saved '+preset);
     sample=Number(v('cpu-sample'));
     await wait(()=>Number(v('cpu-sample'))>=sample+2,'saved-sector button coordinates');
     await clickStock(Number(v('planet-hit-launch-x')),Number(v('planet-hit-launch-y')),'return-'+preset);
     await wait(()=>v('campaign-state')==='playing'&&v('campaign-preset')===preset&&v('campaign-resume')==='ready','saved '+preset+' resumes; failure='+v('campaign-launch-failure'));
+    await running('resumed '+preset);
     sample=Number(v('cpu-sample'));
     await wait(()=>Number(v('cpu-sample'))>=sample+2,'live resumed '+preset);
   }

@@ -34,8 +34,8 @@ mobile_function = '''run_campaign_mobile_ui(){
   local dom="/tmp/mindustry-web-campaign-mobile-ui.html"
   rm -rf "$profile"
 
-  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
-    --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=ru&mindustryCampaignSmoke=groundZero&mindustryCampaignUiBackSmoke=1" \
+  python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" --emulate-mobile --cdp-input-bridge \
+    --url "http://127.0.0.1:8081/index.html?mindustryMobile=1&lang=ru&mindustryCampaignSmoke=groundZero&mindustryCampaignUiBackSmoke=1&mindustryMobileHudSmoke=1" \
     --profile "$profile" \
     --port 9260 \
     --timeout 90 \
@@ -64,11 +64,14 @@ mobile_function = '''run_campaign_mobile_ui(){
     --require 'data-mindustry-campaign-test="groundZero"' \
     --require 'data-mindustry-campaign-core="ready"' \
     --require 'data-mindustry-campaign-ui-back-smoke="triggered"' \
-    --require 'data-mindustry-campaign-back-autosave="ready"' \
-    --require 'data-mindustry-campaign-save-flush="ready"' \
-    --require 'data-mindustry-campaign-return="menu"' \
-    --require 'data-mindustry-campaign-state="menu"' \
-    --require 'data-mindustry-campaign-ui-action="continue"' \
+    --require 'data-mindustry-campaign-state="playing"' \
+    --after-ready-eval "$(cat "$ROOT_DIR/scripts/browser-campaign-ui-back-stress.js")" \
+    --after-ready-require 'data-mindustry-campaign-back-autosave="ready"' \
+    --after-ready-require 'data-mindustry-campaign-save-flush="ready"' \
+    --after-ready-require 'data-mindustry-campaign-return="menu"' \
+    --after-ready-require 'data-mindustry-campaign-state="menu"' \
+    --after-ready-require 'data-mindustry-campaign-ui-action="continue"' \
+    --after-ready-require 'data-mindustry-campaign-ui-back-native="passed"' \
     --require 'data-mindustry-network="local-only"' \
     --require 'data-mindustry-network-mode="singleplayer-only"' > "$dom"
 

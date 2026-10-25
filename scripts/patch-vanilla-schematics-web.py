@@ -65,4 +65,52 @@ if text.count(preview_old) != 1:
 text = text.replace(preview_old, preview_new, 1)
 
 SOURCE.write_text(text, encoding="utf-8")
+
+# A browser cannot synchronously read the operating-system clipboard. Let users
+# paste through a native DOM text field, on desktop as well as mobile, instead
+# of permanently disabling import until an in-memory copy was made this session.
+dialog_path = ROOT / "work/Mindustry/core/src/mindustry/ui/dialogs/SchematicsDialog.java"
+dialog = dialog_path.read_text(encoding="utf-8")
+clipboard_old = '''                t.button("@load.clipboard", Icon.copy, style, () -> {
+                    dialog.hide();
+                    try{
+                        Schematic s = Schematics.readBase64(Core.app.getClipboardText());
+                        s.removeSteamID();
+                        schematics.add(s);
+                        setup();
+                        ui.showInfoFade("@schematic.saved");
+                        checkTags(s);
+                        showInfo(s);
+                    }catch(Throwable e){
+                        ui.showException(e);
+                    }
+                }).marginLeft(12f).disabled(b -> Core.app.getClipboardText() == null || !Core.app.getClipboardText().startsWith(schematicBaseStart));'''
+clipboard_new = '''                t.button("@load.clipboard", Icon.copy, style, () -> {
+                    dialog.hide();
+                    Core.input.getTextInput(new Input.TextInput(){{
+                        title = Core.bundle.get("schematic.import");
+                        message = Core.bundle.get("load.clipboard");
+                        text = Core.app.getClipboardText() == null ? "" : Core.app.getClipboardText();
+                        multiline = true;
+                        allowEmpty = false;
+                        maxLength = 16 * 1024 * 1024;
+                        accepted = encoded -> {
+                            try{
+                                Schematic s = Schematics.readBase64(encoded.trim());
+                                s.removeSteamID();
+                                schematics.add(s);
+                                setup();
+                                ui.showInfoFade("@schematic.saved");
+                                checkTags(s);
+                                showInfo(s);
+                            }catch(Throwable e){
+                                ui.showException(e);
+                            }
+                        };
+                    }});
+                }).marginLeft(12f);'''
+if dialog.count(clipboard_old) != 1:
+    raise SystemExit("Pinned schematic clipboard import changed")
+dialog = dialog.replace(clipboard_old, clipboard_new, 1)
+dialog_path.write_text(dialog, encoding="utf-8")
 print("Stock Schematics.load: local Web schematics preserved without mandatory Mods startup")

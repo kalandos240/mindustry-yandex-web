@@ -8,6 +8,26 @@ import arc.struct.*;
 /** Browser-neutral Arc input state. DOM events are fed into this class by the TeaVM layer. */
 public class WebInput extends Input{
     private static final int maxPointers = 10;
+    private arc.func.Cons<TextInput> textInputHandler;
+    private boolean showingTextInput;
+
+    public void setTextInputHandler(arc.func.Cons<TextInput> handler){
+        textInputHandler = handler;
+    }
+
+    public void setShowingTextInput(boolean showing){
+        showingTextInput = showing;
+    }
+
+    @Override
+    public void getTextInput(TextInput request){
+        if(textInputHandler != null) textInputHandler.get(request);
+    }
+
+    @Override
+    public boolean isShowingTextInput(){
+        return showingTextInput;
+    }
 
     private final InputEventQueue queue = new InputEventQueue();
 

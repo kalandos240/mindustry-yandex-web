@@ -1326,7 +1326,7 @@ new_hud = '''        boolean[] campaignBackUiSmoke = {false};
             && Campaign.active() && campaignCoreReady()){
                 campaignBackUiSmoke[0] = true;
                 markCampaignUiBackSmoke();
-                returnToMenuWithAd();
+                // Native browser input drives Back, Cancel and Confirm.
             }
         });
 
@@ -1358,7 +1358,7 @@ elif 'findStockResearchControl(inputTable)' in text and '    private static void
                 if(!campaignBackUiSmoke[0] && Campaign.active() && campaignCoreReady()){
                     campaignBackUiSmoke[0] = true;
                     markCampaignUiBackSmoke();
-                    returnToMenuWithAd();
+                    // Readiness only: never bypass native exit confirmation.
                 }
             });
             ui.hudGroup.addChild(campaignBackSmokeTick);

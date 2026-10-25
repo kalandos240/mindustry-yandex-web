@@ -43,6 +43,7 @@ public final class WebClientLauncher extends ClientLauncher{
         ios = Core.app.isIOS();
         android = Core.app.isAndroid();
         markMindustryDeviceMode(mobile ? "mobile" : "desktop");
+        BrowserUiScale.install();
         installRendererDefaults(mobile);
 
         // Stock Renderer is initialized below after the content/save substrate exists.

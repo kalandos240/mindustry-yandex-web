@@ -73,6 +73,23 @@ public final class BrowserHudEssentials{
         )).width(mobile ? 150f : 180f).height(27f).padTop(4f).name("web-hud-player-health");
         parent.addChild(minimap);
 
+        // These stock preferences previously had no consumer because the lean
+        // browser mounts PlacementFragment rather than HudFragment.build().
+        Table readouts = new Table();
+        readouts.name = "web-hud-readouts";
+        readouts.setFillParent(true);
+        readouts.bottom().left().marginLeft(5f).marginBottom(mobile ? 55f : 5f);
+        readouts.touchable = Touchable.disabled;
+        readouts.visible(() -> state != null && state.isGame() && !state.gameOver && ui.hudfrag.shown);
+        readouts.label(() -> Core.graphics.getFramesPerSecond() + " FPS")
+            .style(Styles.outlineLabel).left().visible(() -> Core.settings.getBool("fps", false))
+            .name("web-hud-fps");
+        readouts.row();
+        readouts.label(() -> World.toTile(Core.input.mouseWorldX()) + "," + World.toTile(Core.input.mouseWorldY()))
+            .style(Styles.outlineLabel).left().visible(() -> Core.settings.getBool("mouseposition", false))
+            .name("web-hud-mouse-position");
+        parent.addChild(readouts);
+
         // CoreItemsDisplay is an original Mindustry class: only items held by
         // the current team's core are shown, with vanilla item icons/counts.
         Table items = new Table();

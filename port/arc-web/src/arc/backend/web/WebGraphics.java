@@ -26,6 +26,7 @@ public class WebGraphics extends Graphics{
     private double fpsWindowStartMs = -1d;
     private boolean continuous = true;
     private boolean fullscreen;
+    private double maxFrameDeltaMs = 50d;
 
     private final BufferFormat bufferFormat;
 
@@ -50,7 +51,7 @@ public class WebGraphics extends Graphics{
             // delta in one update: physics/effects/AI then produce additional work and
             // can enter a self-reinforcing frame-time spiral. Bound a visible frame to
             // 50ms of game time; actual measured FPS still uses uncapped rAF timestamps.
-            double elapsed = Math.max(0d, Math.min(50d, timestampMs - lastTimestampMs));
+            double elapsed = Math.max(0d, Math.min(maxFrameDeltaMs, timestampMs - lastTimestampMs));
             deltaTime = (float)(elapsed / 1000d);
         }
         lastTimestampMs = timestampMs;
@@ -62,6 +63,11 @@ public class WebGraphics extends Graphics{
             fpsFrames = 0;
             fpsWindowStartMs = timestampMs;
         }
+    }
+
+    /** A deliberate 10–15 FPS cap needs its full tick interval, unlike an unplanned stall. */
+    public void setFrameRateLimit(int limit){
+        maxFrameDeltaMs = limit > 0 && limit < 20 ? 1000d / Math.max(10, limit) : 50d;
     }
 
     public void setWebGLVersion(int major){
