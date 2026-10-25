@@ -72,6 +72,13 @@ async function play(h,id=1){h.api.musicPlay(id,'music.ogg',0.6,1,0,true);await t
     waiting.api.musicStop(6);
     assert(!waiting.api.musicPlaying(6),'Explicit stop must cancel queued play');
 
+    const earlyUnlock=harness();earlyUnlock.api.install();
+    const pendingContext=earlyUnlock.state.ctx;pendingContext.deferResume=true;
+    earlyUnlock.gesture();assert.equal(pendingContext.resumes,1);
+    pendingContext.deferResume=false;earlyUnlock.gesture();await tick();
+    assert(earlyUnlock.state.unlocked,'A later real gesture must recover from an unresolved AudioContext.resume()');
+    assert.equal(pendingContext.state,'running');
+
     const stale=harness();stale.api.install();const old=stale.state.ctx;old.deferResume=true;
     stale.gesture();stale.api.dispose();stale.api.install();old.finishResume();await tick();
     assert(!stale.state.unlocked,'Disposed context cannot unlock its replacement');
