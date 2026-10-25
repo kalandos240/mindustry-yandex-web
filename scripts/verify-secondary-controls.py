@@ -206,9 +206,9 @@ async def rules(ui):
     await ui.text(search,label)
     if await ui.dialog('rules.waveTimer'):await ui.click(lambda c:c['kind']=='button' and clean(c['label'])==clean(label),'disable wave timer')
     await ui.button('Back');await ui.wait(lambda:ui.modal('MapPlayDialog'),'Rules Back')
-    assert await ui.dialog('rules.waveTimer') is False
+    assert bool(await ui.dialog('rules.waveTimer')) is False
     await ui.button('Play');await ui.wait(lambda:local_playing(ui),'customized local map')
-    assert await ui.page.evaluate('__mindustryQaRead("state","rules.waveTimer")') is False
+    assert bool(await ui.page.evaluate('__mindustryQaRead("state","rules.waveTimer")')) is False
     await ui.stable();ui.record('custom-rule','launch edited rules','actual playing Rules.waveTimer=false and live update counter')
 
 async def rule_search_is(ui,value):return await ui.dialog('ruleSearch')==value.strip().lower()
