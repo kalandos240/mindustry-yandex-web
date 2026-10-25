@@ -206,7 +206,7 @@ def cdp_input_bridge(port: int, url: str, deadline: float, mobile: bool, stop: t
     ws = None
     try:
         ws = WebSocket(target_websocket(port, url, deadline))
-        message_id, last_request, last_drag_request, last_scroll_request = 1, None, None, None
+        message_id, last_request, last_drag_request, last_scroll_request, last_key_request = 1, None, None, None, None
         while not stop.is_set() and time.monotonic() < deadline:
             request = evaluate(ws, message_id,
                 "document.documentElement.getAttribute('data-mindustry-cdp-click-request') || ''")
@@ -243,6 +243,32 @@ def cdp_input_bridge(port: int, url: str, deadline: float, mobile: bool, stop: t
                 evaluate(ws, message_id,
                     "document.documentElement.setAttribute('data-mindustry-cdp-click-ack',"
                     + json.dumps(status) + ")")
+                message_id += 1
+
+            # A small, explicit allowlist for genuine navigation keys during
+            # native UI regression tests. Only Escape is needed to enter the
+            # stock Pause dialog on desktop; never synthesize game shortcuts.
+            key_request = evaluate(ws, message_id,
+                "document.documentElement.getAttribute('data-mindustry-cdp-key-request') || ''")
+            message_id += 1
+            if key_request and key_request != last_key_request:
+                last_key_request = key_request
+                try:
+                    key = json.loads(key_request)
+                    request_id = str(key["id"])
+                    if key.get("key") != "Escape":
+                        raise ValueError("Unapproved native test key")
+                    for kind in ("rawKeyDown", "keyUp"):
+                        cdp_command(ws, message_id, "Input.dispatchKeyEvent", {
+                            "type": kind, "key": "Escape", "code": "Escape",
+                            "windowsVirtualKeyCode": 27, "nativeVirtualKeyCode": 27})
+                        message_id += 1
+                    key_status = request_id
+                except Exception as error:
+                    key_status = "ERROR: " + str(error)[:220]
+                evaluate(ws, message_id,
+                    "document.documentElement.setAttribute('data-mindustry-cdp-key-ack',"
+                    + json.dumps(key_status) + ")")
                 message_id += 1
 
             # Genuine Chrome mouse/touch press/move/release for the spatial
@@ -363,7 +389,7 @@ def main() -> int:
     parser.add_argument("--screenshot", help="Save a PNG of the final verified browser surface.")
     parser.add_argument("--chrome", default="google-chrome")
     parser.add_argument("--cdp-input-bridge", action="store_true",
-                        help="Use trusted CDP mouse/touch clicks during after-ready eval.")
+                        help="Use trusted CDP mouse/touch and allowlisted Escape during after-ready eval.")
     parser.add_argument(
         "--emulate-mobile",
         action="store_true",
