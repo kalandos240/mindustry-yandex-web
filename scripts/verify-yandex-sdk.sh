@@ -550,40 +550,44 @@ run_menu_ad_transition(){
 
   python3 "$ROOT_DIR/scripts/chrome-wait-dom.py" \
     "${mobile_args[@]}" \
-    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignUiBackSmoke=1&mindustryYandexMenuAdSmoke=1&mindustryYandexTestDevice=$device" \
+    --url "http://127.0.0.1:$PORT/index.html?lang=en&mindustryCampaignSmoke=groundZero&mindustryCampaignUiBackSmoke=1&mindustryYandexMenuAdSmoke=1&mindustryMobileHudSmoke=1&mindustryYandexTestDevice=$device" \
     --profile "$profile" \
     --port "$cdp" \
-    --timeout 90 \
+    --timeout 150 \
     --require 'data-yandex-sdk="ready"' \
     --require "data-yandex-device-type=\"$device\"" \
     --require 'data-mindustry-campaign-ui-back-smoke="triggered"' \
-    --require 'data-mindustry-campaign-back-autosave="ready"' \
-    --require 'data-mindustry-campaign-return="menu"' \
-    --require 'data-mindustry-campaign-state="menu"' \
-    --require 'data-yandex-menu-ad-intent="ready"' \
-    --require 'data-yandex-test-menu-ad-call="yes"' \
-    --require 'data-yandex-test-menu-ad-gameplay-before="stopped"' \
-    --require 'data-yandex-menu-ad-storage="ready"' \
-    --require 'data-yandex-menu-ad-delay-ms="' \
-    --require 'data-yandex-test-cloud-set-count="1"' \
-    --require 'data-yandex-test-cloud-flush="true"' \
-    --require 'data-yandex-test-cloud-under-limit="yes"' \
-    --require 'data-yandex-test-cloud-settings="yes"' \
-    --require 'data-yandex-test-cloud-campaign-file="yes"' \
-    --require 'data-yandex-menu-ad-state="closed-shown"' \
-    --require 'data-yandex-test-ad-pause-sent="yes"' \
-    --require 'data-yandex-test-ad-close="yes"' \
-    --require 'data-yandex-test-ad-resume-sent="yes"' \
-    --require 'data-mindustry-platform-pause-observed="yes"' \
-    --require 'data-mindustry-platform-resume-observed="yes"' \
-    --require 'data-mindustry-platform-resume-frame="ready"' \
-    --require 'data-mindustry-platform-resume-frame-state="not-playing"' \
-    --require 'data-mindustry-storage-lifecycle-flush="yandex-pause-ready"' \
-    --require 'data-mindustry-input-reset="platform-pause"' \
-    --require 'data-mindustry-audio-platform="running"' \
-    --require 'data-yandex-game-state="ready"' \
-    --require 'data-yandex-banner-state="shown"' \
-    --require 'data-yandex-test-banner-visible="yes"' \
+    --require 'data-mindustry-campaign-state="playing"' \
+    --cdp-input-bridge \
+    --after-ready-eval "$(cat "$ROOT_DIR/scripts/browser-yandex-menu-ad-native.js")" \
+    --after-ready-require 'data-mindustry-campaign-back-autosave="ready"' \
+    --after-ready-require 'data-mindustry-campaign-return="menu"' \
+    --after-ready-require 'data-mindustry-campaign-state="menu"' \
+    --after-ready-require 'data-yandex-menu-ad-intent="ready"' \
+    --after-ready-require 'data-yandex-test-menu-ad-call="yes"' \
+    --after-ready-require 'data-yandex-test-menu-ad-gameplay-before="stopped"' \
+    --after-ready-require 'data-yandex-menu-ad-storage="ready"' \
+    --after-ready-require 'data-yandex-menu-ad-delay-ms="' \
+    --after-ready-require 'data-yandex-test-cloud-set-count="1"' \
+    --after-ready-require 'data-yandex-test-cloud-flush="true"' \
+    --after-ready-require 'data-yandex-test-cloud-under-limit="yes"' \
+    --after-ready-require 'data-yandex-test-cloud-settings="yes"' \
+    --after-ready-require 'data-yandex-test-cloud-campaign-file="yes"' \
+    --after-ready-require 'data-yandex-menu-ad-state="closed-shown"' \
+    --after-ready-require 'data-yandex-test-ad-pause-sent="yes"' \
+    --after-ready-require 'data-yandex-test-ad-close="yes"' \
+    --after-ready-require 'data-yandex-test-ad-resume-sent="yes"' \
+    --after-ready-require 'data-mindustry-platform-pause-observed="yes"' \
+    --after-ready-require 'data-mindustry-platform-resume-observed="yes"' \
+    --after-ready-require 'data-mindustry-platform-resume-frame="ready"' \
+    --after-ready-require 'data-mindustry-platform-resume-frame-state="not-playing"' \
+    --after-ready-require 'data-mindustry-storage-lifecycle-flush="yandex-pause-ready"' \
+    --after-ready-require 'data-mindustry-input-reset="platform-pause"' \
+    --after-ready-require 'data-mindustry-audio-platform="running"' \
+    --after-ready-require 'data-yandex-game-state="ready"' \
+    --after-ready-require 'data-yandex-banner-state="shown"' \
+    --after-ready-require 'data-yandex-test-banner-visible="yes"' \
+    --after-ready-require 'data-mindustry-native-menu-ad-input="passed"' \
     --require 'data-mindustry-network="yandex-sdk-only"' > "$dom"
 
   if grep -q 'data-yandex-test-ad-gameplay-restarted="yes"' "$dom"; then
