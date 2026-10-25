@@ -81,6 +81,43 @@ async def main():
                                 p=max(panes,key=lambda x:x['maxY']);await page.mouse.move(p['x'],p['y']);await page.mouse.wheel(0,220 if attempt<18 else -220)
                             await page.wait_for_timeout(200)
                         raise AssertionError(label+' missing: '+json.dumps(value,ensure_ascii=False)[:15000])
+                    async def open_database_group():
+                        # The desktop group may receive its first click during
+                        # asynchronous initial menu layout. Confirm actual native
+                        # submenu visibility before moving on; never fire Java
+                        # callbacks directly or infer success from a click alone.
+                        for attempt in range(3):
+                            value=await controls()
+                            if any(x.get('name')=='web-main-schematics' and x['onScreen']
+                                   for x in value['controls']):
+                                print('NATIVE_DATABASE_FIRST_CLICK '+json.dumps({
+                                    'attempt':attempt,'submenu':await page.get_attribute(
+                                        'html','data-mindustry-main-menu-database-submenu'),
+                                    'scene':value.get('stage')},ensure_ascii=False),flush=True)
+                                return
+                            if await page.get_attribute('html','data-mindustry-main-menu-database-submenu')=='open':
+                                await page.wait_for_timeout(450)
+                                continue
+                            await choose(lambda x:x['name']=='web-main-database-group','database group')
+                            try:
+                                await page.wait_for_function(
+                                    """() => document.documentElement.getAttribute('data-mindustry-main-menu-database-submenu')==='open'
+                                      && __mindustryUiControls({includeOffscreen:true,includeDisabled:true})
+                                        .controls.some(c=>c.name==='web-main-schematics' && c.onScreen)""",
+                                    timeout=2500)
+                                print('NATIVE_DATABASE_FIRST_CLICK '+json.dumps({
+                                    'attempt':attempt,'submenu':await page.get_attribute(
+                                        'html','data-mindustry-main-menu-database-submenu'),
+                                    'scene':(await controls()).get('stage')},ensure_ascii=False),flush=True)
+                                return
+                            except Exception:
+                                # Retry an ordinary pointer click, not a
+                                # programmatic Arc button callback.
+                                await page.wait_for_timeout(350)
+                        value=await controls()
+                        raise AssertionError('Native desktop Database submenu failed to open after trusted clicks: '
+                            +json.dumps({'menuAttribute':await page.get_attribute(
+                                'html','data-mindustry-main-menu-database-submenu'),'controls':value},ensure_ascii=False)[:12000])
                     async def button(label):await choose(lambda x:x['kind']=='button' and label.lower() in x['label'].lower(),label)
                     async def close_all():
                         for _ in range(6):
@@ -89,7 +126,7 @@ async def main():
                     try:
                         await page.goto('http://127.0.0.1:8170/index.html?lang=en')
                         await page.wait_for_function("document.documentElement.getAttribute('data-mindustry-web')==='ready'",timeout=150000)
-                        if not mobile:await choose(lambda x:x['name']=='web-main-database-group','database group')
+                        if not mobile:await open_database_group()
                         await choose(lambda x:x['name']=='web-main-schematics','schematics')
                         await button('Import')
                         await button('Clipboard')
@@ -129,7 +166,7 @@ async def main():
                         await close_all()
                         if not mobile:
                             value=await controls()
-                            if not any(x['name']=='web-main-schematics' and x['onScreen'] for x in value['controls']):await choose(lambda x:x['name']=='web-main-database-group','database group')
+                            if not any(x['name']=='web-main-schematics' and x['onScreen'] for x in value['controls']):await open_database_group()
                         await choose(lambda x:x['name']=='web-main-schematics','schematics')
                         await button('Import')
                         async with page.expect_file_chooser() as item:
