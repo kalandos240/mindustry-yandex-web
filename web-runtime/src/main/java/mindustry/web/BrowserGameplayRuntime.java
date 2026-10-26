@@ -139,6 +139,7 @@ public final class BrowserGameplayRuntime{
         && !state.gameOver
         && !state.rules.pauseDisabled && Core.scene != null
         && !Core.scene.hasKeyboard() && !Core.scene.hasDialog()){
+            if(menuTapped && state.isPlaying()) BrowserPlaygamaAds.placement("game_menu");
             if(BrowserCampaignRuntime.active()){
                 if(state.isPaused()) BrowserCampaignRuntime.resume();
                 else BrowserCampaignRuntime.pause();
