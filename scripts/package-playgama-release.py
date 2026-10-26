@@ -14,7 +14,7 @@ ZIP = OUT / "mindustry-playgama-release.zip"
 SHA = OUT / "mindustry-playgama-release.zip.sha256"
 REPORT = OUT / "mindustry-playgama-release-report.txt"
 LIMIT = 100 * 1024 * 1024
-REQUIRED = {"index.html", "mindustry.js", "playgama-ads.js", "browser-storage.js",
+REQUIRED = {"index.html", "mindustry.js", "browser-storage.js",
             "browser-audio.js", "assets-manifest.js"}
 
 CONFIG = """{
@@ -34,6 +34,7 @@ if not WEB.is_dir():
     raise SystemExit(f"Missing staged Web runtime: {WEB}")
 paths = sorted((p for p in WEB.rglob("*") if p.is_file()), key=lambda p: p.relative_to(WEB).as_posix())
 files = {p.relative_to(WEB).as_posix(): p.read_bytes() for p in paths}
+files["playgama-ads.js"] = (ROOT / "web-runtime/src/playgama/playgama-ads.js").read_bytes()
 missing = REQUIRED.difference(files)
 if missing:
     raise SystemExit(f"Playgama release missing runtime files: {sorted(missing)}")
@@ -41,12 +42,13 @@ if "playgama-bridge-config.json" in files:
     raise SystemExit("Staged Playgama config unexpectedly collides with release config")
 
 index = files["index.html"].decode("utf-8")
-anchor = '<script src="playgama-ads.js"></script>'
+anchor = '<script src="yandex-platform.js"></script>'
 if index.count(anchor) != 1:
     raise SystemExit("Missing unique Playgama adapter loader in index.html")
 # Force Playgama even on the custom domain/preview URL used by its publisher portal.
 index = index.replace(anchor,
-    '<script>globalThis.__mindustryPlaygamaBuild=true;</script>\n    ' + anchor)
+    anchor + '\n    <script>globalThis.__mindustryPlaygamaBuild=true;</script>' +
+    '\n    <script src="playgama-ads.js"></script>')
 files["index.html"] = index.encode("utf-8")
 files["playgama-bridge-config.json"] = CONFIG.encode("utf-8")
 # The Yandex SDK wrapper does not initialize in Playgama mode, but its
