@@ -9,7 +9,7 @@ public final class BrowserYandex{
     @JSBody(script = "return !!(globalThis.__mindustryYandex && globalThis.__mindustryYandex.available);")
     public static native boolean available();
 
-    @JSBody(script = "return !!(globalThis.__mindustryYandex && globalThis.__mindustryYandex.paused);")
+    @JSBody(script = "return !!((globalThis.__mindustryYandex && globalThis.__mindustryYandex.paused) || (globalThis.__mindustryPlaygamaAds && globalThis.__mindustryPlaygamaAds.paused));")
     public static native boolean paused();
 
     @JSBody(script = "return globalThis.__mindustryYandex && globalThis.__mindustryYandex.locale ? globalThis.__mindustryYandex.locale : '';")
