@@ -42,7 +42,7 @@ window.bridge={
   isInterstitialSupported:true,isBannerSupported:false,
   on(type,callback){__playgamaTest.callbacks[type]=callback},
   showInterstitial(placement){
-   if(!['menu_return','pause'].includes(placement))throw Error('Wrong ad placement: '+placement);
+   if(!['menu_return','pause','research','planets','game_menu'].includes(placement))throw Error('Wrong ad placement: '+placement);
    __playgamaTest.adShows++;
    setTimeout(()=>__playgamaTest.callbacks.interstitial_state_changed('opened'),20);
    setTimeout(()=>__playgamaTest.callbacks.interstitial_state_changed('closed'),800);
