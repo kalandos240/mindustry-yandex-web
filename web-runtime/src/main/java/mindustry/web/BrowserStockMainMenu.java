@@ -165,6 +165,7 @@ public final class BrowserStockMainMenu{
     private static native void markMenuHitPoint(String name, float x, float y);
 
     private static void openPlay(){
+        BrowserPlaygamaAds.placement("planet_map");
         contentOpen = true;
         markPage("play");
     }
