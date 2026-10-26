@@ -26,12 +26,6 @@
     let busy = false;
     let ready = null;
 
-    function sdk(){
-        if(!active) return null;
-        const candidate = globalThis.bridge;
-        return candidate && candidate.advertisement ? candidate : null;
-    }
-
     function initialize(candidate){
         if(!ready){
             ready = Promise.resolve()
@@ -61,6 +55,7 @@
                 return false;
             }
             root.setAttribute('data-mindustry-playgama-ads', 'requested');
+            if(globalThis.__mindustryAudioApi) globalThis.__mindustryAudioApi.platformPause(true);
             await Promise.resolve(ads.showInterstitial(placement));
             root.setAttribute('data-mindustry-playgama-ads', 'completed');
             return true;
@@ -69,6 +64,7 @@
             console.warn('Playgama interstitial unavailable:', error);
             return false;
         }finally{
+            if(globalThis.__mindustryAudioApi) globalThis.__mindustryAudioApi.platformPause(false);
             busy = false;
         }
     }
