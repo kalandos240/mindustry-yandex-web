@@ -320,6 +320,7 @@ public final class BrowserResearchUi{
             }
             selected = drill;
         }
+        if(!open) BrowserPlaygamaAds.placement("research");
         open = true;
         resourceCacheDirty = true;
         refresh();
