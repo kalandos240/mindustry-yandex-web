@@ -1,21 +1,43 @@
 {
   "advertisement": {
     "minimumDelayBetweenInterstitial": 90,
-    "initialInterstitialDelay": 120,
+    "initialInterstitialDelay": 60,
     "interstitial": {
       "disable": false,
       "placementFallback": "menu_return",
       "placements": [
         {
           "id": "menu_return"
+        },
+        {
+          "id": "pause"
+        },
+        {
+          "id": "research"
+        },
+        {
+          "id": "planets"
+        },
+        {
+          "id": "game_menu"
         }
-      ]
+      ],
+      "preloadOnStart": true
     },
     "rewarded": {
-      "disable": true
+      "disable": true,
+      "preloadOnStart": false
     },
     "banner": {
       "disable": true
     }
+  },
+  "$schema": "https://bridge.playgama.com/v2/stable/schema.json",
+  "device": {
+    "useBuiltInOrientationPopup": false,
+    "supportedOrientations": [
+      "portrait",
+      "landscape"
+    ]
   }
 }

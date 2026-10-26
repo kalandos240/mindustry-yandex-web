@@ -91,7 +91,7 @@ report = {
     "serpulo_maps": 29,
     "erekir_maps": 17,
     "sdk": "Playgama Bridge v2 CDN; loaded only by Playgama adapter",
-    "ad_placement": "menu_return; >=90 seconds between requests; 120 seconds initial delay",
+    "ad_placement": "menu_return, pause, research, planets, game_menu; >=90 seconds cooldown; 60 seconds initial delay",
     "cloud": "Playgama Bridge Storage get/set of serialized world checkpoint; IndexedDB local fallback",
     "banners": "disabled to avoid HUD obstruction",
     "rewarded": "disabled until real opt-in bonus is designed",
