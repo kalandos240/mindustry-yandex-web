@@ -3,6 +3,22 @@
     // Loaded by both builds. The Playgama SDK is supplied by the Playgama
     // packaging entry point; this adapter never loads ads in Yandex Games.
     const root = document.documentElement;
+    const active = new URLSearchParams(location.search).get('platform') === 'playgama'
+        || /(^|\.)playgama\.com$/i.test(location.hostname);
+    let loader = null;
+    function loadSdk(){
+        if(globalThis.bridge) return Promise.resolve(globalThis.bridge);
+        if(!loader){
+            loader = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://bridge.playgama.com/v2/stable/playgama-bridge.js';
+                script.onload = () => globalThis.bridge ? resolve(globalThis.bridge) : reject(new Error('Playgama Bridge missing'));
+                script.onerror = () => reject(new Error('Playgama Bridge load failed'));
+                document.head.appendChild(script);
+            });
+        }
+        return loader;
+    }
     const minGapMs = 90000;
     const initialDelayMs = 30000;
     const startedAt = performance.now();
@@ -11,7 +27,7 @@
     let ready = null;
 
     function sdk(){
-        if(globalThis.__mindustryYandex && globalThis.__mindustryYandex.available) return null;
+        if(!active) return null;
         const candidate = globalThis.bridge;
         return candidate && candidate.advertisement ? candidate : null;
     }
@@ -30,14 +46,14 @@
     }
 
     async function request(placement){
-        const candidate = sdk();
-        if(!candidate) return false;
+        if(!active) return false;
         const now = performance.now();
         if(busy || now - startedAt < initialDelayMs || now - lastRequestAt < minGapMs) return false;
         busy = true;
         lastRequestAt = now;
         root.setAttribute('data-mindustry-playgama-placement', placement);
         try{
+            const candidate = await loadSdk();
             await initialize(candidate);
             const ads = candidate.advertisement;
             if(!ads.isInterstitialSupported){
@@ -56,5 +72,5 @@
             busy = false;
         }
     }
-    globalThis.__mindustryPlaygamaAds = {request};
+    globalThis.__mindustryPlaygamaAds = {request, active};
 })();
