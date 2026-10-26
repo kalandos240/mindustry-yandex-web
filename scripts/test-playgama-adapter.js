@@ -25,7 +25,7 @@ async function run(initialAudio){
    isInterstitialSupported:true,isBannerSupported:false,
    on(event,fn){events[event]=fn},
    showInterstitial(placement){
-    assert.ok(['menu_return','pause'].includes(placement));
+    assert.ok(['menu_return','pause','research','planets','game_menu'].includes(placement));
     lastPlacement=placement;
     shows++;
     setTimeout(()=>events.ad('opened'),0);
@@ -115,6 +115,32 @@ async function run(initialAudio){
  await new Promise(resolve=>setTimeout(resolve,15));
  assert.equal(shows,2,'pause spam must not request a third ad');
  root.setAttribute('data-mindustry-pause-dialog-visible','no');
+ // Three additional ORIGINAL UI transitions use distinct Bridge placements.
+ // The same shared cooldown applies to all of them, including reopen spam.
+ const nativeOpenings=[
+  ['research','data-mindustry-research-open','yes','no'],
+  ['planets','data-mindustry-vanilla-modal-visible','planet,','none'],
+  ['game_menu','data-mindustry-main-menu-play-submenu','open','closed']
+ ];
+ let expectedShows=2;
+ for(const [placement,attribute,on,off] of nativeOpenings){
+   nowMs+=91000;
+   root.setAttribute(attribute,on);
+   await new Promise(resolve=>setTimeout(resolve,18));
+   expectedShows++;
+   assert.equal(shows,expectedShows,placement+' must show on opening');
+   assert.equal(lastPlacement,placement,placement+' must reach Bridge');
+   assert.equal(ctx.__mindustryPlaygamaBridge.state.paused,false,'game must resume after '+placement);
+   root.setAttribute(attribute,on);
+   await new Promise(resolve=>setTimeout(resolve,8));
+   assert.equal(shows,expectedShows,'repeated native sampling must not spam '+placement);
+   root.setAttribute(attribute,off);
+ }
+ // A rapid re-open after the last ad must not start another ad.
+ root.setAttribute('data-mindustry-main-menu-play-submenu','open');
+ await new Promise(resolve=>setTimeout(resolve,12));
+ assert.equal(shows,expectedShows,'all UI placements share the 90s cooldown');
+ root.setAttribute('data-mindustry-main-menu-play-submenu','closed');
  assert.equal((await sdk.adv.showBannerAdv()).stickyAdvIsShowing,false);
  assert.equal(attrs['data-playgama-sdk'],'ready');
  assert.equal(attrs['data-playgama-game-ready'],'sent');
