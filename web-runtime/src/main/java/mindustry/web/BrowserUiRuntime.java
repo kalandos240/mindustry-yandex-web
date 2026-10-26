@@ -316,6 +316,7 @@ public final class BrowserUiRuntime{
     private static native void markHudDatabaseHitPoint(float x, float y);
 
     private static void pauseActiveSession(){
+        BrowserPlaygamaAds.placement("game_menu");
         if(BrowserCampaignRuntime.active()){
             BrowserCampaignRuntime.pause();
         }else{
@@ -340,6 +341,7 @@ public final class BrowserUiRuntime{
     }
 
     private static void returnToMenuWithAd(){
+        BrowserPlaygamaAds.placement("game_menu");
         BrowserYandex.beginMenuFullscreenAdv();
         if(BrowserCampaignRuntime.active()){
             BrowserCampaignRuntime.returnToMenu();
