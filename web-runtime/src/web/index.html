@@ -38,12 +38,12 @@
             // Platform state and user-file hydration are independent. Finish both before
             // TeaVM starts so Arc's synchronous Fi API can read persistent files safely.
             await Promise.all([
-                globalThis.__mindustryYandex.init(),
+                globalThis.__mindustryPlaygamaAds.active ? Promise.resolve() : globalThis.__mindustryYandex.init(),
                 globalThis.__mindustryStorage.init()
             ]);
             // Restore a cloud checkpoint only before TeaVM starts, so Arc sees one
             // coherent synchronous settings/files snapshot from its first frame.
-            await globalThis.__mindustryYandex.restoreCloudCheckpoint();
+            if(!globalThis.__mindustryPlaygamaAds.active) await globalThis.__mindustryYandex.restoreCloudCheckpoint();
 
             const blocked = [];
             globalThis.__mindustryExternalRequests = blocked;
