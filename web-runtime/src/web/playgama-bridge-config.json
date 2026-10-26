@@ -11,6 +11,15 @@
         },
         {
           "id": "pause"
+        },
+        {
+          "id": "research"
+        },
+        {
+          "id": "planets"
+        },
+        {
+          "id": "game_menu"
         }
       ],
       "preloadOnStart": true
