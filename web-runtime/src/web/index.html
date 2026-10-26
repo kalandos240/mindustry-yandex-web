@@ -24,7 +24,7 @@
 <body>
     <main id="mindustry-game-surface">
         <canvas id="mindustry-canvas" width="1280" height="720" tabindex="0"></canvas>
-        <div id="mindustry-web-status">Initializing Yandex Games and storage...</div>
+        <div id="mindustry-web-status">Initializing Mindustry and storage...</div>
     </main>
     <script src="browser-storage.js"></script>
     <script src="browser-audio.js"></script>
@@ -38,7 +38,7 @@
             // Platform state and user-file hydration are independent. Finish both before
             // TeaVM starts so Arc's synchronous Fi API can read persistent files safely.
             await Promise.all([
-                globalThis.__mindustryPlaygamaAds.active ? Promise.resolve() : globalThis.__mindustryYandex.init(),
+                globalThis.__mindustryPlaygamaAds.active ? globalThis.__mindustryPlaygamaAds.initialize() : globalThis.__mindustryYandex.init(),
                 globalThis.__mindustryStorage.init()
             ]);
             // Restore a cloud checkpoint only before TeaVM starts, so Arc sees one
@@ -66,7 +66,7 @@
                 throw new Error(message);
             }
 
-            if(!globalThis.__mindustryYandex.available){
+            if(!globalThis.__mindustryYandex.available && !globalThis.__mindustryPlaygamaAds.active){
                 const nativeFetch = globalThis.fetch.bind(globalThis);
                 globalThis.fetch = (input, init) => { requireLocal(input, 'fetch'); return nativeFetch(input, init); };
 
