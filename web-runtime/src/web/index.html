@@ -29,21 +29,21 @@
     <script src="browser-storage.js"></script>
     <script src="browser-audio.js"></script>
     <script src="yandex-platform.js"></script>
-    <script src="playgama-ads.js"></script>
     <script>
         (async () => {
             const root = document.documentElement;
             const status = document.getElementById('mindustry-web-status');
+            const playgama = globalThis.__mindustryPlaygamaAds;
 
             // Platform state and user-file hydration are independent. Finish both before
             // TeaVM starts so Arc's synchronous Fi API can read persistent files safely.
             await Promise.all([
-                globalThis.__mindustryPlaygamaAds.active ? globalThis.__mindustryPlaygamaAds.initialize() : globalThis.__mindustryYandex.init(),
+                playgama && playgama.active ? playgama.initialize() : globalThis.__mindustryYandex.init(),
                 globalThis.__mindustryStorage.init()
             ]);
             // Restore a cloud checkpoint only before TeaVM starts, so Arc sees one
             // coherent synchronous settings/files snapshot from its first frame.
-            if(!globalThis.__mindustryPlaygamaAds.active) await globalThis.__mindustryYandex.restoreCloudCheckpoint();
+            if(!(playgama && playgama.active)) await globalThis.__mindustryYandex.restoreCloudCheckpoint();
 
             const blocked = [];
             globalThis.__mindustryExternalRequests = blocked;
@@ -66,7 +66,7 @@
                 throw new Error(message);
             }
 
-            if(!globalThis.__mindustryYandex.available && !globalThis.__mindustryPlaygamaAds.active){
+            if(!globalThis.__mindustryYandex.available && !(playgama && playgama.active)){
                 const nativeFetch = globalThis.fetch.bind(globalThis);
                 globalThis.fetch = (input, init) => { requireLocal(input, 'fetch'); return nativeFetch(input, init); };
 
