@@ -187,6 +187,31 @@ jobs:
       - name: Remove TeaVM runtime documentation link
         run: python3 scripts/sanitize-teavm-runtime-links.py
 
+      - name: Build Playgama release archive
+        run: |
+          python3 scripts/package-playgama-release.py
+          test -s work/release/mindustry-playgama-release.zip
+          (cd work/release && sha256sum -c mindustry-playgama-release.zip.sha256)
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile("work/release/mindustry-playgama-release.zip") as z:
+              assert "index.html" in z.namelist()
+              assert "mindustry.js" in z.namelist()
+              assert "playgama-bridge-config.json" in z.namelist()
+              assert b"__mindustryPlaygamaBuild=true" in z.read("index.html")
+              assert z.testzip() is None
+          PY
+
+      - name: Upload Playgama release archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindustry-playgama-release
+          path: |
+            work/release/mindustry-playgama-release.zip
+            work/release/mindustry-playgama-release.zip.sha256
+            work/release/mindustry-playgama-release-report.txt
+          if-no-files-found: error
+
       - name: Validate staged browser smoke package
         run: |
           test -s web-runtime/build/web/index.html
