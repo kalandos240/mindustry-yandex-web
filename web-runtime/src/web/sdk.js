@@ -117,39 +117,58 @@ function showAd(request){
     catch(e){finish(false)}
   });
 }
-function installNaturalPauseAd(){
-  // Ordinary user path: open Mindustry's ORIGINAL Pause panel after playing.
-  // A full-screen ad is safe here, but must never interrupt an active battle.
-  // The existing native Back->menu path remains supported independently.
+function installNaturalNavigationAds(){
+  // Only advertise on REAL transitions into native Mindustry navigation dialogs.
+  // The 60-second initial delay and 90-second shared cooldown also apply to
+  // these placements. No ad is launched while the player is simply building.
   if(typeof MutationObserver!=='function'||!root.getAttribute)return;
+  const screenVisible={
+    research:()=>root.getAttribute('data-mindustry-research-open')==='yes',
+    planets:()=>String(root.getAttribute('data-mindustry-vanilla-modal-visible')||'')
+      .split(',').includes('planet'),
+    pause:()=>{
+      const inSession=['playing','paused'].includes(root.getAttribute('data-mindustry-campaign-state'))
+        ||['playing','paused'].includes(root.getAttribute('data-mindustry-local-map-state'));
+      return inSession&&root.getAttribute('data-mindustry-pause-dialog-visible')==='yes';
+    },
+    game_menu:()=>root.getAttribute('data-mindustry-main-menu-play-submenu')==='open'
+  };
+  const previous=Object.fromEntries(Object.keys(screenVisible).map(name=>[name,false]));
   const onChange=()=>{
-    const shown=root.getAttribute('data-mindustry-pause-dialog-visible')==='yes';
-    if(!shown){s.pauseWasOpen=false;return}
-    if(s.pauseWasOpen)return;
-    s.pauseWasOpen=true;
-    const active=['playing','paused'].includes(root.getAttribute('data-mindustry-campaign-state'))
-       ||['playing','paused'].includes(root.getAttribute('data-mindustry-local-map-state'));
-    if(!active||!s.gameReady)return;
-    if(Date.now()-s.sessionStartedAt<FIRST_AD_DELAY_MS){
-      mark('interstitial-state','first-ad-wait');
-      return;
+    let newlyOpened='';
+    for(const [placement,isVisible] of Object.entries(screenVisible)){
+      const visible=isVisible();
+      if(visible&&!previous[placement]&&!newlyOpened)newlyOpened=placement;
+      previous[placement]=visible;
     }
-    if(s.pendingAd||(s.lastAdAttempt&&Date.now()-s.lastAdAttempt<AD_COOLDOWN_MS))return;
-    // Give the native Pause dialog a frame to settle; use the same game
-    // lifecycle wrapper used by the real native exit button.
+    if(!newlyOpened||!s.gameReady)return;
+    if(s.pendingAd||Date.now()-s.sessionStartedAt<FIRST_AD_DELAY_MS||
+       (s.lastAdAttempt&&Date.now()-s.lastAdAttempt<AD_COOLDOWN_MS))return;
+    // Wait until the real panel has settled. Recheck immediately before the
+    // Bridge call: a fast Back action must not trigger an ad over gameplay.
     const request=()=>{
-      if(root.getAttribute('data-mindustry-pause-dialog-visible')!=='yes')return;
+      if(!screenVisible[newlyOpened]())return;
       if(!globalThis.__mindustryYandex?.showFullscreenAdv)return;
-      s.intentPlacement='pause';
-      const accepted=globalThis.__mindustryYandex.showFullscreenAdv();
-      if(accepted===false)s.intentPlacement='';
+      if(s.pendingAd||Date.now()-s.sessionStartedAt<FIRST_AD_DELAY_MS||
+         (s.lastAdAttempt&&Date.now()-s.lastAdAttempt<AD_COOLDOWN_MS))return;
+      s.intentPlacement=newlyOpened;
+      mark('interstitial-intent',newlyOpened);
+      try{
+        const accepted=globalThis.__mindustryYandex.showFullscreenAdv();
+        if(accepted===false)s.intentPlacement='';
+      }catch(error){
+        s.intentPlacement='';
+        console.info('Playgama navigation ad skipped:',error);
+      }
     };
     if(typeof requestAnimationFrame==='function')requestAnimationFrame(request);
     else Promise.resolve().then(request);
   };
   s.adsObserver=new MutationObserver(onChange);
   s.adsObserver.observe(root,{attributes:true,attributeFilter:[
-    'data-mindustry-pause-dialog-visible','data-mindustry-campaign-state','data-mindustry-local-map-state']});
+    'data-mindustry-pause-dialog-visible','data-mindustry-campaign-state',
+    'data-mindustry-local-map-state','data-mindustry-research-open',
+    'data-mindustry-vanilla-modal-visible','data-mindustry-main-menu-play-submenu']});
   onChange();
 }
 async function initialize(){
@@ -173,7 +192,7 @@ async function initialize(){
     // the documented setter, in addition to our gameplay timing policy.
     try{bridge.advertisement?.setMinimumDelayBetweenInterstitial?.(90)}
     catch(error){console.info('Playgama SDK ad throttle:',error)}
-    installNaturalPauseAd();
+    installNaturalNavigationAds();
     // Bridge requires GAME_READY after the actual TeaVM canvas is playable.
     // The old Yandex LoadingAPI callback is optional in this port, so watch
     // the real engine boot marker and emit once from a rendered frame.
