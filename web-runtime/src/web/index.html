@@ -18,14 +18,39 @@
             #mindustry-game-surface { max-width: 200vh; max-height: 200vw; }
         }
         #mindustry-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
-        #mindustry-web-status { position: absolute; left: 12px; bottom: 12px; z-index: 2; font-size: 12px; opacity: .75; pointer-events: none; }
+        #mindustry-web-status { position: absolute; left: 12px; bottom: 12px; z-index: 2; font-size: 12px; opacity: .75; pointer-events: none; display: none; }
+        #mindustry-loader { position:absolute; inset:0; z-index:1000; display:grid; place-items:center; box-sizing:border-box; padding:24px; background:radial-gradient(ellipse at 50% 35%, #252a30, #101215 75%); }
+        #mindustry-loader[hidden] { display:none; }
+        .loading-card { width:min(420px, 100%); text-align:center; }
+        .loading-mark { width:72px; height:72px; margin:0 auto 28px; border:3px solid #ffd37f; transform:rotate(45deg); box-shadow:0 0 48px #ffd37f18; display:grid; place-items:center; }
+        .loading-mark::after { content:''; width:32px; height:32px; border:3px solid #ffd37f; }
+        .loading-title { margin:0 0 12px; font-size:clamp(26px, 7vw, 42px); letter-spacing:.12em; font-weight:800; }
+        #mindustry-loading-message { min-height:2.5em; margin:0 0 24px; color:#b9bec6; font-size:15px; line-height:1.5; }
+        #mindustry-loading-progress { height:6px; background:#353940; overflow:hidden; }
+        #mindustry-loading-fill { width:0; height:100%; background:#ffd37f; transition:width .2s ease; }
+        #mindustry-loading-percent { display:block; margin-top:12px; color:#ffd37f; font-size:13px; font-variant-numeric:tabular-nums; }
+        #mindustry-loading-retry { margin-top:24px; padding:12px 24px; border:1px solid #ffd37f; background:#252a30; color:#ffd37f; font:inherit; cursor:pointer; touch-action:manipulation; }
+        #mindustry-loading-retry:focus-visible { outline:2px solid white; outline-offset:4px; }
+        @media (max-height:400px) { .loading-mark { width:40px; height:40px; margin-bottom:16px; } #mindustry-loading-message { margin-bottom:12px; } }
+        @media (prefers-reduced-motion:reduce) { #mindustry-loading-fill { transition:none; } }
     </style>
 </head>
 <body>
     <main id="mindustry-game-surface">
         <canvas id="mindustry-canvas" width="1280" height="720" tabindex="0"></canvas>
+        <section id="mindustry-loader" aria-label="Mindustry loading" aria-busy="true">
+            <div class="loading-card">
+                <div class="loading-mark" aria-hidden="true"></div>
+                <h1 class="loading-title">MINDUSTRY</h1>
+                <p id="mindustry-loading-message" role="status" aria-live="polite">Preparing game…</p>
+                <div id="mindustry-loading-progress" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="mindustry-loading-fill"></div></div>
+                <span id="mindustry-loading-percent" aria-hidden="true">0%</span>
+                <button id="mindustry-loading-retry" hidden>Retry</button>
+            </div>
+        </section>
         <div id="mindustry-web-status">Initializing Mindustry and storage...</div>
     </main>
+    <script src="loading-screen.js"></script>
     <script src="browser-storage.js"></script>
     <script src="browser-audio.js"></script>
     <script src="yandex-platform.js"></script>
@@ -33,6 +58,8 @@
         (async () => {
             const root = document.documentElement;
             const status = document.getElementById('mindustry-web-status');
+            const loading = globalThis.__mindustryLoading;
+            loading.update(5, "platform");
             const playgama = globalThis.__mindustryPlaygamaAds;
 
             // Platform state and user-file hydration are independent. Finish both before
@@ -114,10 +141,12 @@
                 });
             }
 
+            loading.update(15, 'runtime');
             status.textContent = 'Loading Mindustry runtime...';
             await loadScript('assets-manifest.js');
             await loadScript('mindustry.js');
 
+            loading.update(25, 'assets');
             const manifest = globalThis.__mindustryAssetManifest || [];
             globalThis.__mindustryAssetSet = new Set(manifest);
             root.setAttribute('data-mindustry-asset-index', 'set');
@@ -174,6 +203,7 @@
                     loaded++;
                     if((loaded & 15) === 0 || loaded === eagerManifest.length){
                         status.textContent = 'Preloading Mindustry assets ' + loaded + '/' + eagerManifest.length + '...';
+                        loading.update(25 + 65 * loaded / eagerManifest.length, 'assets', loaded, eagerManifest.length);
                         statusUpdates++;
                     }
                 }
@@ -186,6 +216,7 @@
             root.setAttribute('data-mindustry-assets-preload-ms', String(Math.max(1, Math.round(performance.now() - preloadStarted))));
             root.setAttribute('data-mindustry-assets-status-updates', String(statusUpdates));
             root.setAttribute('data-mindustry-assets-preload', 'ready');
+            loading.update(92, 'starting');
             status.textContent = 'Starting Mindustry...';
 
             async function warmCampaignMaps(){
@@ -445,6 +476,8 @@
                 sync();
             };
 
+            // Give the browser a paint before synchronous TeaVM initialization.
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
             main();
         })().catch(error => {
             const root = document.documentElement;
@@ -452,6 +485,7 @@
                 root.setAttribute('data-mindustry-web', 'error');
                 document.getElementById('mindustry-web-status').textContent = 'Mindustry Web bootstrap failed: ' + error;
             }
+            globalThis.__mindustryLoading.fail(error);
             console.error(error);
         });
     </script>
