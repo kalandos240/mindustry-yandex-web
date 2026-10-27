@@ -15,7 +15,7 @@ SHA = OUT / "mindustry-playgama-release.zip.sha256"
 REPORT = OUT / "mindustry-playgama-release-report.txt"
 LIMIT = 100 * 1024 * 1024
 REQUIRED = {"index.html", "mindustry.js", "browser-storage.js",
-            "browser-audio.js", "assets-manifest.js"}
+            "browser-audio.js", "assets-manifest.js", "loading-screen.js"}
 
 CONFIG = """{
   "$schema": "https://bridge.playgama.com/v2/stable/schema.json",

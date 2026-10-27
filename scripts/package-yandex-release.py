@@ -24,6 +24,7 @@ REQUIRED_ROOT = {
     "yandex-platform.js",
     "browser-storage.js",
     "browser-audio.js",
+    "loading-screen.js",
     "assets-manifest.js",
 }
 
